@@ -30,6 +30,14 @@ public partial class EditorViewModel : ViewModelBase
         Nodes.CollectionChanged += OnNodesCollectionChanged;
     }
 
+    private void UnsubscribeAllNodes()
+    {
+        foreach (PipelineNodeViewModel node in Nodes)
+        {
+            node.PropertyChanged -= OnNodePropertyChanged;
+        }
+    }
+
     private void OnNodesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         if (e.NewItems is not null)
@@ -69,10 +77,21 @@ public partial class EditorViewModel : ViewModelBase
         }
     }
 
-    public void LoadGraph(PipelineGraph graph, NodeRegistry registry)
+    public void ClearAll()
     {
+        UnsubscribeAllNodes();
         Nodes.Clear();
         Connections.Clear();
+        SelectedNode = null;
+    }
+
+    public int LoadGraph(PipelineGraph graph, NodeRegistry registry)
+    {
+        UnsubscribeAllNodes();
+        Nodes.Clear();
+        Connections.Clear();
+
+        int droppedConnections = 0;
 
         // Create node VMs
         Dictionary<Guid, PipelineNodeViewModel> nodeMap = new();
@@ -89,6 +108,7 @@ public partial class EditorViewModel : ViewModelBase
             if (!nodeMap.TryGetValue(conn.FromNode, out PipelineNodeViewModel? fromNode) ||
                 !nodeMap.TryGetValue(conn.ToNode, out PipelineNodeViewModel? toNode))
             {
+                droppedConnections++;
                 continue;
             }
 
@@ -97,6 +117,7 @@ public partial class EditorViewModel : ViewModelBase
 
             if (sourceConnector is null || targetConnector is null)
             {
+                droppedConnections++;
                 continue;
             }
 
@@ -105,6 +126,8 @@ public partial class EditorViewModel : ViewModelBase
 
             Connections.Add(new PipelineConnectionViewModel(sourceConnector, targetConnector));
         }
+
+        return droppedConnections;
     }
 
     public PipelineGraph BuildGraph()

@@ -56,14 +56,16 @@ public partial class MainWindowViewModel : ViewModelBase
                 Properties.LoadNode(Editor.SelectedNode, _registry);
             }
         };
+
+        // Track canvas changes for IsDirty
+        Editor.Nodes.CollectionChanged += (_, _) => IsDirty = true;
+        Editor.Connections.CollectionChanged += (_, _) => IsDirty = true;
     }
 
     [RelayCommand]
     private void New()
     {
-        Editor.Nodes.Clear();
-        Editor.Connections.Clear();
-        Editor.SelectedNode = null;
+        Editor.ClearAll();
         CurrentFilePath = null;
         IsDirty = false;
         Title = "FlowForge - Untitled";
@@ -85,14 +87,25 @@ public partial class MainWindowViewModel : ViewModelBase
         try
         {
             PipelineGraph graph = await PipelineSerializer.LoadAsync(path);
-            Editor.LoadGraph(graph, _registry);
+            int droppedConnections = Editor.LoadGraph(graph, _registry);
             CurrentFilePath = path;
             IsDirty = false;
             Title = $"FlowForge - {Path.GetFileNameWithoutExtension(path)}";
+
+            if (droppedConnections > 0)
+            {
+                ExecutionLog.Summary = $"Loaded with {droppedConnections} dropped connection(s).";
+            }
         }
         catch (PipelineLoadException ex)
         {
             _logger.Error(ex, "Failed to load pipeline from {Path}", path);
+            ExecutionLog.Summary = $"Failed to open: {ex.Message}";
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.Error(ex, "Failed to load pipeline from {Path}", path);
+            ExecutionLog.Summary = $"Failed to open: {ex.Message}";
         }
     }
 
@@ -142,6 +155,7 @@ public partial class MainWindowViewModel : ViewModelBase
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.Error(ex, "Failed to save pipeline to {Path}", path);
+            ExecutionLog.Summary = $"Save failed: {ex.Message}";
         }
     }
 

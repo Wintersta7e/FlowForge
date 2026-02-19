@@ -1,3 +1,4 @@
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -39,10 +40,14 @@ public partial class PipelinePendingConnectionViewModel : ViewModelBase
             PipelineConnectorViewModel source = Source.IsInput ? connector : Source;
             PipelineConnectorViewModel target = Source.IsInput ? Source : connector;
 
-            source.IsConnected = true;
-            target.IsConnected = true;
-
-            _editor.Connections.Add(new PipelineConnectionViewModel(source, target));
+            bool alreadyConnected = _editor.Connections.Any(c =>
+                c.Source == source && c.Target == target);
+            if (!alreadyConnected)
+            {
+                source.IsConnected = true;
+                target.IsConnected = true;
+                _editor.Connections.Add(new PipelineConnectionViewModel(source, target));
+            }
         }
 
         Source = null;
