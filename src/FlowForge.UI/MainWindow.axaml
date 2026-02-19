@@ -2,8 +2,38 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        xmlns:vm="using:FlowForge.UI.ViewModels"
+        xmlns:views="using:FlowForge.UI.Views"
+        mc:Ignorable="d"
+        d:DesignWidth="1200" d:DesignHeight="700"
         x:Class="FlowForge.UI.MainWindow"
-        Title="FlowForge.UI">
-    Welcome to Avalonia!
+        x:DataType="vm:MainWindowViewModel"
+        Title="{Binding Title}"
+        Width="1200" Height="700"
+        MinWidth="800" MinHeight="500"
+        KeyDown="OnKeyDown">
+
+    <DockPanel>
+        <!-- Toolbar (top) -->
+        <views:ToolbarView DockPanel.Dock="Top"
+                           DataContext="{Binding}" />
+
+        <!-- Execution log (bottom) -->
+        <views:ExecutionLogView DockPanel.Dock="Bottom"
+                                Height="120"
+                                DataContext="{Binding ExecutionLog}" />
+
+        <!-- Node library (left) -->
+        <views:NodeLibraryView DockPanel.Dock="Left"
+                               Width="200"
+                               DataContext="{Binding NodeLibrary}" />
+
+        <!-- Properties panel (right) -->
+        <views:PropertiesView DockPanel.Dock="Right"
+                              Width="250"
+                              DataContext="{Binding Properties}" />
+
+        <!-- Canvas (center fill) -->
+        <views:CanvasView DataContext="{Binding Editor}" />
+    </DockPanel>
 </Window>

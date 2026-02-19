@@ -1,0 +1,72 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:FlowForge.UI.ViewModels"
+             xmlns:nodify="using:Nodify.Avalonia"
+             xmlns:nodifyNodes="using:Nodify.Avalonia.Nodes"
+             xmlns:nodifyConn="using:Nodify.Avalonia.Connections"
+             mc:Ignorable="d"
+             d:DesignWidth="600" d:DesignHeight="400"
+             x:Class="FlowForge.UI.Views.CanvasView"
+             x:DataType="vm:EditorViewModel">
+
+    <nodify:NodifyEditor ItemsSource="{Binding Nodes}"
+                         Connections="{Binding Connections}"
+                         PendingConnection="{Binding PendingConnection}"
+                         Background="Transparent">
+
+        <!-- Style for ItemContainer: bind Location and IsSelected -->
+        <nodify:NodifyEditor.Styles>
+            <Style Selector="nodify|ItemContainer" x:DataType="vm:PipelineNodeViewModel">
+                <Setter Property="Location" Value="{Binding Location, Mode=TwoWay}" />
+                <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+            </Style>
+        </nodify:NodifyEditor.Styles>
+
+        <!-- Node item template -->
+        <nodify:NodifyEditor.ItemTemplate>
+            <DataTemplate x:DataType="vm:PipelineNodeViewModel">
+                <nodifyNodes:Node Header="{Binding Title}"
+                                  HeaderBrush="{Binding HeaderBrush}"
+                                  Input="{Binding Input}"
+                                  Output="{Binding Output}"
+                                  x:CompileBindings="False">
+                    <nodifyNodes:Node.InputConnectorTemplate>
+                        <DataTemplate x:DataType="vm:PipelineConnectorViewModel">
+                            <nodifyConn:Connector Anchor="{Binding Anchor, Mode=OneWayToSource}"
+                                                  IsConnected="{Binding IsConnected}" />
+                        </DataTemplate>
+                    </nodifyNodes:Node.InputConnectorTemplate>
+                    <nodifyNodes:Node.OutputConnectorTemplate>
+                        <DataTemplate x:DataType="vm:PipelineConnectorViewModel">
+                            <nodifyConn:Connector Anchor="{Binding Anchor, Mode=OneWayToSource}"
+                                                  IsConnected="{Binding IsConnected}" />
+                        </DataTemplate>
+                    </nodifyNodes:Node.OutputConnectorTemplate>
+                </nodifyNodes:Node>
+            </DataTemplate>
+        </nodify:NodifyEditor.ItemTemplate>
+
+        <!-- Connection template -->
+        <nodify:NodifyEditor.ConnectionTemplate>
+            <DataTemplate x:DataType="vm:PipelineConnectionViewModel">
+                <nodifyConn:Connection Source="{Binding Source.Anchor}"
+                                       Target="{Binding Target.Anchor}" />
+            </DataTemplate>
+        </nodify:NodifyEditor.ConnectionTemplate>
+
+        <!-- Pending connection template -->
+        <nodify:NodifyEditor.PendingConnectionTemplate>
+            <DataTemplate x:DataType="vm:PipelinePendingConnectionViewModel">
+                <nodifyConn:PendingConnection IsVisible="{Binding IsVisible}"
+                                              StartedCommand="{Binding StartCommand}"
+                                              CompletedCommand="{Binding FinishCommand}"
+                                              EnablePreview="True"
+                                              EnableSnapping="True"
+                                              PreviewTarget="{Binding PreviewTarget, Mode=OneWayToSource}" />
+            </DataTemplate>
+        </nodify:NodifyEditor.PendingConnectionTemplate>
+
+    </nodify:NodifyEditor>
+</UserControl>

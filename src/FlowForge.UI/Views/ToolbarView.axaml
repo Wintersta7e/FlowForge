@@ -1,0 +1,55 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:FlowForge.UI.ViewModels"
+             mc:Ignorable="d"
+             d:DesignWidth="800" d:DesignHeight="40"
+             x:Class="FlowForge.UI.Views.ToolbarView"
+             x:DataType="vm:MainWindowViewModel">
+
+    <Border BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+            BorderThickness="0,0,0,1"
+            Padding="4">
+        <StackPanel Orientation="Horizontal" Spacing="4">
+            <!-- File operations -->
+            <Button Content="New"
+                    Command="{Binding NewCommand}"
+                    ToolTip.Tip="New Pipeline (Ctrl+N)"
+                    Padding="8,4" />
+            <Button Content="Open"
+                    Command="{Binding OpenCommand}"
+                    ToolTip.Tip="Open Pipeline (Ctrl+O)"
+                    Padding="8,4" />
+            <Button Content="Save"
+                    Command="{Binding SaveCommand}"
+                    ToolTip.Tip="Save Pipeline (Ctrl+S)"
+                    Padding="8,4" />
+            <Button Content="Save As"
+                    Command="{Binding SaveAsCommand}"
+                    ToolTip.Tip="Save Pipeline As (Ctrl+Shift+S)"
+                    Padding="8,4" />
+
+            <!-- Separator -->
+            <Border Width="1"
+                    Background="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                    Margin="4,2" />
+
+            <!-- Execution operations -->
+            <Button Content="Run"
+                    Command="{Binding RunCommand}"
+                    ToolTip.Tip="Run Pipeline"
+                    Padding="8,4"
+                    Classes="accent" />
+            <Button Content="Dry Run"
+                    Command="{Binding DryRunCommand}"
+                    ToolTip.Tip="Dry Run Pipeline (no file I/O)"
+                    Padding="8,4" />
+            <Button Content="Cancel"
+                    Command="{Binding CancelCommand}"
+                    IsEnabled="{Binding ExecutionLog.IsRunning}"
+                    ToolTip.Tip="Cancel Execution"
+                    Padding="8,4" />
+        </StackPanel>
+    </Border>
+</UserControl>

@@ -10,6 +10,16 @@ public class ImageResizeNode : ITransformNode
 {
     public string TypeKey => "ImageResize";
 
+    public static IReadOnlyList<ConfigField> ConfigSchema => new[]
+    {
+        new ConfigField("width", ConfigFieldType.Int, Label: "Width (px)"),
+        new ConfigField("height", ConfigFieldType.Int, Label: "Height (px)"),
+        new ConfigField("mode", ConfigFieldType.Select, Label: "Resize Mode", DefaultValue: "max",
+            Options: new[] { "max", "min", "crop", "pad", "stretch" }),
+        new ConfigField("maintainAspect", ConfigFieldType.Bool, Label: "Maintain Aspect Ratio", DefaultValue: "true"),
+        new ConfigField("dpi", ConfigFieldType.Int, Label: "DPI"),
+    };
+
     private int? _width;
     private int? _height;
     private string _mode = "max";

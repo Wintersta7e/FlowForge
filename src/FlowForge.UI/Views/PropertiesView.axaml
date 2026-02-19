@@ -1,0 +1,40 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:FlowForge.UI.ViewModels"
+             xmlns:views="using:FlowForge.UI.Views"
+             mc:Ignorable="d"
+             d:DesignWidth="250" d:DesignHeight="600"
+             x:Class="FlowForge.UI.Views.PropertiesView"
+             x:DataType="vm:PropertiesViewModel">
+
+    <DockPanel>
+        <!-- Header -->
+        <Border DockPanel.Dock="Top"
+                Padding="8"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                BorderThickness="0,0,0,1">
+            <Panel>
+                <TextBlock Text="{Binding SelectedNodeTitle, FallbackValue='No Selection'}"
+                           FontWeight="SemiBold"
+                           FontSize="14"
+                           IsVisible="{Binding HasSelection}" />
+                <TextBlock Text="No Selection"
+                           FontStyle="Italic"
+                           Opacity="0.6"
+                           IsVisible="{Binding !HasSelection}" />
+            </Panel>
+        </Border>
+
+        <!-- Fields list -->
+        <ScrollViewer IsVisible="{Binding HasSelection}"
+                      Padding="8">
+            <ItemsControl ItemsSource="{Binding Fields}">
+                <ItemsControl.ItemTemplate>
+                    <views:ConfigFieldTemplateSelector />
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>

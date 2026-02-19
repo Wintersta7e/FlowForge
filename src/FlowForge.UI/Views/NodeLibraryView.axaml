@@ -1,0 +1,39 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:FlowForge.UI.ViewModels"
+             mc:Ignorable="d"
+             d:DesignWidth="200" d:DesignHeight="600"
+             x:Class="FlowForge.UI.Views.NodeLibraryView"
+             x:DataType="vm:NodeLibraryViewModel">
+
+    <UserControl.DataTemplates>
+        <DataTemplate x:DataType="vm:NodeLibraryItemViewModel">
+            <TextBlock Text="{Binding DisplayName}"
+                       Padding="4,2"
+                       Cursor="Hand"
+                       DoubleTapped="OnLibraryItemDoubleTapped" />
+        </DataTemplate>
+    </UserControl.DataTemplates>
+
+    <DockPanel>
+        <!-- Search box -->
+        <TextBox DockPanel.Dock="Top"
+                 Text="{Binding SearchText}"
+                 Watermark="Search nodes..."
+                 Margin="4" />
+
+        <!-- Grouped node list -->
+        <TreeView ItemsSource="{Binding Groups}"
+                  Margin="4,0,4,4">
+            <TreeView.ItemTemplate>
+                <TreeDataTemplate x:DataType="vm:NodeLibraryGroupViewModel"
+                                  ItemsSource="{Binding Items}">
+                    <TextBlock Text="{Binding Category}"
+                               FontWeight="SemiBold" />
+                </TreeDataTemplate>
+            </TreeView.ItemTemplate>
+        </TreeView>
+    </DockPanel>
+</UserControl>

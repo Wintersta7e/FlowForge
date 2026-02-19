@@ -1,0 +1,52 @@
+{
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "name": "Rename Sequential",
+  "version": "1.0",
+  "createdAt": "2026-02-19T00:00:00Z",
+  "updatedAt": "2026-02-19T00:00:00Z",
+  "nodes": [
+    {
+      "id": "11111111-1111-1111-1111-111111111111",
+      "typeKey": "FolderInput",
+      "position": { "x": 0, "y": 0 },
+      "config": {
+        "path": "/tmp/placeholder-input",
+        "recursive": false,
+        "filter": "*"
+      }
+    },
+    {
+      "id": "22222222-2222-2222-2222-222222222222",
+      "typeKey": "RenamePattern",
+      "position": { "x": 200, "y": 0 },
+      "config": {
+        "pattern": "{name}_processed{ext}",
+        "startIndex": 1
+      }
+    },
+    {
+      "id": "33333333-3333-3333-3333-333333333333",
+      "typeKey": "FolderOutput",
+      "position": { "x": 400, "y": 0 },
+      "config": {
+        "path": "/tmp/placeholder-output",
+        "mode": "copy",
+        "overwrite": false
+      }
+    }
+  ],
+  "connections": [
+    {
+      "fromNode": "11111111-1111-1111-1111-111111111111",
+      "fromPin": "out",
+      "toNode": "22222222-2222-2222-2222-222222222222",
+      "toPin": "in"
+    },
+    {
+      "fromNode": "22222222-2222-2222-2222-222222222222",
+      "fromPin": "out",
+      "toNode": "33333333-3333-3333-3333-333333333333",
+      "toPin": "in"
+    }
+  ]
+}

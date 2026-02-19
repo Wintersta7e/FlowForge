@@ -9,6 +9,12 @@ public class RenamePatternNode : ITransformNode
 {
     public string TypeKey => "RenamePattern";
 
+    public static IReadOnlyList<ConfigField> ConfigSchema => new[]
+    {
+        new ConfigField("pattern", ConfigFieldType.String, Label: "Rename Pattern", Required: true, Placeholder: "{name}_{counter:000}{ext}"),
+        new ConfigField("startIndex", ConfigFieldType.Int, Label: "Counter Start", DefaultValue: "1"),
+    };
+
     private string _pattern = string.Empty;
     private int _startIndex = 1;
     private int _counter;

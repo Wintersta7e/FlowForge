@@ -9,6 +9,13 @@ public class FolderInputNode : ISourceNode
 {
     public string TypeKey => "FolderInput";
 
+    public static IReadOnlyList<ConfigField> ConfigSchema => new[]
+    {
+        new ConfigField("path", ConfigFieldType.FolderPath, Label: "Source Folder", Required: true),
+        new ConfigField("recursive", ConfigFieldType.Bool, Label: "Include Subfolders", DefaultValue: "false"),
+        new ConfigField("filter", ConfigFieldType.String, Label: "File Filter", DefaultValue: "*", Placeholder: "*.jpg;*.png"),
+    };
+
     private string _path = string.Empty;
     private bool _recursive;
     private string _filter = "*";
