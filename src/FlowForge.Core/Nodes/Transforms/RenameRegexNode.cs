@@ -68,6 +68,16 @@ public class RenameRegexNode : ITransformNode
         if (_scope.Equals("fullpath", StringComparison.OrdinalIgnoreCase))
         {
             newPath = _regex.Replace(job.CurrentPath, _replacement);
+
+            string originalDir = Path.GetDirectoryName(job.CurrentPath) ?? string.Empty;
+            string resolvedNew = Path.GetFullPath(newPath);
+            string resolvedDir = Path.GetFullPath(originalDir);
+            if (!resolvedNew.StartsWith(resolvedDir + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) &&
+                !Path.GetDirectoryName(resolvedNew)!.Equals(resolvedDir, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    $"RenameRegex: resulting path '{resolvedNew}' escapes source directory '{resolvedDir}'.");
+            }
         }
         else
         {
@@ -79,6 +89,7 @@ public class RenameRegexNode : ITransformNode
 
         if (!dryRun && !string.Equals(oldPath, newPath, StringComparison.OrdinalIgnoreCase))
         {
+            // .NET has no async File.Move/Copy API; sync call is acceptable for metadata-only operations
             File.Move(oldPath, newPath, overwrite: false);
         }
 

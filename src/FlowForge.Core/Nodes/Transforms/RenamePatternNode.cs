@@ -39,7 +39,7 @@ public class RenamePatternNode : ITransformNode
             _startIndex = startIndexElement.GetInt32();
         }
 
-        _counter = _startIndex;
+        _counter = _startIndex - 1;
     }
 
     public Task<IEnumerable<FileJob>> TransformAsync(FileJob job, bool dryRun, CancellationToken ct = default)
@@ -51,7 +51,7 @@ public class RenamePatternNode : ITransformNode
         string nameWithoutExt = Path.GetFileNameWithoutExtension(job.CurrentPath);
         string extension = Path.GetExtension(job.CurrentPath);
 
-        int currentCounter = Interlocked.Increment(ref _counter) - 1;
+        int currentCounter = Interlocked.Increment(ref _counter);
 
         string newName = TokenRegex.Replace(_pattern, match =>
         {
@@ -65,9 +65,7 @@ public class RenamePatternNode : ITransformNode
                 "counter" => string.IsNullOrEmpty(format)
                     ? currentCounter.ToString()
                     : currentCounter.ToString(format),
-                "date" => string.IsNullOrEmpty(format)
-                    ? DateTime.Today.ToString("yyyy-MM-dd")
-                    : DateTime.Today.ToString(format),
+                "date" => ResolveDateToken(format),
                 "meta" => !string.IsNullOrEmpty(format) && job.Metadata.TryGetValue(format, out string? metaValue)
                     ? metaValue
                     : string.Empty,
@@ -83,6 +81,7 @@ public class RenamePatternNode : ITransformNode
             newPath = ResolveConflict(newPath);
             if (!string.Equals(oldPath, newPath, StringComparison.OrdinalIgnoreCase))
             {
+                // .NET has no async File.Move/Copy API; sync call is acceptable for metadata-only operations
                 File.Move(oldPath, newPath, overwrite: false);
             }
         }
@@ -92,6 +91,20 @@ public class RenamePatternNode : ITransformNode
 
         IEnumerable<FileJob> result = new[] { job };
         return Task.FromResult(result);
+    }
+
+    private static string ResolveDateToken(string? format)
+    {
+        try
+        {
+            return string.IsNullOrEmpty(format)
+                ? DateTime.Today.ToString("yyyy-MM-dd")
+                : DateTime.Today.ToString(format);
+        }
+        catch (FormatException)
+        {
+            return DateTime.Today.ToString("yyyy-MM-dd");
+        }
     }
 
     private static string ResolveConflict(string path)
@@ -110,6 +123,8 @@ public class RenamePatternNode : ITransformNode
         do
         {
             candidate = Path.Combine(directory, $"{nameWithoutExt}_{suffix}{extension}");
+            if (suffix > 10000)
+                throw new InvalidOperationException($"Too many filename conflicts for '{path}'.");
             suffix++;
         } while (File.Exists(candidate));
 

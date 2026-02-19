@@ -73,7 +73,8 @@ public class ImageCompressNode : ITransformNode
             "jpg" or "jpeg" => new JpegEncoder { Quality = _quality },
             "png" => new PngEncoder { CompressionLevel = QualityToPngCompression(_quality) },
             "webp" => new WebpEncoder { Quality = _quality },
-            _ => new JpegEncoder { Quality = _quality } // Default to JPEG compression
+            _ => throw new InvalidOperationException(
+                $"ImageCompress does not support format '{format}'. Supported: jpg, jpeg, png, webp.")
         };
     }
 

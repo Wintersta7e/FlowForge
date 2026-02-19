@@ -48,6 +48,11 @@ public class MetadataExtractNode : ITransformNode
             {
                 job.Metadata[key] = value;
             }
+            else
+            {
+                // If metadata extraction returned null/empty for a requested EXIF key, log it
+                job.NodeLog.Add($"MetadataExtract: WARNING — no value found for key '{key}' in '{Path.GetFileName(job.CurrentPath)}'");
+            }
         }
 
         job.NodeLog.Add($"MetadataExtract: extracted {job.Metadata.Count} keys");
@@ -104,13 +109,14 @@ public class MetadataExtractNode : ITransformNode
                 "cameramodel" => ExtractExifTag(directories, ExifDirectoryBase.TagModel),
                 "cameramake" => ExtractExifTag(directories, ExifDirectoryBase.TagMake),
                 "gps" => ExtractGps(directories),
-                "focalLength" => ExtractExifTag(directories, ExifDirectoryBase.TagFocalLength),
+                "focallength" => ExtractExifTag(directories, ExifDirectoryBase.TagFocalLength),
                 "iso" => ExtractExifTag(directories, ExifDirectoryBase.TagIsoEquivalent),
                 _ => ExtractAnyTag(directories, key["EXIF:".Length..])
             };
         }
-        catch (ImageProcessingException)
+        catch (ImageProcessingException ex)
         {
+            System.Diagnostics.Debug.WriteLine($"MetadataExtract: Failed to read EXIF from '{filePath}': {ex.Message}");
             return null;
         }
     }
@@ -160,13 +166,12 @@ public class MetadataExtractNode : ITransformNode
 
     private static string SanitizeForFilename(string value)
     {
-        // Replace characters that are invalid in filenames
-        char[] invalidChars = Path.GetInvalidFileNameChars();
-        string sanitized = value;
-        foreach (char c in invalidChars)
+        ReadOnlySpan<char> invalidChars = Path.GetInvalidFileNameChars();
+        var sb = new System.Text.StringBuilder(value.Length);
+        foreach (char c in value)
         {
-            sanitized = sanitized.Replace(c, '_');
+            sb.Append(invalidChars.Contains(c) ? '_' : c);
         }
-        return sanitized.Trim();
+        return sb.ToString().Trim();
     }
 }

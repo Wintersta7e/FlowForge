@@ -51,39 +51,45 @@ public class SortNode : ITransformNode, IBufferedTransformNode
 
     public Task<IEnumerable<FileJob>> FlushAsync(CancellationToken ct = default)
     {
-        ct.ThrowIfCancellationRequested();
-
-        bool descending = _direction.Equals("desc", StringComparison.OrdinalIgnoreCase);
-
-        IEnumerable<FileJob> sorted = _field.ToLowerInvariant() switch
+        try
         {
-            "filename" => descending
-                ? _buffer.OrderByDescending(j => j.FileName, StringComparer.OrdinalIgnoreCase)
-                : _buffer.OrderBy(j => j.FileName, StringComparer.OrdinalIgnoreCase),
-            "extension" => descending
-                ? _buffer.OrderByDescending(j => j.Extension, StringComparer.OrdinalIgnoreCase)
-                : _buffer.OrderBy(j => j.Extension, StringComparer.OrdinalIgnoreCase),
-            "size" => descending
-                ? _buffer.OrderByDescending(j => GetFileSize(j.CurrentPath))
-                : _buffer.OrderBy(j => GetFileSize(j.CurrentPath)),
-            "createdat" => descending
-                ? _buffer.OrderByDescending(j => GetFileCreatedAt(j.CurrentPath))
-                : _buffer.OrderBy(j => GetFileCreatedAt(j.CurrentPath)),
-            "modifiedat" => descending
-                ? _buffer.OrderByDescending(j => GetFileModifiedAt(j.CurrentPath))
-                : _buffer.OrderBy(j => GetFileModifiedAt(j.CurrentPath)),
-            _ => throw new InvalidOperationException($"Unknown sort field: '{_field}'")
-        };
+            ct.ThrowIfCancellationRequested();
 
-        List<FileJob> result = sorted.ToList();
+            bool descending = _direction.Equals("desc", StringComparison.OrdinalIgnoreCase);
 
-        foreach (FileJob job in result)
-        {
-            job.NodeLog.Add($"Sort: ordered by {_field} {_direction}");
+            IEnumerable<FileJob> sorted = _field.ToLowerInvariant() switch
+            {
+                "filename" => descending
+                    ? _buffer.OrderByDescending(j => j.FileName, StringComparer.OrdinalIgnoreCase)
+                    : _buffer.OrderBy(j => j.FileName, StringComparer.OrdinalIgnoreCase),
+                "extension" => descending
+                    ? _buffer.OrderByDescending(j => j.Extension, StringComparer.OrdinalIgnoreCase)
+                    : _buffer.OrderBy(j => j.Extension, StringComparer.OrdinalIgnoreCase),
+                "size" => descending
+                    ? _buffer.OrderByDescending(j => GetFileSize(j.CurrentPath))
+                    : _buffer.OrderBy(j => GetFileSize(j.CurrentPath)),
+                "createdat" => descending
+                    ? _buffer.OrderByDescending(j => GetFileCreatedAt(j.CurrentPath))
+                    : _buffer.OrderBy(j => GetFileCreatedAt(j.CurrentPath)),
+                "modifiedat" => descending
+                    ? _buffer.OrderByDescending(j => GetFileModifiedAt(j.CurrentPath))
+                    : _buffer.OrderBy(j => GetFileModifiedAt(j.CurrentPath)),
+                _ => throw new InvalidOperationException($"Unknown sort field: '{_field}'")
+            };
+
+            List<FileJob> result = sorted.ToList();
+
+            foreach (FileJob job in result)
+            {
+                job.NodeLog.Add($"Sort: ordered by {_field} {_direction}");
+            }
+
+            return Task.FromResult<IEnumerable<FileJob>>(result);
         }
-
-        _buffer.Clear();
-        return Task.FromResult<IEnumerable<FileJob>>(result);
+        finally
+        {
+            _buffer.Clear();
+        }
     }
 
     private static long GetFileSize(string path)
