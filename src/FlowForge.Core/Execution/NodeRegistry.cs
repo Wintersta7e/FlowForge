@@ -79,8 +79,27 @@ public class NodeRegistry
     public static NodeRegistry CreateDefault()
     {
         var registry = new NodeRegistry();
+        // Sources
         registry.Register<FolderInputNode>("FolderInput", () => new FolderInputNode());
+
+        // Transforms — Rename
         registry.Register<RenamePatternNode>("RenamePattern", () => new RenamePatternNode());
+        registry.Register<RenameRegexNode>("RenameRegex", () => new RenameRegexNode());
+        registry.Register<RenameAddAffixNode>("RenameAddAffix", () => new RenameAddAffixNode());
+
+        // Transforms — Filter & Sort
+        registry.Register<FilterNode>("Filter", () => new FilterNode());
+        registry.Register<SortNode>("Sort", () => new SortNode());
+
+        // Transforms — Image
+        registry.Register<ImageResizeNode>("ImageResize", () => new ImageResizeNode());
+        registry.Register<ImageConvertNode>("ImageConvert", () => new ImageConvertNode());
+        registry.Register<ImageCompressNode>("ImageCompress", () => new ImageCompressNode());
+
+        // Transforms — Metadata
+        registry.Register<MetadataExtractNode>("MetadataExtract", () => new MetadataExtractNode());
+
+        // Outputs
         registry.Register<FolderOutputNode>("FolderOutput", () => new FolderOutputNode());
         return registry;
     }

@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Threading.Channels;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
 using FlowForge.Core.Pipeline;
@@ -66,24 +65,39 @@ public class PipelineRunner
         var transformNodes = orderedTransforms.Select(d => _registry.GetTransform(d)).ToList();
         var outputNodes = outputNodeDefs.Select(d => _registry.GetOutput(d)).ToList();
 
-        // 5. Execute pipeline
-        using var semaphore = new SemaphoreSlim(_maxConcurrency);
-        var tasks = new List<Task>();
-
+        // 5. Collect all jobs from sources
+        var allJobs = new List<FileJob>();
         foreach (ISourceNode source in sourceNodes)
         {
             await foreach (FileJob job in source.ProduceAsync(ct))
             {
                 ct.ThrowIfCancellationRequested();
-                result.TotalFiles++;
-
-                await semaphore.WaitAsync(ct);
-                Task task = ProcessJobAsync(job, transformNodes, outputNodes, dryRun, result, progress, semaphore, ct);
-                tasks.Add(task);
+                allJobs.Add(job);
             }
         }
 
-        await Task.WhenAll(tasks);
+        result.TotalFiles = allJobs.Count;
+
+        // 6. Walk the transform chain (handles buffered nodes like SortNode)
+        IReadOnlyList<FileJob> currentJobs = allJobs;
+        foreach (ITransformNode transform in transformNodes)
+        {
+            currentJobs = await ApplyTransformAsync(transform, currentJobs, dryRun, result, ct);
+        }
+
+        // 7. Send to output nodes with concurrency control
+        using var semaphore = new SemaphoreSlim(_maxConcurrency);
+        var outputTasks = new List<Task>();
+
+        foreach (FileJob job in currentJobs)
+        {
+            ct.ThrowIfCancellationRequested();
+            await semaphore.WaitAsync(ct);
+            Task task = ConsumeJobAsync(job, outputNodes, dryRun, result, progress, semaphore, ct);
+            outputTasks.Add(task);
+        }
+
+        await Task.WhenAll(outputTasks);
 
         stopwatch.Stop();
         result.Duration = stopwatch.Elapsed;
@@ -95,9 +109,48 @@ public class PipelineRunner
         return result;
     }
 
-    private async Task ProcessJobAsync(
+    private static async Task<IReadOnlyList<FileJob>> ApplyTransformAsync(
+        ITransformNode transform,
+        IReadOnlyList<FileJob> jobs,
+        bool dryRun,
+        ExecutionResult result,
+        CancellationToken ct)
+    {
+        var nextJobs = new List<FileJob>();
+
+        foreach (FileJob job in jobs)
+        {
+            ct.ThrowIfCancellationRequested();
+            try
+            {
+                job.Status = FileJobStatus.Processing;
+                IEnumerable<FileJob> transformed = await transform.TransformAsync(job, dryRun, ct);
+                nextJobs.AddRange(transformed);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                job.Status = FileJobStatus.Failed;
+                job.ErrorMessage = ex.Message;
+                lock (result)
+                {
+                    result.Failed++;
+                    result.Jobs.Add(job);
+                }
+            }
+        }
+
+        // If this is a buffered node, flush to get the sorted/processed results
+        if (transform is IBufferedTransformNode buffered)
+        {
+            IEnumerable<FileJob> flushed = await buffered.FlushAsync(ct);
+            nextJobs.AddRange(flushed);
+        }
+
+        return nextJobs;
+    }
+
+    private async Task ConsumeJobAsync(
         FileJob job,
-        List<ITransformNode> transforms,
         List<IOutputNode> outputs,
         bool dryRun,
         ExecutionResult result,
@@ -107,38 +160,18 @@ public class PipelineRunner
     {
         try
         {
-            job.Status = FileJobStatus.Processing;
-            IEnumerable<FileJob> currentJobs = new[] { job };
-
-            // Walk the transform chain
-            foreach (ITransformNode transform in transforms)
+            foreach (IOutputNode output in outputs)
             {
-                var nextJobs = new List<FileJob>();
-                foreach (FileJob currentJob in currentJobs)
-                {
-                    ct.ThrowIfCancellationRequested();
-                    IEnumerable<FileJob> transformed = await transform.TransformAsync(currentJob, dryRun, ct);
-                    nextJobs.AddRange(transformed);
-                }
-                currentJobs = nextJobs;
+                await output.ConsumeAsync(job, dryRun, ct);
             }
 
-            // Send to output nodes
-            foreach (FileJob outputJob in currentJobs)
+            job.Status = FileJobStatus.Succeeded;
+            lock (result)
             {
-                foreach (IOutputNode output in outputs)
-                {
-                    await output.ConsumeAsync(outputJob, dryRun, ct);
-                }
-
-                outputJob.Status = FileJobStatus.Succeeded;
-                lock (result)
-                {
-                    result.Succeeded++;
-                    result.Jobs.Add(outputJob);
-                }
-                progress?.Report(outputJob);
+                result.Succeeded++;
+                result.Jobs.Add(job);
             }
+            progress?.Report(job);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -166,7 +199,6 @@ public class PipelineRunner
             throw new InvalidOperationException("Pipeline has no nodes.");
         }
 
-        // Check all TypeKeys are registered
         foreach (NodeDefinition node in graph.Nodes)
         {
             if (!_registry.IsRegistered(node.TypeKey))
@@ -175,7 +207,6 @@ public class PipelineRunner
             }
         }
 
-        // Check all connections reference valid nodes
         HashSet<Guid> nodeIds = graph.Nodes.Select(n => n.Id).ToHashSet();
         foreach (Connection conn in graph.Connections)
         {
