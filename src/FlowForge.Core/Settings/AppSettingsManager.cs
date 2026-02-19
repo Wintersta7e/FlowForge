@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Serilog;
 
 namespace FlowForge.Core.Settings;
 
@@ -15,13 +16,14 @@ public sealed class AppSettingsManager
     };
 
     private readonly string _settingsFilePath;
+    private readonly ILogger _logger;
 
     /// <summary>
     /// Creates a manager that reads/writes settings at the default platform path:
     /// <c>{ApplicationData}/FlowForge/settings.json</c>.
     /// </summary>
-    public AppSettingsManager()
-        : this(BuildDefaultPath())
+    public AppSettingsManager(ILogger logger)
+        : this(BuildDefaultPath(), logger)
     {
     }
 
@@ -29,10 +31,12 @@ public sealed class AppSettingsManager
     /// Creates a manager that reads/writes settings at the specified path.
     /// Useful for testing.
     /// </summary>
-    public AppSettingsManager(string settingsFilePath)
+    public AppSettingsManager(string settingsFilePath, ILogger logger)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(settingsFilePath);
+        ArgumentNullException.ThrowIfNull(logger);
         _settingsFilePath = settingsFilePath;
+        _logger = logger;
     }
 
     /// <summary>Full path where settings are persisted.</summary>
@@ -56,9 +60,9 @@ public sealed class AppSettingsManager
             AppSettings? settings = JsonSerializer.Deserialize<AppSettings>(json, SerializerOptions);
             return settings ?? new AppSettings();
         }
-        catch (JsonException)
+        catch (JsonException ex)
         {
-            // Corrupt file — return defaults so the app can still start.
+            _logger.Warning(ex, "Settings file at '{Path}' contains invalid JSON; using defaults", _settingsFilePath);
             return new AppSettings();
         }
     }
@@ -82,8 +86,15 @@ public sealed class AppSettingsManager
 
         // Atomic write: write to temp file, then rename.
         string tmpPath = _settingsFilePath + ".tmp";
-        await File.WriteAllTextAsync(tmpPath, json, ct);
-        File.Move(tmpPath, _settingsFilePath, overwrite: true);
+        try
+        {
+            await File.WriteAllTextAsync(tmpPath, json, ct);
+            File.Move(tmpPath, _settingsFilePath, overwrite: true);
+        }
+        finally
+        {
+            try { if (File.Exists(tmpPath)) File.Delete(tmpPath); } catch { /* best-effort */ }
+        }
     }
 
     private static string BuildDefaultPath()
