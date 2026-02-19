@@ -9,6 +9,14 @@ public class RenameRegexNode : ITransformNode
 {
     public string TypeKey => "RenameRegex";
 
+    public static IReadOnlyList<ConfigField> ConfigSchema => new[]
+    {
+        new ConfigField("pattern", ConfigFieldType.String, Label: "Regex Pattern", Required: true, Placeholder: @"\d+"),
+        new ConfigField("replacement", ConfigFieldType.String, Label: "Replacement", Required: true),
+        new ConfigField("scope", ConfigFieldType.Select, Label: "Scope", DefaultValue: "filename",
+            Options: new[] { "filename", "fullpath" }),
+    };
+
     private Regex _regex = null!;
     private string _replacement = string.Empty;
     private string _scope = "filename";

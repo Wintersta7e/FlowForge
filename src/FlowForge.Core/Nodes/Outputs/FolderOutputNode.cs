@@ -8,6 +8,16 @@ public class FolderOutputNode : IOutputNode
 {
     public string TypeKey => "FolderOutput";
 
+    public static IReadOnlyList<ConfigField> ConfigSchema => new[]
+    {
+        new ConfigField("path", ConfigFieldType.FolderPath, Label: "Output Folder", Required: true),
+        new ConfigField("mode", ConfigFieldType.Select, Label: "Mode", DefaultValue: "copy",
+            Options: new[] { "copy", "move" }),
+        new ConfigField("overwrite", ConfigFieldType.Bool, Label: "Overwrite Existing", DefaultValue: "false"),
+        new ConfigField("preserveStructure", ConfigFieldType.Bool, Label: "Preserve Folder Structure", DefaultValue: "false"),
+        new ConfigField("sourceBasePath", ConfigFieldType.FolderPath, Label: "Source Base Path"),
+    };
+
     private string _path = string.Empty;
     private string _mode = "copy";
     private bool _overwrite;

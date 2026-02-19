@@ -13,6 +13,14 @@ public class SortNode : ITransformNode, IBufferedTransformNode
 {
     public string TypeKey => "Sort";
 
+    public static IReadOnlyList<ConfigField> ConfigSchema => new[]
+    {
+        new ConfigField("field", ConfigFieldType.Select, Label: "Sort Field", DefaultValue: "filename",
+            Options: new[] { "filename", "extension", "size", "createdAt", "modifiedAt" }),
+        new ConfigField("direction", ConfigFieldType.Select, Label: "Direction", DefaultValue: "asc",
+            Options: new[] { "asc", "desc" }),
+    };
+
     private string _field = "filename";
     private string _direction = "asc";
     private readonly List<FileJob> _buffer = new();

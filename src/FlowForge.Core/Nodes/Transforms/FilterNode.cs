@@ -9,6 +9,12 @@ public class FilterNode : ITransformNode
 {
     public string TypeKey => "Filter";
 
+    public static IReadOnlyList<ConfigField> ConfigSchema => new[]
+    {
+        new ConfigField("conditions", ConfigFieldType.MultiLine, Label: "Conditions (JSON)", Required: true,
+            Placeholder: "[{\"field\":\"extension\",\"operator\":\"equals\",\"value\":\".jpg\"}]"),
+    };
+
     private List<FilterCondition> _conditions = new();
 
     public void Configure(Dictionary<string, JsonElement> config)

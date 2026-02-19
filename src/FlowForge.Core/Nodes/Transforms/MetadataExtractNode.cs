@@ -10,6 +10,12 @@ public class MetadataExtractNode : ITransformNode
 {
     public string TypeKey => "MetadataExtract";
 
+    public static IReadOnlyList<ConfigField> ConfigSchema => new[]
+    {
+        new ConfigField("keys", ConfigFieldType.MultiLine, Label: "Metadata Keys", Required: true,
+            Placeholder: "EXIF:DateTaken, File:SizeBytes"),
+    };
+
     private List<string> _keys = new();
 
     public void Configure(Dictionary<string, JsonElement> config)
