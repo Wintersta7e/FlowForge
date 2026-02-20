@@ -10,28 +10,54 @@
 
     <UserControl.DataTemplates>
         <DataTemplate x:DataType="vm:NodeLibraryItemViewModel">
-            <TextBlock Text="{Binding DisplayName}"
-                       Padding="4,2"
-                       Cursor="Hand"
-                       DoubleTapped="OnLibraryItemDoubleTapped" />
+            <Border Padding="12,8"
+                    CornerRadius="4"
+                    Cursor="Hand"
+                    Background="Transparent"
+                    DoubleTapped="OnLibraryItemDoubleTapped"
+                    PointerPressed="OnLibraryItemPointerPressed"
+                    PointerMoved="OnLibraryItemPointerMoved"
+                    PointerReleased="OnLibraryItemPointerReleased">
+                <Border.Styles>
+                    <Style Selector="Border:pointerover">
+                        <Setter Property="Background" Value="{DynamicResource MidnightElevated}" />
+                    </Style>
+                </Border.Styles>
+                <TextBlock Text="{Binding DisplayName}"
+                           Foreground="{DynamicResource MidnightText}"
+                           FontSize="12" />
+            </Border>
         </DataTemplate>
     </UserControl.DataTemplates>
 
     <DockPanel>
-        <!-- Search box -->
+        <StackPanel DockPanel.Dock="Top" Margin="12,12,12,4">
+            <TextBlock Text="Nodes"
+                       FontSize="16"
+                       FontWeight="SemiBold"
+                       Foreground="{DynamicResource MidnightText}" />
+            <TextBlock Text="Drag or double-click to add"
+                       FontSize="11"
+                       Foreground="{DynamicResource MidnightTextSecondary}"
+                       Margin="0,2,0,0" />
+        </StackPanel>
+
         <TextBox DockPanel.Dock="Top"
                  Text="{Binding SearchText}"
-                 Watermark="Search nodes..."
-                 Margin="4" />
+                 Watermark="Search..."
+                 Margin="8,8,8,4" />
 
-        <!-- Grouped node list -->
         <TreeView ItemsSource="{Binding Groups}"
-                  Margin="4,0,4,4">
+                  Margin="4,4,4,4"
+                  Background="Transparent">
             <TreeView.ItemTemplate>
                 <TreeDataTemplate x:DataType="vm:NodeLibraryGroupViewModel"
                                   ItemsSource="{Binding Items}">
                     <TextBlock Text="{Binding Category}"
-                               FontWeight="SemiBold" />
+                               FontWeight="SemiBold"
+                               FontSize="13"
+                               Foreground="{DynamicResource MidnightTextSecondary}"
+                               Margin="0,8,0,4" />
                 </TreeDataTemplate>
             </TreeView.ItemTemplate>
         </TreeView>

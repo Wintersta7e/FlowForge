@@ -22,31 +22,44 @@ public static class PipelineTemplateLibrary
         PipelineGraph clone = JsonSerializer.Deserialize<PipelineGraph>(json)
             ?? throw new InvalidOperationException("Template graph deserialization produced null.");
 
-        // Assign new IDs so each instance is unique
-        clone = new PipelineGraph
+        // Assign new IDs and remap connections to preserve original topology
+        var idMap = new Dictionary<Guid, Guid>();
+        var newNodes = new List<NodeDefinition>();
+        foreach (NodeDefinition n in clone.Nodes)
         {
-            Name = clone.Name,
-            Nodes = clone.Nodes.Select(n => new NodeDefinition
+            Guid newId = Guid.NewGuid();
+            idMap[n.Id] = newId;
+            newNodes.Add(new NodeDefinition
             {
-                Id = Guid.NewGuid(),
+                Id = newId,
                 TypeKey = n.TypeKey,
                 Position = n.Position,
                 Config = new Dictionary<string, JsonElement>(n.Config)
-            }).ToList(),
-            // NOTE: Templates are assumed to be linear pipelines. Non-linear topologies
-            // will have their connections replaced with sequential wiring.
-            Connections = new List<Connection>()
-        };
-
-        // Re-wire linear connections
-        for (int i = 0; i < clone.Nodes.Count - 1; i++)
-        {
-            clone.Connections.Add(new Connection
-            {
-                FromNode = clone.Nodes[i].Id,
-                ToNode = clone.Nodes[i + 1].Id
             });
         }
+
+        var newConnections = new List<Connection>();
+        foreach (Connection conn in clone.Connections)
+        {
+            if (idMap.TryGetValue(conn.FromNode, out Guid newFrom) &&
+                idMap.TryGetValue(conn.ToNode, out Guid newTo))
+            {
+                newConnections.Add(new Connection
+                {
+                    FromNode = newFrom,
+                    FromPin = conn.FromPin,
+                    ToNode = newTo,
+                    ToPin = conn.ToPin
+                });
+            }
+        }
+
+        clone = new PipelineGraph
+        {
+            Name = clone.Name,
+            Nodes = newNodes,
+            Connections = newConnections
+        };
 
         return clone;
     }

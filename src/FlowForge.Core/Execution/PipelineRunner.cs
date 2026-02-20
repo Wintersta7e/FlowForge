@@ -94,6 +94,19 @@ public class PipelineRunner
         foreach (FileJob job in currentJobs)
         {
             ct.ThrowIfCancellationRequested();
+
+            // Jobs that arrived with Skipped status (e.g. from FilterNode) bypass output
+            if (job.Status == FileJobStatus.Skipped)
+            {
+                lock (result)
+                {
+                    result.Skipped++;
+                    result.Jobs.Add(job);
+                }
+                progress?.Report(job);
+                continue;
+            }
+
             await semaphore.WaitAsync(ct);
             Task task = ConsumeJobAsync(job, outputNodes, dryRun, result, progress, semaphore, ct);
             outputTasks.Add(task);
@@ -129,24 +142,52 @@ public class PipelineRunner
                 IEnumerable<FileJob> transformed = await transform.TransformAsync(job, dryRun, ct);
                 IReadOnlyList<FileJob> transformedList = transformed.ToList();
 
-                if (transformedList.Count == 0 && job.Status == FileJobStatus.Skipped)
+                if (transformedList.Count == 0)
                 {
-                    lock (result)
+                    if (job.Status == FileJobStatus.Failed)
                     {
-                        result.Skipped++;
-                        result.Jobs.Add(job);
+                        _logger.Error("Transform {NodeType} set Failed for {File}", transform.TypeKey, job.OriginalPath);
+                        lock (result)
+                        {
+                            result.Failed++;
+                            result.Jobs.Add(job);
+                        }
+                    }
+                    else if (job.Status == FileJobStatus.Skipped)
+                    {
+                        lock (result)
+                        {
+                            result.Skipped++;
+                            result.Jobs.Add(job);
+                        }
                     }
                 }
                 else
                 {
-                    nextJobs.AddRange(transformedList);
+                    // Filter out any jobs the transform marked as Failed
+                    foreach (FileJob tj in transformedList)
+                    {
+                        if (tj.Status == FileJobStatus.Failed)
+                        {
+                            _logger.Error("Transform {NodeType} set Failed for {File}", transform.TypeKey, tj.OriginalPath);
+                            lock (result)
+                            {
+                                result.Failed++;
+                                result.Jobs.Add(tj);
+                            }
+                        }
+                        else
+                        {
+                            nextJobs.Add(tj);
+                        }
+                    }
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 job.Status = FileJobStatus.Failed;
                 job.ErrorMessage = ex.Message;
-                _logger.Error(ex, "Transform failed for {File}", job.OriginalPath);
+                _logger.Error(ex, "Transform {NodeType} failed for {File}", transform.TypeKey, job.OriginalPath);
                 lock (result)
                 {
                     result.Failed++;
@@ -159,7 +200,22 @@ public class PipelineRunner
         if (transform is IBufferedTransformNode buffered)
         {
             IEnumerable<FileJob> flushed = await buffered.FlushAsync(ct);
-            nextJobs.AddRange(flushed);
+            foreach (FileJob fj in flushed)
+            {
+                if (fj.Status == FileJobStatus.Failed)
+                {
+                    _logger.Error("Transform {NodeType} flush set Failed for {File}", transform.TypeKey, fj.OriginalPath);
+                    lock (result)
+                    {
+                        result.Failed++;
+                        result.Jobs.Add(fj);
+                    }
+                }
+                else
+                {
+                    nextJobs.Add(fj);
+                }
+            }
         }
 
         return nextJobs;
@@ -285,15 +341,14 @@ public class PipelineRunner
         List<Guid> sortedNodeIds,
         List<NodeDefinition> transformNodeDefs)
     {
-        HashSet<Guid> transformIds = transformNodeDefs.Select(n => n.Id).ToHashSet();
+        Dictionary<Guid, NodeDefinition> transformMap = transformNodeDefs.ToDictionary(n => n.Id);
         var ordered = new List<NodeDefinition>();
 
         foreach (Guid nodeId in sortedNodeIds)
         {
-            if (transformIds.Contains(nodeId))
+            if (transformMap.TryGetValue(nodeId, out NodeDefinition? def))
             {
-                ordered.Add(transformNodeDefs.Find(n => n.Id == nodeId)
-                    ?? throw new InvalidOperationException($"Transform node {nodeId} not found."));
+                ordered.Add(def);
             }
         }
 

@@ -489,6 +489,7 @@ $RECYCLE.BIN/
 *.ffpipe.bak
 *.ffpipe.tmp
 /TestOutput/
+test-data/
 docs/plans/
 
 # =========================

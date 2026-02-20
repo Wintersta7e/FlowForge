@@ -68,11 +68,7 @@ public class NodeRegistry
 
     public NodeCategory GetCategory(NodeDefinition def)
     {
-        object instance = CreateInstance(def, configure: false);
-        if (instance is ISourceNode) return NodeCategory.Source;
-        if (instance is ITransformNode) return NodeCategory.Transform;
-        if (instance is IOutputNode) return NodeCategory.Output;
-        throw new InvalidOperationException($"Node '{def.TypeKey}' does not implement any known node interface.");
+        return GetCategoryForTypeKey(def.TypeKey);
     }
 
     /// <summary>

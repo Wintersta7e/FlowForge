@@ -10,24 +10,42 @@
              x:DataType="vm:PropertiesViewModel">
 
     <DockPanel>
-        <!-- Header -->
         <Border DockPanel.Dock="Top"
-                Padding="8"
-                BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                Padding="12,12,12,8"
+                BorderBrush="{DynamicResource MidnightBorder}"
                 BorderThickness="0,0,0,1">
-            <Panel>
-                <TextBlock Text="{Binding SelectedNodeTitle, FallbackValue='No Selection'}"
+            <StackPanel>
+                <TextBlock Text="Properties"
+                           FontSize="16"
                            FontWeight="SemiBold"
-                           FontSize="14"
-                           IsVisible="{Binding HasSelection}" />
-                <TextBlock Text="No Selection"
-                           FontStyle="Italic"
-                           Opacity="0.6"
-                           IsVisible="{Binding !HasSelection}" />
-            </Panel>
+                           Foreground="{DynamicResource MidnightText}" />
+                <TextBlock Text="{Binding SelectedNodeTitle}"
+                           FontSize="12"
+                           Foreground="{DynamicResource MidnightTextSecondary}"
+                           IsVisible="{Binding HasSelection}"
+                           Margin="0,2,0,0" />
+            </StackPanel>
         </Border>
 
-        <!-- Fields list -->
+        <StackPanel IsVisible="{Binding !HasSelection}"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Spacing="8"
+                    Margin="16">
+            <TextBlock Text="Select a node on the canvas"
+                       FontSize="13"
+                       Foreground="{DynamicResource MidnightTextSecondary}"
+                       HorizontalAlignment="Center"
+                       TextWrapping="Wrap"
+                       TextAlignment="Center" />
+            <TextBlock Text="to edit its settings"
+                       FontSize="13"
+                       Foreground="{DynamicResource MidnightTextSecondary}"
+                       HorizontalAlignment="Center"
+                       TextWrapping="Wrap"
+                       TextAlignment="Center" />
+        </StackPanel>
+
         <ScrollViewer IsVisible="{Binding HasSelection}"
                       Padding="8">
             <ItemsControl ItemsSource="{Binding Fields}">

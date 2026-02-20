@@ -194,4 +194,34 @@ public class SortNodeTests
 
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
+
+    [Fact]
+    public async Task FlushAsync_exception_marks_all_jobs_failed()
+    {
+        var node = new SortNode();
+        // "size" field requires files to exist on disk — non-existent paths will cause an exception
+        // during OrderBy when it tries to read file sizes
+        node.Configure(MakeConfig(new { field = "size", direction = "asc" }));
+
+        // Buffer jobs with non-existent paths — GetFileSize returns 0 for missing files,
+        // so we use an invalid sort field instead
+        var node2 = new SortNode();
+        node2.Configure(MakeConfig(new { field = "INVALID_FIELD", direction = "asc" }));
+
+        FileJob job1 = MakeJob(Path.Combine("/tmp", "a.txt"));
+        FileJob job2 = MakeJob(Path.Combine("/tmp", "b.txt"));
+
+        await node2.TransformAsync(job1, dryRun: false);
+        await node2.TransformAsync(job2, dryRun: false);
+
+        IEnumerable<FileJob> result = await node2.FlushAsync();
+        List<FileJob> resultList = result.ToList();
+
+        resultList.Should().HaveCount(2);
+        resultList.Should().AllSatisfy(j =>
+        {
+            j.Status.Should().Be(FileJobStatus.Failed);
+            j.ErrorMessage.Should().Contain("Sort: failed during flush");
+        });
+    }
 }

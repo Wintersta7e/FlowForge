@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Text.Json;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FlowForge.Core.Execution;
@@ -12,9 +13,18 @@ namespace FlowForge.UI.ViewModels;
 
 public partial class PipelineNodeViewModel : ViewModelBase
 {
-    private static readonly IBrush SourceBrush = new SolidColorBrush(Color.Parse("#4A90D9"));
-    private static readonly IBrush TransformBrush = new SolidColorBrush(Color.Parse("#50C878"));
-    private static readonly IBrush OutputBrush = new SolidColorBrush(Color.Parse("#E8923F"));
+    private static IBrush GetBrush(string key, string fallback)
+    {
+        if (Application.Current?.TryFindResource(key, Application.Current.ActualThemeVariant, out object? resource) == true && resource is IBrush brush)
+        {
+            return brush;
+        }
+        return new SolidColorBrush(Color.Parse(fallback));
+    }
+
+    private static readonly IBrush SourceBrush = GetBrush("MidnightSource", "#58A6FF");
+    private static readonly IBrush TransformBrush = GetBrush("MidnightTransform", "#3FB950");
+    private static readonly IBrush OutputBrush = GetBrush("MidnightOutput", "#D29922");
 
     [ObservableProperty]
     private Point _location;

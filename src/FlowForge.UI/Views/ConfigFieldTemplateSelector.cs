@@ -6,6 +6,7 @@ using Avalonia.Layout;
 using Avalonia.Platform.Storage;
 using FlowForge.Core.Nodes.Base;
 using FlowForge.UI.ViewModels;
+using Serilog;
 
 namespace FlowForge.UI.Views;
 
@@ -18,16 +19,27 @@ public class ConfigFieldTemplateSelector : IDataTemplate
             return new TextBlock { Text = "Unknown field" };
         }
 
+        Border cardBorder = new()
+        {
+            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#1C2128")),
+            BorderBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#30363D")),
+            BorderThickness = new Avalonia.Thickness(1),
+            CornerRadius = new Avalonia.CornerRadius(6),
+            Padding = new Avalonia.Thickness(12, 8),
+            Margin = new Avalonia.Thickness(0, 0, 0, 8)
+        };
+
         StackPanel panel = new()
         {
-            Spacing = 4,
-            Margin = new Avalonia.Thickness(0, 0, 0, 8)
+            Spacing = 4
         };
 
         TextBlock label = new()
         {
             Text = field.IsRequired ? $"{field.Label} *" : field.Label,
-            FontWeight = Avalonia.Media.FontWeight.Medium,
+            FontWeight = Avalonia.Media.FontWeight.SemiBold,
+            FontSize = 12,
+            Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#E6EDF3")),
             Margin = new Avalonia.Thickness(0, 0, 0, 2)
         };
         panel.Children.Add(label);
@@ -45,7 +57,8 @@ public class ConfigFieldTemplateSelector : IDataTemplate
         };
 
         panel.Children.Add(editor);
-        return panel;
+        cardBorder.Child = panel;
+        return cardBorder;
     }
 
     public bool Match(object? data)
@@ -130,9 +143,9 @@ public class ConfigFieldTemplateSelector : IDataTemplate
                     field.Value = result[0].Path.LocalPath;
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Prevent async void from crashing the app
+                Log.Error(ex, "ConfigFieldTemplateSelector: file picker failed for '{Label}'", field.Label);
             }
         };
 
@@ -179,9 +192,9 @@ public class ConfigFieldTemplateSelector : IDataTemplate
                     field.Value = result[0].Path.LocalPath;
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Prevent async void from crashing the app
+                Log.Error(ex, "ConfigFieldTemplateSelector: folder picker failed for '{Label}'", field.Label);
             }
         };
 

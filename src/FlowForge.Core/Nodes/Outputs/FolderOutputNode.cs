@@ -90,18 +90,24 @@ public class FolderOutputNode : IOutputNode
 
         if (_mode.Equals("move", StringComparison.OrdinalIgnoreCase))
         {
-            // .NET has no async File.Move API; File.Copy is sync but acceptable for typical file sizes
+            // .NET has no async File.Move; sync is acceptable for metadata-only renames
             File.Move(job.CurrentPath, destinationPath, overwrite: _overwrite);
         }
         else
         {
-            // .NET has no async File.Move API; File.Copy is sync but acceptable for typical file sizes
-            File.Copy(job.CurrentPath, destinationPath, overwrite: _overwrite);
+            // Use async streams for copy to avoid blocking the thread pool on large files
+            FileMode destMode = _overwrite ? FileMode.Create : FileMode.CreateNew;
+            await using FileStream sourceStream = new(job.CurrentPath, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true);
+            await using FileStream destStream = new(destinationPath, destMode, FileAccess.Write, FileShare.None, 81920, useAsync: true);
+            await sourceStream.CopyToAsync(destStream, ct);
+
+            // Restore original timestamps on the copy
+            var sourceInfo = new FileInfo(job.CurrentPath);
+            File.SetCreationTimeUtc(destinationPath, sourceInfo.CreationTimeUtc);
+            File.SetLastWriteTimeUtc(destinationPath, sourceInfo.LastWriteTimeUtc);
         }
 
         job.CurrentPath = destinationPath;
         job.NodeLog.Add($"FolderOutput: → '{destinationPath}' ({_mode})");
-
-        await Task.CompletedTask;
     }
 }

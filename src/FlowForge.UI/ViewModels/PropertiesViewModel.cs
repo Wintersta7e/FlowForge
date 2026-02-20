@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -16,7 +17,7 @@ public partial class PropertiesViewModel : ViewModelBase
 
     public ObservableCollection<ConfigFieldViewModel> Fields { get; } = new();
 
-    public void LoadNode(PipelineNodeViewModel? node, NodeRegistry registry)
+    public void LoadNode(PipelineNodeViewModel? node, NodeRegistry registry, Action? onConfigChanged = null)
     {
         Fields.Clear();
 
@@ -33,7 +34,7 @@ public partial class PropertiesViewModel : ViewModelBase
         IReadOnlyList<ConfigField> schema = registry.GetConfigSchema(node.TypeKey);
         foreach (ConfigField field in schema)
         {
-            Fields.Add(new ConfigFieldViewModel(field, node.Config));
+            Fields.Add(new ConfigFieldViewModel(field, node.Config, onConfigChanged));
         }
     }
 }

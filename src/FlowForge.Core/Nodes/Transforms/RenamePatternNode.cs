@@ -40,6 +40,24 @@ public class RenamePatternNode : ITransformNode
         }
 
         _counter = _startIndex - 1;
+
+        // Validate date format tokens eagerly so bad patterns fail at configure time
+        MatchCollection dateMatches = TokenRegex.Matches(_pattern);
+        foreach (Match m in dateMatches)
+        {
+            if (m.Groups["token"].Value == "date" && !string.IsNullOrEmpty(m.Groups["format"].Value))
+            {
+                try
+                {
+                    DateTime.Today.ToString(m.Groups["format"].Value);
+                }
+                catch (FormatException ex)
+                {
+                    throw new NodeConfigurationException(
+                        $"RenamePattern: invalid date format '{m.Groups["format"].Value}': {ex.Message}", ex);
+                }
+            }
+        }
     }
 
     public Task<IEnumerable<FileJob>> TransformAsync(FileJob job, bool dryRun, CancellationToken ct = default)

@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
+using Serilog;
 
 namespace FlowForge.Core.Nodes.Transforms;
 
@@ -60,7 +61,18 @@ public class FilterNode : ITransformNode
     {
         ct.ThrowIfCancellationRequested();
 
-        bool matches = _conditions.Select((c, idx) => EvaluateCondition(c, idx, job)).All(b => b);
+        bool matches;
+        try
+        {
+            matches = _conditions.Select((c, idx) => EvaluateCondition(c, idx, job)).All(b => b);
+        }
+        catch (RegexMatchTimeoutException)
+        {
+            job.Status = FileJobStatus.Failed;
+            job.ErrorMessage = "Filter: regex match timed out — possible ReDoS pattern.";
+            job.NodeLog.Add(job.ErrorMessage);
+            return Task.FromResult(Enumerable.Empty<FileJob>());
+        }
 
         if (matches)
         {
@@ -89,7 +101,7 @@ public class FilterNode : ITransformNode
             "lessthan" => CompareNumeric(fieldValue, condition.Value) < 0,
             "matches" => _compiledRegexes.TryGetValue(index, out Regex? compiledRegex)
                 ? compiledRegex.IsMatch(fieldValue)
-                : Regex.IsMatch(fieldValue, condition.Value, RegexOptions.IgnoreCase),
+                : Regex.IsMatch(fieldValue, condition.Value, RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1)),
             _ => throw new InvalidOperationException($"Unknown filter operator: '{condition.Operator}'")
         };
     }
@@ -109,20 +121,32 @@ public class FilterNode : ITransformNode
 
     private static string GetFileSize(string path)
     {
-        if (!File.Exists(path)) return "0";
+        if (!File.Exists(path))
+        {
+            Log.Warning("Filter: file not found at '{FilePath}', using default size 0", path);
+            return "0";
+        }
         var info = new FileInfo(path);
         return info.Length.ToString();
     }
 
     private static string GetFileCreatedAt(string path)
     {
-        if (!File.Exists(path)) return string.Empty;
+        if (!File.Exists(path))
+        {
+            Log.Warning("Filter: file not found at '{FilePath}', using default date", path);
+            return string.Empty;
+        }
         return File.GetCreationTimeUtc(path).ToString("o");
     }
 
     private static string GetFileModifiedAt(string path)
     {
-        if (!File.Exists(path)) return string.Empty;
+        if (!File.Exists(path))
+        {
+            Log.Warning("Filter: file not found at '{FilePath}', using default date", path);
+            return string.Empty;
+        }
         return File.GetLastWriteTimeUtc(path).ToString("o");
     }
 

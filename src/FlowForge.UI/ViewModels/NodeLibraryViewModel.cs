@@ -9,6 +9,13 @@ namespace FlowForge.UI.ViewModels;
 
 public partial class NodeLibraryViewModel : ViewModelBase
 {
+    private static readonly Dictionary<string, string> CategoryDisplayNames = new()
+    {
+        ["Source"] = "Input",
+        ["Transform"] = "Process",
+        ["Output"] = "Save To"
+    };
+
     private List<NodeLibraryGroupViewModel> _allGroups = new();
 
     [ObservableProperty]
@@ -32,7 +39,7 @@ public partial class NodeLibraryViewModel : ViewModelBase
         {
             string displayName = registry.GetDisplayName(typeKey);
             NodeCategory category = registry.GetCategoryForTypeKey(typeKey);
-            string categoryName = category.ToString();
+            string categoryName = CategoryDisplayNames.GetValueOrDefault(category.ToString(), category.ToString());
 
             if (!categoryItems.ContainsKey(categoryName))
             {
@@ -42,8 +49,8 @@ public partial class NodeLibraryViewModel : ViewModelBase
             categoryItems[categoryName].Add(new NodeLibraryItemViewModel(typeKey, displayName));
         }
 
-        // Add groups in canonical order: Source, Transform, Output
-        string[] orderedCategories = ["Source", "Transform", "Output"];
+        // Add groups in canonical order: Input, Process, Save To
+        string[] orderedCategories = ["Input", "Process", "Save To"];
         foreach (string cat in orderedCategories)
         {
             if (categoryItems.TryGetValue(cat, out List<NodeLibraryItemViewModel>? items))

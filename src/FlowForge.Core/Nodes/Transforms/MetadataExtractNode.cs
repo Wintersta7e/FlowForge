@@ -3,6 +3,7 @@ using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
 using MetadataExtractor;
 using MetadataExtractor.Formats.Exif;
+using Serilog;
 
 namespace FlowForge.Core.Nodes.Transforms;
 
@@ -116,7 +117,8 @@ public class MetadataExtractNode : ITransformNode
         }
         catch (ImageProcessingException ex)
         {
-            System.Diagnostics.Debug.WriteLine($"MetadataExtract: Failed to read EXIF from '{filePath}': {ex.Message}");
+            Log.Warning("MetadataExtract: failed to read EXIF from '{FileName}': {ErrorMessage}",
+                Path.GetFileName(filePath), ex.Message);
             return null;
         }
     }
@@ -164,13 +166,14 @@ public class MetadataExtractNode : ITransformNode
         return null;
     }
 
+    private static readonly char[] InvalidFileNameChars = Path.GetInvalidFileNameChars();
+
     private static string SanitizeForFilename(string value)
     {
-        ReadOnlySpan<char> invalidChars = Path.GetInvalidFileNameChars();
         var sb = new System.Text.StringBuilder(value.Length);
         foreach (char c in value)
         {
-            sb.Append(invalidChars.Contains(c) ? '_' : c);
+            sb.Append(InvalidFileNameChars.Contains(c) ? '_' : c);
         }
         return sb.ToString().Trim();
     }

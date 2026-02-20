@@ -86,7 +86,7 @@ public class RenameRegexNodeTests
     }
 
     [Fact]
-    public async Task Fullpath_path_traversal_throws_InvalidOperationException()
+    public async Task Fullpath_path_traversal_sets_failed_status()
     {
         using var tempDir = new TempDirectory();
         tempDir.CreateFiles("safe.txt");
@@ -97,9 +97,10 @@ public class RenameRegexNodeTests
         var node = new RenameRegexNode();
         node.Configure(MakeConfig(new { pattern = "safe\\.txt", replacement = "../escaped.txt", scope = "fullpath" }));
 
-        Func<Task> act = () => node.TransformAsync(job, dryRun: true);
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*escapes source directory*");
+        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+        result.Should().ContainSingle();
+        job.Status.Should().Be(FileJobStatus.Failed);
+        job.ErrorMessage.Should().Contain("path traversal blocked");
     }
 
     [Fact]

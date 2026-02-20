@@ -11,62 +11,115 @@
              x:Class="FlowForge.UI.Views.CanvasView"
              x:DataType="vm:EditorViewModel">
 
-    <nodify:NodifyEditor ItemsSource="{Binding Nodes}"
-                         Connections="{Binding Connections}"
-                         PendingConnection="{Binding PendingConnection}"
-                         Background="Transparent">
+    <Grid>
+        <nodify:NodifyEditor x:Name="Editor"
+                             ItemsSource="{Binding Nodes}"
+                             Connections="{Binding Connections}"
+                             PendingConnection="{Binding PendingConnection}"
+                             Background="{DynamicResource MidnightBg}"
+                             DragDrop.AllowDrop="True">
 
-        <!-- Style for ItemContainer: bind Location and IsSelected -->
-        <nodify:NodifyEditor.Styles>
-            <Style Selector="nodify|ItemContainer" x:DataType="vm:PipelineNodeViewModel">
-                <Setter Property="Location" Value="{Binding Location, Mode=TwoWay}" />
-                <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
-            </Style>
-        </nodify:NodifyEditor.Styles>
+            <nodify:NodifyEditor.Styles>
+                <Style Selector="nodify|ItemContainer" x:DataType="vm:PipelineNodeViewModel">
+                    <Setter Property="Location" Value="{Binding Location, Mode=TwoWay}" />
+                    <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                </Style>
+            </nodify:NodifyEditor.Styles>
 
-        <!-- Node item template -->
-        <nodify:NodifyEditor.ItemTemplate>
-            <DataTemplate x:DataType="vm:PipelineNodeViewModel">
-                <nodifyNodes:Node Header="{Binding Title}"
-                                  HeaderBrush="{Binding HeaderBrush}"
-                                  Input="{Binding Input}"
-                                  Output="{Binding Output}"
-                                  x:CompileBindings="False">
-                    <nodifyNodes:Node.InputConnectorTemplate>
-                        <DataTemplate x:DataType="vm:PipelineConnectorViewModel">
-                            <nodifyConn:Connector Anchor="{Binding Anchor, Mode=OneWayToSource}"
-                                                  IsConnected="{Binding IsConnected}" />
-                        </DataTemplate>
-                    </nodifyNodes:Node.InputConnectorTemplate>
-                    <nodifyNodes:Node.OutputConnectorTemplate>
-                        <DataTemplate x:DataType="vm:PipelineConnectorViewModel">
-                            <nodifyConn:Connector Anchor="{Binding Anchor, Mode=OneWayToSource}"
-                                                  IsConnected="{Binding IsConnected}" />
-                        </DataTemplate>
-                    </nodifyNodes:Node.OutputConnectorTemplate>
-                </nodifyNodes:Node>
-            </DataTemplate>
-        </nodify:NodifyEditor.ItemTemplate>
+            <nodify:NodifyEditor.ItemTemplate>
+                <DataTemplate x:DataType="vm:PipelineNodeViewModel">
+                    <nodifyNodes:Node Header="{Binding Title}"
+                                      HeaderBrush="{Binding HeaderBrush}"
+                                      Input="{Binding Input}"
+                                      Output="{Binding Output}"
+                                      x:CompileBindings="False">
+                        <nodifyNodes:Node.InputConnectorTemplate>
+                            <DataTemplate x:DataType="vm:PipelineConnectorViewModel">
+                                <nodifyConn:Connector Anchor="{Binding Anchor, Mode=OneWayToSource}"
+                                                      IsConnected="{Binding IsConnected}" />
+                            </DataTemplate>
+                        </nodifyNodes:Node.InputConnectorTemplate>
+                        <nodifyNodes:Node.OutputConnectorTemplate>
+                            <DataTemplate x:DataType="vm:PipelineConnectorViewModel">
+                                <nodifyConn:Connector Anchor="{Binding Anchor, Mode=OneWayToSource}"
+                                                      IsConnected="{Binding IsConnected}" />
+                            </DataTemplate>
+                        </nodifyNodes:Node.OutputConnectorTemplate>
+                    </nodifyNodes:Node>
+                </DataTemplate>
+            </nodify:NodifyEditor.ItemTemplate>
 
-        <!-- Connection template -->
-        <nodify:NodifyEditor.ConnectionTemplate>
-            <DataTemplate x:DataType="vm:PipelineConnectionViewModel">
-                <nodifyConn:Connection Source="{Binding Source.Anchor}"
-                                       Target="{Binding Target.Anchor}" />
-            </DataTemplate>
-        </nodify:NodifyEditor.ConnectionTemplate>
+            <nodify:NodifyEditor.ConnectionTemplate>
+                <DataTemplate x:DataType="vm:PipelineConnectionViewModel">
+                    <nodifyConn:Connection Source="{Binding Source.Anchor}"
+                                           Target="{Binding Target.Anchor}" />
+                </DataTemplate>
+            </nodify:NodifyEditor.ConnectionTemplate>
 
-        <!-- Pending connection template -->
-        <nodify:NodifyEditor.PendingConnectionTemplate>
-            <DataTemplate x:DataType="vm:PipelinePendingConnectionViewModel">
-                <nodifyConn:PendingConnection IsVisible="{Binding IsVisible}"
-                                              StartedCommand="{Binding StartCommand}"
-                                              CompletedCommand="{Binding FinishCommand}"
-                                              EnablePreview="True"
-                                              EnableSnapping="True"
-                                              PreviewTarget="{Binding PreviewTarget, Mode=OneWayToSource}" />
-            </DataTemplate>
-        </nodify:NodifyEditor.PendingConnectionTemplate>
+            <nodify:NodifyEditor.PendingConnectionTemplate>
+                <DataTemplate x:DataType="vm:PipelinePendingConnectionViewModel">
+                    <nodifyConn:PendingConnection IsVisible="{Binding IsVisible}"
+                                                  StartedCommand="{Binding StartCommand}"
+                                                  CompletedCommand="{Binding FinishCommand}"
+                                                  EnablePreview="True"
+                                                  EnableSnapping="True"
+                                                  PreviewTarget="{Binding PreviewTarget, Mode=OneWayToSource}" />
+                </DataTemplate>
+            </nodify:NodifyEditor.PendingConnectionTemplate>
 
-    </nodify:NodifyEditor>
+        </nodify:NodifyEditor>
+
+        <!-- Empty state overlay -->
+        <Border IsVisible="{Binding !HasNodes}"
+                Background="#B00D1117"
+                IsHitTestVisible="True"
+                DragDrop.AllowDrop="True">
+            <StackPanel HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Spacing="16"
+                        MaxWidth="360">
+                <PathIcon Data="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z"
+                          Foreground="{DynamicResource MidnightTextMuted}"
+                          Width="48" Height="48"
+                          HorizontalAlignment="Center" />
+
+                <StackPanel Spacing="4" HorizontalAlignment="Center">
+                    <TextBlock Text="Drag a node from the sidebar"
+                               FontSize="16"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource MidnightText}"
+                               HorizontalAlignment="Center" />
+                    <TextBlock Text="or double-click to add"
+                               FontSize="16"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource MidnightText}"
+                               HorizontalAlignment="Center" />
+                </StackPanel>
+
+                <TextBlock Text="&#x2014; or use a template &#x2014;"
+                           FontSize="12"
+                           Foreground="{DynamicResource MidnightTextSecondary}"
+                           HorizontalAlignment="Center" />
+
+                <WrapPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                    <Button Classes="templateButton" Margin="4"
+                            Content="Photo Import"
+                            Tag="photo-import-by-date"
+                            Click="OnTemplateButtonClick" />
+                    <Button Classes="templateButton" Margin="4"
+                            Content="Batch Rename"
+                            Tag="batch-sequential-rename"
+                            Click="OnTemplateButtonClick" />
+                    <Button Classes="templateButton" Margin="4"
+                            Content="Web Export"
+                            Tag="image-web-export"
+                            Click="OnTemplateButtonClick" />
+                    <Button Classes="templateButton" Margin="4"
+                            Content="Compress"
+                            Tag="bulk-image-compress"
+                            Click="OnTemplateButtonClick" />
+                </WrapPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
 </UserControl>
