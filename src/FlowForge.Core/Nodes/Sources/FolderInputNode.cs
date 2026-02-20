@@ -60,8 +60,26 @@ public class FolderInputNode : ISourceNode
         var files = new List<string>();
         foreach (string pattern in patterns)
         {
-            IEnumerable<string> matched = Directory.EnumerateFiles(_path, pattern, searchOption);
-            files.AddRange(matched);
+            try
+            {
+                files.AddRange(Directory.EnumerateFiles(_path, pattern, searchOption));
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // Log but continue - some subdirectories may be inaccessible
+                // Fall back to top-level only if recursive search was denied
+                if (searchOption == SearchOption.AllDirectories)
+                {
+                    try
+                    {
+                        files.AddRange(Directory.EnumerateFiles(_path, pattern, SearchOption.TopDirectoryOnly));
+                    }
+                    catch (UnauthorizedAccessException)
+                    {
+                        // Even top-level is inaccessible for this pattern, skip it
+                    }
+                }
+            }
         }
 
         // Deduplicate (multiple patterns could match the same file) and sort for deterministic order

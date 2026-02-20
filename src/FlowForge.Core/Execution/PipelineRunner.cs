@@ -39,10 +39,12 @@ public class PipelineRunner
         var transformNodeDefs = new List<NodeDefinition>();
         var outputNodeDefs = new List<NodeDefinition>();
 
+        Dictionary<Guid, NodeDefinition> nodeMap = graph.Nodes.ToDictionary(n => n.Id);
+
         foreach (Guid nodeId in sortedNodeIds)
         {
-            NodeDefinition def = graph.Nodes.First(n => n.Id == nodeId);
-            NodeCategory category = _registry.GetCategory(def);
+            NodeDefinition def = nodeMap[nodeId];
+            NodeCategory category = _registry.GetCategoryForTypeKey(def.TypeKey);
             switch (category)
             {
                 case NodeCategory.Source:
@@ -109,7 +111,7 @@ public class PipelineRunner
         return result;
     }
 
-    private static async Task<IReadOnlyList<FileJob>> ApplyTransformAsync(
+    private async Task<IReadOnlyList<FileJob>> ApplyTransformAsync(
         ITransformNode transform,
         IReadOnlyList<FileJob> jobs,
         bool dryRun,
@@ -125,12 +127,26 @@ public class PipelineRunner
             {
                 job.Status = FileJobStatus.Processing;
                 IEnumerable<FileJob> transformed = await transform.TransformAsync(job, dryRun, ct);
-                nextJobs.AddRange(transformed);
+                IReadOnlyList<FileJob> transformedList = transformed.ToList();
+
+                if (transformedList.Count == 0 && job.Status == FileJobStatus.Skipped)
+                {
+                    lock (result)
+                    {
+                        result.Skipped++;
+                        result.Jobs.Add(job);
+                    }
+                }
+                else
+                {
+                    nextJobs.AddRange(transformedList);
+                }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 job.Status = FileJobStatus.Failed;
                 job.ErrorMessage = ex.Message;
+                _logger.Error(ex, "Transform failed for {File}", job.OriginalPath);
                 lock (result)
                 {
                     result.Failed++;
@@ -276,7 +292,8 @@ public class PipelineRunner
         {
             if (transformIds.Contains(nodeId))
             {
-                ordered.Add(transformNodeDefs.First(n => n.Id == nodeId));
+                ordered.Add(transformNodeDefs.Find(n => n.Id == nodeId)
+                    ?? throw new InvalidOperationException($"Transform node {nodeId} not found."));
             }
         }
 

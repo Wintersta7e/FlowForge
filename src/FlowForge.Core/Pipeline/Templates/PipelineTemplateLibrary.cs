@@ -19,7 +19,8 @@ public static class PipelineTemplateLibrary
 
         // Deep clone by serializing and deserializing
         string json = JsonSerializer.Serialize(template.Graph);
-        PipelineGraph clone = JsonSerializer.Deserialize<PipelineGraph>(json)!;
+        PipelineGraph clone = JsonSerializer.Deserialize<PipelineGraph>(json)
+            ?? throw new InvalidOperationException("Template graph deserialization produced null.");
 
         // Assign new IDs so each instance is unique
         clone = new PipelineGraph
@@ -32,6 +33,8 @@ public static class PipelineTemplateLibrary
                 Position = n.Position,
                 Config = new Dictionary<string, JsonElement>(n.Config)
             }).ToList(),
+            // NOTE: Templates are assumed to be linear pipelines. Non-linear topologies
+            // will have their connections replaced with sequential wiring.
             Connections = new List<Connection>()
         };
 
@@ -115,7 +118,7 @@ public static class PipelineTemplateLibrary
     private static NodeDefinition Node(string typeKey, object config)
     {
         string json = JsonSerializer.Serialize(config);
-        JsonDocument doc = JsonDocument.Parse(json);
+        using JsonDocument doc = JsonDocument.Parse(json);
         Dictionary<string, JsonElement> configDict = doc.RootElement
             .EnumerateObject()
             .ToDictionary(p => p.Name, p => p.Value.Clone());

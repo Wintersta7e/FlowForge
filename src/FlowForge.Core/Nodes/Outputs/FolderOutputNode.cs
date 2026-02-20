@@ -40,6 +40,11 @@ public class FolderOutputNode : IOutputNode
             _mode = modeElement.GetString() ?? "copy";
         }
 
+        if (_mode is not "copy" and not "move")
+        {
+            throw new NodeConfigurationException($"FolderOutput: Unknown mode '{_mode}'. Must be 'copy' or 'move'.");
+        }
+
         if (config.TryGetValue("overwrite", out JsonElement overwriteElement))
         {
             _overwrite = overwriteElement.GetBoolean();
@@ -85,10 +90,12 @@ public class FolderOutputNode : IOutputNode
 
         if (_mode.Equals("move", StringComparison.OrdinalIgnoreCase))
         {
+            // .NET has no async File.Move API; File.Copy is sync but acceptable for typical file sizes
             File.Move(job.CurrentPath, destinationPath, overwrite: _overwrite);
         }
         else
         {
+            // .NET has no async File.Move API; File.Copy is sync but acceptable for typical file sizes
             File.Copy(job.CurrentPath, destinationPath, overwrite: _overwrite);
         }
 

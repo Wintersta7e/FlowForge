@@ -72,11 +72,25 @@ public class ImageConvertNode : ITransformNode
         IImageEncoder encoder = GetEncoder();
         await image.SaveAsync(newPath, encoder, ct);
 
+        // Verify output before deleting original
+        FileInfo outputInfo = new(newPath);
+        if (!outputInfo.Exists || outputInfo.Length == 0)
+        {
+            throw new IOException($"ImageConvert: output file '{newPath}' is missing or empty after save.");
+        }
+
         // Remove old file if extension changed
         if (!string.Equals(job.CurrentPath, newPath, StringComparison.OrdinalIgnoreCase) &&
             File.Exists(job.CurrentPath))
         {
-            File.Delete(job.CurrentPath);
+            try
+            {
+                File.Delete(job.CurrentPath);
+            }
+            catch (IOException ex)
+            {
+                job.NodeLog.Add($"ImageConvert: Could not delete original '{Path.GetFileName(job.CurrentPath)}': {ex.Message}");
+            }
         }
 
         string oldName = job.FileName;

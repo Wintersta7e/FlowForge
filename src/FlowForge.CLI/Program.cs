@@ -2,6 +2,7 @@ using System.CommandLine;
 using System.Text.Json;
 using FlowForge.Core.Execution;
 using FlowForge.Core.Models;
+using FlowForge.Core.Nodes.Base;
 using FlowForge.Core.Pipeline;
 using Serilog;
 using Serilog.Events;
@@ -203,6 +204,11 @@ static async Task<int> RunPipelineAsync(
     catch (DirectoryNotFoundException ex)
     {
         Console.Error.WriteLine($"Directory not found: {ex.Message}");
+        return 2;
+    }
+    catch (NodeConfigurationException ex)
+    {
+        Console.Error.WriteLine($"Configuration error: {ex.Message}");
         return 2;
     }
     catch (InvalidOperationException ex)

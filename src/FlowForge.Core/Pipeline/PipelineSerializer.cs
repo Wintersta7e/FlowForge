@@ -22,8 +22,15 @@ public static class PipelineSerializer
 
         // Atomic write: write to temp file, then rename
         string tmpPath = filePath + ".tmp";
-        await File.WriteAllTextAsync(tmpPath, json, ct);
-        File.Move(tmpPath, filePath, overwrite: true);
+        try
+        {
+            await File.WriteAllTextAsync(tmpPath, json, ct);
+            File.Move(tmpPath, filePath, overwrite: true);
+        }
+        finally
+        {
+            try { if (File.Exists(tmpPath)) File.Delete(tmpPath); } catch { /* best-effort */ }
+        }
     }
 
     public static async Task<PipelineGraph> LoadAsync(string filePath, CancellationToken ct = default)

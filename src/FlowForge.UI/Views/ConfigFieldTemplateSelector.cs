@@ -1,3 +1,4 @@
+using System;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Templates;
@@ -112,19 +113,26 @@ public class ConfigFieldTemplateSelector : IDataTemplate
 
         browseButton.Click += async (_, _) =>
         {
-            IStorageProvider? storage = GetStorageProvider();
-            if (storage is null) return;
-
-            System.Collections.Generic.IReadOnlyList<IStorageFile> result =
-                await storage.OpenFilePickerAsync(new FilePickerOpenOptions
-                {
-                    Title = field.Label,
-                    AllowMultiple = false
-                });
-
-            if (result.Count > 0)
+            try
             {
-                field.Value = result[0].Path.LocalPath;
+                IStorageProvider? storage = GetStorageProvider();
+                if (storage is null) return;
+
+                System.Collections.Generic.IReadOnlyList<IStorageFile> result =
+                    await storage.OpenFilePickerAsync(new FilePickerOpenOptions
+                    {
+                        Title = field.Label,
+                        AllowMultiple = false
+                    });
+
+                if (result.Count > 0)
+                {
+                    field.Value = result[0].Path.LocalPath;
+                }
+            }
+            catch (Exception)
+            {
+                // Prevent async void from crashing the app
             }
         };
 
@@ -154,19 +162,26 @@ public class ConfigFieldTemplateSelector : IDataTemplate
 
         browseButton.Click += async (_, _) =>
         {
-            IStorageProvider? storage = GetStorageProvider();
-            if (storage is null) return;
-
-            System.Collections.Generic.IReadOnlyList<IStorageFolder> result =
-                await storage.OpenFolderPickerAsync(new FolderPickerOpenOptions
-                {
-                    Title = field.Label,
-                    AllowMultiple = false
-                });
-
-            if (result.Count > 0)
+            try
             {
-                field.Value = result[0].Path.LocalPath;
+                IStorageProvider? storage = GetStorageProvider();
+                if (storage is null) return;
+
+                System.Collections.Generic.IReadOnlyList<IStorageFolder> result =
+                    await storage.OpenFolderPickerAsync(new FolderPickerOpenOptions
+                    {
+                        Title = field.Label,
+                        AllowMultiple = false
+                    });
+
+                if (result.Count > 0)
+                {
+                    field.Value = result[0].Path.LocalPath;
+                }
+            }
+            catch (Exception)
+            {
+                // Prevent async void from crashing the app
             }
         };
 

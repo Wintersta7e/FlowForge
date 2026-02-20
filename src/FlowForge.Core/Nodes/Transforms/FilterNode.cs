@@ -16,6 +16,7 @@ public class FilterNode : ITransformNode
     };
 
     private List<FilterCondition> _conditions = new();
+    private readonly Dictionary<int, Regex> _compiledRegexes = new();
 
     public void Configure(Dictionary<string, JsonElement> config)
     {
@@ -26,6 +27,8 @@ public class FilterNode : ITransformNode
         }
 
         _conditions = new List<FilterCondition>();
+        _compiledRegexes.Clear();
+        int i = 0;
         foreach (JsonElement condElement in conditionsElement.EnumerateArray())
         {
             string field = condElement.GetProperty("field").GetString()
@@ -36,6 +39,20 @@ public class FilterNode : ITransformNode
                 ?? throw new NodeConfigurationException("Filter: condition 'value' is required.");
 
             _conditions.Add(new FilterCondition(field, op, value));
+
+            if (string.Equals(op, "matches", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    _compiledRegexes[i] = new Regex(value, RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromSeconds(2));
+                }
+                catch (ArgumentException ex)
+                {
+                    throw new NodeConfigurationException($"Filter: Invalid regex pattern '{value}': {ex.Message}", ex);
+                }
+            }
+
+            i++;
         }
     }
 
@@ -43,7 +60,7 @@ public class FilterNode : ITransformNode
     {
         ct.ThrowIfCancellationRequested();
 
-        bool matches = _conditions.All(c => EvaluateCondition(c, job));
+        bool matches = _conditions.Select((c, idx) => EvaluateCondition(c, idx, job)).All(b => b);
 
         if (matches)
         {
@@ -57,7 +74,7 @@ public class FilterNode : ITransformNode
         return Task.FromResult(Enumerable.Empty<FileJob>());
     }
 
-    private static bool EvaluateCondition(FilterCondition condition, FileJob job)
+    private bool EvaluateCondition(FilterCondition condition, int index, FileJob job)
     {
         string fieldValue = GetFieldValue(condition.Field, job);
 
@@ -70,7 +87,9 @@ public class FilterNode : ITransformNode
             "endswith" => fieldValue.EndsWith(condition.Value, StringComparison.OrdinalIgnoreCase),
             "greaterthan" => CompareNumeric(fieldValue, condition.Value) > 0,
             "lessthan" => CompareNumeric(fieldValue, condition.Value) < 0,
-            "matches" => Regex.IsMatch(fieldValue, condition.Value, RegexOptions.IgnoreCase),
+            "matches" => _compiledRegexes.TryGetValue(index, out Regex? compiledRegex)
+                ? compiledRegex.IsMatch(fieldValue)
+                : Regex.IsMatch(fieldValue, condition.Value, RegexOptions.IgnoreCase),
             _ => throw new InvalidOperationException($"Unknown filter operator: '{condition.Operator}'")
         };
     }
