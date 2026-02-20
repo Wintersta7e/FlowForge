@@ -2,6 +2,7 @@
 
 A visual node-based file processing pipeline tool. Build reusable workflows for renaming, resizing, converting, and filtering files — no scripting required.
 
+[![CI](https://github.com/Wintersta7e/FlowForge/actions/workflows/ci.yml/badge.svg)](https://github.com/Wintersta7e/FlowForge/actions/workflows/ci.yml)
 ![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet)
 ![Avalonia](https://img.shields.io/badge/Avalonia-11.3-8B44AC?logo=dotnet)
 ![C#](https://img.shields.io/badge/C%23-14-239120?logo=csharp)
