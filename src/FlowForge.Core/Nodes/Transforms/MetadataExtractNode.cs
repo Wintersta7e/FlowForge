@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
@@ -11,7 +12,7 @@ public class MetadataExtractNode : ITransformNode
 {
     public string TypeKey => "MetadataExtract";
 
-    public static IReadOnlyList<ConfigField> ConfigSchema => new[]
+    public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]
     {
         new ConfigField("keys", ConfigFieldType.MultiLine, Label: "Metadata Keys", Required: true,
             Placeholder: "EXIF:DateTaken, File:SizeBytes"),
@@ -80,23 +81,25 @@ public class MetadataExtractNode : ITransformNode
 
     private static string? ExtractFileMetadata(string key, string filePath)
     {
-        if (!File.Exists(filePath)) return null;
+        if (!File.Exists(filePath))
+            return null;
 
         var fileInfo = new FileInfo(filePath);
         string fieldName = key["File:".Length..];
 
         return fieldName.ToLowerInvariant() switch
         {
-            "sizebytes" => fileInfo.Length.ToString(),
-            "createdat" => fileInfo.CreationTimeUtc.ToString("yyyy-MM-dd_HH-mm-ss"),
-            "modifiedat" => fileInfo.LastWriteTimeUtc.ToString("yyyy-MM-dd_HH-mm-ss"),
+            "sizebytes" => fileInfo.Length.ToString(CultureInfo.InvariantCulture),
+            "createdat" => fileInfo.CreationTimeUtc.ToString("yyyy-MM-dd_HH-mm-ss", CultureInfo.InvariantCulture),
+            "modifiedat" => fileInfo.LastWriteTimeUtc.ToString("yyyy-MM-dd_HH-mm-ss", CultureInfo.InvariantCulture),
             _ => null
         };
     }
 
     private static string? ExtractExifMetadata(string key, string filePath)
     {
-        if (!File.Exists(filePath)) return null;
+        if (!File.Exists(filePath))
+            return null;
 
         try
         {

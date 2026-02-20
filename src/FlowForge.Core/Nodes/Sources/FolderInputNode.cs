@@ -10,7 +10,7 @@ public class FolderInputNode : ISourceNode
 {
     public string TypeKey => "FolderInput";
 
-    public static IReadOnlyList<ConfigField> ConfigSchema => new[]
+    public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]
     {
         new ConfigField("path", ConfigFieldType.FolderPath, Label: "Source Folder", Required: true),
         new ConfigField("recursive", ConfigFieldType.Bool, Label: "Include Subfolders", DefaultValue: "false"),

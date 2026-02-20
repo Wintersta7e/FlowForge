@@ -1,0 +1,52 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish win-x64
+        run: dotnet publish src/FlowForge.UI/FlowForge.UI.csproj -c Release -r win-x64 --self-contained -o publish/win-x64
+
+      - name: Zip release
+        shell: pwsh
+        run: Compress-Archive -Path publish/win-x64/* -DestinationPath FlowForge-win-x64.zip
+
+      - name: Create GitHub Release
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          awk "/^## \\[${VERSION}\\]/{found=1; next} /^## \\[/{if(found) exit} found{print}" CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "See [CHANGELOG.md](https://github.com/${REPO}/blob/main/CHANGELOG.md) for details." > release-notes.md
+          fi
+          gh release create "$GITHUB_REF_NAME" \
+            FlowForge-win-x64.zip \
+            --title "FlowForge v${VERSION}" \
+            --notes-file release-notes.md
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+
+      - name: Clean up old releases (keep latest 3)
+        shell: bash
+        run: |
+          gh release list --json tagName --jq '.[].tagName' | tail -n +4 | while read -r tag; do
+            echo "Deleting release $tag"
+            gh release delete "$tag" --cleanup-tag --yes
+          done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

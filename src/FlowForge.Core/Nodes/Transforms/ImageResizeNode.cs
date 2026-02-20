@@ -10,7 +10,7 @@ public class ImageResizeNode : ITransformNode
 {
     public string TypeKey => "ImageResize";
 
-    public static IReadOnlyList<ConfigField> ConfigSchema => new[]
+    public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]
     {
         new ConfigField("width", ConfigFieldType.Int, Label: "Width (px)"),
         new ConfigField("height", ConfigFieldType.Int, Label: "Height (px)"),

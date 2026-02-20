@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using FlowForge.Core.Models;
 
 namespace FlowForge.UI.ViewModels;
@@ -25,7 +26,7 @@ public class FileJobLogEntryViewModel : ViewModelBase
         IsSuccess = job.Status == FileJobStatus.Succeeded;
         IsError = job.Status == FileJobStatus.Failed;
         IsWarning = job.Status == FileJobStatus.Skipped;
-        Timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
+        Timestamp = DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture);
 
         StatusText = job.Status switch
         {

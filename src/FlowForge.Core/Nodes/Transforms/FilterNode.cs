@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using FlowForge.Core.Models;
@@ -10,7 +11,7 @@ public class FilterNode : ITransformNode
 {
     public string TypeKey => "Filter";
 
-    public static IReadOnlyList<ConfigField> ConfigSchema => new[]
+    public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]
     {
         new ConfigField("conditions", ConfigFieldType.MultiLine, Label: "Conditions (JSON)", Required: true,
             Placeholder: "[{\"field\":\"extension\",\"operator\":\"equals\",\"value\":\".jpg\"}]"),
@@ -127,7 +128,7 @@ public class FilterNode : ITransformNode
             return "0";
         }
         var info = new FileInfo(path);
-        return info.Length.ToString();
+        return info.Length.ToString(CultureInfo.InvariantCulture);
     }
 
     private static string GetFileCreatedAt(string path)
@@ -137,7 +138,7 @@ public class FilterNode : ITransformNode
             Log.Warning("Filter: file not found at '{FilePath}', using default date", path);
             return string.Empty;
         }
-        return File.GetCreationTimeUtc(path).ToString("o");
+        return File.GetCreationTimeUtc(path).ToString("o", CultureInfo.InvariantCulture);
     }
 
     private static string GetFileModifiedAt(string path)
@@ -147,7 +148,7 @@ public class FilterNode : ITransformNode
             Log.Warning("Filter: file not found at '{FilePath}', using default date", path);
             return string.Empty;
         }
-        return File.GetLastWriteTimeUtc(path).ToString("o");
+        return File.GetLastWriteTimeUtc(path).ToString("o", CultureInfo.InvariantCulture);
     }
 
     private static int CompareNumeric(string a, string b)

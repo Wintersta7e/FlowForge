@@ -126,9 +126,12 @@ public class NodeRegistry
 
         if (configure)
         {
-            if (instance is ISourceNode source) source.Configure(def.Config);
-            else if (instance is ITransformNode transform) transform.Configure(def.Config);
-            else if (instance is IOutputNode output) output.Configure(def.Config);
+            if (instance is ISourceNode source)
+                source.Configure(def.Config);
+            else if (instance is ITransformNode transform)
+                transform.Configure(def.Config);
+            else if (instance is IOutputNode output)
+                output.Configure(def.Config);
         }
 
         return instance;

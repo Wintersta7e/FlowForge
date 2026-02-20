@@ -41,12 +41,13 @@ public partial class NodeLibraryViewModel : ViewModelBase
             NodeCategory category = registry.GetCategoryForTypeKey(typeKey);
             string categoryName = CategoryDisplayNames.GetValueOrDefault(category.ToString(), category.ToString());
 
-            if (!categoryItems.ContainsKey(categoryName))
+            if (!categoryItems.TryGetValue(categoryName, out List<NodeLibraryItemViewModel>? existingItems))
             {
-                categoryItems[categoryName] = new List<NodeLibraryItemViewModel>();
+                existingItems = new List<NodeLibraryItemViewModel>();
+                categoryItems[categoryName] = existingItems;
             }
 
-            categoryItems[categoryName].Add(new NodeLibraryItemViewModel(typeKey, displayName));
+            existingItems.Add(new NodeLibraryItemViewModel(typeKey, displayName));
         }
 
         // Add groups in canonical order: Input, Process, Save To

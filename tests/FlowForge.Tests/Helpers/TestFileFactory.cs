@@ -9,7 +9,8 @@ public static class TestFileFactory
     public static void CreateTestImage(string filePath, int width = 100, int height = 100)
     {
         string? dir = Path.GetDirectoryName(filePath);
-        if (dir != null) Directory.CreateDirectory(dir);
+        if (dir != null)
+            Directory.CreateDirectory(dir);
 
         using var image = new Image<Rgba32>(width, height, Color.CornflowerBlue);
         image.SaveAsJpeg(filePath);
@@ -19,7 +20,8 @@ public static class TestFileFactory
     public static void CreateTestPng(string filePath, int width = 100, int height = 100)
     {
         string? dir = Path.GetDirectoryName(filePath);
-        if (dir != null) Directory.CreateDirectory(dir);
+        if (dir != null)
+            Directory.CreateDirectory(dir);
 
         using var image = new Image<Rgba32>(width, height, Color.CornflowerBlue);
         image.SaveAsPng(filePath);
@@ -29,7 +31,8 @@ public static class TestFileFactory
     public static void CreateTestBmp(string filePath, int width = 100, int height = 100)
     {
         string? dir = Path.GetDirectoryName(filePath);
-        if (dir != null) Directory.CreateDirectory(dir);
+        if (dir != null)
+            Directory.CreateDirectory(dir);
 
         using var image = new Image<Rgba32>(width, height, Color.CornflowerBlue);
         image.SaveAsBmp(filePath);

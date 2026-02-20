@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using FlowForge.Core.Models;
@@ -9,7 +10,7 @@ public class RenamePatternNode : ITransformNode
 {
     public string TypeKey => "RenamePattern";
 
-    public static IReadOnlyList<ConfigField> ConfigSchema => new[]
+    public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]
     {
         new ConfigField("pattern", ConfigFieldType.String, Label: "Rename Pattern", Required: true, Placeholder: "{name}_{counter:000}{ext}"),
         new ConfigField("startIndex", ConfigFieldType.Int, Label: "Counter Start", DefaultValue: "1"),
@@ -49,7 +50,7 @@ public class RenamePatternNode : ITransformNode
             {
                 try
                 {
-                    DateTime.Today.ToString(m.Groups["format"].Value);
+                    DateTime.Today.ToString(m.Groups["format"].Value, CultureInfo.InvariantCulture);
                 }
                 catch (FormatException ex)
                 {
@@ -81,8 +82,8 @@ public class RenamePatternNode : ITransformNode
                 "name" => nameWithoutExt,
                 "ext" => extension,
                 "counter" => string.IsNullOrEmpty(format)
-                    ? currentCounter.ToString()
-                    : currentCounter.ToString(format),
+                    ? currentCounter.ToString(CultureInfo.InvariantCulture)
+                    : currentCounter.ToString(format, CultureInfo.InvariantCulture),
                 "date" => ResolveDateToken(format),
                 "meta" => !string.IsNullOrEmpty(format) && job.Metadata.TryGetValue(format, out string? metaValue)
                     ? metaValue
@@ -116,12 +117,12 @@ public class RenamePatternNode : ITransformNode
         try
         {
             return string.IsNullOrEmpty(format)
-                ? DateTime.Today.ToString("yyyy-MM-dd")
-                : DateTime.Today.ToString(format);
+                ? DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+                : DateTime.Today.ToString(format, CultureInfo.InvariantCulture);
         }
         catch (FormatException)
         {
-            return DateTime.Today.ToString("yyyy-MM-dd");
+            return DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         }
     }
 
