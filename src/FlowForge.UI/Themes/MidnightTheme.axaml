@@ -1,0 +1,172 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Styles.Resources>
+        <ResourceDictionary>
+            <!-- ═══ Color Tokens ═══ -->
+
+            <!-- Background layers (darkest to lightest) -->
+            <Color x:Key="MidnightBgColor">#0D1117</Color>
+            <Color x:Key="MidnightPanelColor">#161B22</Color>
+            <Color x:Key="MidnightSurfaceColor">#1C2128</Color>
+            <Color x:Key="MidnightElevatedColor">#21262D</Color>
+
+            <!-- Borders -->
+            <Color x:Key="MidnightBorderColor">#30363D</Color>
+            <Color x:Key="MidnightBorderFocusColor">#484F58</Color>
+
+            <!-- Text -->
+            <Color x:Key="MidnightTextColor">#E6EDF3</Color>
+            <Color x:Key="MidnightTextSecondaryColor">#8B949E</Color>
+            <Color x:Key="MidnightTextMutedColor">#484F58</Color>
+
+            <!-- Accents -->
+            <Color x:Key="MidnightAccentColor">#58A6FF</Color>
+            <Color x:Key="MidnightSourceColor">#58A6FF</Color>
+            <Color x:Key="MidnightTransformColor">#3FB950</Color>
+            <Color x:Key="MidnightOutputColor">#D29922</Color>
+
+            <!-- Status -->
+            <Color x:Key="MidnightSuccessColor">#3FB950</Color>
+            <Color x:Key="MidnightErrorColor">#F85149</Color>
+            <Color x:Key="MidnightWarningColor">#D29922</Color>
+            <Color x:Key="MidnightInfoColor">#58A6FF</Color>
+
+            <!-- ═══ Brush Resources ═══ -->
+            <SolidColorBrush x:Key="MidnightBg" Color="{StaticResource MidnightBgColor}" />
+            <SolidColorBrush x:Key="MidnightPanel" Color="{StaticResource MidnightPanelColor}" />
+            <SolidColorBrush x:Key="MidnightSurface" Color="{StaticResource MidnightSurfaceColor}" />
+            <SolidColorBrush x:Key="MidnightElevated" Color="{StaticResource MidnightElevatedColor}" />
+            <SolidColorBrush x:Key="MidnightBorder" Color="{StaticResource MidnightBorderColor}" />
+            <SolidColorBrush x:Key="MidnightBorderFocus" Color="{StaticResource MidnightBorderFocusColor}" />
+            <SolidColorBrush x:Key="MidnightText" Color="{StaticResource MidnightTextColor}" />
+            <SolidColorBrush x:Key="MidnightTextSecondary" Color="{StaticResource MidnightTextSecondaryColor}" />
+            <SolidColorBrush x:Key="MidnightTextMuted" Color="{StaticResource MidnightTextMutedColor}" />
+            <SolidColorBrush x:Key="MidnightAccent" Color="{StaticResource MidnightAccentColor}" />
+            <SolidColorBrush x:Key="MidnightSource" Color="{StaticResource MidnightSourceColor}" />
+            <SolidColorBrush x:Key="MidnightTransform" Color="{StaticResource MidnightTransformColor}" />
+            <SolidColorBrush x:Key="MidnightOutput" Color="{StaticResource MidnightOutputColor}" />
+            <SolidColorBrush x:Key="MidnightSuccess" Color="{StaticResource MidnightSuccessColor}" />
+            <SolidColorBrush x:Key="MidnightError" Color="{StaticResource MidnightErrorColor}" />
+            <SolidColorBrush x:Key="MidnightWarning" Color="{StaticResource MidnightWarningColor}" />
+            <SolidColorBrush x:Key="MidnightInfo" Color="{StaticResource MidnightInfoColor}" />
+        </ResourceDictionary>
+    </Styles.Resources>
+
+    <!-- ═══ Global Style Overrides ═══ -->
+
+    <!-- Button: midnight surface bg, border, rounded 4px -->
+    <Style Selector="Button">
+        <Setter Property="Background" Value="{StaticResource MidnightSurface}" />
+        <Setter Property="Foreground" Value="{StaticResource MidnightText}" />
+        <Setter Property="BorderBrush" Value="{StaticResource MidnightBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="4" />
+        <Setter Property="Padding" Value="8,4" />
+    </Style>
+    <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource MidnightElevated}" />
+    </Style>
+    <Style Selector="Button:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource MidnightBorder}" />
+    </Style>
+
+    <!-- Button.accent: green run button -->
+    <Style Selector="Button.accent">
+        <Setter Property="Background" Value="{StaticResource MidnightTransform}" />
+        <Setter Property="Foreground" Value="#0D1117" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.accent:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#4AC960" />
+    </Style>
+
+    <!-- Button.preview: blue preview button -->
+    <Style Selector="Button.preview">
+        <Setter Property="Background" Value="{StaticResource MidnightAccent}" />
+        <Setter Property="Foreground" Value="#0D1117" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.preview:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#79B8FF" />
+    </Style>
+
+    <!-- Button.toolbarIcon: icon-only toolbar buttons -->
+    <Style Selector="Button.toolbarIcon">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Width" Value="32" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="Padding" Value="6" />
+    </Style>
+    <Style Selector="Button.toolbarIcon:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource MidnightElevated}" />
+        <Setter Property="CornerRadius" Value="4" />
+    </Style>
+
+    <!-- Button.templateButton: template quick-start buttons -->
+    <Style Selector="Button.templateButton">
+        <Setter Property="Background" Value="{StaticResource MidnightSurface}" />
+        <Setter Property="BorderBrush" Value="{StaticResource MidnightBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Padding" Value="12,8" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.templateButton:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource MidnightElevated}" />
+        <Setter Property="BorderBrush" Value="{StaticResource MidnightAccent}" />
+    </Style>
+
+    <!-- TextBox: midnight surface bg, rounded 4px -->
+    <Style Selector="TextBox">
+        <Setter Property="Background" Value="{StaticResource MidnightSurface}" />
+        <Setter Property="Foreground" Value="{StaticResource MidnightText}" />
+        <Setter Property="BorderBrush" Value="{StaticResource MidnightBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="4" />
+    </Style>
+    <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="{StaticResource MidnightAccent}" />
+    </Style>
+
+    <!-- ComboBox -->
+    <Style Selector="ComboBox">
+        <Setter Property="Background" Value="{StaticResource MidnightSurface}" />
+        <Setter Property="Foreground" Value="{StaticResource MidnightText}" />
+        <Setter Property="BorderBrush" Value="{StaticResource MidnightBorder}" />
+        <Setter Property="CornerRadius" Value="4" />
+    </Style>
+
+    <!-- ToggleSwitch -->
+    <Style Selector="ToggleSwitch">
+        <Setter Property="Foreground" Value="{StaticResource MidnightText}" />
+    </Style>
+
+    <!-- TreeView -->
+    <Style Selector="TreeView">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="TreeViewItem">
+        <Setter Property="Foreground" Value="{StaticResource MidnightText}" />
+    </Style>
+
+    <!-- ScrollViewer -->
+    <Style Selector="ScrollViewer">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+    <!-- ProgressBar -->
+    <Style Selector="ProgressBar">
+        <Setter Property="Background" Value="{StaticResource MidnightSurface}" />
+        <Setter Property="Foreground" Value="{StaticResource MidnightAccent}" />
+        <Setter Property="CornerRadius" Value="4" />
+    </Style>
+
+    <!-- Expander -->
+    <Style Selector="Expander">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource MidnightText}" />
+    </Style>
+
+</Styles>
