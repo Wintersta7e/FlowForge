@@ -76,7 +76,9 @@ public class ImageConvertNode : ITransformNode
         FileInfo outputInfo = new(newPath);
         if (!outputInfo.Exists || outputInfo.Length == 0)
         {
-            throw new IOException($"ImageConvert: output file '{newPath}' is missing or empty after save.");
+            job.Status = FileJobStatus.Failed;
+            job.ErrorMessage = $"ImageConvert: output file '{newPath}' is missing or empty after save. Original preserved.";
+            return new[] { job };
         }
 
         // Remove old file if extension changed

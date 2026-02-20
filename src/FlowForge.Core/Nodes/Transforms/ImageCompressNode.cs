@@ -57,6 +57,13 @@ public class ImageCompressNode : ITransformNode
         using Image image = await Image.LoadAsync(job.CurrentPath, ct);
 
         string targetFormat = _format ?? job.Extension.TrimStart('.').ToLowerInvariant();
+        string[] supportedFormats = { "jpg", "jpeg", "png", "webp" };
+        if (!supportedFormats.Contains(targetFormat))
+        {
+            job.Status = FileJobStatus.Failed;
+            job.ErrorMessage = $"ImageCompress: unsupported format '{targetFormat}'. Supported: jpg, jpeg, png, webp.";
+            return new[] { job };
+        }
         IImageEncoder encoder = GetEncoder(targetFormat);
 
         await image.SaveAsync(job.CurrentPath, encoder, ct);

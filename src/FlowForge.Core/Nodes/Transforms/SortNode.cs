@@ -1,6 +1,7 @@
 using System.Text.Json;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
+using Serilog;
 
 namespace FlowForge.Core.Nodes.Transforms;
 
@@ -86,6 +87,16 @@ public class SortNode : ITransformNode, IBufferedTransformNode
 
             return Task.FromResult<IEnumerable<FileJob>>(result);
         }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Log.Error(ex, "Sort: flush failed, returning {Count} buffered jobs as failed", _buffer.Count);
+            foreach (FileJob job in _buffer)
+            {
+                job.Status = FileJobStatus.Failed;
+                job.ErrorMessage = $"Sort: failed during flush — {ex.Message}";
+            }
+            return Task.FromResult<IEnumerable<FileJob>>(_buffer.ToList());
+        }
         finally
         {
             _buffer.Clear();
@@ -94,19 +105,31 @@ public class SortNode : ITransformNode, IBufferedTransformNode
 
     private static long GetFileSize(string path)
     {
-        if (!File.Exists(path)) return 0;
+        if (!File.Exists(path))
+        {
+            Log.Warning("Sort: file not found at '{FilePath}', using default size 0", path);
+            return 0;
+        }
         return new FileInfo(path).Length;
     }
 
     private static DateTime GetFileCreatedAt(string path)
     {
-        if (!File.Exists(path)) return DateTime.MinValue;
+        if (!File.Exists(path))
+        {
+            Log.Warning("Sort: file not found at '{FilePath}', using default date", path);
+            return DateTime.MinValue;
+        }
         return File.GetCreationTimeUtc(path);
     }
 
     private static DateTime GetFileModifiedAt(string path)
     {
-        if (!File.Exists(path)) return DateTime.MinValue;
+        if (!File.Exists(path))
+        {
+            Log.Warning("Sort: file not found at '{FilePath}', using default date", path);
+            return DateTime.MinValue;
+        }
         return File.GetLastWriteTimeUtc(path);
     }
 }

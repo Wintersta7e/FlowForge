@@ -75,8 +75,9 @@ public class RenameRegexNode : ITransformNode
             if (!resolvedNew.StartsWith(resolvedDir + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) &&
                 !Path.GetDirectoryName(resolvedNew)!.Equals(resolvedDir, StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException(
-                    $"RenameRegex: resulting path '{resolvedNew}' escapes source directory '{resolvedDir}'.");
+                job.Status = FileJobStatus.Failed;
+                job.ErrorMessage = $"RenameRegex: path traversal blocked — '{resolvedNew}' escapes source directory '{resolvedDir}'.";
+                return Task.FromResult<IEnumerable<FileJob>>(new[] { job });
             }
         }
         else

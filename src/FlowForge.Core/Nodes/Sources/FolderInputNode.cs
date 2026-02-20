@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
+using Serilog;
 
 namespace FlowForge.Core.Nodes.Sources;
 
@@ -57,35 +58,39 @@ public class FolderInputNode : ISourceNode
         SearchOption searchOption = _recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
         string[] patterns = _filter.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-        var files = new List<string>();
+        var files = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (string pattern in patterns)
         {
             try
             {
-                files.AddRange(Directory.EnumerateFiles(_path, pattern, searchOption));
+                foreach (string file in Directory.EnumerateFiles(_path, pattern, searchOption))
+                {
+                    files.Add(file);
+                }
             }
-            catch (UnauthorizedAccessException)
+            catch (UnauthorizedAccessException ex)
             {
-                // Log but continue - some subdirectories may be inaccessible
-                // Fall back to top-level only if recursive search was denied
+                Log.Warning(ex, "FolderInput: access denied enumerating '{Path}' with pattern '{Pattern}', falling back to top-level", _path, pattern);
                 if (searchOption == SearchOption.AllDirectories)
                 {
                     try
                     {
-                        files.AddRange(Directory.EnumerateFiles(_path, pattern, SearchOption.TopDirectoryOnly));
+                        foreach (string file in Directory.EnumerateFiles(_path, pattern, SearchOption.TopDirectoryOnly))
+                        {
+                            files.Add(file);
+                        }
                     }
-                    catch (UnauthorizedAccessException)
+                    catch (UnauthorizedAccessException ex2)
                     {
-                        // Even top-level is inaccessible for this pattern, skip it
+                        Log.Warning(ex2, "FolderInput: access denied even at top-level for '{Path}' with pattern '{Pattern}'", _path, pattern);
                     }
                 }
             }
         }
 
-        // Deduplicate (multiple patterns could match the same file) and sort for deterministic order
-        IEnumerable<string> uniqueFiles = files.Distinct().OrderBy(f => f, StringComparer.OrdinalIgnoreCase);
+        // SortedSet handles dedup and ordering automatically
 
-        foreach (string filePath in uniqueFiles)
+        foreach (string filePath in files)
         {
             ct.ThrowIfCancellationRequested();
 
