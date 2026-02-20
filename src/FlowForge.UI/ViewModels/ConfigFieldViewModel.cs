@@ -51,13 +51,14 @@ public partial class ConfigFieldViewModel : ViewModelBase
         // Write back to config dictionary
         if (value is not null)
         {
-            // For Int fields, validate the value is numeric
-            if (FieldType == ConfigFieldType.Int && !string.IsNullOrEmpty(value) && !int.TryParse(value, out _))
+            _configDictionary[Key] = FieldType switch
             {
-                return; // Don't write invalid int values to config
-            }
-
-            _configDictionary[Key] = JsonSerializer.SerializeToElement(value);
+                ConfigFieldType.Bool when bool.TryParse(value, out bool b) =>
+                    JsonSerializer.SerializeToElement(b),
+                ConfigFieldType.Int when int.TryParse(value, out int i) =>
+                    JsonSerializer.SerializeToElement(i),
+                _ => JsonSerializer.SerializeToElement(value)
+            };
         }
         else
         {
