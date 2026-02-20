@@ -4,8 +4,12 @@ A visual node-based file processing pipeline tool. Build reusable workflows for 
 
 ![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet)
 ![Avalonia](https://img.shields.io/badge/Avalonia-11.3-8B44AC?logo=dotnet)
-![C#](https://img.shields.io/badge/C%23-12-239120?logo=csharp)
+![C#](https://img.shields.io/badge/C%23-14-239120?logo=csharp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
+
+<p align="center">
+  <img src="screenshots/editor-overview.png" alt="FlowForge Editor" width="800">
+</p>
 
 ## Overview
 
@@ -44,6 +48,13 @@ FlowForge lets you visually connect source, transform, and output nodes to build
 - **Execution Log** — Live progress with success/fail/skip counts and per-file details
 - **Templates** — One-click pipeline starters: Photo Import, Batch Rename, Web Export, Compress
 - **Midnight Theme** — Custom dark theme with GitHub Dark-inspired color palette
+
+<p align="center">
+  <img src="screenshots/node-pipeline.png" alt="Node Pipeline" width="600">
+</p>
+<p align="center">
+  <img src="screenshots/output-panel.png" alt="Output Panel">
+</p>
 
 ### CLI Runner
 
@@ -109,7 +120,7 @@ FlowForge/
 │   │   └── Services/             # DialogService
 │   └── FlowForge.CLI/            # CLI runner (System.CommandLine)
 └── tests/
-    └── FlowForge.Tests/          # 194 xUnit tests
+    └── FlowForge.Tests/          # 202 xUnit tests
         ├── Nodes/                # 11 node test files
         ├── Execution/            # Runner + registry tests
         ├── Pipeline/             # Serializer + template tests
@@ -144,7 +155,7 @@ dotnet run --project src/FlowForge.CLI -- run pipeline.ffpipe --dry-run
 ### Run Tests
 
 ```bash
-# Run all 194 tests
+# Run all 202 tests
 dotnet test --logger "console;verbosity=normal"
 
 # Run specific test class
