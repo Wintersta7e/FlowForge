@@ -493,6 +493,11 @@ test-data/
 docs/plans/
 
 # =========================
+# Git worktrees
+# =========================
+.worktrees/
+
+# =========================
 # AI agent / coding assistant files
 # =========================
 CLAUDE.md
