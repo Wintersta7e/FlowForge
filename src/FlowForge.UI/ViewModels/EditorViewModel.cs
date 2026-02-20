@@ -14,6 +14,7 @@ namespace FlowForge.UI.ViewModels;
 public partial class EditorViewModel : ViewModelBase
 {
     public ObservableCollection<PipelineNodeViewModel> Nodes { get; } = new();
+    public bool HasNodes => Nodes.Count > 0;
     public ObservableCollection<PipelineConnectionViewModel> Connections { get; } = new();
     public PipelinePendingConnectionViewModel PendingConnection { get; }
 
@@ -28,6 +29,7 @@ public partial class EditorViewModel : ViewModelBase
     {
         PendingConnection = new PipelinePendingConnectionViewModel(this);
         Nodes.CollectionChanged += OnNodesCollectionChanged;
+        Nodes.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasNodes));
     }
 
     private void UnsubscribeAllNodes()

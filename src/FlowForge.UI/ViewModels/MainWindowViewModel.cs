@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 using FlowForge.Core.Execution;
 using FlowForge.Core.Models;
 using FlowForge.Core.Pipeline;
+using FlowForge.Core.Pipeline.Templates;
 using FlowForge.UI.Services;
 using Serilog;
 
@@ -202,7 +203,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 ? (double)processed / result.TotalFiles * 100.0
                 : 100.0;
             ExecutionLog.Summary = dryRun
-                ? $"Dry run complete: {result.TotalFiles} files, {result.Succeeded} OK, {result.Failed} failed, {result.Skipped} skipped ({result.Duration.TotalMilliseconds:F0}ms)"
+                ? $"Preview complete: {result.TotalFiles} files, {result.Succeeded} OK, {result.Failed} failed, {result.Skipped} skipped ({result.Duration.TotalMilliseconds:F0}ms)"
                 : $"Run complete: {result.TotalFiles} files, {result.Succeeded} OK, {result.Failed} failed, {result.Skipped} skipped ({result.Duration.TotalMilliseconds:F0}ms)";
         }
         catch (OperationCanceledException)
@@ -226,5 +227,30 @@ public partial class MainWindowViewModel : ViewModelBase
     private void Cancel()
     {
         _cts?.Cancel();
+    }
+
+    [RelayCommand]
+    private void LoadTemplate(string templateId)
+    {
+        try
+        {
+            PipelineGraph graph = PipelineTemplateLibrary.CreateFromTemplate(templateId);
+
+            // Spread nodes horizontally so they don't stack at (0,0)
+            for (int i = 0; i < graph.Nodes.Count; i++)
+            {
+                graph.Nodes[i].Position = new CanvasPosition(100 + (i * 250), 200);
+            }
+
+            Editor.LoadGraph(graph, _registry);
+            CurrentFilePath = null;
+            IsDirty = true;
+            Title = $"FlowForge - {graph.Name ?? "Untitled"}";
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.Error(ex, "Failed to load template {TemplateId}", templateId);
+            ExecutionLog.Summary = $"Template load failed: {ex.Message}";
+        }
     }
 }
