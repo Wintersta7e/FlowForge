@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.CommandLine.Parsing;
 using System.Globalization;
 using System.Text.Json;
 using FlowForge.Core.Execution;
@@ -10,51 +11,61 @@ using Serilog.Events;
 
 var rootCommand = new RootCommand("FlowForge — node-based file processing pipeline runner");
 
-var pipelineArgument = new Argument<FileInfo>(
-    name: "pipeline",
-    description: "Path to the .ffpipe pipeline file");
-
-var inputOption = new Option<DirectoryInfo?>(
-    name: "--input",
-    description: "Override the first FolderInput node's source folder");
-
-var outputOption = new Option<DirectoryInfo?>(
-    name: "--output",
-    description: "Override the first FolderOutput node's destination folder");
-
-var dryRunOption = new Option<bool>(
-    name: "--dry-run",
-    description: "Simulate the pipeline without writing any files");
-
-var verboseOption = new Option<bool>(
-    name: "--verbose",
-    description: "Print per-file log entries to stdout");
-
-var runCommand = new Command("run", "Execute a FlowForge pipeline")
+var pipelineArgument = new Argument<FileInfo>("pipeline")
 {
-    pipelineArgument,
-    inputOption,
-    outputOption,
-    dryRunOption,
-    verboseOption
+    Description = "Path to the .ffpipe pipeline file"
 };
 
-rootCommand.AddCommand(runCommand);
-
-runCommand.SetHandler(async (FileInfo pipelineFile, DirectoryInfo? inputDir, DirectoryInfo? outputDir, bool dryRun, bool verbose) =>
+var inputOption = new Option<DirectoryInfo?>("--input")
 {
-    int exitCode = await RunPipelineAsync(pipelineFile, inputDir, outputDir, dryRun, verbose);
-    Environment.ExitCode = exitCode;
-}, pipelineArgument, inputOption, outputOption, dryRunOption, verboseOption);
+    Description = "Override the first FolderInput node's source folder"
+};
 
-return await rootCommand.InvokeAsync(args);
+var outputOption = new Option<DirectoryInfo?>("--output")
+{
+    Description = "Override the first FolderOutput node's destination folder"
+};
+
+var dryRunOption = new Option<bool>("--dry-run")
+{
+    Description = "Simulate the pipeline without writing any files"
+};
+
+var verboseOption = new Option<bool>("--verbose")
+{
+    Description = "Print per-file log entries to stdout"
+};
+
+var runCommand = new Command("run", "Execute a FlowForge pipeline");
+runCommand.Arguments.Add(pipelineArgument);
+runCommand.Options.Add(inputOption);
+runCommand.Options.Add(outputOption);
+runCommand.Options.Add(dryRunOption);
+runCommand.Options.Add(verboseOption);
+
+runCommand.SetAction(async (parseResult, cancellationToken) =>
+{
+    FileInfo pipelineFile = parseResult.GetValue(pipelineArgument)!;
+    DirectoryInfo? inputDir = parseResult.GetValue(inputOption);
+    DirectoryInfo? outputDir = parseResult.GetValue(outputOption);
+    bool dryRun = parseResult.GetValue(dryRunOption);
+    bool verbose = parseResult.GetValue(verboseOption);
+
+    int exitCode = await RunPipelineAsync(pipelineFile, inputDir, outputDir, dryRun, verbose, cancellationToken);
+    Environment.ExitCode = exitCode;
+});
+
+rootCommand.Subcommands.Add(runCommand);
+
+return rootCommand.Parse(args).Invoke();
 
 static async Task<int> RunPipelineAsync(
     FileInfo pipelineFile,
     DirectoryInfo? inputDir,
     DirectoryInfo? outputDir,
     bool dryRun,
-    bool verbose)
+    bool verbose,
+    CancellationToken cancellationToken)
 {
     // Configure Serilog
     LogEventLevel minimumLevel = verbose ? LogEventLevel.Information : LogEventLevel.Warning;
@@ -66,15 +77,6 @@ static async Task<int> RunPipelineAsync(
         .CreateLogger();
 
     ILogger logger = Log.Logger;
-
-    // Wire up cancellation via Ctrl+C
-    using var cts = new CancellationTokenSource();
-    Console.CancelKeyPress += (_, e) =>
-    {
-        e.Cancel = true;
-        cts.Cancel();
-        Console.Error.WriteLine("Cancellation requested...");
-    };
 
     try
     {
@@ -89,7 +91,7 @@ static async Task<int> RunPipelineAsync(
         string fullPath = pipelineFile.FullName;
         Console.WriteLine($"Loading pipeline: {fullPath}");
 
-        PipelineGraph graph = await PipelineSerializer.LoadAsync(fullPath, cts.Token);
+        PipelineGraph graph = await PipelineSerializer.LoadAsync(fullPath, cancellationToken);
         Console.WriteLine($"Pipeline '{graph.Name}' loaded ({graph.Nodes.Count} nodes, {graph.Connections.Count} connections)");
 
         // Override input path if provided
@@ -163,7 +165,7 @@ static async Task<int> RunPipelineAsync(
         });
 
         // Run the pipeline
-        ExecutionResult result = await runner.RunAsync(graph, dryRun, progress, cts.Token);
+        ExecutionResult result = await runner.RunAsync(graph, dryRun, progress, cancellationToken);
 
         // Print summary
         Console.WriteLine();
