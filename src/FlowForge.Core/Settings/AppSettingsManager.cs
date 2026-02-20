@@ -93,7 +93,9 @@ public sealed class AppSettingsManager
         }
         finally
         {
-            try { if (File.Exists(tmpPath)) File.Delete(tmpPath); } catch { /* best-effort */ }
+            try
+            { if (File.Exists(tmpPath)) File.Delete(tmpPath); }
+            catch { /* best-effort */ }
         }
     }
 

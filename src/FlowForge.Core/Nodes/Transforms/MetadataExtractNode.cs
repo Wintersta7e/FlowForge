@@ -81,7 +81,8 @@ public class MetadataExtractNode : ITransformNode
 
     private static string? ExtractFileMetadata(string key, string filePath)
     {
-        if (!File.Exists(filePath)) return null;
+        if (!File.Exists(filePath))
+            return null;
 
         var fileInfo = new FileInfo(filePath);
         string fieldName = key["File:".Length..];
@@ -97,7 +98,8 @@ public class MetadataExtractNode : ITransformNode
 
     private static string? ExtractExifMetadata(string key, string filePath)
     {
-        if (!File.Exists(filePath)) return null;
+        if (!File.Exists(filePath))
+            return null;
 
         try
         {

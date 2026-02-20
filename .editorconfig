@@ -159,6 +159,14 @@ dotnet_naming_symbols.public_symbols.applicable_kinds = property, method, event,
 dotnet_naming_symbols.public_symbols.applicable_accessibilities = public, internal, protected, protected_internal
 dotnet_naming_style.pascal_case_style.capitalization = pascal_case
 
+# Private static readonly fields: PascalCase (no underscore prefix)
+dotnet_naming_rule.private_static_readonly_pascal.severity = warning
+dotnet_naming_rule.private_static_readonly_pascal.symbols = private_static_readonly_symbols
+dotnet_naming_rule.private_static_readonly_pascal.style = pascal_case_style
+dotnet_naming_symbols.private_static_readonly_symbols.applicable_kinds = field
+dotnet_naming_symbols.private_static_readonly_symbols.applicable_accessibilities = private, private_protected
+dotnet_naming_symbols.private_static_readonly_symbols.required_modifiers = static, readonly
+
 # Private fields: _camelCase
 dotnet_naming_rule.private_fields_underscore_camel.severity = warning
 dotnet_naming_rule.private_fields_underscore_camel.symbols = private_field_symbols
