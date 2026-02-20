@@ -21,12 +21,12 @@
                               Command="{Binding SelectTabCommand}"
                               CommandParameter="0">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="Output" VerticalAlignment="Center" FontSize="12" />
+                        <TextBlock Text="Output" VerticalAlignment="Center" FontSize="14" />
                         <Border Background="#1A3FB950" CornerRadius="8" Padding="6,1"
                                 IsVisible="{Binding !!TotalFiles}">
                             <TextBlock Text="{Binding Succeeded}"
                                        Foreground="{DynamicResource MidnightSuccess}"
-                                       FontSize="11" FontWeight="SemiBold" />
+                                       FontSize="15" FontWeight="SemiBold" />
                         </Border>
                     </StackPanel>
                 </ToggleButton>
@@ -38,12 +38,12 @@
                               Command="{Binding SelectTabCommand}"
                               CommandParameter="1">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="Errors" VerticalAlignment="Center" FontSize="12" />
+                        <TextBlock Text="Errors" VerticalAlignment="Center" FontSize="14" />
                         <Border Background="#1AF85149" CornerRadius="8" Padding="6,1"
                                 IsVisible="{Binding !!Failed}">
                             <TextBlock Text="{Binding Failed}"
                                        Foreground="{DynamicResource MidnightError}"
-                                       FontSize="11" FontWeight="SemiBold" />
+                                       FontSize="15" FontWeight="SemiBold" />
                         </Border>
                     </StackPanel>
                 </ToggleButton>
@@ -55,12 +55,12 @@
                               Command="{Binding SelectTabCommand}"
                               CommandParameter="2">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="Warnings" VerticalAlignment="Center" FontSize="12" />
+                        <TextBlock Text="Warnings" VerticalAlignment="Center" FontSize="14" />
                         <Border Background="#1AD29922" CornerRadius="8" Padding="6,1"
                                 IsVisible="{Binding !!Skipped}">
                             <TextBlock Text="{Binding Skipped}"
                                        Foreground="{DynamicResource MidnightWarning}"
-                                       FontSize="11" FontWeight="SemiBold" />
+                                       FontSize="15" FontWeight="SemiBold" />
                         </Border>
                     </StackPanel>
                 </ToggleButton>
@@ -72,7 +72,7 @@
                            VerticalAlignment="Center"
                            HorizontalAlignment="Right"
                            Foreground="{DynamicResource MidnightTextSecondary}"
-                           FontSize="11"
+                           FontSize="15"
                            Margin="8,0,12,0"
                            IsVisible="{Binding !IsRunning}" />
             </Grid>
@@ -89,16 +89,16 @@
                     <TextBlock DockPanel.Dock="Right"
                                Text="{Binding ProgressText}"
                                Foreground="{DynamicResource MidnightTextSecondary}"
-                               FontSize="12" VerticalAlignment="Center"
+                               FontSize="14" VerticalAlignment="Center"
                                Margin="8,0,0,0" />
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <TextBlock Text="Processing"
                                    Foreground="{DynamicResource MidnightAccent}"
-                                   FontWeight="SemiBold" FontSize="12" />
+                                   FontWeight="SemiBold" FontSize="14" />
                         <TextBlock Text="{Binding CurrentFile}"
                                    TextTrimming="CharacterEllipsis"
                                    Foreground="{DynamicResource MidnightTextSecondary}"
-                                   FontSize="12" />
+                                   FontSize="14" />
                     </StackPanel>
                 </DockPanel>
                 <ProgressBar Grid.Row="1"
@@ -118,23 +118,23 @@
                                 <Border Padding="12,3"
                                         BorderBrush="{DynamicResource MidnightBorder}"
                                         BorderThickness="0,0,0,1">
-                                    <Grid ColumnDefinitions="50,Auto,*">
+                                    <Grid ColumnDefinitions="55,Auto,*">
                                         <Panel Grid.Column="0">
                                             <TextBlock Text="{Binding StatusText}"
                                                        FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
-                                                       FontWeight="Bold" FontSize="11"
+                                                       FontWeight="Bold" FontSize="15"
                                                        Foreground="{DynamicResource MidnightSuccess}"
                                                        VerticalAlignment="Center"
                                                        IsVisible="{Binding IsSuccess}" />
                                             <TextBlock Text="{Binding StatusText}"
                                                        FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
-                                                       FontWeight="Bold" FontSize="11"
+                                                       FontWeight="Bold" FontSize="15"
                                                        Foreground="{DynamicResource MidnightError}"
                                                        VerticalAlignment="Center"
                                                        IsVisible="{Binding IsError}" />
                                             <TextBlock Text="{Binding StatusText}"
                                                        FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
-                                                       FontWeight="Bold" FontSize="11"
+                                                       FontWeight="Bold" FontSize="15"
                                                        Foreground="{DynamicResource MidnightWarning}"
                                                        VerticalAlignment="Center"
                                                        IsVisible="{Binding IsWarning}" />
@@ -144,13 +144,13 @@
                                                    FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
                                                    VerticalAlignment="Center"
                                                    Foreground="{DynamicResource MidnightText}"
-                                                   FontSize="11"
+                                                   FontSize="15"
                                                    Margin="0,0,8,0" />
                                         <TextBlock Grid.Column="2"
                                                    Text="{Binding ErrorMessage}"
                                                    FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
                                                    Foreground="{DynamicResource MidnightError}"
-                                                   FontSize="11"
+                                                   FontSize="15"
                                                    VerticalAlignment="Center"
                                                    TextTrimming="CharacterEllipsis"
                                                    IsVisible="{Binding IsError}" />
@@ -168,7 +168,7 @@
                            HorizontalAlignment="Center"
                            VerticalAlignment="Center"
                            Foreground="{DynamicResource MidnightTextMuted}"
-                           FontSize="13"
+                           FontSize="15"
                            IsVisible="{Binding !ErrorEntries.Count}" />
 
                 <ScrollViewer IsVisible="{Binding !!ErrorEntries.Count}">
@@ -178,11 +178,11 @@
                                 <Border Padding="12,3"
                                         BorderBrush="{DynamicResource MidnightBorder}"
                                         BorderThickness="0,0,0,1">
-                                    <Grid ColumnDefinitions="50,Auto,*">
+                                    <Grid ColumnDefinitions="55,Auto,*">
                                         <TextBlock Grid.Column="0"
                                                    Text="{Binding StatusText}"
                                                    FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
-                                                   FontWeight="Bold" FontSize="11"
+                                                   FontWeight="Bold" FontSize="15"
                                                    Foreground="{DynamicResource MidnightError}"
                                                    VerticalAlignment="Center" />
                                         <TextBlock Grid.Column="1"
@@ -190,13 +190,13 @@
                                                    FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
                                                    VerticalAlignment="Center"
                                                    Foreground="{DynamicResource MidnightText}"
-                                                   FontSize="11"
+                                                   FontSize="15"
                                                    Margin="0,0,8,0" />
                                         <TextBlock Grid.Column="2"
                                                    Text="{Binding ErrorMessage}"
                                                    FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
                                                    Foreground="{DynamicResource MidnightError}"
-                                                   FontSize="11"
+                                                   FontSize="15"
                                                    VerticalAlignment="Center"
                                                    TextTrimming="CharacterEllipsis" />
                                     </Grid>
@@ -213,7 +213,7 @@
                            HorizontalAlignment="Center"
                            VerticalAlignment="Center"
                            Foreground="{DynamicResource MidnightTextMuted}"
-                           FontSize="13"
+                           FontSize="15"
                            IsVisible="{Binding !WarningEntries.Count}" />
 
                 <ScrollViewer IsVisible="{Binding !!WarningEntries.Count}">
@@ -223,11 +223,11 @@
                                 <Border Padding="12,3"
                                         BorderBrush="{DynamicResource MidnightBorder}"
                                         BorderThickness="0,0,0,1">
-                                    <Grid ColumnDefinitions="50,Auto,*">
+                                    <Grid ColumnDefinitions="55,Auto,*">
                                         <TextBlock Grid.Column="0"
                                                    Text="{Binding StatusText}"
                                                    FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
-                                                   FontWeight="Bold" FontSize="11"
+                                                   FontWeight="Bold" FontSize="15"
                                                    Foreground="{DynamicResource MidnightWarning}"
                                                    VerticalAlignment="Center" />
                                         <TextBlock Grid.Column="1"
@@ -235,13 +235,13 @@
                                                    FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
                                                    VerticalAlignment="Center"
                                                    Foreground="{DynamicResource MidnightText}"
-                                                   FontSize="11"
+                                                   FontSize="15"
                                                    Margin="0,0,8,0" />
                                         <TextBlock Grid.Column="2"
                                                    Text="{Binding ErrorMessage}"
                                                    FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
                                                    Foreground="{DynamicResource MidnightWarning}"
-                                                   FontSize="11"
+                                                   FontSize="15"
                                                    VerticalAlignment="Center"
                                                    TextTrimming="CharacterEllipsis"
                                                    IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
