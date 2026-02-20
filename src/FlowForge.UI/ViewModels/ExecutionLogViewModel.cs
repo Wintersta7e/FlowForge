@@ -40,9 +40,14 @@ public partial class ExecutionLogViewModel : ViewModelBase
     public bool IsOutputTabSelected => SelectedTabIndex == 0;
     public bool IsErrorsTabSelected => SelectedTabIndex == 1;
     public bool IsWarningsTabSelected => SelectedTabIndex == 2;
-    public string ProgressText => TotalFiles > 0
-        ? $"{Succeeded + Failed + Skipped} / {TotalFiles}"
-        : string.Empty;
+    public string ProgressText
+    {
+        get
+        {
+            int processed = Succeeded + Failed + Skipped;
+            return processed == 1 ? "1 file" : $"{processed} files";
+        }
+    }
 
     partial void OnSelectedTabIndexChanged(int value)
     {
