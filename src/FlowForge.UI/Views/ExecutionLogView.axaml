@@ -65,22 +65,46 @@
                     </StackPanel>
                 </ToggleButton>
 
-                <!-- Progress bar (in tab strip, right-aligned) -->
-                <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="8"
-                            VerticalAlignment="Center" Margin="0,0,12,0">
-                    <ProgressBar Value="{Binding Progress}"
-                                 Minimum="0" Maximum="100"
-                                 Width="120" Height="6"
-                                 VerticalAlignment="Center"
-                                 IsVisible="{Binding IsRunning}" />
+                <!-- Summary text (in tab strip, right-aligned, when not running) -->
+                <TextBlock Grid.Column="4"
+                           Text="{Binding Summary}"
+                           TextTrimming="CharacterEllipsis"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Right"
+                           Foreground="{DynamicResource MidnightTextSecondary}"
+                           FontSize="11"
+                           Margin="8,0,12,0"
+                           IsVisible="{Binding !IsRunning}" />
+            </Grid>
+        </Border>
+
+        <!-- Full-width progress bar (docked below tab strip, visible when running) -->
+        <Border DockPanel.Dock="Top"
+                Padding="12,8"
+                BorderBrush="{DynamicResource MidnightBorder}"
+                BorderThickness="0,0,0,1"
+                IsVisible="{Binding IsRunning}">
+            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8"
+                            VerticalAlignment="Center">
+                    <TextBlock Text="Processing..."
+                               Foreground="{DynamicResource MidnightAccent}"
+                               FontWeight="SemiBold" FontSize="12" />
                     <TextBlock Text="{Binding CurrentFile}"
-                               MaxWidth="200"
+                               MaxWidth="400"
                                TextTrimming="CharacterEllipsis"
-                               VerticalAlignment="Center"
                                Foreground="{DynamicResource MidnightTextSecondary}"
-                               FontSize="11"
-                               IsVisible="{Binding IsRunning}" />
+                               FontSize="12" />
                 </StackPanel>
+                <TextBlock Grid.Column="1"
+                           Text="{Binding ProgressText}"
+                           Foreground="{DynamicResource MidnightTextSecondary}"
+                           FontSize="12" VerticalAlignment="Center" />
+                <ProgressBar Grid.Row="1" Grid.ColumnSpan="2"
+                             Value="{Binding Progress}"
+                             Minimum="0" Maximum="100"
+                             Height="4" Margin="0,6,0,0"
+                             VerticalAlignment="Center" />
             </Grid>
         </Border>
 
@@ -88,17 +112,6 @@
         <Panel IsVisible="{Binding IsPanelExpanded}">
             <!-- Output tab content -->
             <DockPanel IsVisible="{Binding IsOutputTabSelected}">
-                <!-- Summary bar -->
-                <Border DockPanel.Dock="Top" Padding="12,6"
-                        BorderBrush="{DynamicResource MidnightBorder}"
-                        BorderThickness="0,0,0,1"
-                        IsVisible="{Binding !IsRunning}">
-                    <TextBlock Text="{Binding Summary}"
-                               Foreground="{DynamicResource MidnightTextSecondary}"
-                               FontSize="12"
-                               TextTrimming="CharacterEllipsis" />
-                </Border>
-
                 <!-- All entries -->
                 <ScrollViewer>
                     <ItemsControl ItemsSource="{Binding Entries}">
@@ -163,16 +176,14 @@
             </DockPanel>
 
             <!-- Errors tab content -->
-            <DockPanel IsVisible="{Binding IsErrorsTabSelected}">
-                <!-- Empty state -->
-                <Panel IsVisible="{Binding !ErrorEntries.Count}">
-                    <TextBlock Text="No errors"
-                               HorizontalAlignment="Center"
-                               VerticalAlignment="Center"
-                               Margin="0,24"
-                               Foreground="{DynamicResource MidnightTextMuted}"
-                               FontSize="13" />
-                </Panel>
+            <Panel IsVisible="{Binding IsErrorsTabSelected}">
+                <!-- Empty state (centered in full panel) -->
+                <TextBlock Text="No errors"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource MidnightTextMuted}"
+                           FontSize="13"
+                           IsVisible="{Binding !ErrorEntries.Count}" />
 
                 <!-- Error entries -->
                 <ScrollViewer IsVisible="{Binding !!ErrorEntries.Count}">
@@ -218,19 +229,17 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </ScrollViewer>
-            </DockPanel>
+            </Panel>
 
             <!-- Warnings tab content -->
-            <DockPanel IsVisible="{Binding IsWarningsTabSelected}">
-                <!-- Empty state -->
-                <Panel IsVisible="{Binding !WarningEntries.Count}">
-                    <TextBlock Text="No warnings"
-                               HorizontalAlignment="Center"
-                               VerticalAlignment="Center"
-                               Margin="0,24"
-                               Foreground="{DynamicResource MidnightTextMuted}"
-                               FontSize="13" />
-                </Panel>
+            <Panel IsVisible="{Binding IsWarningsTabSelected}">
+                <!-- Empty state (centered in full panel) -->
+                <TextBlock Text="No warnings"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource MidnightTextMuted}"
+                           FontSize="13"
+                           IsVisible="{Binding !WarningEntries.Count}" />
 
                 <!-- Warning entries -->
                 <ScrollViewer IsVisible="{Binding !!WarningEntries.Count}">
@@ -277,7 +286,7 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </ScrollViewer>
-            </DockPanel>
+            </Panel>
         </Panel>
     </DockPanel>
 </UserControl>
