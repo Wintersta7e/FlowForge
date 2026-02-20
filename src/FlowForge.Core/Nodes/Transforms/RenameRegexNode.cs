@@ -9,7 +9,7 @@ public class RenameRegexNode : ITransformNode
 {
     public string TypeKey => "RenameRegex";
 
-    public static IReadOnlyList<ConfigField> ConfigSchema => new[]
+    public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]
     {
         new ConfigField("pattern", ConfigFieldType.String, Label: "Regex Pattern", Required: true, Placeholder: @"\d+"),
         new ConfigField("replacement", ConfigFieldType.String, Label: "Replacement", Required: true),

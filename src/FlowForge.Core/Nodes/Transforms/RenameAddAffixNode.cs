@@ -8,7 +8,7 @@ public class RenameAddAffixNode : ITransformNode
 {
     public string TypeKey => "RenameAddAffix";
 
-    public static IReadOnlyList<ConfigField> ConfigSchema => new[]
+    public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]
     {
         new ConfigField("prefix", ConfigFieldType.String, Label: "Prefix"),
         new ConfigField("suffix", ConfigFieldType.String, Label: "Suffix"),

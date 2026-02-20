@@ -13,7 +13,7 @@ public class ImageCompressNode : ITransformNode
 {
     public string TypeKey => "ImageCompress";
 
-    public static IReadOnlyList<ConfigField> ConfigSchema => new[]
+    public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]
     {
         new ConfigField("quality", ConfigFieldType.Int, Label: "Quality (1-100)", Required: true, Placeholder: "1-100"),
         new ConfigField("format", ConfigFieldType.Select, Label: "Output Format",

@@ -8,7 +8,7 @@ public class FolderOutputNode : IOutputNode
 {
     public string TypeKey => "FolderOutput";
 
-    public static IReadOnlyList<ConfigField> ConfigSchema => new[]
+    public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]
     {
         new ConfigField("path", ConfigFieldType.FolderPath, Label: "Output Folder", Required: true),
         new ConfigField("mode", ConfigFieldType.Select, Label: "Mode", DefaultValue: "copy",

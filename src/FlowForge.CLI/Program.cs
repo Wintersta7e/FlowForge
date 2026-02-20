@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.Globalization;
 using System.Text.Json;
 using FlowForge.Core.Execution;
 using FlowForge.Core.Models;
@@ -60,7 +61,8 @@ static async Task<int> RunPipelineAsync(
     Log.Logger = new LoggerConfiguration()
         .MinimumLevel.Is(minimumLevel)
         .WriteTo.Console(
-            outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+            outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
+            formatProvider: CultureInfo.InvariantCulture)
         .CreateLogger();
 
     ILogger logger = Log.Logger;

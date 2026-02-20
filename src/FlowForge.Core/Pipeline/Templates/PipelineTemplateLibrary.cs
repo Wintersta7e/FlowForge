@@ -64,12 +64,14 @@ public static class PipelineTemplateLibrary
         return clone;
     }
 
+    private static readonly string[] PhotoImportMetadataKeys = ["EXIF:DateTaken"];
+
     private static PipelineTemplate PhotoImportByDate()
     {
         PipelineGraph graph = BuildLinearGraph(
             "Photo Import — Rename by EXIF Date",
             Node("FolderInput", new { path = "", recursive = true, filter = "*.jpg;*.jpeg;*.png;*.heic" }),
-            Node("MetadataExtract", new { keys = new[] { "EXIF:DateTaken" } }),
+            Node("MetadataExtract", new { keys = PhotoImportMetadataKeys }),
             Node("RenamePattern", new { pattern = "{meta:EXIF:DateTaken}_{name}{ext}" }),
             Node("FolderOutput", new { path = "", mode = "copy" })
         );

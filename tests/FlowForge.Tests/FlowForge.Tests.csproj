@@ -5,7 +5,8 @@
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <!-- CA1707: Test method names use underscores by convention -->
-    <NoWarn>$(NoWarn);CA1707</NoWarn>
+    <!-- CA1861: Test data arrays don't need static readonly optimization -->
+    <NoWarn>$(NoWarn);CA1707;CA1861</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

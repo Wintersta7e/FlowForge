@@ -15,7 +15,7 @@ public class ImageConvertNode : ITransformNode
 {
     public string TypeKey => "ImageConvert";
 
-    public static IReadOnlyList<ConfigField> ConfigSchema => new[]
+    public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]
     {
         new ConfigField("format", ConfigFieldType.Select, Label: "Target Format", Required: true,
             Options: new[] { "jpg", "jpeg", "png", "webp", "bmp", "tiff" }),

@@ -14,7 +14,7 @@ public class SortNode : ITransformNode, IBufferedTransformNode
 {
     public string TypeKey => "Sort";
 
-    public static IReadOnlyList<ConfigField> ConfigSchema => new[]
+    public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]
     {
         new ConfigField("field", ConfigFieldType.Select, Label: "Sort Field", DefaultValue: "filename",
             Options: new[] { "filename", "extension", "size", "createdAt", "modifiedAt" }),

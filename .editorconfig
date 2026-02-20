@@ -207,6 +207,9 @@ dotnet_diagnostic.CA1720.severity = suggestion
 # CA1852: Type can be sealed — not applicable to top-level statement Program classes
 dotnet_diagnostic.CA1852.severity = none
 
+# CA1859: Use concrete type — suppressed, interface usage is intentional for DI/MVVM
+dotnet_diagnostic.CA1859.severity = suggestion
+
 # CA1001: Type owns disposable fields — suppressed for ViewModels (MVVM lifecycle)
 dotnet_diagnostic.CA1001.severity = none
 

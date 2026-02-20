@@ -140,7 +140,7 @@ public class PipelineRunner
             {
                 job.Status = FileJobStatus.Processing;
                 IEnumerable<FileJob> transformed = await transform.TransformAsync(job, dryRun, ct);
-                IReadOnlyList<FileJob> transformedList = transformed.ToList();
+                List<FileJob> transformedList = transformed.ToList();
 
                 if (transformedList.Count == 0)
                 {
