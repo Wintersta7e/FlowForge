@@ -6,6 +6,7 @@ using Avalonia.Layout;
 using Avalonia.Platform.Storage;
 using FlowForge.Core.Nodes.Base;
 using FlowForge.UI.ViewModels;
+using Serilog;
 
 namespace FlowForge.UI.Views;
 
@@ -142,9 +143,9 @@ public class ConfigFieldTemplateSelector : IDataTemplate
                     field.Value = result[0].Path.LocalPath;
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Prevent async void from crashing the app
+                Log.Error(ex, "ConfigFieldTemplateSelector: file picker failed for '{Label}'", field.Label);
             }
         };
 
@@ -191,9 +192,9 @@ public class ConfigFieldTemplateSelector : IDataTemplate
                     field.Value = result[0].Path.LocalPath;
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Prevent async void from crashing the app
+                Log.Error(ex, "ConfigFieldTemplateSelector: folder picker failed for '{Label}'", field.Label);
             }
         };
 

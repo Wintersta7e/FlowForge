@@ -54,13 +54,12 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             if (args.PropertyName == nameof(EditorViewModel.SelectedNode))
             {
-                Properties.LoadNode(Editor.SelectedNode, _registry);
+                Properties.LoadNode(Editor.SelectedNode, _registry, () => Editor.RaiseGraphChanged());
             }
         };
 
-        // Track canvas changes for IsDirty
-        Editor.Nodes.CollectionChanged += (_, _) => IsDirty = true;
-        Editor.Connections.CollectionChanged += (_, _) => IsDirty = true;
+        // Track all graph changes (structural + config edits) for IsDirty
+        Editor.GraphChanged += (_, _) => IsDirty = true;
     }
 
     [RelayCommand]

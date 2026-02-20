@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -8,6 +9,7 @@ namespace FlowForge.UI.ViewModels;
 public partial class ConfigFieldViewModel : ViewModelBase
 {
     private readonly Dictionary<string, JsonElement> _configDictionary;
+    private readonly Action? _onValueChanged;
 
     [ObservableProperty]
     private string? _value;
@@ -22,9 +24,11 @@ public partial class ConfigFieldViewModel : ViewModelBase
 
     public ConfigFieldViewModel(
         ConfigField field,
-        Dictionary<string, JsonElement> configDictionary)
+        Dictionary<string, JsonElement> configDictionary,
+        Action? onValueChanged = null)
     {
         _configDictionary = configDictionary;
+        _onValueChanged = onValueChanged;
         Key = field.Key;
         Label = field.Label;
         FieldType = field.Type;
@@ -51,6 +55,13 @@ public partial class ConfigFieldViewModel : ViewModelBase
         // Write back to config dictionary
         if (value is not null)
         {
+            // For Int fields, only update config if the value is a valid integer;
+            // skip update for partial/invalid input to keep the last valid value
+            if (FieldType == ConfigFieldType.Int && !int.TryParse(value, out _))
+            {
+                return;
+            }
+
             _configDictionary[Key] = FieldType switch
             {
                 ConfigFieldType.Bool when bool.TryParse(value, out bool b) =>
@@ -64,5 +75,7 @@ public partial class ConfigFieldViewModel : ViewModelBase
         {
             _configDictionary.Remove(Key);
         }
+
+        _onValueChanged?.Invoke();
     }
 }

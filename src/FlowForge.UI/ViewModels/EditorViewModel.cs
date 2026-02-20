@@ -8,6 +8,7 @@ using Avalonia;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FlowForge.Core.Execution;
 using FlowForge.Core.Pipeline;
+using Serilog;
 
 namespace FlowForge.UI.ViewModels;
 
@@ -17,6 +18,11 @@ public partial class EditorViewModel : ViewModelBase
     public bool HasNodes => Nodes.Count > 0;
     public ObservableCollection<PipelineConnectionViewModel> Connections { get; } = new();
     public PipelinePendingConnectionViewModel PendingConnection { get; }
+
+    /// <summary>
+    /// Raised when any graph content changes (node config edits, structural changes).
+    /// </summary>
+    public event EventHandler? GraphChanged;
 
     private PipelineNodeViewModel? _selectedNode;
     public PipelineNodeViewModel? SelectedNode
@@ -30,7 +36,11 @@ public partial class EditorViewModel : ViewModelBase
         PendingConnection = new PipelinePendingConnectionViewModel(this);
         Nodes.CollectionChanged += OnNodesCollectionChanged;
         Nodes.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasNodes));
+        Nodes.CollectionChanged += (_, _) => GraphChanged?.Invoke(this, EventArgs.Empty);
+        Connections.CollectionChanged += (_, _) => GraphChanged?.Invoke(this, EventArgs.Empty);
     }
+
+    public void RaiseGraphChanged() => GraphChanged?.Invoke(this, EventArgs.Empty);
 
     private void UnsubscribeAllNodes()
     {
@@ -60,6 +70,7 @@ public partial class EditorViewModel : ViewModelBase
 
         if (e.Action == NotifyCollectionChangedAction.Reset)
         {
+            UnsubscribeAllNodes();
             SelectedNode = null;
         }
     }
@@ -110,6 +121,8 @@ public partial class EditorViewModel : ViewModelBase
             if (!nodeMap.TryGetValue(conn.FromNode, out PipelineNodeViewModel? fromNode) ||
                 !nodeMap.TryGetValue(conn.ToNode, out PipelineNodeViewModel? toNode))
             {
+                Log.Warning("LoadGraph: dropping connection — node not found (From={FromNode}, To={ToNode})",
+                    conn.FromNode, conn.ToNode);
                 droppedConnections++;
                 continue;
             }
@@ -119,6 +132,8 @@ public partial class EditorViewModel : ViewModelBase
 
             if (sourceConnector is null || targetConnector is null)
             {
+                Log.Warning("LoadGraph: dropping connection — missing connector (From={FromType}, To={ToType})",
+                    fromNode.TypeKey, toNode.TypeKey);
                 droppedConnections++;
                 continue;
             }

@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using FlowForge.UI.ViewModels;
+using Serilog;
 
 namespace FlowForge.UI.Views;
 
@@ -26,6 +27,10 @@ public partial class NodeLibraryView : UserControl
             if (topLevel?.DataContext is MainWindowViewModel mainVm)
             {
                 mainVm.Editor.AddNode(item.TypeKey, new Point(300, 200), mainVm.Registry);
+            }
+            else
+            {
+                Log.Warning("NodeLibraryView: could not find MainWindowViewModel via visual tree");
             }
         }
         e.Handled = true;
