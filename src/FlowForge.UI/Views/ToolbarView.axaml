@@ -8,48 +8,88 @@
              x:Class="FlowForge.UI.Views.ToolbarView"
              x:DataType="vm:MainWindowViewModel">
 
-    <Border BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+    <Border Background="{DynamicResource MidnightPanel}"
+            BorderBrush="{DynamicResource MidnightBorder}"
             BorderThickness="0,0,0,1"
-            Padding="4">
-        <StackPanel Orientation="Horizontal" Spacing="4">
-            <!-- File operations -->
-            <Button Content="New"
-                    Command="{Binding NewCommand}"
-                    ToolTip.Tip="New Pipeline (Ctrl+N)"
-                    Padding="8,4" />
-            <Button Content="Open"
-                    Command="{Binding OpenCommand}"
-                    ToolTip.Tip="Open Pipeline (Ctrl+O)"
-                    Padding="8,4" />
-            <Button Content="Save"
-                    Command="{Binding SaveCommand}"
-                    ToolTip.Tip="Save Pipeline (Ctrl+S)"
-                    Padding="8,4" />
-            <Button Content="Save As"
-                    Command="{Binding SaveAsCommand}"
-                    ToolTip.Tip="Save Pipeline As (Ctrl+Shift+S)"
-                    Padding="8,4" />
+            Padding="8,4">
+        <DockPanel>
+            <TextBlock DockPanel.Dock="Right"
+                       Text="{Binding Title}"
+                       Foreground="{DynamicResource MidnightTextSecondary}"
+                       VerticalAlignment="Center"
+                       FontSize="12"
+                       Margin="8,0" />
 
-            <!-- Separator -->
-            <Border Width="1"
-                    Background="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
-                    Margin="4,2" />
+            <StackPanel Orientation="Horizontal" Spacing="4">
+                <Button Classes="toolbarIcon"
+                        Command="{Binding NewCommand}"
+                        ToolTip.Tip="New Pipeline (Ctrl+N)">
+                    <PathIcon Data="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"
+                              Foreground="{DynamicResource MidnightText}"
+                              Width="16" Height="16" />
+                </Button>
+                <Button Classes="toolbarIcon"
+                        Command="{Binding OpenCommand}"
+                        ToolTip.Tip="Open Pipeline (Ctrl+O)">
+                    <PathIcon Data="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z"
+                              Foreground="{DynamicResource MidnightText}"
+                              Width="16" Height="16" />
+                </Button>
+                <Button Classes="toolbarIcon"
+                        Command="{Binding SaveCommand}"
+                        ToolTip.Tip="Save (Ctrl+S)">
+                    <PathIcon Data="M15,9H5V5H15M12,19A3,3 0 0,1 9,16A3,3 0 0,1 12,13A3,3 0 0,1 15,16A3,3 0 0,1 12,19M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V7L17,3Z"
+                              Foreground="{DynamicResource MidnightText}"
+                              Width="16" Height="16" />
+                </Button>
+                <Button Classes="toolbarIcon"
+                        Command="{Binding SaveAsCommand}"
+                        ToolTip.Tip="Save As (Ctrl+Shift+S)">
+                    <PathIcon Data="M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V7L17,3M15,9H5V5H15M12,19A3,3 0 0,1 9,16A3,3 0 0,1 12,13A3,3 0 0,1 15,16A3,3 0 0,1 12,19Z"
+                              Foreground="{DynamicResource MidnightTextSecondary}"
+                              Width="16" Height="16" />
+                </Button>
 
-            <!-- Execution operations -->
-            <Button Content="Run"
-                    Command="{Binding RunCommand}"
-                    ToolTip.Tip="Run Pipeline"
-                    Padding="8,4"
-                    Classes="accent" />
-            <Button Content="Dry Run"
-                    Command="{Binding DryRunCommand}"
-                    ToolTip.Tip="Dry Run Pipeline (no file I/O)"
-                    Padding="8,4" />
-            <Button Content="Cancel"
-                    Command="{Binding CancelCommand}"
-                    IsEnabled="{Binding ExecutionLog.IsRunning}"
-                    ToolTip.Tip="Cancel Execution"
-                    Padding="8,4" />
-        </StackPanel>
+                <Border Width="1"
+                        Height="24"
+                        Background="{DynamicResource MidnightBorder}"
+                        VerticalAlignment="Center"
+                        Margin="4,0" />
+
+                <Button Command="{Binding RunCommand}"
+                        Classes="accent"
+                        ToolTip.Tip="Run Pipeline"
+                        Padding="12,4">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Data="M8,5.14V19.14L19,12.14L8,5.14Z"
+                                  Foreground="#0D1117"
+                                  Width="12" Height="12" />
+                        <TextBlock Text="Run" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button Command="{Binding DryRunCommand}"
+                        Classes="preview"
+                        ToolTip.Tip="Preview — simulate run without changing any files"
+                        Padding="12,4">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Data="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z"
+                                  Foreground="#0D1117"
+                                  Width="12" Height="12" />
+                        <TextBlock Text="Preview" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button Command="{Binding CancelCommand}"
+                        IsVisible="{Binding ExecutionLog.IsRunning}"
+                        ToolTip.Tip="Stop Execution"
+                        Padding="12,4">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Data="M18,18H6V6H18V18Z"
+                                  Foreground="{DynamicResource MidnightError}"
+                                  Width="12" Height="12" />
+                        <TextBlock Text="Stop" Foreground="{DynamicResource MidnightError}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </DockPanel>
     </Border>
 </UserControl>

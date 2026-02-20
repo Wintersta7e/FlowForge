@@ -8,60 +8,67 @@
              x:Class="FlowForge.UI.Views.ExecutionLogView"
              x:DataType="vm:ExecutionLogViewModel">
 
-    <DockPanel>
-        <!-- Summary bar -->
+    <DockPanel Background="{DynamicResource MidnightPanel}">
         <Border DockPanel.Dock="Top"
-                Padding="8,4"
-                BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                Padding="12,8"
+                BorderBrush="{DynamicResource MidnightBorder}"
                 BorderThickness="0,1,0,0">
             <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto">
-                <!-- Status counts -->
-                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                    <TextBlock>
-                        <Run Text="OK: " />
-                        <Run Text="{Binding Succeeded}" Foreground="Green" />
-                    </TextBlock>
-                    <TextBlock>
-                        <Run Text="Fail: " />
-                        <Run Text="{Binding Failed}" Foreground="Red" />
-                    </TextBlock>
-                    <TextBlock>
-                        <Run Text="Skip: " />
-                        <Run Text="{Binding Skipped}" Foreground="Orange" />
-                    </TextBlock>
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Border Background="#1A3FB950" CornerRadius="10" Padding="8,2">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="&#x2713;" Foreground="{DynamicResource MidnightSuccess}"
+                                       FontWeight="Bold" FontSize="11" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Succeeded}" Foreground="{DynamicResource MidnightSuccess}"
+                                       FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+                    <Border Background="#1AF85149" CornerRadius="10" Padding="8,2">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="&#x2717;" Foreground="{DynamicResource MidnightError}"
+                                       FontWeight="Bold" FontSize="11" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Failed}" Foreground="{DynamicResource MidnightError}"
+                                       FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+                    <Border Background="#1AD29922" CornerRadius="10" Padding="8,2">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="&#x2298;" Foreground="{DynamicResource MidnightWarning}"
+                                       FontWeight="Bold" FontSize="11" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Skipped}" Foreground="{DynamicResource MidnightWarning}"
+                                       FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
 
-                <!-- Progress bar -->
                 <ProgressBar Grid.Column="1"
                              Value="{Binding Progress}"
-                             Minimum="0"
-                             Maximum="100"
-                             Width="120"
-                             Height="12"
+                             Minimum="0" Maximum="100"
+                             Width="120" Height="8"
                              Margin="12,0"
                              VerticalAlignment="Center"
                              IsVisible="{Binding IsRunning}" />
 
-                <!-- Current file -->
                 <TextBlock Grid.Column="2"
                            Text="{Binding CurrentFile}"
                            MaxWidth="300"
                            TextTrimming="CharacterEllipsis"
                            VerticalAlignment="Center"
-                           Opacity="0.7"
+                           Foreground="{DynamicResource MidnightTextSecondary}"
+                           FontSize="12"
                            IsVisible="{Binding IsRunning}" />
 
-                <!-- Summary -->
                 <TextBlock Grid.Column="4"
                            Text="{Binding Summary}"
                            TextTrimming="CharacterEllipsis"
                            VerticalAlignment="Center"
+                           Foreground="{DynamicResource MidnightTextSecondary}"
+                           FontSize="12"
                            Margin="8,0"
                            IsVisible="{Binding !IsRunning}" />
             </Grid>
         </Border>
 
-        <!-- Log entries in expander -->
         <Expander Header="Log Entries"
                   Padding="0"
                   IsExpanded="False">
@@ -69,45 +76,34 @@
                 <ItemsControl ItemsSource="{Binding Entries}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:FileJobLogEntryViewModel">
-                            <Border Padding="8,2"
-                                    BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                            <Border Padding="12,4"
+                                    BorderBrush="{DynamicResource MidnightBorder}"
                                     BorderThickness="0,0,0,1">
-                                <Border.Styles>
-                                    <Style Selector="Border > Grid > TextBlock.statusBadge">
-                                        <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-                                    </Style>
-                                    <Style Selector="Border > Grid > TextBlock.statusError">
-                                        <Setter Property="Foreground" Value="Red" />
-                                    </Style>
-                                </Border.Styles>
                                 <Grid ColumnDefinitions="50,*,Auto">
-                                    <!-- Status badge: normal (hidden when error) -->
                                     <TextBlock Grid.Column="0"
-                                               Classes="statusBadge"
                                                Text="{Binding StatusText}"
                                                FontWeight="Bold"
+                                               FontSize="11"
+                                               Foreground="{DynamicResource MidnightSuccess}"
                                                VerticalAlignment="Center"
                                                IsVisible="{Binding !IsError}" />
-
-                                    <!-- Status badge: error (shown when error) -->
                                     <TextBlock Grid.Column="0"
-                                               Classes="statusError"
                                                Text="{Binding StatusText}"
                                                FontWeight="Bold"
+                                               FontSize="11"
+                                               Foreground="{DynamicResource MidnightError}"
                                                VerticalAlignment="Center"
                                                IsVisible="{Binding IsError}" />
-
-                                    <!-- File name -->
                                     <TextBlock Grid.Column="1"
                                                Text="{Binding FileName}"
                                                TextTrimming="CharacterEllipsis"
                                                VerticalAlignment="Center"
+                                               Foreground="{DynamicResource MidnightText}"
+                                               FontSize="12"
                                                Margin="8,0" />
-
-                                    <!-- Error message (if any) -->
                                     <TextBlock Grid.Column="2"
                                                Text="{Binding ErrorMessage}"
-                                               Foreground="Red"
+                                               Foreground="{DynamicResource MidnightError}"
                                                FontSize="11"
                                                VerticalAlignment="Center"
                                                MaxWidth="300"
