@@ -147,6 +147,33 @@ public class FolderInputNodeTests
     }
 
     [Fact]
+    public async Task CancellationToken_stops_enumeration()
+    {
+        using var dir = new TempDirectory();
+        dir.CreateFiles("a.txt", "b.txt", "c.txt", "d.txt", "e.txt");
+
+        var node = new FolderInputNode();
+        node.Configure(MakeConfig(new { path = dir.Path }));
+
+        using var cts = new CancellationTokenSource();
+        var jobs = new List<FileJob>();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        {
+            await foreach (FileJob job in node.ProduceAsync(cts.Token))
+            {
+                jobs.Add(job);
+                if (jobs.Count == 2)
+                {
+                    cts.Cancel();
+                }
+            }
+        });
+
+        jobs.Count.Should().BeLessThan(5, "cancellation should stop enumeration before all files are yielded");
+    }
+
+    [Fact]
     public async Task Files_returned_in_case_insensitive_sorted_order()
     {
         using var dir = new TempDirectory();

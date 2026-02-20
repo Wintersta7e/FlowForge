@@ -137,6 +137,28 @@ public class PipelineRunnerTests
     }
 
     [Fact]
+    public async Task Transform_failure_with_Failed_status_counted_in_results()
+    {
+        using var dir = new TempDirectory();
+        dir.CreateFiles("safe.txt");
+
+        // RenameRegex with path traversal replacement triggers Failed status
+        PipelineGraph pipeline = PipelineBuilder
+            .New("Failed Transform Test")
+            .AddSource("FolderInput", new { path = dir.Path, recursive = false, filter = "*.txt" })
+            .AddTransform("RenameRegex", new { pattern = @"safe\.txt", replacement = "../escaped.txt", scope = "fullpath" })
+            .AddOutput("FolderOutput", new { path = dir.OutputPath, mode = "copy" })
+            .Build();
+
+        PipelineRunner runner = CreateRunner();
+        ExecutionResult result = await runner.RunAsync(pipeline, dryRun: true);
+
+        result.Failed.Should().Be(1, "path traversal should be counted as a failed job");
+        result.Succeeded.Should().Be(0);
+        result.TotalFiles.Should().Be(1);
+    }
+
+    [Fact]
     public async Task Cancellation_stops_execution()
     {
         using var dir = new TempDirectory();

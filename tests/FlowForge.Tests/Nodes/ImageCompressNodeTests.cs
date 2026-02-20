@@ -154,7 +154,7 @@ public class ImageCompressNodeTests
     }
 
     [Fact]
-    public async Task Unsupported_format_throws_InvalidOperationException()
+    public async Task Unsupported_format_sets_failed_status()
     {
         using var dir = new TempDirectory();
         string filePath = Path.Combine(dir.Path, "unsupported.jpg");
@@ -169,9 +169,34 @@ public class ImageCompressNodeTests
             CurrentPath = filePath
         };
 
-        Func<Task> act = () => node.TransformAsync(job, dryRun: false);
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*does not support format*bmp*");
+        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+        result.Should().ContainSingle();
+        job.Status.Should().Be(FileJobStatus.Failed);
+        job.ErrorMessage.Should().Contain("unsupported format").And.Contain("bmp");
+    }
+
+    [Fact]
+    public async Task Unsupported_extension_without_format_override_sets_failed()
+    {
+        using var dir = new TempDirectory();
+        // Create a .bmp file (valid image but unsupported format for compression)
+        string filePath = Path.Combine(dir.Path, "image.bmp");
+        TestFileFactory.CreateTestBmp(filePath, width: 100, height: 100);
+
+        var node = new ImageCompressNode();
+        // No format override — relies on file extension, which is .bmp (unsupported)
+        node.Configure(MakeConfig(new { quality = 50 }));
+
+        var job = new FileJob
+        {
+            OriginalPath = filePath,
+            CurrentPath = filePath
+        };
+
+        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+        result.Should().ContainSingle();
+        job.Status.Should().Be(FileJobStatus.Failed);
+        job.ErrorMessage.Should().Contain("unsupported format").And.Contain("bmp");
     }
 
     [Fact]

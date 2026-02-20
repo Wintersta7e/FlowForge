@@ -154,6 +154,48 @@ public class FilterNodeTests
     }
 
     [Fact]
+    public async Task File_not_matching_extension_is_marked_skipped()
+    {
+        var node = new FilterNode();
+        node.Configure(MakeConfig(new[]
+        {
+            new { field = "extension", @operator = "equals", value = ".jpg" }
+        }));
+
+        var job = new FileJob
+        {
+            OriginalPath = Path.Combine("/tmp", "document.pdf"),
+            CurrentPath = Path.Combine("/tmp", "document.pdf")
+        };
+
+        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+        result.Should().BeEmpty();
+        job.Status.Should().Be(FileJobStatus.Skipped);
+    }
+
+    [Fact]
+    public async Task Regex_timeout_sets_failed_and_returns_empty()
+    {
+        var node = new FilterNode();
+        // Catastrophic backtracking pattern: (a+)+ against a long string of 'a's followed by '!'
+        node.Configure(MakeConfig(new[]
+        {
+            new { field = "filename", @operator = "matches", value = @"^(a+)+$" }
+        }));
+
+        var job = new FileJob
+        {
+            OriginalPath = Path.Combine("/tmp", new string('a', 50) + "!.txt"),
+            CurrentPath = Path.Combine("/tmp", new string('a', 50) + "!.txt")
+        };
+
+        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+        result.Should().BeEmpty();
+        job.Status.Should().Be(FileJobStatus.Failed);
+        job.ErrorMessage.Should().Contain("regex match timed out");
+    }
+
+    [Fact]
     public void Missing_conditions_throws()
     {
         var node = new FilterNode();

@@ -186,6 +186,25 @@ public class FolderOutputNodeTests
     }
 
     [Fact]
+    public async Task CancellationToken_cancelled_throws_OperationCanceledException()
+    {
+        using var dir = new TempDirectory();
+        dir.CreateFiles("photo.jpg");
+
+        string sourcePath = Path.Combine(dir.Path, "photo.jpg");
+        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
+
+        var node = new FolderOutputNode();
+        node.Configure(MakeConfig(new { path = dir.OutputPath, mode = "copy" }));
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        Func<Task> act = () => node.ConsumeAsync(job, dryRun: false, ct: cts.Token);
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
     public async Task NodeLog_updated_after_operation()
     {
         using var dir = new TempDirectory();

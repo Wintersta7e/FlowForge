@@ -141,6 +141,16 @@ public class RenamePatternNodeTests
     }
 
     [Fact]
+    public void Invalid_date_format_throws_NodeConfigurationException()
+    {
+        var node = new RenamePatternNode();
+
+        Action act = () => node.Configure(MakeConfig("{date:J}_{name}{ext}"));
+        act.Should().Throw<NodeConfigurationException>()
+            .WithMessage("*invalid date format*");
+    }
+
+    [Fact]
     public void Missing_pattern_throws_NodeConfigurationException()
     {
         var node = new RenamePatternNode();
