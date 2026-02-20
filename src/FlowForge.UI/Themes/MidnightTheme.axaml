@@ -169,4 +169,25 @@
         <Setter Property="Foreground" Value="{StaticResource MidnightText}" />
     </Style>
 
+    <!-- ToggleButton.outputTab: flat tab button for output panel -->
+    <Style Selector="ToggleButton.outputTab">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource MidnightTextSecondary}" />
+        <Setter Property="BorderThickness" Value="0,0,0,2" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="Padding" Value="12,6" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="ToggleButton.outputTab:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource MidnightSurface}" />
+    </Style>
+    <Style Selector="ToggleButton.outputTab:checked /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource MidnightPanel}" />
+    </Style>
+    <Style Selector="ToggleButton.outputTab:checked">
+        <Setter Property="Foreground" Value="{StaticResource MidnightText}" />
+        <Setter Property="BorderBrush" Value="{StaticResource MidnightAccent}" />
+    </Style>
+
 </Styles>

@@ -4,117 +4,280 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:FlowForge.UI.ViewModels"
              mc:Ignorable="d"
-             d:DesignWidth="800" d:DesignHeight="120"
+             d:DesignWidth="800" d:DesignHeight="200"
              x:Class="FlowForge.UI.Views.ExecutionLogView"
              x:DataType="vm:ExecutionLogViewModel">
 
     <DockPanel Background="{DynamicResource MidnightPanel}">
+        <!-- Tab strip -->
         <Border DockPanel.Dock="Top"
-                Padding="12,8"
                 BorderBrush="{DynamicResource MidnightBorder}"
                 BorderThickness="0,1,0,0">
-            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto">
-                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                    <Border Background="#1A3FB950" CornerRadius="10" Padding="8,2">
-                        <StackPanel Orientation="Horizontal" Spacing="4">
-                            <TextBlock Text="&#x2713;" Foreground="{DynamicResource MidnightSuccess}"
-                                       FontWeight="Bold" FontSize="11" VerticalAlignment="Center" />
-                            <TextBlock Text="{Binding Succeeded}" Foreground="{DynamicResource MidnightSuccess}"
-                                       FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Border>
-                    <Border Background="#1AF85149" CornerRadius="10" Padding="8,2">
-                        <StackPanel Orientation="Horizontal" Spacing="4">
-                            <TextBlock Text="&#x2717;" Foreground="{DynamicResource MidnightError}"
-                                       FontWeight="Bold" FontSize="11" VerticalAlignment="Center" />
-                            <TextBlock Text="{Binding Failed}" Foreground="{DynamicResource MidnightError}"
-                                       FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Border>
-                    <Border Background="#1AD29922" CornerRadius="10" Padding="8,2">
-                        <StackPanel Orientation="Horizontal" Spacing="4">
-                            <TextBlock Text="&#x2298;" Foreground="{DynamicResource MidnightWarning}"
-                                       FontWeight="Bold" FontSize="11" VerticalAlignment="Center" />
-                            <TextBlock Text="{Binding Skipped}" Foreground="{DynamicResource MidnightWarning}"
-                                       FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Border>
+            <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto">
+                <!-- Output tab -->
+                <ToggleButton Grid.Column="0"
+                              Classes="outputTab"
+                              IsChecked="{Binding IsOutputTabSelected, Mode=OneWay}"
+                              Command="{Binding SelectTabCommand}"
+                              CommandParameter="0">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="Output" VerticalAlignment="Center" FontSize="12" />
+                        <Border Background="#1A3FB950" CornerRadius="8" Padding="6,1"
+                                IsVisible="{Binding !!TotalFiles}">
+                            <TextBlock Text="{Binding Succeeded}"
+                                       Foreground="{DynamicResource MidnightSuccess}"
+                                       FontSize="11" FontWeight="SemiBold" />
+                        </Border>
+                    </StackPanel>
+                </ToggleButton>
+
+                <!-- Errors tab -->
+                <ToggleButton Grid.Column="1"
+                              Classes="outputTab"
+                              IsChecked="{Binding IsErrorsTabSelected, Mode=OneWay}"
+                              Command="{Binding SelectTabCommand}"
+                              CommandParameter="1">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="Errors" VerticalAlignment="Center" FontSize="12" />
+                        <Border Background="#1AF85149" CornerRadius="8" Padding="6,1"
+                                IsVisible="{Binding !!Failed}">
+                            <TextBlock Text="{Binding Failed}"
+                                       Foreground="{DynamicResource MidnightError}"
+                                       FontSize="11" FontWeight="SemiBold" />
+                        </Border>
+                    </StackPanel>
+                </ToggleButton>
+
+                <!-- Warnings tab -->
+                <ToggleButton Grid.Column="2"
+                              Classes="outputTab"
+                              IsChecked="{Binding IsWarningsTabSelected, Mode=OneWay}"
+                              Command="{Binding SelectTabCommand}"
+                              CommandParameter="2">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="Warnings" VerticalAlignment="Center" FontSize="12" />
+                        <Border Background="#1AD29922" CornerRadius="8" Padding="6,1"
+                                IsVisible="{Binding !!Skipped}">
+                            <TextBlock Text="{Binding Skipped}"
+                                       Foreground="{DynamicResource MidnightWarning}"
+                                       FontSize="11" FontWeight="SemiBold" />
+                        </Border>
+                    </StackPanel>
+                </ToggleButton>
+
+                <!-- Progress bar (in tab strip, right-aligned) -->
+                <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="8"
+                            VerticalAlignment="Center" Margin="0,0,12,0">
+                    <ProgressBar Value="{Binding Progress}"
+                                 Minimum="0" Maximum="100"
+                                 Width="120" Height="6"
+                                 VerticalAlignment="Center"
+                                 IsVisible="{Binding IsRunning}" />
+                    <TextBlock Text="{Binding CurrentFile}"
+                               MaxWidth="200"
+                               TextTrimming="CharacterEllipsis"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource MidnightTextSecondary}"
+                               FontSize="11"
+                               IsVisible="{Binding IsRunning}" />
                 </StackPanel>
-
-                <ProgressBar Grid.Column="1"
-                             Value="{Binding Progress}"
-                             Minimum="0" Maximum="100"
-                             Width="120" Height="8"
-                             Margin="12,0"
-                             VerticalAlignment="Center"
-                             IsVisible="{Binding IsRunning}" />
-
-                <TextBlock Grid.Column="2"
-                           Text="{Binding CurrentFile}"
-                           MaxWidth="300"
-                           TextTrimming="CharacterEllipsis"
-                           VerticalAlignment="Center"
-                           Foreground="{DynamicResource MidnightTextSecondary}"
-                           FontSize="12"
-                           IsVisible="{Binding IsRunning}" />
-
-                <TextBlock Grid.Column="4"
-                           Text="{Binding Summary}"
-                           TextTrimming="CharacterEllipsis"
-                           VerticalAlignment="Center"
-                           Foreground="{DynamicResource MidnightTextSecondary}"
-                           FontSize="12"
-                           Margin="8,0"
-                           IsVisible="{Binding !IsRunning}" />
             </Grid>
         </Border>
 
-        <Expander Header="Log Entries"
-                  Padding="0"
-                  IsExpanded="False">
-            <ScrollViewer MaxHeight="200">
-                <ItemsControl ItemsSource="{Binding Entries}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:FileJobLogEntryViewModel">
-                            <Border Padding="12,4"
-                                    BorderBrush="{DynamicResource MidnightBorder}"
-                                    BorderThickness="0,0,0,1">
-                                <Grid ColumnDefinitions="50,*,Auto">
-                                    <TextBlock Grid.Column="0"
-                                               Text="{Binding StatusText}"
-                                               FontWeight="Bold"
-                                               FontSize="11"
-                                               Foreground="{DynamicResource MidnightSuccess}"
-                                               VerticalAlignment="Center"
-                                               IsVisible="{Binding !IsError}" />
-                                    <TextBlock Grid.Column="0"
-                                               Text="{Binding StatusText}"
-                                               FontWeight="Bold"
-                                               FontSize="11"
-                                               Foreground="{DynamicResource MidnightError}"
-                                               VerticalAlignment="Center"
-                                               IsVisible="{Binding IsError}" />
-                                    <TextBlock Grid.Column="1"
-                                               Text="{Binding FileName}"
-                                               TextTrimming="CharacterEllipsis"
-                                               VerticalAlignment="Center"
-                                               Foreground="{DynamicResource MidnightText}"
-                                               FontSize="12"
-                                               Margin="8,0" />
-                                    <TextBlock Grid.Column="2"
-                                               Text="{Binding ErrorMessage}"
-                                               Foreground="{DynamicResource MidnightError}"
-                                               FontSize="11"
-                                               VerticalAlignment="Center"
-                                               MaxWidth="300"
-                                               TextTrimming="CharacterEllipsis"
-                                               IsVisible="{Binding IsError}" />
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </ScrollViewer>
-        </Expander>
+        <!-- Content area (collapsible) -->
+        <Panel IsVisible="{Binding IsPanelExpanded}">
+            <!-- Output tab content -->
+            <DockPanel IsVisible="{Binding IsOutputTabSelected}">
+                <!-- Summary bar -->
+                <Border DockPanel.Dock="Top" Padding="12,6"
+                        BorderBrush="{DynamicResource MidnightBorder}"
+                        BorderThickness="0,0,0,1"
+                        IsVisible="{Binding !IsRunning}">
+                    <TextBlock Text="{Binding Summary}"
+                               Foreground="{DynamicResource MidnightTextSecondary}"
+                               FontSize="12"
+                               TextTrimming="CharacterEllipsis" />
+                </Border>
+
+                <!-- All entries -->
+                <ScrollViewer>
+                    <ItemsControl ItemsSource="{Binding Entries}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:FileJobLogEntryViewModel">
+                                <Border Padding="12,3"
+                                        BorderBrush="{DynamicResource MidnightBorder}"
+                                        BorderThickness="0,0,0,1">
+                                    <Grid ColumnDefinitions="60,50,*,Auto">
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{Binding Timestamp}"
+                                                   FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource MidnightTextMuted}"
+                                                   VerticalAlignment="Center" />
+                                        <Panel Grid.Column="1">
+                                            <TextBlock Text="{Binding StatusText}"
+                                                       FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
+                                                       FontWeight="Bold"
+                                                       FontSize="11"
+                                                       Foreground="{DynamicResource MidnightSuccess}"
+                                                       VerticalAlignment="Center"
+                                                       IsVisible="{Binding IsSuccess}" />
+                                            <TextBlock Text="{Binding StatusText}"
+                                                       FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
+                                                       FontWeight="Bold"
+                                                       FontSize="11"
+                                                       Foreground="{DynamicResource MidnightError}"
+                                                       VerticalAlignment="Center"
+                                                       IsVisible="{Binding IsError}" />
+                                            <TextBlock Text="{Binding StatusText}"
+                                                       FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
+                                                       FontWeight="Bold"
+                                                       FontSize="11"
+                                                       Foreground="{DynamicResource MidnightWarning}"
+                                                       VerticalAlignment="Center"
+                                                       IsVisible="{Binding IsWarning}" />
+                                        </Panel>
+                                        <TextBlock Grid.Column="2"
+                                                   Text="{Binding FileName}"
+                                                   FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource MidnightText}"
+                                                   FontSize="11"
+                                                   Margin="4,0" />
+                                        <TextBlock Grid.Column="3"
+                                                   Text="{Binding ErrorMessage}"
+                                                   FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
+                                                   Foreground="{DynamicResource MidnightError}"
+                                                   FontSize="11"
+                                                   VerticalAlignment="Center"
+                                                   MaxWidth="300"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   IsVisible="{Binding IsError}" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
+
+            <!-- Errors tab content -->
+            <DockPanel IsVisible="{Binding IsErrorsTabSelected}">
+                <!-- Empty state -->
+                <Panel IsVisible="{Binding !ErrorEntries.Count}">
+                    <TextBlock Text="No errors"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Margin="0,24"
+                               Foreground="{DynamicResource MidnightTextMuted}"
+                               FontSize="13" />
+                </Panel>
+
+                <!-- Error entries -->
+                <ScrollViewer IsVisible="{Binding !!ErrorEntries.Count}">
+                    <ItemsControl ItemsSource="{Binding ErrorEntries}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:FileJobLogEntryViewModel">
+                                <Border Padding="12,3"
+                                        BorderBrush="{DynamicResource MidnightBorder}"
+                                        BorderThickness="0,0,0,1">
+                                    <Grid ColumnDefinitions="60,50,*,Auto">
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{Binding Timestamp}"
+                                                   FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource MidnightTextMuted}"
+                                                   VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{Binding StatusText}"
+                                                   FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
+                                                   FontWeight="Bold"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource MidnightError}"
+                                                   VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="2"
+                                                   Text="{Binding FileName}"
+                                                   FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource MidnightText}"
+                                                   FontSize="11"
+                                                   Margin="4,0" />
+                                        <TextBlock Grid.Column="3"
+                                                   Text="{Binding ErrorMessage}"
+                                                   FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
+                                                   Foreground="{DynamicResource MidnightError}"
+                                                   FontSize="11"
+                                                   VerticalAlignment="Center"
+                                                   MaxWidth="400"
+                                                   TextTrimming="CharacterEllipsis" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
+
+            <!-- Warnings tab content -->
+            <DockPanel IsVisible="{Binding IsWarningsTabSelected}">
+                <!-- Empty state -->
+                <Panel IsVisible="{Binding !WarningEntries.Count}">
+                    <TextBlock Text="No warnings"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Margin="0,24"
+                               Foreground="{DynamicResource MidnightTextMuted}"
+                               FontSize="13" />
+                </Panel>
+
+                <!-- Warning entries -->
+                <ScrollViewer IsVisible="{Binding !!WarningEntries.Count}">
+                    <ItemsControl ItemsSource="{Binding WarningEntries}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:FileJobLogEntryViewModel">
+                                <Border Padding="12,3"
+                                        BorderBrush="{DynamicResource MidnightBorder}"
+                                        BorderThickness="0,0,0,1">
+                                    <Grid ColumnDefinitions="60,50,*,Auto">
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{Binding Timestamp}"
+                                                   FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource MidnightTextMuted}"
+                                                   VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{Binding StatusText}"
+                                                   FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
+                                                   FontWeight="Bold"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource MidnightWarning}"
+                                                   VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="2"
+                                                   Text="{Binding FileName}"
+                                                   FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource MidnightText}"
+                                                   FontSize="11"
+                                                   Margin="4,0" />
+                                        <TextBlock Grid.Column="3"
+                                                   Text="{Binding ErrorMessage}"
+                                                   FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
+                                                   Foreground="{DynamicResource MidnightWarning}"
+                                                   FontSize="11"
+                                                   VerticalAlignment="Center"
+                                                   MaxWidth="400"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
+        </Panel>
     </DockPanel>
 </UserControl>

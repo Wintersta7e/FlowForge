@@ -14,35 +14,46 @@
         Background="{DynamicResource MidnightBg}"
         KeyDown="OnKeyDown">
 
-    <DockPanel>
-        <!-- Toolbar (top) -->
-        <views:ToolbarView DockPanel.Dock="Top"
+    <Grid RowDefinitions="Auto,*,Auto,180">
+        <!-- Toolbar (row 0) -->
+        <views:ToolbarView Grid.Row="0"
                            DataContext="{Binding}" />
 
-        <!-- Execution log (bottom) -->
-        <views:ExecutionLogView DockPanel.Dock="Bottom"
-                                Height="120"
+        <!-- Main content area (row 1) -->
+        <DockPanel Grid.Row="1">
+            <!-- Node library (left) -->
+            <Border DockPanel.Dock="Left"
+                    Width="200"
+                    Background="{DynamicResource MidnightPanel}"
+                    BorderBrush="{DynamicResource MidnightBorder}"
+                    BorderThickness="0,0,1,0">
+                <views:NodeLibraryView DataContext="{Binding NodeLibrary}" />
+            </Border>
+
+            <!-- Properties panel (right) -->
+            <Border DockPanel.Dock="Right"
+                    Width="250"
+                    Background="{DynamicResource MidnightPanel}"
+                    BorderBrush="{DynamicResource MidnightBorder}"
+                    BorderThickness="1,0,0,0">
+                <views:PropertiesView DataContext="{Binding Properties}" />
+            </Border>
+
+            <!-- Canvas (center fill) -->
+            <views:CanvasView DataContext="{Binding Editor}" />
+        </DockPanel>
+
+        <!-- GridSplitter (row 2) -->
+        <GridSplitter Grid.Row="2"
+                      Height="4"
+                      HorizontalAlignment="Stretch"
+                      Background="{DynamicResource MidnightBorder}"
+                      ResizeDirection="Rows" />
+
+        <!-- Output panel (row 3) -->
+        <views:ExecutionLogView Grid.Row="3"
+                                MinHeight="28"
+                                MaxHeight="400"
                                 DataContext="{Binding ExecutionLog}" />
-
-        <!-- Node library (left) -->
-        <Border DockPanel.Dock="Left"
-                Width="200"
-                Background="{DynamicResource MidnightPanel}"
-                BorderBrush="{DynamicResource MidnightBorder}"
-                BorderThickness="0,0,1,0">
-            <views:NodeLibraryView DataContext="{Binding NodeLibrary}" />
-        </Border>
-
-        <!-- Properties panel (right) -->
-        <Border DockPanel.Dock="Right"
-                Width="250"
-                Background="{DynamicResource MidnightPanel}"
-                BorderBrush="{DynamicResource MidnightBorder}"
-                BorderThickness="1,0,0,0">
-            <views:PropertiesView DataContext="{Binding Properties}" />
-        </Border>
-
-        <!-- Canvas (center fill) -->
-        <views:CanvasView DataContext="{Binding Editor}" />
-    </DockPanel>
+    </Grid>
 </Window>
