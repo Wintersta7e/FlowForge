@@ -14,6 +14,9 @@ namespace FlowForge.UI.ViewModels;
 
 public partial class EditorViewModel : ViewModelBase
 {
+    private readonly HashSet<PipelineNodeViewModel> _subscribedNodes = new();
+    private string _graphName = "Untitled Pipeline";
+
     public ObservableCollection<PipelineNodeViewModel> Nodes { get; } = new();
     public bool HasNodes => Nodes.Count > 0;
     public ObservableCollection<PipelineConnectionViewModel> Connections { get; } = new();
@@ -51,10 +54,12 @@ public partial class EditorViewModel : ViewModelBase
 
     private void UnsubscribeAllNodes()
     {
-        foreach (PipelineNodeViewModel node in Nodes)
+        foreach (PipelineNodeViewModel node in _subscribedNodes)
         {
             node.PropertyChanged -= OnNodePropertyChanged;
         }
+
+        _subscribedNodes.Clear();
     }
 
     private void OnNodesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -64,6 +69,7 @@ public partial class EditorViewModel : ViewModelBase
             foreach (PipelineNodeViewModel node in e.NewItems)
             {
                 node.PropertyChanged += OnNodePropertyChanged;
+                _subscribedNodes.Add(node);
             }
         }
 
@@ -72,11 +78,14 @@ public partial class EditorViewModel : ViewModelBase
             foreach (PipelineNodeViewModel node in e.OldItems)
             {
                 node.PropertyChanged -= OnNodePropertyChanged;
+                _subscribedNodes.Remove(node);
             }
         }
 
         if (e.Action == NotifyCollectionChangedAction.Reset)
         {
+            // Nodes collection is already empty at this point;
+            // use _subscribedNodes to unsubscribe from the old nodes
             UnsubscribeAllNodes();
             SelectedNode = null;
         }
@@ -103,6 +112,7 @@ public partial class EditorViewModel : ViewModelBase
         Nodes.Clear();
         Connections.Clear();
         SelectedNode = null;
+        _graphName = "Untitled Pipeline";
     }
 
     public int LoadGraph(PipelineGraph graph, NodeRegistry registry)
@@ -110,6 +120,8 @@ public partial class EditorViewModel : ViewModelBase
         UnsubscribeAllNodes();
         Nodes.Clear();
         Connections.Clear();
+
+        _graphName = graph.Name;
 
         int droppedConnections = 0;
 
@@ -158,6 +170,7 @@ public partial class EditorViewModel : ViewModelBase
     {
         PipelineGraph graph = new()
         {
+            Name = _graphName,
             Nodes = new List<NodeDefinition>(),
             Connections = new List<Connection>()
         };

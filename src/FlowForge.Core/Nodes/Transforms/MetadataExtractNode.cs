@@ -24,15 +24,28 @@ public class MetadataExtractNode : ITransformNode
     public void Configure(Dictionary<string, JsonElement> config)
     {
         if (!config.TryGetValue("keys", out JsonElement keysEl) ||
-            keysEl.ValueKind != JsonValueKind.Array)
+            keysEl.ValueKind == JsonValueKind.Null)
         {
-            throw new NodeConfigurationException("MetadataExtract: 'keys' array is required.");
+            throw new NodeConfigurationException("MetadataExtract: 'keys' is required.");
         }
 
-        _keys = keysEl.EnumerateArray()
-            .Where(e => e.ValueKind == JsonValueKind.String)
-            .Select(e => e.GetString()!)
-            .ToList();
+        if (keysEl.ValueKind == JsonValueKind.Array)
+        {
+            _keys = keysEl.EnumerateArray()
+                .Where(e => e.ValueKind == JsonValueKind.String)
+                .Select(e => e.GetString()!)
+                .ToList();
+        }
+        else if (keysEl.ValueKind == JsonValueKind.String)
+        {
+            string raw = keysEl.GetString() ?? string.Empty;
+            _keys = raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .ToList();
+        }
+        else
+        {
+            throw new NodeConfigurationException("MetadataExtract: 'keys' must be a JSON array or comma-separated string.");
+        }
 
         if (_keys.Count == 0)
         {
