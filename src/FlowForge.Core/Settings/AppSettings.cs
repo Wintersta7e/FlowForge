@@ -15,8 +15,6 @@ public sealed class AppSettings
     /// <summary>Maximum number of files processed concurrently by the pipeline runner.</summary>
     public int MaxConcurrency { get; set; } = Environment.ProcessorCount;
 
-    // TODO: Implement backup support in FolderOutputNode (Phase 3)
-
     /// <summary>Full path of the last pipeline the user had open, or null if none.</summary>
     public string? LastOpenedPipeline { get; set; }
 }

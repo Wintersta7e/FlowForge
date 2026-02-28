@@ -16,6 +16,10 @@ public class FolderOutputNode : IOutputNode
         new ConfigField("overwrite", ConfigFieldType.Bool, Label: "Overwrite Existing", DefaultValue: "false", Description: "Replace existing files at destination"),
         new ConfigField("preserveStructure", ConfigFieldType.Bool, Label: "Preserve Folder Structure", DefaultValue: "false", Description: "Recreate source folder hierarchy in output"),
         new ConfigField("sourceBasePath", ConfigFieldType.FolderPath, Label: "Source Base Path", Description: "Root path for computing relative subdirectories"),
+        new ConfigField("enableBackup", ConfigFieldType.Bool, Label: "Backup Before Overwrite", DefaultValue: "false",
+            Description: "Create a backup copy of existing destination files before overwriting"),
+        new ConfigField("backupSuffix", ConfigFieldType.String, Label: "Backup Suffix", DefaultValue: ".bak",
+            Description: "File extension appended to backup copies (e.g. .bak, .orig)"),
     };
 
     private string _path = string.Empty;
@@ -23,6 +27,8 @@ public class FolderOutputNode : IOutputNode
     private bool _overwrite;
     private bool _preserveStructure;
     private string _sourceBasePath = string.Empty;
+    private bool _enableBackup;
+    private string _backupSuffix = ".bak";
 
     public void Configure(Dictionary<string, JsonElement> config)
     {
@@ -59,6 +65,16 @@ public class FolderOutputNode : IOutputNode
         {
             _sourceBasePath = basePathElement.GetString() ?? string.Empty;
         }
+
+        if (config.TryGetValue("enableBackup", out JsonElement backupElement))
+        {
+            _enableBackup = backupElement.GetBoolean();
+        }
+
+        if (config.TryGetValue("backupSuffix", out JsonElement suffixElement))
+        {
+            _backupSuffix = suffixElement.GetString() ?? ".bak";
+        }
     }
 
     public async Task ConsumeAsync(FileJob job, bool dryRun, CancellationToken ct = default)
@@ -82,11 +98,24 @@ public class FolderOutputNode : IOutputNode
 
         if (dryRun)
         {
+            if (_enableBackup && File.Exists(destinationPath))
+            {
+                job.NodeLog.Add($"FolderOutput: Would backup '{destinationPath}' → '{destinationPath}{_backupSuffix}' [dry-run]");
+            }
+
             job.NodeLog.Add($"FolderOutput: → '{destinationPath}' ({_mode}) [dry-run]");
             return;
         }
 
         Directory.CreateDirectory(destinationDir);
+
+        // Backup existing destination file before overwriting
+        if (_enableBackup && File.Exists(destinationPath))
+        {
+            string backupPath = destinationPath + _backupSuffix;
+            File.Copy(destinationPath, backupPath, overwrite: true);
+            job.NodeLog.Add($"FolderOutput: Backed up '{destinationPath}' → '{backupPath}'");
+        }
 
         if (_mode.Equals("move", StringComparison.OrdinalIgnoreCase))
         {

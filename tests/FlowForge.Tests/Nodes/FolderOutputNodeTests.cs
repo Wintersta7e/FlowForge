@@ -222,4 +222,113 @@ public class FolderOutputNodeTests
             .Which.Should().Contain("FolderOutput")
             .And.Contain("copy");
     }
+
+    [Fact]
+    public async Task Backup_creates_bak_file_before_overwrite()
+    {
+        using var dir = new TempDirectory();
+        dir.CreateFiles("photo.jpg");
+
+        string sourcePath = Path.Combine(dir.Path, "photo.jpg");
+        string destPath = Path.Combine(dir.OutputPath, "photo.jpg");
+        File.WriteAllText(destPath, "original at destination");
+
+        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
+
+        var node = new FolderOutputNode();
+        node.Configure(MakeConfig(new
+        {
+            path = dir.OutputPath,
+            mode = "copy",
+            overwrite = true,
+            enableBackup = true,
+            backupSuffix = ".bak"
+        }));
+
+        await node.ConsumeAsync(job, dryRun: false);
+
+        File.Exists(destPath).Should().BeTrue();
+        File.Exists(destPath + ".bak").Should().BeTrue("backup should be created before overwrite");
+        File.ReadAllText(destPath + ".bak").Should().Be("original at destination");
+    }
+
+    [Fact]
+    public async Task Backup_skipped_when_destination_does_not_exist()
+    {
+        using var dir = new TempDirectory();
+        dir.CreateFiles("photo.jpg");
+
+        string sourcePath = Path.Combine(dir.Path, "photo.jpg");
+
+        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
+
+        var node = new FolderOutputNode();
+        node.Configure(MakeConfig(new
+        {
+            path = dir.OutputPath,
+            mode = "copy",
+            enableBackup = true,
+            backupSuffix = ".bak"
+        }));
+
+        await node.ConsumeAsync(job, dryRun: false);
+
+        string destPath = Path.Combine(dir.OutputPath, "photo.jpg");
+        File.Exists(destPath).Should().BeTrue();
+        File.Exists(destPath + ".bak").Should().BeFalse("no backup needed when destination doesn't exist");
+    }
+
+    [Fact]
+    public async Task Backup_dryrun_logs_but_no_io()
+    {
+        using var dir = new TempDirectory();
+        dir.CreateFiles("photo.jpg");
+
+        string sourcePath = Path.Combine(dir.Path, "photo.jpg");
+        string destPath = Path.Combine(dir.OutputPath, "photo.jpg");
+        File.WriteAllText(destPath, "original");
+
+        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
+
+        var node = new FolderOutputNode();
+        node.Configure(MakeConfig(new
+        {
+            path = dir.OutputPath,
+            mode = "copy",
+            overwrite = true,
+            enableBackup = true,
+            backupSuffix = ".bak"
+        }));
+
+        await node.ConsumeAsync(job, dryRun: true);
+
+        File.Exists(destPath + ".bak").Should().BeFalse("dry-run should not create backup");
+        job.NodeLog.Should().Contain(s => s.Contains("backup", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task Backup_default_suffix_is_bak()
+    {
+        using var dir = new TempDirectory();
+        dir.CreateFiles("photo.jpg");
+
+        string sourcePath = Path.Combine(dir.Path, "photo.jpg");
+        string destPath = Path.Combine(dir.OutputPath, "photo.jpg");
+        File.WriteAllText(destPath, "original");
+
+        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
+
+        var node = new FolderOutputNode();
+        node.Configure(MakeConfig(new
+        {
+            path = dir.OutputPath,
+            mode = "copy",
+            overwrite = true,
+            enableBackup = true
+        }));
+
+        await node.ConsumeAsync(job, dryRun: false);
+
+        File.Exists(destPath + ".bak").Should().BeTrue("default backup suffix should be .bak");
+    }
 }
