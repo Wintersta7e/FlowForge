@@ -2,6 +2,40 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] - 2026-02-28
+
+### Added
+
+- **File browser dialogs** — native OS open/save dialogs for pipeline files
+- **Recent pipelines menu** — MRU list persisted across sessions with clear option
+- **Backup before overwrite** — FolderOutput can create `.bak` (or custom suffix) backups of destination files before overwriting
+- **Zoom-to-fit** — toolbar button to fit the entire graph into the viewport
+- **Keyboard shortcuts help** — dialog showing all available keyboard shortcuts
+- **JSON CLI output** — `--format json` flag on CLI runner for machine-readable output
+- **Config field tooltips** — hover descriptions on all node configuration fields
+- **Sample pipelines** — 4 ready-to-run `.ffpipe` files in `samples/` directory
+- **236 tests** — expanded coverage for new features and edge cases
+
+### Fixed
+
+- **Backup suffix validation** — reject lone `"."` suffix that causes data loss on NTFS (trailing dots stripped)
+- **Stale recent path removal** — case-insensitive matching and persist removal to settings file
+- **Serilog stdout contamination** — route log output to stderr in `--format json` mode
+- **Init race condition** — gate settings writes until initial load completes
+- **MenuItem event handler leaks** — unsubscribe Click handlers before rebuilding recent menu
+- **Business logic in code-behind** — moved `Path.GetFileName` from ToolbarView into ViewModel
+- **Explicit CancellationToken** — pass `CancellationToken.None` intentionally on UI-initiated loads
+- **Silent test pass** — sample pipeline tests now log skips and guard against false-green in CI
+- **Event handler leaks** — prevent accumulation in CanvasView and ToolbarView on DataContext changes
+- **Path traversal** — block `backupSuffix` values containing path separators or traversal sequences
+- **AppSettings validation** — input validation and safe defaults for all settings
+- **MetadataExtract** — accept string keys, remove async void, preserve graph name on load
+- **Dead code removal** — cleaned up unused code across the codebase
+
+### Changed
+
+- Microsoft.NET.Test.Sdk 18.0.1 → 18.3.0
+
 ## [1.0.0] - 2026-02-20
 
 ### Added

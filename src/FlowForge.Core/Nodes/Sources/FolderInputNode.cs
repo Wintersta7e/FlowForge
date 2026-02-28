@@ -12,9 +12,9 @@ public class FolderInputNode : ISourceNode
 
     public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]
     {
-        new ConfigField("path", ConfigFieldType.FolderPath, Label: "Source Folder", Required: true),
-        new ConfigField("recursive", ConfigFieldType.Bool, Label: "Include Subfolders", DefaultValue: "false"),
-        new ConfigField("filter", ConfigFieldType.String, Label: "File Filter", DefaultValue: "*", Placeholder: "*.jpg;*.png"),
+        new ConfigField("path", ConfigFieldType.FolderPath, Label: "Source Folder", Required: true, Description: "Root folder to scan for files"),
+        new ConfigField("recursive", ConfigFieldType.Bool, Label: "Include Subfolders", DefaultValue: "false", Description: "Search subdirectories recursively"),
+        new ConfigField("filter", ConfigFieldType.String, Label: "File Filter", DefaultValue: "*", Placeholder: "*.jpg;*.png", Description: "Semicolon-separated glob patterns (e.g. *.jpg;*.png)"),
     };
 
     private string _path = string.Empty;

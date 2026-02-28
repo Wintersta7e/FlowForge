@@ -153,11 +153,41 @@ public class MetadataExtractNodeTests
     }
 
     [Fact]
-    public void Keys_not_array_throws_NodeConfigurationException()
+    public void Keys_as_comma_separated_string_is_accepted()
     {
         var node = new MetadataExtractNode();
 
-        string json = JsonSerializer.Serialize(new { keys = "File:SizeBytes" });
+        string json = JsonSerializer.Serialize(new { keys = "File:SizeBytes, EXIF:DateTaken" });
+        JsonDocument doc = JsonDocument.Parse(json);
+        Dictionary<string, JsonElement> config = doc.RootElement.EnumerateObject()
+            .ToDictionary(p => p.Name, p => p.Value.Clone());
+
+        Action act = () => node.Configure(config);
+
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void Keys_as_number_throws_NodeConfigurationException()
+    {
+        var node = new MetadataExtractNode();
+
+        string json = JsonSerializer.Serialize(new { keys = 42 });
+        JsonDocument doc = JsonDocument.Parse(json);
+        Dictionary<string, JsonElement> config = doc.RootElement.EnumerateObject()
+            .ToDictionary(p => p.Name, p => p.Value.Clone());
+
+        Action act = () => node.Configure(config);
+
+        act.Should().Throw<NodeConfigurationException>();
+    }
+
+    [Fact]
+    public void Keys_as_null_throws_NodeConfigurationException()
+    {
+        var node = new MetadataExtractNode();
+
+        string json = """{"keys": null}""";
         JsonDocument doc = JsonDocument.Parse(json);
         Dictionary<string, JsonElement> config = doc.RootElement.EnumerateObject()
             .ToDictionary(p => p.Name, p => p.Value.Clone());

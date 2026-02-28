@@ -12,8 +12,8 @@ public class RenamePatternNode : ITransformNode
 
     public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]
     {
-        new ConfigField("pattern", ConfigFieldType.String, Label: "Rename Pattern", Required: true, Placeholder: "{name}_{counter:000}{ext}"),
-        new ConfigField("startIndex", ConfigFieldType.Int, Label: "Counter Start", DefaultValue: "1"),
+        new ConfigField("pattern", ConfigFieldType.String, Label: "Rename Pattern", Required: true, Placeholder: "{name}_{counter:000}{ext}", Description: "Tokens: {name}, {ext}, {counter:000}, {date:yyyy-MM-dd}, {meta:KEY}"),
+        new ConfigField("startIndex", ConfigFieldType.Int, Label: "Counter Start", DefaultValue: "1", Description: "Starting number for {counter} token"),
     };
 
     private string _pattern = string.Empty;

@@ -1,0 +1,81 @@
+{
+  "id": "678cd95a-6e01-4008-9f25-a352480b1ed2",
+  "name": "Bulk Image Compress",
+  "version": "1.0",
+  "createdAt": "2026-02-28T01:02:39.0834635Z",
+  "updatedAt": "2026-02-28T01:02:39.0834727Z",
+  "nodes": [
+    {
+      "id": "26842d57-e462-4a40-a1c8-296b7825256f",
+      "typeKey": "FolderInput",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "path": "./input",
+        "filter": "*.jpg"
+      }
+    },
+    {
+      "id": "64144a7b-6b7d-46b7-8c0e-eb90fc64cf09",
+      "typeKey": "Filter",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "conditions": [
+          {
+            "field": "extension",
+            "operator": "equals",
+            "value": ".jpg"
+          }
+        ]
+      }
+    },
+    {
+      "id": "31b25377-661a-4262-9ed9-1fdeb9c4ec98",
+      "typeKey": "ImageCompress",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "quality": 80
+      }
+    },
+    {
+      "id": "1199db15-ff04-4292-bf62-9c68a25d340d",
+      "typeKey": "FolderOutput",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "path": "./output",
+        "mode": "copy"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "fromNode": "26842d57-e462-4a40-a1c8-296b7825256f",
+      "fromPin": "out",
+      "toNode": "64144a7b-6b7d-46b7-8c0e-eb90fc64cf09",
+      "toPin": "in"
+    },
+    {
+      "fromNode": "64144a7b-6b7d-46b7-8c0e-eb90fc64cf09",
+      "fromPin": "out",
+      "toNode": "31b25377-661a-4262-9ed9-1fdeb9c4ec98",
+      "toPin": "in"
+    },
+    {
+      "fromNode": "31b25377-661a-4262-9ed9-1fdeb9c4ec98",
+      "fromPin": "out",
+      "toNode": "1199db15-ff04-4292-bf62-9c68a25d340d",
+      "toPin": "in"
+    }
+  ]
+}

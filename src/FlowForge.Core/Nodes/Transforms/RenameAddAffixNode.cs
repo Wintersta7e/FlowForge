@@ -10,8 +10,8 @@ public class RenameAddAffixNode : ITransformNode
 
     public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]
     {
-        new ConfigField("prefix", ConfigFieldType.String, Label: "Prefix"),
-        new ConfigField("suffix", ConfigFieldType.String, Label: "Suffix"),
+        new ConfigField("prefix", ConfigFieldType.String, Label: "Prefix", Description: "Text to prepend before filename"),
+        new ConfigField("suffix", ConfigFieldType.String, Label: "Suffix", Description: "Text to append after filename (before extension)"),
     };
 
     private string _prefix = string.Empty;

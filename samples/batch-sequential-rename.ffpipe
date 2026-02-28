@@ -1,0 +1,59 @@
+{
+  "id": "f5c2ece3-1874-49bb-90dd-fdf4a497e57c",
+  "name": "Batch Sequential Rename",
+  "version": "1.0",
+  "createdAt": "2026-02-28T01:02:39.0726127Z",
+  "updatedAt": "2026-02-28T01:02:39.0726272Z",
+  "nodes": [
+    {
+      "id": "1c530568-fa2f-4b28-9e22-c5de97afb279",
+      "typeKey": "FolderInput",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "path": "./input",
+        "filter": "*"
+      }
+    },
+    {
+      "id": "11ae03d1-9b23-4b08-92b1-fbd2dd090b84",
+      "typeKey": "RenamePattern",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "pattern": "{counter:000}{ext}",
+        "startIndex": 1
+      }
+    },
+    {
+      "id": "a351952f-54b8-4414-8080-97981d06c41e",
+      "typeKey": "FolderOutput",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "path": "./output",
+        "mode": "copy"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "fromNode": "1c530568-fa2f-4b28-9e22-c5de97afb279",
+      "fromPin": "out",
+      "toNode": "11ae03d1-9b23-4b08-92b1-fbd2dd090b84",
+      "toPin": "in"
+    },
+    {
+      "fromNode": "11ae03d1-9b23-4b08-92b1-fbd2dd090b84",
+      "fromPin": "out",
+      "toNode": "a351952f-54b8-4414-8080-97981d06c41e",
+      "toPin": "in"
+    }
+  ]
+}

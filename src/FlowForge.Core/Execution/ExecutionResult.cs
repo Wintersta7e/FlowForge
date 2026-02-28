@@ -11,5 +11,4 @@ public class ExecutionResult
     public int Skipped { get; set; }
     public TimeSpan Duration { get; set; }
     public List<FileJob> Jobs { get; init; } = new();
-    public List<string> PipelineLog { get; init; } = new();
 }

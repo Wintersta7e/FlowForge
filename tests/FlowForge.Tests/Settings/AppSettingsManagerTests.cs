@@ -22,7 +22,7 @@ public class AppSettingsManagerTests
         settings.DefaultInputFolder.Should().BeEmpty();
         settings.DefaultOutputFolder.Should().BeEmpty();
         settings.MaxConcurrency.Should().Be(Environment.ProcessorCount);
-        settings.LastOpenedPipeline.Should().BeNull();
+        settings.RecentPipelines.Should().BeEmpty();
     }
 
     [Fact]
@@ -37,7 +37,7 @@ public class AppSettingsManagerTests
             DefaultInputFolder = "/home/user/input",
             DefaultOutputFolder = "/home/user/output",
             MaxConcurrency = 4,
-            LastOpenedPipeline = "/home/user/pipelines/test.ffpipe",
+            RecentPipelines = new List<string> { "/home/user/pipelines/test.ffpipe" },
         };
 
         await manager.SaveAsync(original);
@@ -46,7 +46,7 @@ public class AppSettingsManagerTests
         loaded.DefaultInputFolder.Should().Be(original.DefaultInputFolder);
         loaded.DefaultOutputFolder.Should().Be(original.DefaultOutputFolder);
         loaded.MaxConcurrency.Should().Be(original.MaxConcurrency);
-        loaded.LastOpenedPipeline.Should().Be(original.LastOpenedPipeline);
+        loaded.RecentPipelines.Should().Equal(original.RecentPipelines);
     }
 
     [Fact]
@@ -119,7 +119,7 @@ public class AppSettingsManagerTests
             DefaultInputFolder = "/mnt/data/photos",
             DefaultOutputFolder = "/mnt/data/processed",
             MaxConcurrency = 16,
-            LastOpenedPipeline = "/mnt/data/pipelines/batch.ffpipe",
+            RecentPipelines = new List<string> { "/mnt/data/pipelines/batch.ffpipe" },
         };
 
         await manager.SaveAsync(custom);
@@ -128,6 +128,6 @@ public class AppSettingsManagerTests
         loaded.DefaultInputFolder.Should().Be("/mnt/data/photos");
         loaded.DefaultOutputFolder.Should().Be("/mnt/data/processed");
         loaded.MaxConcurrency.Should().Be(16);
-        loaded.LastOpenedPipeline.Should().Be("/mnt/data/pipelines/batch.ffpipe");
+        loaded.RecentPipelines.Should().Equal("/mnt/data/pipelines/batch.ffpipe");
     }
 }

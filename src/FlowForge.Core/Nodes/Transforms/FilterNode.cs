@@ -14,7 +14,8 @@ public class FilterNode : ITransformNode
     public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]
     {
         new ConfigField("conditions", ConfigFieldType.MultiLine, Label: "Conditions (JSON)", Required: true,
-            Placeholder: "[{\"field\":\"extension\",\"operator\":\"equals\",\"value\":\".jpg\"}]"),
+            Placeholder: "[{\"field\":\"extension\",\"operator\":\"equals\",\"value\":\".jpg\"}]",
+            Description: "JSON array of conditions. Fields: extension, filename, size, createdAt, modifiedAt. Operators: equals, notequals, contains, startswith, endswith, greaterthan, lessthan, matches"),
     };
 
     private List<FilterCondition> _conditions = new();

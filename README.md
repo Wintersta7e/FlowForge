@@ -39,7 +39,7 @@ FlowForge lets you visually connect source, transform, and output nodes to build
 | **Process** | Image Convert | Convert between JPEG, PNG, WebP, BMP, and TIFF |
 | **Process** | Image Compress | Quality-based compression for JPEG, PNG, and WebP |
 | **Process** | Metadata Extract | Read EXIF and file metadata into pipeline variables |
-| **Save To** | Folder Output | Copy or move processed files to a destination directory |
+| **Save To** | Folder Output | Copy or move processed files with optional backup before overwrite |
 
 ### Pipeline Editor
 
@@ -48,6 +48,10 @@ FlowForge lets you visually connect source, transform, and output nodes to build
 - **Properties Panel** — Auto-generated config forms from node schemas (text, number, boolean, file/folder picker, dropdown)
 - **Execution Log** — Live progress with success/fail/skip counts and per-file details
 - **Templates** — One-click pipeline starters: Photo Import, Batch Rename, Web Export, Compress
+- **Recent Pipelines** — MRU menu with quick access to recently opened files
+- **Keyboard Shortcuts** — Help dialog showing all available shortcuts
+- **Zoom-to-Fit** — Toolbar button to fit the entire graph into the viewport
+- **Config Tooltips** — Hover descriptions on all node configuration fields
 - **Midnight Theme** — Custom dark theme with GitHub Dark-inspired color palette
 
 <p align="center">
@@ -60,13 +64,14 @@ FlowForge lets you visually connect source, transform, and output nodes to build
 ### CLI Runner
 
 ```bash
-flowforge run pipeline.ffpipe [--input <dir>] [--output <dir>] [--dry-run] [--verbose]
+flowforge run pipeline.ffpipe [--input <dir>] [--output <dir>] [--dry-run] [--verbose] [--format json]
 ```
 
 - Override input/output directories per run
 - Dry-run mode for safe previewing
-- Structured logging with Serilog
-- Exit codes: 0 (success), 1 (pipeline error), 2 (invalid arguments)
+- JSON output mode (`--format json`) for machine-readable results
+- Structured logging with Serilog (routed to stderr in JSON mode)
+- Exit codes: 0 (success), 1 (partial failure), 2 (total failure / invalid arguments)
 
 ### Pipeline Format
 
@@ -121,7 +126,7 @@ FlowForge/
 │   │   └── Services/             # DialogService
 │   └── FlowForge.CLI/            # CLI runner (System.CommandLine)
 └── tests/
-    └── FlowForge.Tests/          # 202 xUnit tests
+    └── FlowForge.Tests/          # 236 xUnit tests
         ├── Nodes/                # 11 node test files
         ├── Execution/            # Runner + registry tests
         ├── Pipeline/             # Serializer + template tests
@@ -156,7 +161,7 @@ dotnet run --project src/FlowForge.CLI -- run pipeline.ffpipe --dry-run
 ### Run Tests
 
 ```bash
-# Run all 202 tests
+# Run all 236 tests
 dotnet test --logger "console;verbosity=normal"
 
 # Run specific test class

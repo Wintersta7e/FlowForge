@@ -15,9 +15,9 @@ public class ImageCompressNode : ITransformNode
 
     public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]
     {
-        new ConfigField("quality", ConfigFieldType.Int, Label: "Quality (1-100)", Required: true, Placeholder: "1-100"),
+        new ConfigField("quality", ConfigFieldType.Int, Label: "Quality (1-100)", Required: true, Placeholder: "1-100", Description: "JPEG/WebP quality level (1 = smallest file, 100 = best quality)"),
         new ConfigField("format", ConfigFieldType.Select, Label: "Output Format",
-            Options: new[] { "jpg", "jpeg", "png", "webp" }),
+            Options: new[] { "jpg", "jpeg", "png", "webp" }, Description: "Override output format (leave blank to keep original format)"),
     };
 
     private int _quality = 80;

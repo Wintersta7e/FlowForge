@@ -13,14 +13,6 @@ public class NodeRegistry
     private readonly Dictionary<string, NodeRegistration> _registrations = new();
 
     /// <summary>
-    /// Registers a node factory without metadata. Retained for backward compatibility.
-    /// </summary>
-    public void Register<T>(string typeKey, Func<T> factory) where T : class
-    {
-        _factories[typeKey] = factory;
-    }
-
-    /// <summary>
     /// Registers a node factory with full metadata (display name, category, config schema).
     /// </summary>
     public void Register<T>(

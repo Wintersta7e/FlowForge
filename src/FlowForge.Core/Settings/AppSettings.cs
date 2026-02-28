@@ -15,8 +15,35 @@ public sealed class AppSettings
     /// <summary>Maximum number of files processed concurrently by the pipeline runner.</summary>
     public int MaxConcurrency { get; set; } = Environment.ProcessorCount;
 
-    // TODO: Implement backup support in FolderOutputNode (Phase 3)
+    /// <summary>Most recently opened pipeline files, newest first. Max 10.</summary>
+    public List<string> RecentPipelines { get; set; } = new();
 
-    /// <summary>Full path of the last pipeline the user had open, or null if none.</summary>
-    public string? LastOpenedPipeline { get; set; }
+    private const int MaxRecentPipelines = 10;
+    private const int MaxAllowedConcurrency = 64;
+
+    /// <summary>Add a pipeline path to the front of the recent list, deduplicating and trimming.</summary>
+    public void AddRecentPipeline(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+
+        // Case-insensitive dedup for Windows path compatibility
+        RecentPipelines.RemoveAll(p => string.Equals(p, path, StringComparison.OrdinalIgnoreCase));
+        RecentPipelines.Insert(0, path);
+        if (RecentPipelines.Count > MaxRecentPipelines)
+        {
+            RecentPipelines.RemoveRange(MaxRecentPipelines, RecentPipelines.Count - MaxRecentPipelines);
+        }
+    }
+
+    /// <summary>Clear all recent pipelines.</summary>
+    public void ClearRecentPipelines() => RecentPipelines.Clear();
+
+    /// <summary>Clamp settings values to safe ranges after deserialization.</summary>
+    public void Validate()
+    {
+        if (MaxConcurrency <= 0 || MaxConcurrency > MaxAllowedConcurrency)
+        {
+            MaxConcurrency = Environment.ProcessorCount;
+        }
+    }
 }
