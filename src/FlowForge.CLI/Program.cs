@@ -78,18 +78,30 @@ static async Task<int> RunPipelineAsync(
     string format,
     CancellationToken cancellationToken)
 {
-    // Configure Serilog
-    LogEventLevel minimumLevel = verbose ? LogEventLevel.Information : LogEventLevel.Warning;
-    Log.Logger = new LoggerConfiguration()
-        .MinimumLevel.Is(minimumLevel)
-        .WriteTo.Console(
-            outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
-            formatProvider: CultureInfo.InvariantCulture)
-        .CreateLogger();
-
-    ILogger logger = Log.Logger;
     bool jsonMode = format.Equals("json", StringComparison.OrdinalIgnoreCase);
     TextWriter statusWriter = jsonMode ? Console.Error : Console.Out;
+
+    // Configure Serilog — route to stderr in JSON mode to keep stdout clean for machine parsing
+    LogEventLevel minimumLevel = verbose ? LogEventLevel.Information : LogEventLevel.Warning;
+    var logConfig = new LoggerConfiguration()
+        .MinimumLevel.Is(minimumLevel);
+
+    if (jsonMode)
+    {
+        logConfig.WriteTo.Console(
+            outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
+            formatProvider: CultureInfo.InvariantCulture,
+            standardErrorFromLevel: LogEventLevel.Verbose);
+    }
+    else
+    {
+        logConfig.WriteTo.Console(
+            outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
+            formatProvider: CultureInfo.InvariantCulture);
+    }
+
+    Log.Logger = logConfig.CreateLogger();
+    ILogger logger = Log.Logger;
 
     try
     {
