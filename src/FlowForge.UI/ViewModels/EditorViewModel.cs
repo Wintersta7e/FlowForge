@@ -24,6 +24,13 @@ public partial class EditorViewModel : ViewModelBase
     /// </summary>
     public event EventHandler? GraphChanged;
 
+    /// <summary>
+    /// Raised to request the view to execute FitToScreen on the NodifyEditor.
+    /// </summary>
+    public event Action? FitToScreenRequested;
+
+    public void RequestFitToScreen() => FitToScreenRequested?.Invoke();
+
     private PipelineNodeViewModel? _selectedNode;
     public PipelineNodeViewModel? SelectedNode
     {

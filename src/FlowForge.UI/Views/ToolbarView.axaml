@@ -60,6 +60,14 @@
                               Width="16" Height="16" />
                 </Button>
 
+                <Button Classes="toolbarIcon"
+                        ToolTip.Tip="Fit to Screen (Ctrl+0)"
+                        Click="OnFitToScreenClick">
+                    <PathIcon Data="M3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5A2,2 0 0,0 19,3H5A2,2 0 0,0 3,5M5,5H19V19H5V5M7,7V9H9V7H7M15,7V9H17V7H15M7,15V17H9V15H7M15,15V17H17V15H15Z"
+                              Foreground="{DynamicResource MidnightText}"
+                              Width="16" Height="16" />
+                </Button>
+
                 <Border Width="1"
                         Height="24"
                         Background="{DynamicResource MidnightBorder}"

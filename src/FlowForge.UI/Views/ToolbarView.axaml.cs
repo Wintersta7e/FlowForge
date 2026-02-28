@@ -1,5 +1,6 @@
 using System.IO;
 using Avalonia.Controls;
+using Avalonia.Interactivity;
 using FlowForge.UI.ViewModels;
 
 namespace FlowForge.UI.Views;
@@ -25,6 +26,14 @@ public partial class ToolbarView : UserControl
             };
 
             RebuildRecentMenu(vm);
+        }
+    }
+
+    private void OnFitToScreenClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm)
+        {
+            vm.Editor.RequestFitToScreen();
         }
     }
 

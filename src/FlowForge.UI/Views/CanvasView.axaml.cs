@@ -15,6 +15,17 @@ public partial class CanvasView : UserControl
         // Wire drag-drop on the Nodify editor
         AddHandler(DragDrop.DropEvent, OnDrop);
         AddHandler(DragDrop.DragOverEvent, OnDragOver);
+
+        DataContextChanged += (_, _) =>
+        {
+            if (DataContext is EditorViewModel editor)
+            {
+                editor.FitToScreenRequested += () =>
+                {
+                    Nodify.Avalonia.EditorCommands.FitToScreen.Execute(parameter: null!, Editor);
+                };
+            }
+        };
     }
 
     private void OnDragOver(object? sender, DragEventArgs e)

@@ -13,9 +13,20 @@ public partial class MainWindow : Window
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Delete && DataContext is MainWindowViewModel vm)
+        if (DataContext is not MainWindowViewModel vm)
+        {
+            return;
+        }
+
+        if (e.Key == Key.Delete)
         {
             vm.Editor.RemoveSelectedNodes();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.D0 && e.KeyModifiers == KeyModifiers.Control)
+        {
+            vm.Editor.RequestFitToScreen();
+            e.Handled = true;
         }
     }
 }
