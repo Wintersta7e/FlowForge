@@ -73,7 +73,17 @@ public class FolderOutputNode : IOutputNode
 
         if (config.TryGetValue("backupSuffix", out JsonElement suffixElement))
         {
-            _backupSuffix = suffixElement.GetString() ?? ".bak";
+            string suffix = suffixElement.GetString() ?? ".bak";
+            if (!suffix.StartsWith('.') ||
+                suffix.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 ||
+                suffix.Contains('/') ||
+                suffix.Contains('\\'))
+            {
+                throw new NodeConfigurationException(
+                    $"FolderOutput: 'backupSuffix' must be a simple file extension (e.g. '.bak'). Got: '{suffix}'");
+            }
+
+            _backupSuffix = suffix;
         }
     }
 
@@ -98,7 +108,7 @@ public class FolderOutputNode : IOutputNode
 
         if (dryRun)
         {
-            if (_enableBackup && File.Exists(destinationPath))
+            if (_enableBackup && _overwrite && File.Exists(destinationPath))
             {
                 job.NodeLog.Add($"FolderOutput: Would backup '{destinationPath}' → '{destinationPath}{_backupSuffix}' [dry-run]");
             }
@@ -110,10 +120,17 @@ public class FolderOutputNode : IOutputNode
         Directory.CreateDirectory(destinationDir);
 
         // Backup existing destination file before overwriting
-        if (_enableBackup && File.Exists(destinationPath))
+        if (_enableBackup && _overwrite && File.Exists(destinationPath))
         {
             string backupPath = destinationPath + _backupSuffix;
-            File.Copy(destinationPath, backupPath, overwrite: true);
+            if (File.Exists(backupPath))
+            {
+                job.NodeLog.Add($"FolderOutput: Replacing previous backup at '{backupPath}'");
+            }
+
+            await using FileStream backupSrc = new(destinationPath, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true);
+            await using FileStream backupDst = new(backupPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true);
+            await backupSrc.CopyToAsync(backupDst, ct);
             job.NodeLog.Add($"FolderOutput: Backed up '{destinationPath}' → '{backupPath}'");
         }
 

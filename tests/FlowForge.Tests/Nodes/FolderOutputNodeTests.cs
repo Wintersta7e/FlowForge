@@ -331,4 +331,93 @@ public class FolderOutputNodeTests
 
         File.Exists(destPath + ".bak").Should().BeTrue("default backup suffix should be .bak");
     }
+
+    [Fact]
+    public async Task Backup_with_move_mode_creates_backup_before_move()
+    {
+        using var dir = new TempDirectory();
+        dir.CreateFiles("photo.jpg");
+
+        string sourcePath = Path.Combine(dir.Path, "photo.jpg");
+        string destPath = Path.Combine(dir.OutputPath, "photo.jpg");
+        File.WriteAllText(destPath, "original at destination");
+
+        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
+
+        var node = new FolderOutputNode();
+        node.Configure(MakeConfig(new
+        {
+            path = dir.OutputPath,
+            mode = "move",
+            overwrite = true,
+            enableBackup = true,
+            backupSuffix = ".bak"
+        }));
+
+        await node.ConsumeAsync(job, dryRun: false);
+
+        File.Exists(sourcePath).Should().BeFalse("move should remove source");
+        File.Exists(destPath + ".bak").Should().BeTrue("backup should exist");
+        File.ReadAllText(destPath + ".bak").Should().Be("original at destination");
+    }
+
+    [Fact]
+    public void Backup_suffix_with_path_separator_throws()
+    {
+        var node = new FolderOutputNode();
+        Action act = () => node.Configure(MakeConfig(new
+        {
+            path = "/tmp/out",
+            mode = "copy",
+            enableBackup = true,
+            backupSuffix = "/../evil"
+        }));
+
+        act.Should().Throw<NodeConfigurationException>()
+            .WithMessage("*backupSuffix*");
+    }
+
+    [Fact]
+    public void Backup_suffix_without_dot_throws()
+    {
+        var node = new FolderOutputNode();
+        Action act = () => node.Configure(MakeConfig(new
+        {
+            path = "/tmp/out",
+            mode = "copy",
+            enableBackup = true,
+            backupSuffix = "bak"
+        }));
+
+        act.Should().Throw<NodeConfigurationException>()
+            .WithMessage("*backupSuffix*");
+    }
+
+    [Fact]
+    public async Task Backup_skipped_when_overwrite_is_false()
+    {
+        using var dir = new TempDirectory();
+        dir.CreateFiles("photo.jpg");
+
+        string sourcePath = Path.Combine(dir.Path, "photo.jpg");
+        string destPath = Path.Combine(dir.OutputPath, "photo.jpg");
+        File.WriteAllText(destPath, "existing content");
+
+        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
+
+        var node = new FolderOutputNode();
+        node.Configure(MakeConfig(new
+        {
+            path = dir.OutputPath,
+            mode = "copy",
+            overwrite = false,
+            enableBackup = true,
+            backupSuffix = ".bak"
+        }));
+
+        // overwrite=false should throw IOException, but NO backup should be created
+        Func<Task> act = () => node.ConsumeAsync(job, dryRun: false);
+        await act.Should().ThrowAsync<IOException>();
+        File.Exists(destPath + ".bak").Should().BeFalse("backup should not be created when overwrite is false");
+    }
 }
