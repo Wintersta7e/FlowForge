@@ -12,12 +12,12 @@ public class ImageResizeNode : ITransformNode
 
     public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]
     {
-        new ConfigField("width", ConfigFieldType.Int, Label: "Width (px)"),
-        new ConfigField("height", ConfigFieldType.Int, Label: "Height (px)"),
+        new ConfigField("width", ConfigFieldType.Int, Label: "Width (px)", Description: "Target width in pixels (leave blank to auto-calculate from height)"),
+        new ConfigField("height", ConfigFieldType.Int, Label: "Height (px)", Description: "Target height in pixels (leave blank to auto-calculate from width)"),
         new ConfigField("mode", ConfigFieldType.Select, Label: "Resize Mode", DefaultValue: "max",
-            Options: new[] { "max", "min", "crop", "pad", "stretch" }),
-        new ConfigField("maintainAspect", ConfigFieldType.Bool, Label: "Maintain Aspect Ratio", DefaultValue: "true"),
-        new ConfigField("dpi", ConfigFieldType.Int, Label: "DPI"),
+            Options: new[] { "max", "min", "crop", "pad", "stretch" }, Description: "max: fit within bounds, crop: fill and trim, pad: fit with margins, stretch: distort to exact size"),
+        new ConfigField("maintainAspect", ConfigFieldType.Bool, Label: "Maintain Aspect Ratio", DefaultValue: "true", Description: "Preserve original width-to-height ratio"),
+        new ConfigField("dpi", ConfigFieldType.Int, Label: "DPI", Description: "Output resolution in dots per inch (leave blank to keep original)"),
     };
 
     private int? _width;

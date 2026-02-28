@@ -15,7 +15,8 @@ public class MetadataExtractNode : ITransformNode
     public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]
     {
         new ConfigField("keys", ConfigFieldType.MultiLine, Label: "Metadata Keys", Required: true,
-            Placeholder: "EXIF:DateTaken, File:SizeBytes"),
+            Placeholder: "EXIF:DateTaken, File:SizeBytes",
+            Description: "Comma-separated keys. File: SizeBytes, CreatedAt, ModifiedAt. EXIF: DateTaken, CameraModel, CameraMake, GPS, FocalLength, ISO"),
     };
 
     private List<string> _keys = new();

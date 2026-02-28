@@ -10,12 +10,12 @@ public class FolderOutputNode : IOutputNode
 
     public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]
     {
-        new ConfigField("path", ConfigFieldType.FolderPath, Label: "Output Folder", Required: true),
+        new ConfigField("path", ConfigFieldType.FolderPath, Label: "Output Folder", Required: true, Description: "Destination folder for processed files"),
         new ConfigField("mode", ConfigFieldType.Select, Label: "Mode", DefaultValue: "copy",
-            Options: new[] { "copy", "move" }),
-        new ConfigField("overwrite", ConfigFieldType.Bool, Label: "Overwrite Existing", DefaultValue: "false"),
-        new ConfigField("preserveStructure", ConfigFieldType.Bool, Label: "Preserve Folder Structure", DefaultValue: "false"),
-        new ConfigField("sourceBasePath", ConfigFieldType.FolderPath, Label: "Source Base Path"),
+            Options: new[] { "copy", "move" }, Description: "copy: keep originals, move: delete originals after transfer"),
+        new ConfigField("overwrite", ConfigFieldType.Bool, Label: "Overwrite Existing", DefaultValue: "false", Description: "Replace existing files at destination"),
+        new ConfigField("preserveStructure", ConfigFieldType.Bool, Label: "Preserve Folder Structure", DefaultValue: "false", Description: "Recreate source folder hierarchy in output"),
+        new ConfigField("sourceBasePath", ConfigFieldType.FolderPath, Label: "Source Base Path", Description: "Root path for computing relative subdirectories"),
     };
 
     private string _path = string.Empty;

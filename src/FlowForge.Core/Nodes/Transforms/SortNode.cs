@@ -17,9 +17,9 @@ public class SortNode : ITransformNode, IBufferedTransformNode
     public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]
     {
         new ConfigField("field", ConfigFieldType.Select, Label: "Sort Field", DefaultValue: "filename",
-            Options: new[] { "filename", "extension", "size", "createdAt", "modifiedAt" }),
+            Options: new[] { "filename", "extension", "size", "createdAt", "modifiedAt" }, Description: "File property to sort by"),
         new ConfigField("direction", ConfigFieldType.Select, Label: "Direction", DefaultValue: "asc",
-            Options: new[] { "asc", "desc" }),
+            Options: new[] { "asc", "desc" }, Description: "asc: smallest/oldest first, desc: largest/newest first"),
     };
 
     private string _field = "filename";

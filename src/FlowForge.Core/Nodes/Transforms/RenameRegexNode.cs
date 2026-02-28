@@ -11,10 +11,10 @@ public class RenameRegexNode : ITransformNode
 
     public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]
     {
-        new ConfigField("pattern", ConfigFieldType.String, Label: "Regex Pattern", Required: true, Placeholder: @"\d+"),
-        new ConfigField("replacement", ConfigFieldType.String, Label: "Replacement", Required: true),
+        new ConfigField("pattern", ConfigFieldType.String, Label: "Regex Pattern", Required: true, Placeholder: @"\d+", Description: @"Regular expression to match against filename (e.g. \d+ or \.jpe?g$)"),
+        new ConfigField("replacement", ConfigFieldType.String, Label: "Replacement", Required: true, Description: "Replacement string ($1, $2 for capture groups)"),
         new ConfigField("scope", ConfigFieldType.Select, Label: "Scope", DefaultValue: "filename",
-            Options: new[] { "filename", "fullpath" }),
+            Options: new[] { "filename", "fullpath" }, Description: "filename: match name only, fullpath: match entire path"),
     };
 
     private Regex _regex = null!;
