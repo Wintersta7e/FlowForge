@@ -58,7 +58,9 @@ public sealed class AppSettingsManager
         try
         {
             AppSettings? settings = JsonSerializer.Deserialize<AppSettings>(json, SerializerOptions);
-            return settings ?? new AppSettings();
+            AppSettings result = settings ?? new AppSettings();
+            result.Validate();
+            return result;
         }
         catch (JsonException ex)
         {

@@ -19,11 +19,15 @@ public sealed class AppSettings
     public List<string> RecentPipelines { get; set; } = new();
 
     private const int MaxRecentPipelines = 10;
+    private const int MaxAllowedConcurrency = 64;
 
     /// <summary>Add a pipeline path to the front of the recent list, deduplicating and trimming.</summary>
     public void AddRecentPipeline(string path)
     {
-        RecentPipelines.Remove(path);
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+
+        // Case-insensitive dedup for Windows path compatibility
+        RecentPipelines.RemoveAll(p => string.Equals(p, path, StringComparison.OrdinalIgnoreCase));
         RecentPipelines.Insert(0, path);
         if (RecentPipelines.Count > MaxRecentPipelines)
         {
@@ -33,4 +37,13 @@ public sealed class AppSettings
 
     /// <summary>Clear all recent pipelines.</summary>
     public void ClearRecentPipelines() => RecentPipelines.Clear();
+
+    /// <summary>Clamp settings values to safe ranges after deserialization.</summary>
+    public void Validate()
+    {
+        if (MaxConcurrency <= 0 || MaxConcurrency > MaxAllowedConcurrency)
+        {
+            MaxConcurrency = Environment.ProcessorCount;
+        }
+    }
 }

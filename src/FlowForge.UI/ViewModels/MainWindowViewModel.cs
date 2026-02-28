@@ -75,14 +75,21 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         _appSettings = await _settingsManager.LoadAsync();
         RecentPipelines = new ObservableCollection<string>(
-            _appSettings.RecentPipelines.Where(File.Exists));
+            _appSettings.RecentPipelines
+                .Where(p => p.EndsWith(".ffpipe", StringComparison.OrdinalIgnoreCase) && File.Exists(p)));
     }
 
     private async Task TrackRecentPipelineAsync(string path)
     {
+        if (!path.EndsWith(".ffpipe", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
         _appSettings.AddRecentPipeline(path);
         RecentPipelines = new ObservableCollection<string>(
-            _appSettings.RecentPipelines.Where(File.Exists));
+            _appSettings.RecentPipelines
+                .Where(p => p.EndsWith(".ffpipe", StringComparison.OrdinalIgnoreCase) && File.Exists(p)));
         await _settingsManager.SaveAsync(_appSettings);
     }
 
