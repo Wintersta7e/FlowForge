@@ -74,7 +74,8 @@ public class FolderOutputNode : IOutputNode
         if (config.TryGetValue("backupSuffix", out JsonElement suffixElement))
         {
             string suffix = suffixElement.GetString() ?? ".bak";
-            if (!suffix.StartsWith('.') ||
+            if (suffix.Length < 2 ||
+                !suffix.StartsWith('.') ||
                 suffix.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 ||
                 suffix.Contains('/') ||
                 suffix.Contains('\\'))

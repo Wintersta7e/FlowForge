@@ -378,6 +378,22 @@ public class FolderOutputNodeTests
     }
 
     [Fact]
+    public void Backup_suffix_lone_dot_throws()
+    {
+        var node = new FolderOutputNode();
+        Action act = () => node.Configure(MakeConfig(new
+        {
+            path = "/tmp/out",
+            mode = "copy",
+            enableBackup = true,
+            backupSuffix = "."
+        }));
+
+        act.Should().Throw<NodeConfigurationException>()
+            .WithMessage("*backupSuffix*");
+    }
+
+    [Fact]
     public void Backup_suffix_without_dot_throws()
     {
         var node = new FolderOutputNode();
