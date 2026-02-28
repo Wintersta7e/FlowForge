@@ -1,5 +1,7 @@
 using System;
+using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -8,6 +10,7 @@ using FlowForge.Core.Execution;
 using FlowForge.Core.Models;
 using FlowForge.Core.Pipeline;
 using FlowForge.Core.Pipeline.Templates;
+using FlowForge.Core.Settings;
 using FlowForge.UI.Services;
 using Serilog;
 
@@ -18,6 +21,8 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly NodeRegistry _registry;
     private readonly IDialogService _dialogService;
     private readonly ILogger _logger;
+    private readonly AppSettingsManager _settingsManager;
+    private AppSettings _appSettings = new();
 
     public NodeRegistry Registry => _registry;
     private CancellationTokenSource? _cts;
@@ -31,6 +36,9 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isDirty;
 
+    [ObservableProperty]
+    private ObservableCollection<string> _recentPipelines = new();
+
     public EditorViewModel Editor { get; }
     public NodeLibraryViewModel NodeLibrary { get; }
     public PropertiesViewModel Properties { get; }
@@ -41,6 +49,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _registry = NodeRegistry.CreateDefault();
         _dialogService = new DialogService();
         _logger = Log.Logger;
+        _settingsManager = new AppSettingsManager(_logger);
 
         Editor = new EditorViewModel();
         NodeLibrary = new NodeLibraryViewModel();
@@ -60,6 +69,61 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // Track all graph changes (structural + config edits) for IsDirty
         Editor.GraphChanged += (_, _) => IsDirty = true;
+    }
+
+    public async Task InitializeAsync()
+    {
+        _appSettings = await _settingsManager.LoadAsync();
+        RecentPipelines = new ObservableCollection<string>(
+            _appSettings.RecentPipelines.Where(File.Exists));
+    }
+
+    private async Task TrackRecentPipelineAsync(string path)
+    {
+        _appSettings.AddRecentPipeline(path);
+        RecentPipelines = new ObservableCollection<string>(
+            _appSettings.RecentPipelines.Where(File.Exists));
+        await _settingsManager.SaveAsync(_appSettings);
+    }
+
+    [RelayCommand]
+    private async Task OpenRecentAsync(string path)
+    {
+        if (!File.Exists(path))
+        {
+            _appSettings.RecentPipelines.Remove(path);
+            RecentPipelines.Remove(path);
+            ExecutionLog.Summary = $"File not found: {Path.GetFileName(path)}";
+            return;
+        }
+
+        try
+        {
+            PipelineGraph graph = await PipelineSerializer.LoadAsync(path);
+            int droppedConnections = Editor.LoadGraph(graph, _registry);
+            CurrentFilePath = path;
+            IsDirty = false;
+            Title = $"FlowForge - {Path.GetFileNameWithoutExtension(path)}";
+            await TrackRecentPipelineAsync(path);
+
+            if (droppedConnections > 0)
+            {
+                ExecutionLog.Summary = $"Loaded with {droppedConnections} dropped connection(s).";
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.Error(ex, "Failed to load pipeline from {Path}", path);
+            ExecutionLog.Summary = $"Failed to open: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task ClearRecentAsync()
+    {
+        _appSettings.ClearRecentPipelines();
+        RecentPipelines.Clear();
+        await _settingsManager.SaveAsync(_appSettings);
     }
 
     [RelayCommand]
@@ -91,6 +155,7 @@ public partial class MainWindowViewModel : ViewModelBase
             CurrentFilePath = path;
             IsDirty = false;
             Title = $"FlowForge - {Path.GetFileNameWithoutExtension(path)}";
+            await TrackRecentPipelineAsync(path);
 
             if (droppedConnections > 0)
             {
@@ -151,6 +216,7 @@ public partial class MainWindowViewModel : ViewModelBase
             CurrentFilePath = path;
             IsDirty = false;
             Title = $"FlowForge - {Path.GetFileNameWithoutExtension(path)}";
+            await TrackRecentPipelineAsync(path);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
