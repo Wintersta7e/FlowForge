@@ -2,11 +2,16 @@ using System.Text.Json;
 using FlowForge.Core.Pipeline;
 using FlowForge.Core.Pipeline.Templates;
 using FluentAssertions;
+using Xunit.Abstractions;
 
 namespace FlowForge.Tests.Pipeline;
 
 public class SamplePipelineTests
 {
+    private readonly ITestOutputHelper _output;
+
+    public SamplePipelineTests(ITestOutputHelper output) => _output = output;
+
     [Theory]
     [InlineData("photo-import-by-date")]
     [InlineData("batch-sequential-rename")]
@@ -66,7 +71,7 @@ public class SamplePipelineTests
 
         if (!File.Exists(samplePath))
         {
-            // Skip if running in CI where samples may not be present
+            _output.WriteLine($"SKIPPED: Sample file not found at {samplePath}");
             return;
         }
 
@@ -75,5 +80,15 @@ public class SamplePipelineTests
         graph.Nodes.Should().NotBeEmpty();
         graph.Connections.Should().NotBeEmpty();
         graph.Nodes.Should().AllSatisfy(n => n.TypeKey.Should().NotBeNullOrWhiteSpace());
+    }
+
+    [Fact]
+    public void At_least_one_sample_file_exists()
+    {
+        string basePath = AppContext.BaseDirectory;
+        string samplesDir = Path.GetFullPath(Path.Combine(basePath, "..", "..", "..", "..", "..", "samples"));
+
+        Directory.Exists(samplesDir).Should().BeTrue("samples directory should exist at repo root");
+        Directory.GetFiles(samplesDir, "*.ffpipe").Should().NotBeEmpty("at least one .ffpipe sample should exist");
     }
 }
