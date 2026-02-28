@@ -2,6 +2,7 @@ using System.CommandLine;
 using System.CommandLine.Parsing;
 using System.Globalization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using FlowForge.Core.Execution;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
@@ -36,12 +37,20 @@ var verboseOption = new Option<bool>("--verbose")
     Description = "Print per-file log entries to stdout"
 };
 
+var formatOption = new Option<string>("--format")
+{
+    Description = "Output format: text (human-readable) or json (machine-readable)",
+    DefaultValueFactory = _ => "text",
+};
+formatOption.AcceptOnlyFromAmong("text", "json");
+
 var runCommand = new Command("run", "Execute a FlowForge pipeline");
 runCommand.Arguments.Add(pipelineArgument);
 runCommand.Options.Add(inputOption);
 runCommand.Options.Add(outputOption);
 runCommand.Options.Add(dryRunOption);
 runCommand.Options.Add(verboseOption);
+runCommand.Options.Add(formatOption);
 
 runCommand.SetAction(async (parseResult, cancellationToken) =>
 {
@@ -50,8 +59,9 @@ runCommand.SetAction(async (parseResult, cancellationToken) =>
     DirectoryInfo? outputDir = parseResult.GetValue(outputOption);
     bool dryRun = parseResult.GetValue(dryRunOption);
     bool verbose = parseResult.GetValue(verboseOption);
+    string format = parseResult.GetValue(formatOption)!;
 
-    int exitCode = await RunPipelineAsync(pipelineFile, inputDir, outputDir, dryRun, verbose, cancellationToken);
+    int exitCode = await RunPipelineAsync(pipelineFile, inputDir, outputDir, dryRun, verbose, format, cancellationToken);
     Environment.ExitCode = exitCode;
 });
 
@@ -65,6 +75,7 @@ static async Task<int> RunPipelineAsync(
     DirectoryInfo? outputDir,
     bool dryRun,
     bool verbose,
+    string format,
     CancellationToken cancellationToken)
 {
     // Configure Serilog
@@ -77,6 +88,8 @@ static async Task<int> RunPipelineAsync(
         .CreateLogger();
 
     ILogger logger = Log.Logger;
+    bool jsonMode = format.Equals("json", StringComparison.OrdinalIgnoreCase);
+    TextWriter statusWriter = jsonMode ? Console.Error : Console.Out;
 
     try
     {
@@ -89,10 +102,10 @@ static async Task<int> RunPipelineAsync(
 
         // Load pipeline
         string fullPath = pipelineFile.FullName;
-        Console.WriteLine($"Loading pipeline: {fullPath}");
+        statusWriter.WriteLine($"Loading pipeline: {fullPath}");
 
         PipelineGraph graph = await PipelineSerializer.LoadAsync(fullPath, cancellationToken);
-        Console.WriteLine($"Pipeline '{graph.Name}' loaded ({graph.Nodes.Count} nodes, {graph.Connections.Count} connections)");
+        statusWriter.WriteLine($"Pipeline '{graph.Name}' loaded ({graph.Nodes.Count} nodes, {graph.Connections.Count} connections)");
 
         // Override input path if provided
         if (inputDir is not null)
@@ -107,7 +120,7 @@ static async Task<int> RunPipelineAsync(
             }
 
             folderInputNode.Config["path"] = JsonSerializer.SerializeToElement(inputDir.FullName);
-            Console.WriteLine($"Input override: {inputDir.FullName}");
+            statusWriter.WriteLine($"Input override: {inputDir.FullName}");
         }
 
         // Override output path if provided
@@ -123,15 +136,15 @@ static async Task<int> RunPipelineAsync(
             }
 
             folderOutputNode.Config["path"] = JsonSerializer.SerializeToElement(outputDir.FullName);
-            Console.WriteLine($"Output override: {outputDir.FullName}");
+            statusWriter.WriteLine($"Output override: {outputDir.FullName}");
         }
 
         if (dryRun)
         {
-            Console.WriteLine("Mode: DRY RUN (no files will be written)");
+            statusWriter.WriteLine("Mode: DRY RUN (no files will be written)");
         }
 
-        Console.WriteLine();
+        statusWriter.WriteLine();
 
         // Create registry and runner
         NodeRegistry registry = NodeRegistry.CreateDefault();
@@ -148,13 +161,13 @@ static async Task<int> RunPipelineAsync(
                 _ => "[??]"
             };
 
-            Console.WriteLine($"  {statusIcon} {Path.GetFileName(job.OriginalPath)}");
+            statusWriter.WriteLine($"  {statusIcon} {Path.GetFileName(job.OriginalPath)}");
 
             if (verbose)
             {
                 foreach (string logEntry in job.NodeLog)
                 {
-                    Console.WriteLine($"        {logEntry}");
+                    statusWriter.WriteLine($"        {logEntry}");
                 }
             }
 
@@ -168,14 +181,20 @@ static async Task<int> RunPipelineAsync(
         ExecutionResult result = await runner.RunAsync(graph, dryRun, progress, cancellationToken);
 
         // Print summary
-        Console.WriteLine();
-        Console.WriteLine("--- Pipeline Summary ---");
-        Console.WriteLine($"  Total files : {result.TotalFiles}");
-        Console.WriteLine($"  Succeeded   : {result.Succeeded}");
-        Console.WriteLine($"  Failed      : {result.Failed}");
-        Console.WriteLine($"  Skipped     : {result.Skipped}");
-        Console.WriteLine($"  Duration    : {result.Duration.TotalMilliseconds:F0} ms");
-        Console.WriteLine($"  Dry run     : {result.IsDryRun}");
+        statusWriter.WriteLine();
+        statusWriter.WriteLine("--- Pipeline Summary ---");
+        statusWriter.WriteLine($"  Total files : {result.TotalFiles}");
+        statusWriter.WriteLine($"  Succeeded   : {result.Succeeded}");
+        statusWriter.WriteLine($"  Failed      : {result.Failed}");
+        statusWriter.WriteLine($"  Skipped     : {result.Skipped}");
+        statusWriter.WriteLine($"  Duration    : {result.Duration.TotalMilliseconds:F0} ms");
+        statusWriter.WriteLine($"  Dry run     : {result.IsDryRun}");
+
+        // JSON output: structured result to stdout for machine consumption
+        if (jsonMode)
+        {
+            Console.WriteLine(JsonSerializer.Serialize(result, JsonOutputOptions));
+        }
 
         // Determine exit code
         if (result.Failed > 0 && result.Succeeded > 0)
@@ -224,4 +243,15 @@ static async Task<int> RunPipelineAsync(
     {
         await Log.CloseAndFlushAsync();
     }
+}
+
+/// <summary>Partial class to hold cached static members for the top-level Program.</summary>
+internal partial class Program
+{
+    private static readonly JsonSerializerOptions JsonOutputOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = true,
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
+    };
 }
