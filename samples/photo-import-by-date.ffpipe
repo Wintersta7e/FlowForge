@@ -1,0 +1,76 @@
+{
+  "id": "ad3d8e53-051a-4b0d-8fb7-f03d88b01367",
+  "name": "Photo Import \u2014 Rename by EXIF Date",
+  "version": "1.0",
+  "createdAt": "2026-02-28T01:02:39.0631307Z",
+  "updatedAt": "2026-02-28T01:02:39.0636105Z",
+  "nodes": [
+    {
+      "id": "8b791bec-0b8a-4240-aaf0-6ab903da0711",
+      "typeKey": "FolderInput",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "path": "./input",
+        "recursive": true,
+        "filter": "*.jpg;*.jpeg;*.png;*.heic"
+      }
+    },
+    {
+      "id": "17fdc157-909b-47d4-ae25-88e9414606d2",
+      "typeKey": "MetadataExtract",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "keys": null
+      }
+    },
+    {
+      "id": "38f31dd9-abc3-43c2-b85b-9223d1f0256d",
+      "typeKey": "RenamePattern",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "pattern": "{meta:EXIF:DateTaken}_{name}{ext}"
+      }
+    },
+    {
+      "id": "576c9bcf-076d-4666-8fe8-b8f72e2dfa49",
+      "typeKey": "FolderOutput",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "path": "./output",
+        "mode": "copy"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "fromNode": "8b791bec-0b8a-4240-aaf0-6ab903da0711",
+      "fromPin": "out",
+      "toNode": "17fdc157-909b-47d4-ae25-88e9414606d2",
+      "toPin": "in"
+    },
+    {
+      "fromNode": "17fdc157-909b-47d4-ae25-88e9414606d2",
+      "fromPin": "out",
+      "toNode": "38f31dd9-abc3-43c2-b85b-9223d1f0256d",
+      "toPin": "in"
+    },
+    {
+      "fromNode": "38f31dd9-abc3-43c2-b85b-9223d1f0256d",
+      "fromPin": "out",
+      "toNode": "576c9bcf-076d-4666-8fe8-b8f72e2dfa49",
+      "toPin": "in"
+    }
+  ]
+}

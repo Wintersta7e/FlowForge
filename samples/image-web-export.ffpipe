@@ -1,0 +1,99 @@
+{
+  "id": "5a1e0a54-52e3-4855-9e7d-d1ebd036d676",
+  "name": "Image Web Export (Resize \u002B Convert to WebP)",
+  "version": "1.0",
+  "createdAt": "2026-02-28T01:02:39.0781269Z",
+  "updatedAt": "2026-02-28T01:02:39.0781762Z",
+  "nodes": [
+    {
+      "id": "e888e291-bf34-41e1-b4d5-69d80c47331d",
+      "typeKey": "FolderInput",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "path": "./input",
+        "filter": "*.jpg;*.png"
+      }
+    },
+    {
+      "id": "a5d49f76-bf3c-4a55-a5d8-1193f3caaff8",
+      "typeKey": "Filter",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "conditions": [
+          {
+            "field": "extension",
+            "operator": "equals",
+            "value": ".jpg"
+          }
+        ]
+      }
+    },
+    {
+      "id": "39f482d7-72dc-4749-b3d2-91926b411943",
+      "typeKey": "ImageResize",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "width": 1920,
+        "mode": "max"
+      }
+    },
+    {
+      "id": "be0d22b9-ee9f-43c1-8f2a-f71475cd324e",
+      "typeKey": "ImageConvert",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "format": "webp"
+      }
+    },
+    {
+      "id": "d2aa102c-ba8a-4e04-a520-124bfce03c90",
+      "typeKey": "FolderOutput",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "config": {
+        "path": "./output",
+        "mode": "copy"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "fromNode": "e888e291-bf34-41e1-b4d5-69d80c47331d",
+      "fromPin": "out",
+      "toNode": "a5d49f76-bf3c-4a55-a5d8-1193f3caaff8",
+      "toPin": "in"
+    },
+    {
+      "fromNode": "a5d49f76-bf3c-4a55-a5d8-1193f3caaff8",
+      "fromPin": "out",
+      "toNode": "39f482d7-72dc-4749-b3d2-91926b411943",
+      "toPin": "in"
+    },
+    {
+      "fromNode": "39f482d7-72dc-4749-b3d2-91926b411943",
+      "fromPin": "out",
+      "toNode": "be0d22b9-ee9f-43c1-8f2a-f71475cd324e",
+      "toPin": "in"
+    },
+    {
+      "fromNode": "be0d22b9-ee9f-43c1-8f2a-f71475cd324e",
+      "fromPin": "out",
+      "toNode": "d2aa102c-ba8a-4e04-a520-124bfce03c90",
+      "toPin": "in"
+    }
+  ]
+}
