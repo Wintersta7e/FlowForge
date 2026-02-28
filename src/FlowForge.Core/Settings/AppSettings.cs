@@ -15,6 +15,22 @@ public sealed class AppSettings
     /// <summary>Maximum number of files processed concurrently by the pipeline runner.</summary>
     public int MaxConcurrency { get; set; } = Environment.ProcessorCount;
 
-    /// <summary>Full path of the last pipeline the user had open, or null if none.</summary>
-    public string? LastOpenedPipeline { get; set; }
+    /// <summary>Most recently opened pipeline files, newest first. Max 10.</summary>
+    public List<string> RecentPipelines { get; set; } = new();
+
+    private const int MaxRecentPipelines = 10;
+
+    /// <summary>Add a pipeline path to the front of the recent list, deduplicating and trimming.</summary>
+    public void AddRecentPipeline(string path)
+    {
+        RecentPipelines.Remove(path);
+        RecentPipelines.Insert(0, path);
+        if (RecentPipelines.Count > MaxRecentPipelines)
+        {
+            RecentPipelines.RemoveRange(MaxRecentPipelines, RecentPipelines.Count - MaxRecentPipelines);
+        }
+    }
+
+    /// <summary>Clear all recent pipelines.</summary>
+    public void ClearRecentPipelines() => RecentPipelines.Clear();
 }
