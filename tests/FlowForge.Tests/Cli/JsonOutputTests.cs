@@ -49,8 +49,34 @@ public class JsonOutputTests
         root.GetProperty("totalFiles").GetInt32().Should().Be(3);
         root.GetProperty("succeeded").GetInt32().Should().Be(2);
         root.GetProperty("failed").GetInt32().Should().Be(1);
+        root.GetProperty("skipped").GetInt32().Should().Be(0);
+        root.GetProperty("duration").ValueKind.Should().Be(JsonValueKind.String);
         root.GetProperty("jobs").GetArrayLength().Should().Be(2);
         root.GetProperty("jobs")[1].GetProperty("status").GetString().Should().Be("failed");
         root.GetProperty("jobs")[1].GetProperty("errorMessage").GetString().Should().Be("File locked");
+    }
+
+    [Fact]
+    public void ExecutionResult_roundtrips_all_fields()
+    {
+        var original = new ExecutionResult
+        {
+            IsDryRun = false,
+            TotalFiles = 5,
+            Succeeded = 3,
+            Failed = 1,
+            Skipped = 1,
+            Duration = TimeSpan.FromSeconds(42),
+        };
+
+        string json = JsonSerializer.Serialize(original, JsonOptions);
+        ExecutionResult? deserialized = JsonSerializer.Deserialize<ExecutionResult>(json, JsonOptions);
+
+        deserialized.Should().NotBeNull();
+        deserialized!.TotalFiles.Should().Be(5);
+        deserialized.Succeeded.Should().Be(3);
+        deserialized.Failed.Should().Be(1);
+        deserialized.Skipped.Should().Be(1);
+        deserialized.IsDryRun.Should().BeFalse();
     }
 }

@@ -28,8 +28,8 @@
         "conditions": [
           {
             "field": "extension",
-            "operator": "equals",
-            "value": ".jpg"
+            "operator": "matches",
+            "value": "\\.(jpg|jpeg|png)$"
           }
         ]
       }

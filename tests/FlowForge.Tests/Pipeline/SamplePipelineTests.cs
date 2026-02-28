@@ -37,10 +37,43 @@ public class SamplePipelineTests
 
             loaded.Nodes.Should().HaveCount(graph.Nodes.Count);
             loaded.Connections.Should().HaveCount(graph.Connections.Count);
+
+            // Verify TypeKey and Config are preserved after round-trip
+            for (int i = 0; i < graph.Nodes.Count; i++)
+            {
+                loaded.Nodes[i].TypeKey.Should().Be(graph.Nodes[i].TypeKey,
+                    $"node at index {i} should preserve TypeKey after round-trip");
+                loaded.Nodes[i].Config.Should().NotBeEmpty(
+                    $"node at index {i} ({graph.Nodes[i].TypeKey}) should preserve Config after round-trip");
+            }
         }
         finally
         {
             File.Delete(tempFile);
         }
+    }
+
+    [Theory]
+    [InlineData("samples/photo-import-by-date.ffpipe")]
+    [InlineData("samples/batch-sequential-rename.ffpipe")]
+    [InlineData("samples/image-web-export.ffpipe")]
+    [InlineData("samples/bulk-image-compress.ffpipe")]
+    public async Task Sample_ffpipe_files_load_successfully(string relativePath)
+    {
+        // Find the samples directory relative to the test assembly
+        string basePath = AppContext.BaseDirectory;
+        string samplePath = Path.GetFullPath(Path.Combine(basePath, "..", "..", "..", "..", "..", relativePath));
+
+        if (!File.Exists(samplePath))
+        {
+            // Skip if running in CI where samples may not be present
+            return;
+        }
+
+        PipelineGraph graph = await PipelineSerializer.LoadAsync(samplePath);
+
+        graph.Nodes.Should().NotBeEmpty();
+        graph.Connections.Should().NotBeEmpty();
+        graph.Nodes.Should().AllSatisfy(n => n.TypeKey.Should().NotBeNullOrWhiteSpace());
     }
 }
