@@ -57,6 +57,12 @@ public class ConfigFieldTemplateSelector : IDataTemplate
         };
 
         panel.Children.Add(editor);
+
+        if (field.Tooltip is not null)
+        {
+            ToolTip.SetTip(cardBorder, field.Tooltip);
+        }
+
         cardBorder.Child = panel;
         return cardBorder;
     }

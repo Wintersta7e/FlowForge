@@ -21,6 +21,7 @@ public partial class ConfigFieldViewModel : ViewModelBase
     public string? Placeholder { get; }
     public IReadOnlyList<string>? Options { get; }
     public string? DefaultValue { get; }
+    public string? Tooltip { get; }
 
     public ConfigFieldViewModel(
         ConfigField field,
@@ -36,6 +37,7 @@ public partial class ConfigFieldViewModel : ViewModelBase
         Placeholder = field.Placeholder;
         Options = field.Options;
         DefaultValue = field.DefaultValue;
+        Tooltip = field.Description;
 
         // Read initial value from config dictionary
         if (_configDictionary.TryGetValue(Key, out JsonElement element))
