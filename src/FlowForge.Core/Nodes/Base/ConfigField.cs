@@ -25,6 +25,7 @@ public enum ConfigFieldType
 /// <param name="DefaultValue">Default value shown in the UI (null = none).</param>
 /// <param name="Placeholder">Hint text shown when the field is empty.</param>
 /// <param name="Options">Dropdown options for <see cref="ConfigFieldType.Select"/> fields.</param>
+/// <param name="Description">Tooltip or help text shown in the properties panel.</param>
 public sealed record ConfigField(
     string Key,
     ConfigFieldType Type,
@@ -32,4 +33,5 @@ public sealed record ConfigField(
     bool Required = false,
     string? DefaultValue = null,
     string? Placeholder = null,
-    IReadOnlyList<string>? Options = null);
+    IReadOnlyList<string>? Options = null,
+    string? Description = null);
