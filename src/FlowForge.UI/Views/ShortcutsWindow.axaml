@@ -1,0 +1,66 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="FlowForge.UI.Views.ShortcutsWindow"
+        Title="Keyboard Shortcuts"
+        Width="400" Height="400"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource MidnightPanel}">
+
+    <StackPanel Margin="24" Spacing="16">
+        <TextBlock Text="Keyboard Shortcuts"
+                   FontSize="20"
+                   FontWeight="Bold"
+                   Foreground="{DynamicResource MidnightText}" />
+
+        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+              Margin="0,8,0,0">
+            <Grid.Styles>
+                <Style Selector="TextBlock.key">
+                    <Setter Property="FontFamily" Value="Cascadia Mono,Consolas,monospace" />
+                    <Setter Property="FontSize" Value="13" />
+                    <Setter Property="Foreground" Value="{DynamicResource MidnightAccent}" />
+                    <Setter Property="Margin" Value="0,4,24,4" />
+                </Style>
+                <Style Selector="TextBlock.desc">
+                    <Setter Property="FontSize" Value="13" />
+                    <Setter Property="Foreground" Value="{DynamicResource MidnightText}" />
+                    <Setter Property="Margin" Value="0,4" />
+                    <Setter Property="VerticalAlignment" Value="Center" />
+                </Style>
+            </Grid.Styles>
+
+            <TextBlock Grid.Row="0" Grid.Column="0" Classes="key" Text="Ctrl+N" />
+            <TextBlock Grid.Row="0" Grid.Column="1" Classes="desc" Text="New pipeline" />
+
+            <TextBlock Grid.Row="1" Grid.Column="0" Classes="key" Text="Ctrl+O" />
+            <TextBlock Grid.Row="1" Grid.Column="1" Classes="desc" Text="Open pipeline" />
+
+            <TextBlock Grid.Row="2" Grid.Column="0" Classes="key" Text="Ctrl+S" />
+            <TextBlock Grid.Row="2" Grid.Column="1" Classes="desc" Text="Save" />
+
+            <TextBlock Grid.Row="3" Grid.Column="0" Classes="key" Text="Ctrl+Shift+S" />
+            <TextBlock Grid.Row="3" Grid.Column="1" Classes="desc" Text="Save as" />
+
+            <TextBlock Grid.Row="4" Grid.Column="0" Classes="key" Text="Delete" />
+            <TextBlock Grid.Row="4" Grid.Column="1" Classes="desc" Text="Remove selected nodes" />
+
+            <TextBlock Grid.Row="5" Grid.Column="0" Classes="key" Text="Ctrl+0" />
+            <TextBlock Grid.Row="5" Grid.Column="1" Classes="desc" Text="Zoom to fit all nodes" />
+
+            <TextBlock Grid.Row="6" Grid.Column="0" Classes="key" Text="Space+Drag" />
+            <TextBlock Grid.Row="6" Grid.Column="1" Classes="desc" Text="Pan canvas" />
+
+            <TextBlock Grid.Row="7" Grid.Column="0" Classes="key" Text="Ctrl+Scroll" />
+            <TextBlock Grid.Row="7" Grid.Column="1" Classes="desc" Text="Zoom in/out" />
+
+            <TextBlock Grid.Row="8" Grid.Column="0" Classes="key" Text="F1" />
+            <TextBlock Grid.Row="8" Grid.Column="1" Classes="desc" Text="Show this help" />
+        </Grid>
+
+        <Button Content="Close"
+                HorizontalAlignment="Right"
+                Padding="16,6"
+                Click="OnCloseClick" />
+    </StackPanel>
+</Window>

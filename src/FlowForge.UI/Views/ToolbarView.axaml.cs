@@ -29,6 +29,16 @@ public partial class ToolbarView : UserControl
         }
     }
 
+    private async void OnShowShortcutsClick(object? sender, RoutedEventArgs e)
+    {
+        var window = new ShortcutsWindow();
+        Window? topLevel = TopLevel.GetTopLevel(this) as Window;
+        if (topLevel is not null)
+        {
+            await window.ShowDialog(topLevel);
+        }
+    }
+
     private void OnFitToScreenClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is MainWindowViewModel vm)
