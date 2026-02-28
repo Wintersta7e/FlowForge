@@ -1,3 +1,4 @@
+using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -8,6 +9,9 @@ namespace FlowForge.UI.Views;
 
 public partial class CanvasView : UserControl
 {
+    private Action? _fitToScreenHandler;
+    private EditorViewModel? _subscribedEditor;
+
     public CanvasView()
     {
         InitializeComponent();
@@ -16,16 +20,27 @@ public partial class CanvasView : UserControl
         AddHandler(DragDrop.DropEvent, OnDrop);
         AddHandler(DragDrop.DragOverEvent, OnDragOver);
 
-        DataContextChanged += (_, _) =>
+        DataContextChanged += OnDataContextChanged;
+    }
+
+    private void OnDataContextChanged(object? sender, System.EventArgs e)
+    {
+        // Unsubscribe from previous editor to prevent handler accumulation
+        if (_subscribedEditor is not null && _fitToScreenHandler is not null)
         {
-            if (DataContext is EditorViewModel editor)
-            {
-                editor.FitToScreenRequested += () =>
-                {
-                    Nodify.Avalonia.EditorCommands.FitToScreen.Execute(parameter: null!, Editor);
-                };
-            }
-        };
+            _subscribedEditor.FitToScreenRequested -= _fitToScreenHandler;
+        }
+
+        _subscribedEditor = null;
+        _fitToScreenHandler = null;
+
+        if (DataContext is EditorViewModel editor)
+        {
+            _fitToScreenHandler = () =>
+                Nodify.Avalonia.EditorCommands.FitToScreen.Execute(parameter: null!, Editor);
+            editor.FitToScreenRequested += _fitToScreenHandler;
+            _subscribedEditor = editor;
+        }
     }
 
     private void OnDragOver(object? sender, DragEventArgs e)

@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.IO;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
@@ -7,6 +8,9 @@ namespace FlowForge.UI.Views;
 
 public partial class ToolbarView : UserControl
 {
+    private MainWindowViewModel? _subscribedVm;
+    private PropertyChangedEventHandler? _vmPropertyChangedHandler;
+
     public ToolbarView()
     {
         InitializeComponent();
@@ -15,15 +19,26 @@ public partial class ToolbarView : UserControl
 
     private void OnDataContextChanged(object? sender, System.EventArgs e)
     {
+        // Unsubscribe from previous VM to prevent handler accumulation
+        if (_subscribedVm is not null && _vmPropertyChangedHandler is not null)
+        {
+            _subscribedVm.PropertyChanged -= _vmPropertyChangedHandler;
+        }
+
+        _subscribedVm = null;
+        _vmPropertyChangedHandler = null;
+
         if (DataContext is MainWindowViewModel vm)
         {
-            vm.PropertyChanged += (_, args) =>
+            _vmPropertyChangedHandler = (_, args) =>
             {
                 if (args.PropertyName == nameof(MainWindowViewModel.RecentPipelines))
                 {
                     RebuildRecentMenu(vm);
                 }
             };
+            _subscribedVm = vm;
+            vm.PropertyChanged += _vmPropertyChangedHandler;
 
             RebuildRecentMenu(vm);
         }
@@ -44,6 +59,23 @@ public partial class ToolbarView : UserControl
         if (DataContext is MainWindowViewModel vm)
         {
             vm.Editor.RequestFitToScreen();
+        }
+    }
+
+    private void OnRecentItemClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem item && item.Tag is string path
+            && DataContext is MainWindowViewModel vm)
+        {
+            vm.OpenRecentCommand.Execute(path);
+        }
+    }
+
+    private void OnClearRecentClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm)
+        {
+            vm.ClearRecentCommand.Execute(null);
         }
     }
 
@@ -72,13 +104,13 @@ public partial class ToolbarView : UserControl
             };
 
             ToolTip.SetTip(item, path);
-            item.Click += (_, _) => vm.OpenRecentCommand.Execute(path);
+            item.Click += OnRecentItemClick;
             flyout.Items.Add(item);
         }
 
         flyout.Items.Add(new Separator());
         var clearItem = new MenuItem { Header = "Clear Recent" };
-        clearItem.Click += (_, _) => vm.ClearRecentCommand.Execute(null);
+        clearItem.Click += OnClearRecentClick;
         flyout.Items.Add(clearItem);
     }
 }
