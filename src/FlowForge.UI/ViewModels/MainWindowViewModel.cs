@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -16,12 +17,15 @@ using Serilog;
 
 namespace FlowForge.UI.ViewModels;
 
+public record RecentPipelineItem(string FileName, string FullPath);
+
 public partial class MainWindowViewModel : ViewModelBase
 {
     private readonly NodeRegistry _registry;
     private readonly IDialogService _dialogService;
     private readonly ILogger _logger;
     private readonly AppSettingsManager _settingsManager;
+    private readonly TaskCompletionSource _initComplete = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private AppSettings _appSettings = new();
 
     public NodeRegistry Registry => _registry;
@@ -38,6 +42,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     private ObservableCollection<string> _recentPipelines = new();
+
+    public List<RecentPipelineItem> RecentPipelineItems { get; private set; } = new();
 
     public EditorViewModel Editor { get; }
     public NodeLibraryViewModel NodeLibrary { get; }
@@ -73,23 +79,39 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public async Task InitializeAsync()
     {
-        _appSettings = await _settingsManager.LoadAsync();
+        try
+        {
+            _appSettings = await _settingsManager.LoadAsync();
+            RefreshRecentPipelines();
+        }
+        finally
+        {
+            _initComplete.TrySetResult();
+        }
+    }
+
+    private void RefreshRecentPipelines()
+    {
         RecentPipelines = new ObservableCollection<string>(
             _appSettings.RecentPipelines
                 .Where(p => p.EndsWith(".ffpipe", StringComparison.OrdinalIgnoreCase) && File.Exists(p)));
+        RecentPipelineItems = RecentPipelines
+            .Select(p => new RecentPipelineItem(Path.GetFileName(p), p))
+            .ToList();
+        OnPropertyChanged(nameof(RecentPipelineItems));
     }
 
     private async Task TrackRecentPipelineAsync(string path)
     {
+        await _initComplete.Task;
+
         if (!path.EndsWith(".ffpipe", StringComparison.OrdinalIgnoreCase))
         {
             return;
         }
 
         _appSettings.AddRecentPipeline(path);
-        RecentPipelines = new ObservableCollection<string>(
-            _appSettings.RecentPipelines
-                .Where(p => p.EndsWith(".ffpipe", StringComparison.OrdinalIgnoreCase) && File.Exists(p)));
+        RefreshRecentPipelines();
         await _settingsManager.SaveAsync(_appSettings);
     }
 
@@ -98,15 +120,21 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (!File.Exists(path))
         {
-            _appSettings.RecentPipelines.Remove(path);
+            _appSettings.RecentPipelines.RemoveAll(p =>
+                string.Equals(p, path, StringComparison.OrdinalIgnoreCase));
             RecentPipelines.Remove(path);
+            RecentPipelineItems = RecentPipelineItems
+                .Where(item => !string.Equals(item.FullPath, path, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            OnPropertyChanged(nameof(RecentPipelineItems));
+            await _settingsManager.SaveAsync(_appSettings);
             ExecutionLog.Summary = $"File not found: {Path.GetFileName(path)}";
             return;
         }
 
         try
         {
-            PipelineGraph graph = await PipelineSerializer.LoadAsync(path);
+            PipelineGraph graph = await PipelineSerializer.LoadAsync(path, CancellationToken.None);
             int droppedConnections = Editor.LoadGraph(graph, _registry);
             CurrentFilePath = path;
             IsDirty = false;
@@ -157,7 +185,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         try
         {
-            PipelineGraph graph = await PipelineSerializer.LoadAsync(path);
+            PipelineGraph graph = await PipelineSerializer.LoadAsync(path, CancellationToken.None);
             int droppedConnections = Editor.LoadGraph(graph, _registry);
             CurrentFilePath = path;
             IsDirty = false;

@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.IO;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using FlowForge.UI.ViewModels;
@@ -32,7 +31,7 @@ public partial class ToolbarView : UserControl
         {
             _vmPropertyChangedHandler = (_, args) =>
             {
-                if (args.PropertyName == nameof(MainWindowViewModel.RecentPipelines))
+                if (args.PropertyName == nameof(MainWindowViewModel.RecentPipelineItems))
                 {
                     RebuildRecentMenu(vm);
                 }
@@ -86,24 +85,33 @@ public partial class ToolbarView : UserControl
             return;
         }
 
+        // Unsubscribe Click handlers from existing items to prevent leaks
+        foreach (object? existingItem in flyout.Items)
+        {
+            if (existingItem is MenuItem menuItem)
+            {
+                menuItem.Click -= OnRecentItemClick;
+                menuItem.Click -= OnClearRecentClick;
+            }
+        }
+
         flyout.Items.Clear();
 
-        if (vm.RecentPipelines.Count == 0)
+        if (vm.RecentPipelineItems.Count == 0)
         {
             flyout.Items.Add(new MenuItem { Header = "No recent pipelines", IsEnabled = false });
             return;
         }
 
-        foreach (string path in vm.RecentPipelines)
+        foreach (ViewModels.RecentPipelineItem recent in vm.RecentPipelineItems)
         {
-            string fileName = Path.GetFileName(path);
             var item = new MenuItem
             {
-                Header = fileName,
-                Tag = path,
+                Header = recent.FileName,
+                Tag = recent.FullPath,
             };
 
-            ToolTip.SetTip(item, path);
+            ToolTip.SetTip(item, recent.FullPath);
             item.Click += OnRecentItemClick;
             flyout.Items.Add(item);
         }
