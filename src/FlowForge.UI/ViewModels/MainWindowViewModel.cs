@@ -54,14 +54,15 @@ public partial class MainWindowViewModel : ViewModelBase
     public MainWindowViewModel(
         ILogger<MainWindowViewModel> logger,
         AppSettingsManager settingsManager,
-        NodeRegistry registry)
+        NodeRegistry registry,
+        EditorViewModel editor)
     {
         _registry = registry;
         _dialogService = new DialogService();
         _logger = logger;
         _settingsManager = settingsManager;
 
-        Editor = App.Services.GetRequiredService<EditorViewModel>();
+        Editor = editor;
         NodeLibrary = new NodeLibraryViewModel();
         Properties = new PropertiesViewModel();
         ExecutionLog = new ExecutionLogViewModel();

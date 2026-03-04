@@ -45,6 +45,14 @@ public partial class App : Application
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            desktop.ShutdownRequested += (_, _) =>
+            {
+                if (Services is IDisposable disposable)
+                {
+                    disposable.Dispose();
+                }
+            };
+
             var viewModel = Services.GetRequiredService<MainWindowViewModel>();
             desktop.MainWindow = new MainWindow
             {
