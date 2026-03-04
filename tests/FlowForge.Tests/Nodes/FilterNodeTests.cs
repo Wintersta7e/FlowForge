@@ -4,6 +4,7 @@ using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Transforms;
 using FlowForge.Core.Nodes.Base;
 using FlowForge.Tests.Helpers;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlowForge.Tests.Nodes;
 
@@ -20,7 +21,7 @@ public class FilterNodeTests
     [Fact]
     public async Task File_matching_extension_passes()
     {
-        var node = new FilterNode();
+        var node = new FilterNode(NullLogger<FilterNode>.Instance);
         node.Configure(MakeConfig(new[]
         {
             new { field = "extension", @operator = "equals", value = ".jpg" }
@@ -40,7 +41,7 @@ public class FilterNodeTests
     [Fact]
     public async Task File_not_matching_extension_is_dropped()
     {
-        var node = new FilterNode();
+        var node = new FilterNode(NullLogger<FilterNode>.Instance);
         node.Configure(MakeConfig(new[]
         {
             new { field = "extension", @operator = "equals", value = ".jpg" }
@@ -59,7 +60,7 @@ public class FilterNodeTests
     [Fact]
     public async Task Contains_operator_matches_substring()
     {
-        var node = new FilterNode();
+        var node = new FilterNode(NullLogger<FilterNode>.Instance);
         node.Configure(MakeConfig(new[]
         {
             new { field = "filename", @operator = "contains", value = "photo" }
@@ -78,7 +79,7 @@ public class FilterNodeTests
     [Fact]
     public async Task Matches_operator_uses_regex()
     {
-        var node = new FilterNode();
+        var node = new FilterNode(NullLogger<FilterNode>.Instance);
         node.Configure(MakeConfig(new[]
         {
             new { field = "filename", @operator = "matches", value = @"^\d{3}\.jpg$" }
@@ -109,7 +110,7 @@ public class FilterNodeTests
         string filePath = Path.Combine(dir.Path, "small.txt");
         File.WriteAllText(filePath, "hello");
 
-        var node = new FilterNode();
+        var node = new FilterNode(NullLogger<FilterNode>.Instance);
         node.Configure(MakeConfig(new[]
         {
             new { field = "size", @operator = "lessThan", value = "1000" }
@@ -128,7 +129,7 @@ public class FilterNodeTests
     [Fact]
     public async Task Multiple_conditions_all_must_match()
     {
-        var node = new FilterNode();
+        var node = new FilterNode(NullLogger<FilterNode>.Instance);
         node.Configure(MakeConfig(new[]
         {
             new { field = "extension", @operator = "equals", value = ".jpg" },
@@ -156,7 +157,7 @@ public class FilterNodeTests
     [Fact]
     public async Task File_not_matching_extension_is_marked_skipped()
     {
-        var node = new FilterNode();
+        var node = new FilterNode(NullLogger<FilterNode>.Instance);
         node.Configure(MakeConfig(new[]
         {
             new { field = "extension", @operator = "equals", value = ".jpg" }
@@ -176,7 +177,7 @@ public class FilterNodeTests
     [Fact]
     public async Task Regex_timeout_sets_failed_and_returns_empty()
     {
-        var node = new FilterNode();
+        var node = new FilterNode(NullLogger<FilterNode>.Instance);
         // Catastrophic backtracking pattern: (a+)+ against a long string of 'a's followed by '!'
         node.Configure(MakeConfig(new[]
         {
@@ -198,7 +199,7 @@ public class FilterNodeTests
     [Fact]
     public void Missing_conditions_throws()
     {
-        var node = new FilterNode();
+        var node = new FilterNode(NullLogger<FilterNode>.Instance);
         var config = new Dictionary<string, JsonElement>();
 
         Action act = () => node.Configure(config);

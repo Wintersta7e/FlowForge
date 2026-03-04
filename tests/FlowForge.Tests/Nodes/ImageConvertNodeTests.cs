@@ -4,6 +4,7 @@ using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Transforms;
 using FlowForge.Core.Nodes.Base;
 using FlowForge.Tests.Helpers;
+using Microsoft.Extensions.Logging.Abstractions;
 using SixLabors.ImageSharp;
 
 namespace FlowForge.Tests.Nodes;
@@ -25,7 +26,7 @@ public class ImageConvertNodeTests
         string inputPath = Path.Combine(dir.Path, "photo.jpg");
         TestFileFactory.CreateTestImage(inputPath, width: 100, height: 100);
 
-        var node = new ImageConvertNode();
+        var node = new ImageConvertNode(NullLogger<ImageConvertNode>.Instance);
         node.Configure(MakeConfig(new { format = "png" }));
 
         var job = new FileJob
@@ -53,7 +54,7 @@ public class ImageConvertNodeTests
         string inputPath = Path.Combine(dir.Path, "graphic.png");
         TestFileFactory.CreateTestPng(inputPath, width: 80, height: 60);
 
-        var node = new ImageConvertNode();
+        var node = new ImageConvertNode(NullLogger<ImageConvertNode>.Instance);
         node.Configure(MakeConfig(new { format = "jpg" }));
 
         var job = new FileJob
@@ -81,7 +82,7 @@ public class ImageConvertNodeTests
         string inputPath = Path.Combine(dir.Path, "sample.jpg");
         TestFileFactory.CreateTestImage(inputPath, width: 50, height: 50);
 
-        var node = new ImageConvertNode();
+        var node = new ImageConvertNode(NullLogger<ImageConvertNode>.Instance);
         node.Configure(MakeConfig(new { format = "webp" }));
 
         var job = new FileJob
@@ -102,7 +103,7 @@ public class ImageConvertNodeTests
     [Fact]
     public void Invalid_format_throws_NodeConfigurationException()
     {
-        var node = new ImageConvertNode();
+        var node = new ImageConvertNode(NullLogger<ImageConvertNode>.Instance);
         Action act = () => node.Configure(MakeConfig(new { format = "gif" }));
         act.Should().Throw<NodeConfigurationException>();
     }
@@ -110,7 +111,7 @@ public class ImageConvertNodeTests
     [Fact]
     public void Missing_format_throws_NodeConfigurationException()
     {
-        var node = new ImageConvertNode();
+        var node = new ImageConvertNode(NullLogger<ImageConvertNode>.Instance);
         Action act = () => node.Configure(MakeConfig(new { unrelated = "value" }));
         act.Should().Throw<NodeConfigurationException>();
     }
@@ -123,7 +124,7 @@ public class ImageConvertNodeTests
         TestFileFactory.CreateTestImage(inputPath, width: 100, height: 100);
         long originalSize = new FileInfo(inputPath).Length;
 
-        var node = new ImageConvertNode();
+        var node = new ImageConvertNode(NullLogger<ImageConvertNode>.Instance);
         node.Configure(MakeConfig(new { format = "png" }));
 
         var job = new FileJob
@@ -151,7 +152,7 @@ public class ImageConvertNodeTests
         string inputPath = Path.Combine(dir.Path, "delete_me.jpg");
         TestFileFactory.CreateTestImage(inputPath, width: 100, height: 100);
 
-        var node = new ImageConvertNode();
+        var node = new ImageConvertNode(NullLogger<ImageConvertNode>.Instance);
         node.Configure(MakeConfig(new { format = "png" }));
 
         var job = new FileJob
@@ -174,7 +175,7 @@ public class ImageConvertNodeTests
         string inputPath = Path.Combine(dir.Path, "keep_me.jpg");
         TestFileFactory.CreateTestImage(inputPath, width: 100, height: 100);
 
-        var node = new ImageConvertNode();
+        var node = new ImageConvertNode(NullLogger<ImageConvertNode>.Instance);
         node.Configure(MakeConfig(new { format = "jpg" }));
 
         var job = new FileJob

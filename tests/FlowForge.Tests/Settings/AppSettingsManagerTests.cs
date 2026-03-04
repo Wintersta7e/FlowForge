@@ -1,21 +1,19 @@
 using FluentAssertions;
 using FlowForge.Core.Settings;
 using FlowForge.Tests.Helpers;
-using Serilog;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlowForge.Tests.Settings;
 
 public class AppSettingsManagerTests
 {
-    private static readonly ILogger Logger = new LoggerConfiguration().CreateLogger();
-
     [Fact]
     public async Task Load_nonexistent_file_returns_default_settings()
     {
         using var dir = new TempDirectory();
         string settingsPath = Path.Combine(dir.Path, "nonexistent", "settings.json");
 
-        var manager = new AppSettingsManager(settingsPath, Logger);
+        var manager = new AppSettingsManager(settingsPath, NullLogger<AppSettingsManager>.Instance);
 
         AppSettings settings = await manager.LoadAsync();
 
@@ -31,7 +29,7 @@ public class AppSettingsManagerTests
         using var dir = new TempDirectory();
         string settingsPath = Path.Combine(dir.Path, "settings.json");
 
-        var manager = new AppSettingsManager(settingsPath, Logger);
+        var manager = new AppSettingsManager(settingsPath, NullLogger<AppSettingsManager>.Instance);
         var original = new AppSettings
         {
             DefaultInputFolder = "/home/user/input",
@@ -56,7 +54,7 @@ public class AppSettingsManagerTests
         string settingsPath = Path.Combine(dir.Path, "settings.json");
         await File.WriteAllTextAsync(settingsPath, "{{{{ not valid json !@#$");
 
-        var manager = new AppSettingsManager(settingsPath, Logger);
+        var manager = new AppSettingsManager(settingsPath, NullLogger<AppSettingsManager>.Instance);
 
         AppSettings settings = await manager.LoadAsync();
 
@@ -70,7 +68,7 @@ public class AppSettingsManagerTests
         using var dir = new TempDirectory();
         string nestedPath = Path.Combine(dir.Path, "deep", "nested", "settings.json");
 
-        var manager = new AppSettingsManager(nestedPath, Logger);
+        var manager = new AppSettingsManager(nestedPath, NullLogger<AppSettingsManager>.Instance);
 
         await manager.SaveAsync(new AppSettings());
 
@@ -85,7 +83,7 @@ public class AppSettingsManagerTests
         using var dir = new TempDirectory();
         string settingsPath = Path.Combine(dir.Path, "settings.json");
 
-        var manager = new AppSettingsManager(settingsPath, Logger);
+        var manager = new AppSettingsManager(settingsPath, NullLogger<AppSettingsManager>.Instance);
 
         await manager.SaveAsync(new AppSettings());
 
@@ -100,7 +98,7 @@ public class AppSettingsManagerTests
         using var dir = new TempDirectory();
         string settingsPath = Path.Combine(dir.Path, "settings.json");
 
-        var manager = new AppSettingsManager(settingsPath, Logger);
+        var manager = new AppSettingsManager(settingsPath, NullLogger<AppSettingsManager>.Instance);
 
         Func<Task> act = () => manager.SaveAsync(null!);
 
@@ -113,7 +111,7 @@ public class AppSettingsManagerTests
         using var dir = new TempDirectory();
         string settingsPath = Path.Combine(dir.Path, "settings.json");
 
-        var manager = new AppSettingsManager(settingsPath, Logger);
+        var manager = new AppSettingsManager(settingsPath, NullLogger<AppSettingsManager>.Instance);
         var custom = new AppSettings
         {
             DefaultInputFolder = "/mnt/data/photos",

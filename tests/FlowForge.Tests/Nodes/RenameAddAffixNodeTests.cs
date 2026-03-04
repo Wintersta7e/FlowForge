@@ -3,6 +3,7 @@ using FluentAssertions;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Transforms;
 using FlowForge.Core.Nodes.Base;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlowForge.Tests.Nodes;
 
@@ -28,7 +29,7 @@ public class RenameAddAffixNodeTests
     [Fact]
     public async Task Prefix_only_prepends_to_filename()
     {
-        var node = new RenameAddAffixNode();
+        var node = new RenameAddAffixNode(NullLogger<RenameAddAffixNode>.Instance);
         node.Configure(MakeConfig(new { prefix = "IMG_" }));
 
         FileJob job = MakeJob(Path.Combine("/tmp", "photo.jpg"));
@@ -41,7 +42,7 @@ public class RenameAddAffixNodeTests
     [Fact]
     public async Task Suffix_only_appends_before_extension()
     {
-        var node = new RenameAddAffixNode();
+        var node = new RenameAddAffixNode(NullLogger<RenameAddAffixNode>.Instance);
         node.Configure(MakeConfig(new { suffix = "_backup" }));
 
         FileJob job = MakeJob(Path.Combine("/tmp", "photo.jpg"));
@@ -54,7 +55,7 @@ public class RenameAddAffixNodeTests
     [Fact]
     public async Task Both_prefix_and_suffix_applied()
     {
-        var node = new RenameAddAffixNode();
+        var node = new RenameAddAffixNode(NullLogger<RenameAddAffixNode>.Instance);
         node.Configure(MakeConfig(new { prefix = "PRE_", suffix = "_SUF" }));
 
         FileJob job = MakeJob(Path.Combine("/tmp", "photo.jpg"));
@@ -67,7 +68,7 @@ public class RenameAddAffixNodeTests
     [Fact]
     public void Both_empty_throws_NodeConfigurationException()
     {
-        var node = new RenameAddAffixNode();
+        var node = new RenameAddAffixNode(NullLogger<RenameAddAffixNode>.Instance);
 
         Action act = () => node.Configure(MakeConfig(new { prefix = "", suffix = "" }));
 
@@ -77,7 +78,7 @@ public class RenameAddAffixNodeTests
     [Fact]
     public async Task Extension_preserved_with_prefix_and_suffix()
     {
-        var node = new RenameAddAffixNode();
+        var node = new RenameAddAffixNode(NullLogger<RenameAddAffixNode>.Instance);
         node.Configure(MakeConfig(new { prefix = "A_", suffix = "_Z" }));
 
         FileJob job = MakeJob(Path.Combine("/tmp", "document.tar.gz"));
@@ -91,7 +92,7 @@ public class RenameAddAffixNodeTests
     [Fact]
     public async Task DryRun_updates_path_without_file_move()
     {
-        var node = new RenameAddAffixNode();
+        var node = new RenameAddAffixNode(NullLogger<RenameAddAffixNode>.Instance);
         node.Configure(MakeConfig(new { prefix = "NEW_" }));
 
         FileJob job = MakeJob(Path.Combine("/nonexistent/path", "test.jpg"));
@@ -107,7 +108,7 @@ public class RenameAddAffixNodeTests
     [Fact]
     public async Task CancellationToken_respected()
     {
-        var node = new RenameAddAffixNode();
+        var node = new RenameAddAffixNode(NullLogger<RenameAddAffixNode>.Instance);
         node.Configure(MakeConfig(new { prefix = "X_" }));
 
         FileJob job = MakeJob(Path.Combine("/tmp", "file.txt"));

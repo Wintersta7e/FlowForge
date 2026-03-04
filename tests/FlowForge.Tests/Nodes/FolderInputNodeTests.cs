@@ -4,6 +4,7 @@ using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Sources;
 using FlowForge.Core.Nodes.Base;
 using FlowForge.Tests.Helpers;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlowForge.Tests.Nodes;
 
@@ -34,7 +35,7 @@ public class FolderInputNodeTests
         using var dir = new TempDirectory();
         dir.CreateFiles("alpha.txt", "bravo.txt", "charlie.txt");
 
-        var node = new FolderInputNode();
+        var node = new FolderInputNode(NullLogger<FolderInputNode>.Instance);
         node.Configure(MakeConfig(new { path = dir.Path }));
 
         List<FileJob> jobs = await CollectJobsAsync(node);
@@ -50,7 +51,7 @@ public class FolderInputNodeTests
         using var dir = new TempDirectory();
         dir.CreateFiles("top.txt", "sub/nested.txt", "sub/deep/bottom.txt");
 
-        var node = new FolderInputNode();
+        var node = new FolderInputNode(NullLogger<FolderInputNode>.Instance);
         node.Configure(MakeConfig(new { path = dir.Path, recursive = true }));
 
         List<FileJob> jobs = await CollectJobsAsync(node);
@@ -66,7 +67,7 @@ public class FolderInputNodeTests
         using var dir = new TempDirectory();
         dir.CreateFiles("top.txt", "sub/nested.txt");
 
-        var node = new FolderInputNode();
+        var node = new FolderInputNode(NullLogger<FolderInputNode>.Instance);
         node.Configure(MakeConfig(new { path = dir.Path, recursive = false }));
 
         List<FileJob> jobs = await CollectJobsAsync(node);
@@ -81,7 +82,7 @@ public class FolderInputNodeTests
         using var dir = new TempDirectory();
         dir.CreateFiles("photo.jpg", "image.png", "readme.txt", "data.csv");
 
-        var node = new FolderInputNode();
+        var node = new FolderInputNode(NullLogger<FolderInputNode>.Instance);
         node.Configure(MakeConfig(new { path = dir.Path, filter = "*.jpg;*.png" }));
 
         List<FileJob> jobs = await CollectJobsAsync(node);
@@ -98,7 +99,7 @@ public class FolderInputNodeTests
         string emptyDir = Path.Combine(dir.Path, "empty");
         Directory.CreateDirectory(emptyDir);
 
-        var node = new FolderInputNode();
+        var node = new FolderInputNode(NullLogger<FolderInputNode>.Instance);
         node.Configure(MakeConfig(new { path = emptyDir }));
 
         List<FileJob> jobs = await CollectJobsAsync(node);
@@ -111,7 +112,7 @@ public class FolderInputNodeTests
     {
         string fakePath = Path.Combine(Path.GetTempPath(), "FlowForge_NonExistent_" + Guid.NewGuid().ToString("N"));
 
-        var node = new FolderInputNode();
+        var node = new FolderInputNode(NullLogger<FolderInputNode>.Instance);
         node.Configure(MakeConfig(new { path = fakePath }));
 
         Func<Task> act = async () => await CollectJobsAsync(node);
@@ -123,7 +124,7 @@ public class FolderInputNodeTests
     [Fact]
     public void Missing_path_config_throws_NodeConfigurationException()
     {
-        var node = new FolderInputNode();
+        var node = new FolderInputNode(NullLogger<FolderInputNode>.Instance);
         var config = new Dictionary<string, JsonElement>();
 
         Action act = () => node.Configure(config);
@@ -137,7 +138,7 @@ public class FolderInputNodeTests
         using var dir = new TempDirectory();
         dir.CreateFiles("photo.jpg", "other.txt");
 
-        var node = new FolderInputNode();
+        var node = new FolderInputNode(NullLogger<FolderInputNode>.Instance);
         node.Configure(MakeConfig(new { path = dir.Path, filter = "*.jpg;*.jpg" }));
 
         List<FileJob> jobs = await CollectJobsAsync(node);
@@ -152,7 +153,7 @@ public class FolderInputNodeTests
         using var dir = new TempDirectory();
         dir.CreateFiles("a.txt", "b.txt", "c.txt", "d.txt", "e.txt");
 
-        var node = new FolderInputNode();
+        var node = new FolderInputNode(NullLogger<FolderInputNode>.Instance);
         node.Configure(MakeConfig(new { path = dir.Path }));
 
         using var cts = new CancellationTokenSource();
@@ -179,7 +180,7 @@ public class FolderInputNodeTests
         using var dir = new TempDirectory();
         dir.CreateFiles("Zebra.txt", "apple.txt", "Mango.txt", "banana.txt");
 
-        var node = new FolderInputNode();
+        var node = new FolderInputNode(NullLogger<FolderInputNode>.Instance);
         node.Configure(MakeConfig(new { path = dir.Path }));
 
         List<FileJob> jobs = await CollectJobsAsync(node);

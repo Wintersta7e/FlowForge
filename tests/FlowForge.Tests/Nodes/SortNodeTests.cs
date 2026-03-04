@@ -4,6 +4,7 @@ using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Transforms;
 using FlowForge.Core.Nodes.Base;
 using FlowForge.Tests.Helpers;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlowForge.Tests.Nodes;
 
@@ -25,7 +26,7 @@ public class SortNodeTests
     [Fact]
     public async Task TransformAsync_returns_empty_because_it_buffers()
     {
-        var node = new SortNode();
+        var node = new SortNode(NullLogger<SortNode>.Instance);
         node.Configure(MakeConfig(new { field = "filename", direction = "asc" }));
 
         FileJob job = MakeJob(Path.Combine("/tmp", "test.txt"));
@@ -38,7 +39,7 @@ public class SortNodeTests
     [Fact]
     public async Task FlushAsync_returns_all_buffered_jobs()
     {
-        var node = new SortNode();
+        var node = new SortNode(NullLogger<SortNode>.Instance);
         node.Configure(MakeConfig(new { field = "filename", direction = "asc" }));
 
         FileJob job1 = MakeJob(Path.Combine("/tmp", "b.txt"));
@@ -57,7 +58,7 @@ public class SortNodeTests
     [Fact]
     public async Task Sort_by_filename_ascending()
     {
-        var node = new SortNode();
+        var node = new SortNode(NullLogger<SortNode>.Instance);
         node.Configure(MakeConfig(new { field = "filename", direction = "asc" }));
 
         FileJob jobB = MakeJob(Path.Combine("/tmp", "b.txt"));
@@ -79,7 +80,7 @@ public class SortNodeTests
     [Fact]
     public async Task Sort_by_filename_descending()
     {
-        var node = new SortNode();
+        var node = new SortNode(NullLogger<SortNode>.Instance);
         node.Configure(MakeConfig(new { field = "filename", direction = "desc" }));
 
         FileJob jobB = MakeJob(Path.Combine("/tmp", "b.txt"));
@@ -101,7 +102,7 @@ public class SortNodeTests
     [Fact]
     public async Task Sort_by_extension_ascending()
     {
-        var node = new SortNode();
+        var node = new SortNode(NullLogger<SortNode>.Instance);
         node.Configure(MakeConfig(new { field = "extension", direction = "asc" }));
 
         FileJob jobPng = MakeJob(Path.Combine("/tmp", "file.png"));
@@ -133,7 +134,7 @@ public class SortNodeTests
         File.WriteAllText(mediumPath, new string('b', 500));
         File.WriteAllText(largePath, new string('c', 5000));
 
-        var node = new SortNode();
+        var node = new SortNode(NullLogger<SortNode>.Instance);
         node.Configure(MakeConfig(new { field = "size", direction = "asc" }));
 
         await node.TransformAsync(MakeJob(largePath), dryRun: false);
@@ -151,7 +152,7 @@ public class SortNodeTests
     [Fact]
     public async Task Second_FlushAsync_returns_empty()
     {
-        var node = new SortNode();
+        var node = new SortNode(NullLogger<SortNode>.Instance);
         node.Configure(MakeConfig(new { field = "filename", direction = "asc" }));
 
         await node.TransformAsync(MakeJob(Path.Combine("/tmp", "a.txt")), dryRun: false);
@@ -167,7 +168,7 @@ public class SortNodeTests
     [Fact]
     public async Task Single_job_buffer_returns_one_job()
     {
-        var node = new SortNode();
+        var node = new SortNode(NullLogger<SortNode>.Instance);
         node.Configure(MakeConfig(new { field = "filename", direction = "asc" }));
 
         FileJob job = MakeJob(Path.Combine("/tmp", "only.txt"));
@@ -182,7 +183,7 @@ public class SortNodeTests
     [Fact]
     public async Task FlushAsync_respects_cancellation_token()
     {
-        var node = new SortNode();
+        var node = new SortNode(NullLogger<SortNode>.Instance);
         node.Configure(MakeConfig(new { field = "filename", direction = "asc" }));
 
         await node.TransformAsync(MakeJob(Path.Combine("/tmp", "a.txt")), dryRun: false);
@@ -198,14 +199,14 @@ public class SortNodeTests
     [Fact]
     public async Task FlushAsync_exception_marks_all_jobs_failed()
     {
-        var node = new SortNode();
+        var node = new SortNode(NullLogger<SortNode>.Instance);
         // "size" field requires files to exist on disk — non-existent paths will cause an exception
         // during OrderBy when it tries to read file sizes
         node.Configure(MakeConfig(new { field = "size", direction = "asc" }));
 
         // Buffer jobs with non-existent paths — GetFileSize returns 0 for missing files,
         // so we use an invalid sort field instead
-        var node2 = new SortNode();
+        var node2 = new SortNode(NullLogger<SortNode>.Instance);
         node2.Configure(MakeConfig(new { field = "INVALID_FIELD", direction = "asc" }));
 
         FileJob job1 = MakeJob(Path.Combine("/tmp", "a.txt"));
