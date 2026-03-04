@@ -3,10 +3,12 @@ using System.CommandLine.Parsing;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using FlowForge.Core.DependencyInjection;
 using FlowForge.Core.Execution;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
 using FlowForge.Core.Pipeline;
+using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using Serilog.Events;
 
@@ -101,7 +103,11 @@ static async Task<int> RunPipelineAsync(
     }
 
     Log.Logger = logConfig.CreateLogger();
-    ILogger logger = Log.Logger;
+
+    var services = new ServiceCollection();
+    services.AddLogging(builder => builder.AddSerilog(dispose: true));
+    services.AddFlowForgeCore();
+    await using ServiceProvider sp = services.BuildServiceProvider();
 
     try
     {
@@ -158,9 +164,8 @@ static async Task<int> RunPipelineAsync(
 
         statusWriter.WriteLine();
 
-        // Create registry and runner
-        NodeRegistry registry = NodeRegistry.CreateDefault();
-        var runner = new PipelineRunner(registry, logger);
+        // Resolve runner from DI container
+        var runner = sp.GetRequiredService<PipelineRunner>();
 
         // Progress reporter
         IProgress<FileJob> progress = new Progress<FileJob>(job =>
@@ -250,10 +255,6 @@ static async Task<int> RunPipelineAsync(
     {
         Console.Error.WriteLine($"Pipeline error: {ex.Message}");
         return 2;
-    }
-    finally
-    {
-        await Log.CloseAndFlushAsync();
     }
 }
 

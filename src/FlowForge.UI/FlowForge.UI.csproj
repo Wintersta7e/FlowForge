@@ -3,6 +3,9 @@
     <OutputType>WinExe</OutputType>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <!-- CA1848: Use LoggerMessage delegates for performance — deferred to future optimization pass -->
+    <!-- CA1873: Avoid expensive argument evaluation when logging is disabled -->
+    <NoWarn>$(NoWarn);CA1848;CA1873</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

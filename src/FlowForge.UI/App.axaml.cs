@@ -1,14 +1,20 @@
 using System;
+using System.Globalization;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using FlowForge.Core.DependencyInjection;
 using FlowForge.UI.ViewModels;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Serilog;
 
 namespace FlowForge.UI;
 
 public partial class App : Application
 {
+    public static IServiceProvider Services { get; private set; } = null!;
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -16,9 +22,30 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Information()
+            .WriteTo.Console(
+                outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
+                formatProvider: CultureInfo.InvariantCulture)
+            .WriteTo.File(
+                path: "logs/flowforge.log",
+                outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff} {Level:u3}] {Message:lj}{NewLine}{Exception}",
+                formatProvider: CultureInfo.InvariantCulture,
+                rollingInterval: RollingInterval.Day,
+                retainedFileCountLimit: 7,
+                fileSizeLimitBytes: 10_485_760)
+            .CreateLogger();
+
+        var services = new ServiceCollection();
+        services.AddLogging(builder => builder.AddSerilog(dispose: true));
+        services.AddFlowForgeCore();
+        services.AddSingleton<MainWindowViewModel>();
+        services.AddTransient<EditorViewModel>();
+        Services = services.BuildServiceProvider();
+
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var viewModel = new MainWindowViewModel();
+            var viewModel = Services.GetRequiredService<MainWindowViewModel>();
             desktop.MainWindow = new MainWindow
             {
                 DataContext = viewModel,
@@ -39,7 +66,8 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Failed to initialize application settings");
+            var logger = Services.GetRequiredService<ILogger<App>>();
+            logger.LogError(ex, "Failed to initialize application settings");
         }
     }
 }
