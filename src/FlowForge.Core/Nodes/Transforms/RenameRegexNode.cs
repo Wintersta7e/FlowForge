@@ -2,11 +2,19 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
+using Microsoft.Extensions.Logging;
 
 namespace FlowForge.Core.Nodes.Transforms;
 
 public class RenameRegexNode : ITransformNode
 {
+    private readonly ILogger<RenameRegexNode> _logger;
+
+    public RenameRegexNode(ILogger<RenameRegexNode> logger)
+    {
+        _logger = logger;
+    }
+
     public string TypeKey => "RenameRegex";
 
     public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]

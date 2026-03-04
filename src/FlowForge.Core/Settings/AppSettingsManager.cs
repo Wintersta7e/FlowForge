@@ -1,5 +1,5 @@
 using System.Text.Json;
-using Serilog;
+using Microsoft.Extensions.Logging;
 
 namespace FlowForge.Core.Settings;
 
@@ -16,13 +16,13 @@ public sealed class AppSettingsManager
     };
 
     private readonly string _settingsFilePath;
-    private readonly ILogger _logger;
+    private readonly ILogger<AppSettingsManager> _logger;
 
     /// <summary>
     /// Creates a manager that reads/writes settings at the default platform path:
     /// <c>{ApplicationData}/FlowForge/settings.json</c>.
     /// </summary>
-    public AppSettingsManager(ILogger logger)
+    public AppSettingsManager(ILogger<AppSettingsManager> logger)
         : this(BuildDefaultPath(), logger)
     {
     }
@@ -31,7 +31,7 @@ public sealed class AppSettingsManager
     /// Creates a manager that reads/writes settings at the specified path.
     /// Useful for testing.
     /// </summary>
-    public AppSettingsManager(string settingsFilePath, ILogger logger)
+    public AppSettingsManager(string settingsFilePath, ILogger<AppSettingsManager> logger)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(settingsFilePath);
         ArgumentNullException.ThrowIfNull(logger);
@@ -64,7 +64,7 @@ public sealed class AppSettingsManager
         }
         catch (JsonException ex)
         {
-            _logger.Warning(ex, "Settings file at '{Path}' contains invalid JSON; using defaults", _settingsFilePath);
+            _logger.LogWarning(ex, "Settings file at '{Path}' contains invalid JSON; using defaults", _settingsFilePath);
             return new AppSettings();
         }
     }

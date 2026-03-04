@@ -1,11 +1,19 @@
 using System.Text.Json;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
+using Microsoft.Extensions.Logging;
 
 namespace FlowForge.Core.Nodes.Transforms;
 
 public class RenameAddAffixNode : ITransformNode
 {
+    private readonly ILogger<RenameAddAffixNode> _logger;
+
+    public RenameAddAffixNode(ILogger<RenameAddAffixNode> logger)
+    {
+        _logger = logger;
+    }
+
     public string TypeKey => "RenameAddAffix";
 
     public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]

@@ -2,12 +2,19 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
-using Serilog;
+using Microsoft.Extensions.Logging;
 
 namespace FlowForge.Core.Nodes.Sources;
 
 public class FolderInputNode : ISourceNode
 {
+    private readonly ILogger<FolderInputNode> _logger;
+
+    public FolderInputNode(ILogger<FolderInputNode> logger)
+    {
+        _logger = logger;
+    }
+
     public string TypeKey => "FolderInput";
 
     public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]
@@ -70,7 +77,7 @@ public class FolderInputNode : ISourceNode
             }
             catch (UnauthorizedAccessException ex)
             {
-                Log.Warning(ex, "FolderInput: access denied enumerating '{Path}' with pattern '{Pattern}', falling back to top-level", _path, pattern);
+                _logger.LogWarning(ex, "FolderInput: access denied enumerating '{Path}' with pattern '{Pattern}', falling back to top-level", _path, pattern);
                 if (searchOption == SearchOption.AllDirectories)
                 {
                     try
@@ -82,7 +89,7 @@ public class FolderInputNode : ISourceNode
                     }
                     catch (UnauthorizedAccessException ex2)
                     {
-                        Log.Warning(ex2, "FolderInput: access denied even at top-level for '{Path}' with pattern '{Pattern}'", _path, pattern);
+                        _logger.LogWarning(ex2, "FolderInput: access denied even at top-level for '{Path}' with pattern '{Pattern}'", _path, pattern);
                     }
                 }
             }

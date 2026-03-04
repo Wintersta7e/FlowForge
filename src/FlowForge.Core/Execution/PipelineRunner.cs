@@ -2,17 +2,17 @@ using System.Diagnostics;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
 using FlowForge.Core.Pipeline;
-using Serilog;
+using Microsoft.Extensions.Logging;
 
 namespace FlowForge.Core.Execution;
 
 public class PipelineRunner
 {
     private readonly NodeRegistry _registry;
-    private readonly ILogger _logger;
+    private readonly ILogger<PipelineRunner> _logger;
     private readonly int _maxConcurrency;
 
-    public PipelineRunner(NodeRegistry registry, ILogger logger, int maxConcurrency = 0)
+    public PipelineRunner(NodeRegistry registry, ILogger<PipelineRunner> logger, int maxConcurrency = 0)
     {
         _registry = registry;
         _logger = logger;
@@ -117,7 +117,7 @@ public class PipelineRunner
         stopwatch.Stop();
         result.Duration = stopwatch.Elapsed;
 
-        _logger.Information(
+        _logger.LogInformation(
             "Pipeline completed: {Total} files, {Succeeded} succeeded, {Failed} failed, {Skipped} skipped ({Duration}ms)",
             result.TotalFiles, result.Succeeded, result.Failed, result.Skipped, result.Duration.TotalMilliseconds);
 
@@ -146,7 +146,7 @@ public class PipelineRunner
                 {
                     if (job.Status == FileJobStatus.Failed)
                     {
-                        _logger.Error("Transform {NodeType} set Failed for {File}", transform.TypeKey, job.OriginalPath);
+                        _logger.LogError("Transform {NodeType} set Failed for {File}", transform.TypeKey, job.OriginalPath);
                         lock (result)
                         {
                             result.Failed++;
@@ -169,7 +169,7 @@ public class PipelineRunner
                     {
                         if (tj.Status == FileJobStatus.Failed)
                         {
-                            _logger.Error("Transform {NodeType} set Failed for {File}", transform.TypeKey, tj.OriginalPath);
+                            _logger.LogError("Transform {NodeType} set Failed for {File}", transform.TypeKey, tj.OriginalPath);
                             lock (result)
                             {
                                 result.Failed++;
@@ -187,7 +187,7 @@ public class PipelineRunner
             {
                 job.Status = FileJobStatus.Failed;
                 job.ErrorMessage = ex.Message;
-                _logger.Error(ex, "Transform {NodeType} failed for {File}", transform.TypeKey, job.OriginalPath);
+                _logger.LogError(ex, "Transform {NodeType} failed for {File}", transform.TypeKey, job.OriginalPath);
                 lock (result)
                 {
                     result.Failed++;
@@ -204,7 +204,7 @@ public class PipelineRunner
             {
                 if (fj.Status == FileJobStatus.Failed)
                 {
-                    _logger.Error("Transform {NodeType} flush set Failed for {File}", transform.TypeKey, fj.OriginalPath);
+                    _logger.LogError("Transform {NodeType} flush set Failed for {File}", transform.TypeKey, fj.OriginalPath);
                     lock (result)
                     {
                         result.Failed++;
@@ -249,7 +249,7 @@ public class PipelineRunner
         {
             job.Status = FileJobStatus.Failed;
             job.ErrorMessage = ex.Message;
-            _logger.Error(ex, "Job failed for {File}", job.OriginalPath);
+            _logger.LogError(ex, "Job failed for {File}", job.OriginalPath);
 
             lock (result)
             {

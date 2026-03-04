@@ -1,11 +1,19 @@
 using System.Text.Json;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
+using Microsoft.Extensions.Logging;
 
 namespace FlowForge.Core.Nodes.Outputs;
 
 public class FolderOutputNode : IOutputNode
 {
+    private readonly ILogger<FolderOutputNode> _logger;
+
+    public FolderOutputNode(ILogger<FolderOutputNode> logger)
+    {
+        _logger = logger;
+    }
+
     public string TypeKey => "FolderOutput";
 
     public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]

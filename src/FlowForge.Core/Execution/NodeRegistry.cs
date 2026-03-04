@@ -1,9 +1,10 @@
 using System.Text.Json;
 using FlowForge.Core.Nodes.Base;
+using FlowForge.Core.Nodes.Outputs;
 using FlowForge.Core.Nodes.Sources;
 using FlowForge.Core.Nodes.Transforms;
-using FlowForge.Core.Nodes.Outputs;
 using FlowForge.Core.Pipeline;
+using Microsoft.Extensions.Logging;
 
 namespace FlowForge.Core.Execution;
 
@@ -129,42 +130,42 @@ public class NodeRegistry
         return instance;
     }
 
-    public static NodeRegistry CreateDefault()
+    public static NodeRegistry CreateDefault(ILoggerFactory loggerFactory)
     {
         var registry = new NodeRegistry();
 
         // Sources
-        registry.Register<FolderInputNode>("FolderInput", () => new FolderInputNode(),
+        registry.Register<FolderInputNode>("FolderInput", () => new FolderInputNode(loggerFactory.CreateLogger<FolderInputNode>()),
             "Folder Input", NodeCategory.Source, () => FolderInputNode.ConfigSchema);
 
         // Transforms -- Rename
-        registry.Register<RenamePatternNode>("RenamePattern", () => new RenamePatternNode(),
+        registry.Register<RenamePatternNode>("RenamePattern", () => new RenamePatternNode(loggerFactory.CreateLogger<RenamePatternNode>()),
             "Rename (Pattern)", NodeCategory.Transform, () => RenamePatternNode.ConfigSchema);
-        registry.Register<RenameRegexNode>("RenameRegex", () => new RenameRegexNode(),
+        registry.Register<RenameRegexNode>("RenameRegex", () => new RenameRegexNode(loggerFactory.CreateLogger<RenameRegexNode>()),
             "Rename (Regex)", NodeCategory.Transform, () => RenameRegexNode.ConfigSchema);
-        registry.Register<RenameAddAffixNode>("RenameAddAffix", () => new RenameAddAffixNode(),
+        registry.Register<RenameAddAffixNode>("RenameAddAffix", () => new RenameAddAffixNode(loggerFactory.CreateLogger<RenameAddAffixNode>()),
             "Rename (Add Affix)", NodeCategory.Transform, () => RenameAddAffixNode.ConfigSchema);
 
         // Transforms -- Filter & Sort
-        registry.Register<FilterNode>("Filter", () => new FilterNode(),
+        registry.Register<FilterNode>("Filter", () => new FilterNode(loggerFactory.CreateLogger<FilterNode>()),
             "Filter", NodeCategory.Transform, () => FilterNode.ConfigSchema);
-        registry.Register<SortNode>("Sort", () => new SortNode(),
+        registry.Register<SortNode>("Sort", () => new SortNode(loggerFactory.CreateLogger<SortNode>()),
             "Sort", NodeCategory.Transform, () => SortNode.ConfigSchema);
 
         // Transforms -- Image
-        registry.Register<ImageResizeNode>("ImageResize", () => new ImageResizeNode(),
+        registry.Register<ImageResizeNode>("ImageResize", () => new ImageResizeNode(loggerFactory.CreateLogger<ImageResizeNode>()),
             "Image Resize", NodeCategory.Transform, () => ImageResizeNode.ConfigSchema);
-        registry.Register<ImageConvertNode>("ImageConvert", () => new ImageConvertNode(),
+        registry.Register<ImageConvertNode>("ImageConvert", () => new ImageConvertNode(loggerFactory.CreateLogger<ImageConvertNode>()),
             "Image Convert", NodeCategory.Transform, () => ImageConvertNode.ConfigSchema);
-        registry.Register<ImageCompressNode>("ImageCompress", () => new ImageCompressNode(),
+        registry.Register<ImageCompressNode>("ImageCompress", () => new ImageCompressNode(loggerFactory.CreateLogger<ImageCompressNode>()),
             "Image Compress", NodeCategory.Transform, () => ImageCompressNode.ConfigSchema);
 
         // Transforms -- Metadata
-        registry.Register<MetadataExtractNode>("MetadataExtract", () => new MetadataExtractNode(),
+        registry.Register<MetadataExtractNode>("MetadataExtract", () => new MetadataExtractNode(loggerFactory.CreateLogger<MetadataExtractNode>()),
             "Metadata Extract", NodeCategory.Transform, () => MetadataExtractNode.ConfigSchema);
 
         // Outputs
-        registry.Register<FolderOutputNode>("FolderOutput", () => new FolderOutputNode(),
+        registry.Register<FolderOutputNode>("FolderOutput", () => new FolderOutputNode(loggerFactory.CreateLogger<FolderOutputNode>()),
             "Folder Output", NodeCategory.Output, () => FolderOutputNode.ConfigSchema);
 
         return registry;

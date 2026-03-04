@@ -3,11 +3,19 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
+using Microsoft.Extensions.Logging;
 
 namespace FlowForge.Core.Nodes.Transforms;
 
 public class RenamePatternNode : ITransformNode
 {
+    private readonly ILogger<RenamePatternNode> _logger;
+
+    public RenamePatternNode(ILogger<RenamePatternNode> logger)
+    {
+        _logger = logger;
+    }
+
     public string TypeKey => "RenamePattern";
 
     public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
+using Microsoft.Extensions.Logging;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 
@@ -8,6 +9,13 @@ namespace FlowForge.Core.Nodes.Transforms;
 
 public class ImageResizeNode : ITransformNode
 {
+    private readonly ILogger<ImageResizeNode> _logger;
+
+    public ImageResizeNode(ILogger<ImageResizeNode> logger)
+    {
+        _logger = logger;
+    }
+
     public string TypeKey => "ImageResize";
 
     public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]

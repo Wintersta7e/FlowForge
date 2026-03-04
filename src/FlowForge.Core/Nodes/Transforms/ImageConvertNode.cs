@@ -1,6 +1,7 @@
 using System.Text.Json;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
+using Microsoft.Extensions.Logging;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.Formats.Bmp;
@@ -13,6 +14,13 @@ namespace FlowForge.Core.Nodes.Transforms;
 
 public class ImageConvertNode : ITransformNode
 {
+    private readonly ILogger<ImageConvertNode> _logger;
+
+    public ImageConvertNode(ILogger<ImageConvertNode> logger)
+    {
+        _logger = logger;
+    }
+
     public string TypeKey => "ImageConvert";
 
     public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]
