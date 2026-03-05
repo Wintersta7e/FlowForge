@@ -1,7 +1,7 @@
 using System.Text.Json;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
-using Serilog;
+using Microsoft.Extensions.Logging;
 
 namespace FlowForge.Core.Nodes.Transforms;
 
@@ -12,6 +12,14 @@ namespace FlowForge.Core.Nodes.Transforms;
 /// </summary>
 public class SortNode : ITransformNode, IBufferedTransformNode
 {
+    private readonly ILogger<SortNode> _logger;
+
+    public SortNode(ILogger<SortNode> logger)
+    {
+        ArgumentNullException.ThrowIfNull(logger);
+        _logger = logger;
+    }
+
     public string TypeKey => "Sort";
 
     public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]
@@ -89,7 +97,7 @@ public class SortNode : ITransformNode, IBufferedTransformNode
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            Log.Error(ex, "Sort: flush failed, returning {Count} buffered jobs as failed", _buffer.Count);
+            _logger.LogError(ex, "Sort: flush failed, returning {Count} buffered jobs as failed", _buffer.Count);
             foreach (FileJob job in _buffer)
             {
                 job.Status = FileJobStatus.Failed;
@@ -103,31 +111,31 @@ public class SortNode : ITransformNode, IBufferedTransformNode
         }
     }
 
-    private static long GetFileSize(string path)
+    private long GetFileSize(string path)
     {
         if (!File.Exists(path))
         {
-            Log.Warning("Sort: file not found at '{FilePath}', using default size 0", path);
+            _logger.LogWarning("Sort: file not found at '{FilePath}', using default size 0", path);
             return 0;
         }
         return new FileInfo(path).Length;
     }
 
-    private static DateTime GetFileCreatedAt(string path)
+    private DateTime GetFileCreatedAt(string path)
     {
         if (!File.Exists(path))
         {
-            Log.Warning("Sort: file not found at '{FilePath}', using default date", path);
+            _logger.LogWarning("Sort: file not found at '{FilePath}', using default date", path);
             return DateTime.MinValue;
         }
         return File.GetCreationTimeUtc(path);
     }
 
-    private static DateTime GetFileModifiedAt(string path)
+    private DateTime GetFileModifiedAt(string path)
     {
         if (!File.Exists(path))
         {
-            Log.Warning("Sort: file not found at '{FilePath}', using default date", path);
+            _logger.LogWarning("Sort: file not found at '{FilePath}', using default date", path);
             return DateTime.MinValue;
         }
         return File.GetLastWriteTimeUtc(path);

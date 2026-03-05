@@ -13,7 +13,8 @@ using FlowForge.Core.Pipeline;
 using FlowForge.Core.Pipeline.Templates;
 using FlowForge.Core.Settings;
 using FlowForge.UI.Services;
-using Serilog;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace FlowForge.UI.ViewModels;
 
@@ -23,8 +24,9 @@ public partial class MainWindowViewModel : ViewModelBase
 {
     private readonly NodeRegistry _registry;
     private readonly IDialogService _dialogService;
-    private readonly ILogger _logger;
+    private readonly ILogger<MainWindowViewModel> _logger;
     private readonly AppSettingsManager _settingsManager;
+    private readonly IServiceProvider _serviceProvider;
     private readonly TaskCompletionSource _initComplete = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private AppSettings _appSettings = new();
 
@@ -50,14 +52,28 @@ public partial class MainWindowViewModel : ViewModelBase
     public PropertiesViewModel Properties { get; }
     public ExecutionLogViewModel ExecutionLog { get; }
 
-    public MainWindowViewModel()
+    public MainWindowViewModel(
+        ILogger<MainWindowViewModel> logger,
+        AppSettingsManager settingsManager,
+        NodeRegistry registry,
+        EditorViewModel editor,
+        IDialogService dialogService,
+        IServiceProvider serviceProvider)
     {
-        _registry = NodeRegistry.CreateDefault();
-        _dialogService = new DialogService();
-        _logger = Log.Logger;
-        _settingsManager = new AppSettingsManager(_logger);
+        ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(settingsManager);
+        ArgumentNullException.ThrowIfNull(registry);
+        ArgumentNullException.ThrowIfNull(editor);
+        ArgumentNullException.ThrowIfNull(dialogService);
+        ArgumentNullException.ThrowIfNull(serviceProvider);
 
-        Editor = new EditorViewModel();
+        _registry = registry;
+        _dialogService = dialogService;
+        _logger = logger;
+        _settingsManager = settingsManager;
+        _serviceProvider = serviceProvider;
+
+        Editor = editor;
         NodeLibrary = new NodeLibraryViewModel();
         Properties = new PropertiesViewModel();
         ExecutionLog = new ExecutionLogViewModel();
@@ -148,7 +164,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _logger.Error(ex, "Failed to load pipeline from {Path}", path);
+            _logger.LogError(ex, "Failed to load pipeline from {Path}", path);
             ExecutionLog.Summary = $"Failed to open: {ex.Message}";
         }
     }
@@ -199,12 +215,12 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (PipelineLoadException ex)
         {
-            _logger.Error(ex, "Failed to load pipeline from {Path}", path);
+            _logger.LogError(ex, "Failed to load pipeline from {Path}", path);
             ExecutionLog.Summary = $"Failed to open: {ex.Message}";
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _logger.Error(ex, "Failed to load pipeline from {Path}", path);
+            _logger.LogError(ex, "Failed to load pipeline from {Path}", path);
             ExecutionLog.Summary = $"Failed to open: {ex.Message}";
         }
     }
@@ -255,7 +271,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _logger.Error(ex, "Failed to save pipeline to {Path}", path);
+            _logger.LogError(ex, "Failed to save pipeline to {Path}", path);
             ExecutionLog.Summary = $"Save failed: {ex.Message}";
         }
     }
@@ -287,7 +303,9 @@ public partial class MainWindowViewModel : ViewModelBase
         try
         {
             PipelineGraph graph = Editor.BuildGraph();
-            PipelineRunner runner = new(_registry, _logger);
+
+            // Resolve fresh PipelineRunner per execution (transient lifetime)
+            PipelineRunner runner = _serviceProvider.GetRequiredService<PipelineRunner>();
 
             Progress<FileJob> progress = new(job =>
             {
@@ -312,7 +330,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            _logger.Error(ex, "Pipeline execution failed");
+            _logger.LogError(ex, "Pipeline execution failed");
             ExecutionLog.Summary = $"Execution failed: {ex.Message}";
         }
         finally
@@ -349,7 +367,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _logger.Error(ex, "Failed to load template {TemplateId}", templateId);
+            _logger.LogError(ex, "Failed to load template {TemplateId}", templateId);
             ExecutionLog.Summary = $"Template load failed: {ex.Message}";
         }
     }

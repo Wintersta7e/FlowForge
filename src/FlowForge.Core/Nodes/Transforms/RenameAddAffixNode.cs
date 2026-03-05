@@ -1,11 +1,20 @@
 using System.Text.Json;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
+using Microsoft.Extensions.Logging;
 
 namespace FlowForge.Core.Nodes.Transforms;
 
 public class RenameAddAffixNode : ITransformNode
 {
+    private readonly ILogger<RenameAddAffixNode> _logger;
+
+    public RenameAddAffixNode(ILogger<RenameAddAffixNode> logger)
+    {
+        ArgumentNullException.ThrowIfNull(logger);
+        _logger = logger;
+    }
+
     public string TypeKey => "RenameAddAffix";
 
     public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]
@@ -35,6 +44,8 @@ public class RenameAddAffixNode : ITransformNode
         {
             throw new NodeConfigurationException("RenameAddAffix: At least one of 'prefix' or 'suffix' must be provided.");
         }
+
+        _logger.LogDebug("RenameAddAffix: configured with Prefix={Prefix}, Suffix={Suffix}", _prefix, _suffix);
     }
 
     public Task<IEnumerable<FileJob>> TransformAsync(FileJob job, bool dryRun, CancellationToken ct = default)

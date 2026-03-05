@@ -6,12 +6,17 @@ using Avalonia.Layout;
 using Avalonia.Platform.Storage;
 using FlowForge.Core.Nodes.Base;
 using FlowForge.UI.ViewModels;
-using Serilog;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace FlowForge.UI.Views;
 
 public class ConfigFieldTemplateSelector : IDataTemplate
 {
+    private ILogger<ConfigFieldTemplateSelector>? _logger;
+    private ILogger<ConfigFieldTemplateSelector> Logger =>
+        _logger ??= App.Services.GetRequiredService<ILogger<ConfigFieldTemplateSelector>>();
+
     public Control Build(object? param)
     {
         if (param is not ConfigFieldViewModel field)
@@ -111,7 +116,7 @@ public class ConfigFieldTemplateSelector : IDataTemplate
         return toggle;
     }
 
-    private static DockPanel BuildFilePathEditor(ConfigFieldViewModel field)
+    private DockPanel BuildFilePathEditor(ConfigFieldViewModel field)
     {
         DockPanel dock = new();
 
@@ -152,7 +157,9 @@ public class ConfigFieldTemplateSelector : IDataTemplate
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "ConfigFieldTemplateSelector: file picker failed for '{Label}'", field.Label);
+                // No user-visible feedback: file picker failure is rare and the dialog simply doesn't appear.
+                // The error is logged for diagnostics.
+                Logger.LogError(ex, "ConfigFieldTemplateSelector: file picker failed for '{Label}'", field.Label);
             }
         };
 
@@ -161,7 +168,7 @@ public class ConfigFieldTemplateSelector : IDataTemplate
         return dock;
     }
 
-    private static DockPanel BuildFolderPathEditor(ConfigFieldViewModel field)
+    private DockPanel BuildFolderPathEditor(ConfigFieldViewModel field)
     {
         DockPanel dock = new();
 
@@ -202,7 +209,9 @@ public class ConfigFieldTemplateSelector : IDataTemplate
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "ConfigFieldTemplateSelector: folder picker failed for '{Label}'", field.Label);
+                // No user-visible feedback: folder picker failure is rare and the dialog simply doesn't appear.
+                // The error is logged for diagnostics.
+                Logger.LogError(ex, "ConfigFieldTemplateSelector: folder picker failed for '{Label}'", field.Label);
             }
         };
 

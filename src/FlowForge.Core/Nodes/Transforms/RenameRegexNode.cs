@@ -2,11 +2,20 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
+using Microsoft.Extensions.Logging;
 
 namespace FlowForge.Core.Nodes.Transforms;
 
 public class RenameRegexNode : ITransformNode
 {
+    private readonly ILogger<RenameRegexNode> _logger;
+
+    public RenameRegexNode(ILogger<RenameRegexNode> logger)
+    {
+        ArgumentNullException.ThrowIfNull(logger);
+        _logger = logger;
+    }
+
     public string TypeKey => "RenameRegex";
 
     public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]
@@ -54,6 +63,9 @@ public class RenameRegexNode : ITransformNode
         {
             _scope = scopeElement.GetString() ?? "filename";
         }
+
+        _logger.LogDebug("RenameRegex: configured with Pattern={Pattern}, Replacement={Replacement}, Scope={Scope}",
+            _regex.ToString(), _replacement, _scope);
     }
 
     public Task<IEnumerable<FileJob>> TransformAsync(FileJob job, bool dryRun, CancellationToken ct = default)
@@ -75,6 +87,7 @@ public class RenameRegexNode : ITransformNode
             if (!resolvedNew.StartsWith(resolvedDir + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) &&
                 !Path.GetDirectoryName(resolvedNew)!.Equals(resolvedDir, StringComparison.OrdinalIgnoreCase))
             {
+                _logger.LogWarning("RenameRegex: path traversal blocked — {ResolvedPath} escapes {SourceDirectory}", resolvedNew, resolvedDir);
                 job.Status = FileJobStatus.Failed;
                 job.ErrorMessage = $"RenameRegex: path traversal blocked — '{resolvedNew}' escapes source directory '{resolvedDir}'.";
                 return Task.FromResult<IEnumerable<FileJob>>(new[] { job });

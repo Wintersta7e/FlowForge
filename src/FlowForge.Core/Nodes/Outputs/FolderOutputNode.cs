@@ -1,11 +1,20 @@
 using System.Text.Json;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
+using Microsoft.Extensions.Logging;
 
 namespace FlowForge.Core.Nodes.Outputs;
 
 public class FolderOutputNode : IOutputNode
 {
+    private readonly ILogger<FolderOutputNode> _logger;
+
+    public FolderOutputNode(ILogger<FolderOutputNode> logger)
+    {
+        ArgumentNullException.ThrowIfNull(logger);
+        _logger = logger;
+    }
+
     public string TypeKey => "FolderOutput";
 
     public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]
@@ -70,6 +79,9 @@ public class FolderOutputNode : IOutputNode
         {
             _enableBackup = backupElement.GetBoolean();
         }
+
+        _logger.LogDebug("FolderOutput: configured with Path={Path}, Mode={Mode}, Overwrite={Overwrite}, PreserveStructure={PreserveStructure}, EnableBackup={EnableBackup}",
+            _path, _mode, _overwrite, _preserveStructure, _enableBackup);
 
         if (config.TryGetValue("backupSuffix", out JsonElement suffixElement))
         {

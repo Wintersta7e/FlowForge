@@ -8,12 +8,13 @@ using Avalonia;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FlowForge.Core.Execution;
 using FlowForge.Core.Pipeline;
-using Serilog;
+using Microsoft.Extensions.Logging;
 
 namespace FlowForge.UI.ViewModels;
 
 public partial class EditorViewModel : ViewModelBase
 {
+    private readonly ILogger<EditorViewModel> _logger;
     private readonly HashSet<PipelineNodeViewModel> _subscribedNodes = new();
     private string _graphName = "Untitled Pipeline";
 
@@ -41,8 +42,9 @@ public partial class EditorViewModel : ViewModelBase
         set => SetProperty(ref _selectedNode, value);
     }
 
-    public EditorViewModel()
+    public EditorViewModel(ILogger<EditorViewModel> logger)
     {
+        _logger = logger;
         PendingConnection = new PipelinePendingConnectionViewModel(this);
         Nodes.CollectionChanged += OnNodesCollectionChanged;
         Nodes.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasNodes));
@@ -140,7 +142,7 @@ public partial class EditorViewModel : ViewModelBase
             if (!nodeMap.TryGetValue(conn.FromNode, out PipelineNodeViewModel? fromNode) ||
                 !nodeMap.TryGetValue(conn.ToNode, out PipelineNodeViewModel? toNode))
             {
-                Log.Warning("LoadGraph: dropping connection — node not found (From={FromNode}, To={ToNode})",
+                _logger.LogWarning("LoadGraph: dropping connection — node not found (From={FromNode}, To={ToNode})",
                     conn.FromNode, conn.ToNode);
                 droppedConnections++;
                 continue;
@@ -151,7 +153,7 @@ public partial class EditorViewModel : ViewModelBase
 
             if (sourceConnector is null || targetConnector is null)
             {
-                Log.Warning("LoadGraph: dropping connection — missing connector (From={FromType}, To={ToType})",
+                _logger.LogWarning("LoadGraph: dropping connection — missing connector (From={FromType}, To={ToType})",
                     fromNode.TypeKey, toNode.TypeKey);
                 droppedConnections++;
                 continue;

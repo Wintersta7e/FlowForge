@@ -3,10 +3,12 @@ using System.CommandLine.Parsing;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using FlowForge.Core.DependencyInjection;
 using FlowForge.Core.Execution;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
 using FlowForge.Core.Pipeline;
+using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using Serilog.Events;
 
@@ -101,7 +103,16 @@ static async Task<int> RunPipelineAsync(
     }
 
     Log.Logger = logConfig.CreateLogger();
-    ILogger logger = Log.Logger;
+
+    var services = new ServiceCollection();
+    services.AddLogging(builder => builder.AddSerilog(dispose: true));
+    services.AddFlowForgeCore();
+    // dispose: true on AddSerilog ensures Serilog flushes when the ServiceProvider is disposed
+    await using ServiceProvider sp = services.BuildServiceProvider();
+
+    // Resolve runner from DI container before the try block so that DI failures
+    // are not caught by the InvalidOperationException handler below.
+    var runner = sp.GetRequiredService<PipelineRunner>();
 
     try
     {
@@ -157,10 +168,6 @@ static async Task<int> RunPipelineAsync(
         }
 
         statusWriter.WriteLine();
-
-        // Create registry and runner
-        NodeRegistry registry = NodeRegistry.CreateDefault();
-        var runner = new PipelineRunner(registry, logger);
 
         // Progress reporter
         IProgress<FileJob> progress = new Progress<FileJob>(job =>
@@ -248,12 +255,10 @@ static async Task<int> RunPipelineAsync(
     }
     catch (InvalidOperationException ex)
     {
+        // Pipeline validation errors (e.g. missing connections, invalid config).
+        // DI resolution failures won't reach here — GetRequiredService is called above the try block.
         Console.Error.WriteLine($"Pipeline error: {ex.Message}");
         return 2;
-    }
-    finally
-    {
-        await Log.CloseAndFlushAsync();
     }
 }
 

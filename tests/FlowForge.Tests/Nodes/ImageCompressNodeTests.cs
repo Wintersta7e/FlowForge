@@ -4,6 +4,7 @@ using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Transforms;
 using FlowForge.Core.Nodes.Base;
 using FlowForge.Tests.Helpers;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlowForge.Tests.Nodes;
 
@@ -25,7 +26,7 @@ public class ImageCompressNodeTests
         TestFileFactory.CreateTestImage(filePath, width: 200, height: 200);
         long originalSize = new FileInfo(filePath).Length;
 
-        var node = new ImageCompressNode();
+        var node = new ImageCompressNode(NullLogger<ImageCompressNode>.Instance);
         node.Configure(MakeConfig(new { quality = 50 }));
 
         var job = new FileJob
@@ -50,7 +51,7 @@ public class ImageCompressNodeTests
         TestFileFactory.CreateTestPng(filePath, width: 200, height: 200);
         long originalSize = new FileInfo(filePath).Length;
 
-        var node = new ImageCompressNode();
+        var node = new ImageCompressNode(NullLogger<ImageCompressNode>.Instance);
         node.Configure(MakeConfig(new { quality = 50 }));
 
         var job = new FileJob
@@ -73,7 +74,7 @@ public class ImageCompressNodeTests
         string filePath = Path.Combine(dir.Path, "min.jpg");
         TestFileFactory.CreateTestImage(filePath, width: 100, height: 100);
 
-        var node = new ImageCompressNode();
+        var node = new ImageCompressNode(NullLogger<ImageCompressNode>.Instance);
         node.Configure(MakeConfig(new { quality = 1 }));
 
         var job = new FileJob
@@ -94,7 +95,7 @@ public class ImageCompressNodeTests
         string filePath = Path.Combine(dir.Path, "max.jpg");
         TestFileFactory.CreateTestImage(filePath, width: 100, height: 100);
 
-        var node = new ImageCompressNode();
+        var node = new ImageCompressNode(NullLogger<ImageCompressNode>.Instance);
         node.Configure(MakeConfig(new { quality = 100 }));
 
         var job = new FileJob
@@ -111,7 +112,7 @@ public class ImageCompressNodeTests
     [Fact]
     public void Quality_zero_throws_NodeConfigurationException()
     {
-        var node = new ImageCompressNode();
+        var node = new ImageCompressNode(NullLogger<ImageCompressNode>.Instance);
         Action act = () => node.Configure(MakeConfig(new { quality = 0 }));
         act.Should().Throw<NodeConfigurationException>();
     }
@@ -119,7 +120,7 @@ public class ImageCompressNodeTests
     [Fact]
     public void Quality_101_throws_NodeConfigurationException()
     {
-        var node = new ImageCompressNode();
+        var node = new ImageCompressNode(NullLogger<ImageCompressNode>.Instance);
         Action act = () => node.Configure(MakeConfig(new { quality = 101 }));
         act.Should().Throw<NodeConfigurationException>();
     }
@@ -127,7 +128,7 @@ public class ImageCompressNodeTests
     [Fact]
     public void Missing_quality_throws_NodeConfigurationException()
     {
-        var node = new ImageCompressNode();
+        var node = new ImageCompressNode(NullLogger<ImageCompressNode>.Instance);
         Action act = () => node.Configure(MakeConfig(new { format = "jpg" }));
         act.Should().Throw<NodeConfigurationException>();
     }
@@ -139,7 +140,7 @@ public class ImageCompressNodeTests
         string filePath = Path.Combine(dir.Path, "override.jpg");
         TestFileFactory.CreateTestImage(filePath, width: 100, height: 100);
 
-        var node = new ImageCompressNode();
+        var node = new ImageCompressNode(NullLogger<ImageCompressNode>.Instance);
         node.Configure(MakeConfig(new { quality = 75, format = "webp" }));
 
         var job = new FileJob
@@ -160,7 +161,7 @@ public class ImageCompressNodeTests
         string filePath = Path.Combine(dir.Path, "unsupported.jpg");
         TestFileFactory.CreateTestImage(filePath, width: 100, height: 100);
 
-        var node = new ImageCompressNode();
+        var node = new ImageCompressNode(NullLogger<ImageCompressNode>.Instance);
         node.Configure(MakeConfig(new { quality = 50, format = "bmp" }));
 
         var job = new FileJob
@@ -183,7 +184,7 @@ public class ImageCompressNodeTests
         string filePath = Path.Combine(dir.Path, "image.bmp");
         TestFileFactory.CreateTestBmp(filePath, width: 100, height: 100);
 
-        var node = new ImageCompressNode();
+        var node = new ImageCompressNode(NullLogger<ImageCompressNode>.Instance);
         // No format override — relies on file extension, which is .bmp (unsupported)
         node.Configure(MakeConfig(new { quality = 50 }));
 
@@ -207,7 +208,7 @@ public class ImageCompressNodeTests
         TestFileFactory.CreateTestImage(filePath, width: 100, height: 100);
         long originalSize = new FileInfo(filePath).Length;
 
-        var node = new ImageCompressNode();
+        var node = new ImageCompressNode(NullLogger<ImageCompressNode>.Instance);
         node.Configure(MakeConfig(new { quality = 50 }));
 
         var job = new FileJob

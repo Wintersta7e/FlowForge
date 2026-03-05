@@ -3,6 +3,7 @@ using FluentAssertions;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Transforms;
 using FlowForge.Core.Nodes.Base;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlowForge.Tests.Nodes;
 
@@ -28,7 +29,7 @@ public class RenamePatternNodeTests
     [Fact]
     public async Task Name_token_replaces_with_filename_without_extension()
     {
-        var node = new RenamePatternNode();
+        var node = new RenamePatternNode(NullLogger<RenamePatternNode>.Instance);
         node.Configure(MakeConfig("{name}_copy{ext}"));
 
         FileJob job = MakeJob(Path.Combine("/tmp", "photo.jpg"));
@@ -41,7 +42,7 @@ public class RenamePatternNodeTests
     [Fact]
     public async Task Ext_token_preserves_original_extension()
     {
-        var node = new RenamePatternNode();
+        var node = new RenamePatternNode(NullLogger<RenamePatternNode>.Instance);
         node.Configure(MakeConfig("renamed{ext}"));
 
         FileJob job = MakeJob(Path.Combine("/tmp", "document.PDF"));
@@ -54,7 +55,7 @@ public class RenamePatternNodeTests
     [Fact]
     public async Task Counter_zero_pads_correctly()
     {
-        var node = new RenamePatternNode();
+        var node = new RenamePatternNode(NullLogger<RenamePatternNode>.Instance);
         node.Configure(MakeConfig("{counter:000}{ext}"));
 
         FileJob job1 = MakeJob(Path.Combine("/tmp", "a.jpg"));
@@ -73,7 +74,7 @@ public class RenamePatternNodeTests
     [Fact]
     public async Task Counter_with_custom_start_index()
     {
-        var node = new RenamePatternNode();
+        var node = new RenamePatternNode(NullLogger<RenamePatternNode>.Instance);
         node.Configure(MakeConfig("{counter:000}{ext}", startIndex: 10));
 
         FileJob job = MakeJob(Path.Combine("/tmp", "file.png"));
@@ -85,7 +86,7 @@ public class RenamePatternNodeTests
     [Fact]
     public async Task Date_token_uses_today()
     {
-        var node = new RenamePatternNode();
+        var node = new RenamePatternNode(NullLogger<RenamePatternNode>.Instance);
         node.Configure(MakeConfig("{date}_{name}{ext}"));
 
         FileJob job = MakeJob(Path.Combine("/tmp", "photo.jpg"));
@@ -98,7 +99,7 @@ public class RenamePatternNodeTests
     [Fact]
     public async Task Meta_token_resolves_from_metadata()
     {
-        var node = new RenamePatternNode();
+        var node = new RenamePatternNode(NullLogger<RenamePatternNode>.Instance);
         node.Configure(MakeConfig("{meta:Author}_{name}{ext}"));
 
         var job = new FileJob
@@ -115,7 +116,7 @@ public class RenamePatternNodeTests
     [Fact]
     public async Task Meta_token_returns_empty_when_key_missing()
     {
-        var node = new RenamePatternNode();
+        var node = new RenamePatternNode(NullLogger<RenamePatternNode>.Instance);
         node.Configure(MakeConfig("{meta:Missing}_{name}{ext}"));
 
         FileJob job = MakeJob(Path.Combine("/tmp", "doc.txt"));
@@ -127,7 +128,7 @@ public class RenamePatternNodeTests
     [Fact]
     public async Task DryRun_does_not_call_file_move()
     {
-        var node = new RenamePatternNode();
+        var node = new RenamePatternNode(NullLogger<RenamePatternNode>.Instance);
         node.Configure(MakeConfig("{name}_renamed{ext}"));
 
         // Use a path that doesn't exist — if File.Move were called, it would throw
@@ -143,7 +144,7 @@ public class RenamePatternNodeTests
     [Fact]
     public void Invalid_date_format_throws_NodeConfigurationException()
     {
-        var node = new RenamePatternNode();
+        var node = new RenamePatternNode(NullLogger<RenamePatternNode>.Instance);
 
         Action act = () => node.Configure(MakeConfig("{date:J}_{name}{ext}"));
         act.Should().Throw<NodeConfigurationException>()
@@ -153,7 +154,7 @@ public class RenamePatternNodeTests
     [Fact]
     public void Missing_pattern_throws_NodeConfigurationException()
     {
-        var node = new RenamePatternNode();
+        var node = new RenamePatternNode(NullLogger<RenamePatternNode>.Instance);
         var emptyConfig = new Dictionary<string, JsonElement>();
 
         Action act = () => node.Configure(emptyConfig);

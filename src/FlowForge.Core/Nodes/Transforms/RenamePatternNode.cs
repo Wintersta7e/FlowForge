@@ -3,11 +3,20 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
+using Microsoft.Extensions.Logging;
 
 namespace FlowForge.Core.Nodes.Transforms;
 
 public class RenamePatternNode : ITransformNode
 {
+    private readonly ILogger<RenamePatternNode> _logger;
+
+    public RenamePatternNode(ILogger<RenamePatternNode> logger)
+    {
+        ArgumentNullException.ThrowIfNull(logger);
+        _logger = logger;
+    }
+
     public string TypeKey => "RenamePattern";
 
     public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]
@@ -41,6 +50,8 @@ public class RenamePatternNode : ITransformNode
         }
 
         _counter = _startIndex - 1;
+
+        _logger.LogDebug("RenamePattern: configured with Pattern={Pattern}, StartIndex={StartIndex}", _pattern, _startIndex);
 
         // Validate date format tokens eagerly so bad patterns fail at configure time
         MatchCollection dateMatches = TokenRegex.Matches(_pattern);
