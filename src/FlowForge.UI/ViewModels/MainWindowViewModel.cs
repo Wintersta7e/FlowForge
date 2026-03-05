@@ -26,6 +26,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IDialogService _dialogService;
     private readonly ILogger<MainWindowViewModel> _logger;
     private readonly AppSettingsManager _settingsManager;
+    private readonly IServiceProvider _serviceProvider;
     private readonly TaskCompletionSource _initComplete = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private AppSettings _appSettings = new();
 
@@ -55,12 +56,22 @@ public partial class MainWindowViewModel : ViewModelBase
         ILogger<MainWindowViewModel> logger,
         AppSettingsManager settingsManager,
         NodeRegistry registry,
-        EditorViewModel editor)
+        EditorViewModel editor,
+        IDialogService dialogService,
+        IServiceProvider serviceProvider)
     {
+        ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(settingsManager);
+        ArgumentNullException.ThrowIfNull(registry);
+        ArgumentNullException.ThrowIfNull(editor);
+        ArgumentNullException.ThrowIfNull(dialogService);
+        ArgumentNullException.ThrowIfNull(serviceProvider);
+
         _registry = registry;
-        _dialogService = new DialogService();
+        _dialogService = dialogService;
         _logger = logger;
         _settingsManager = settingsManager;
+        _serviceProvider = serviceProvider;
 
         Editor = editor;
         NodeLibrary = new NodeLibraryViewModel();
@@ -292,7 +303,9 @@ public partial class MainWindowViewModel : ViewModelBase
         try
         {
             PipelineGraph graph = Editor.BuildGraph();
-            PipelineRunner runner = App.Services.GetRequiredService<PipelineRunner>();
+
+            // Resolve fresh PipelineRunner per execution (transient lifetime)
+            PipelineRunner runner = _serviceProvider.GetRequiredService<PipelineRunner>();
 
             Progress<FileJob> progress = new(job =>
             {
