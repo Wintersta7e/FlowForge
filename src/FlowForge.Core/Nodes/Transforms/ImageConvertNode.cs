@@ -18,6 +18,7 @@ public class ImageConvertNode : ITransformNode
 
     public ImageConvertNode(ILogger<ImageConvertNode> logger)
     {
+        ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
     }
 
@@ -48,6 +49,8 @@ public class ImageConvertNode : ITransformNode
         {
             throw new NodeConfigurationException($"ImageConvert: Unsupported format '{_format}'. Supported: {string.Join(", ", validFormats)}");
         }
+
+        _logger.LogDebug("ImageConvert: configured with TargetFormat={TargetFormat}", _format);
     }
 
     public async Task<IEnumerable<FileJob>> TransformAsync(FileJob job, bool dryRun, CancellationToken ct = default)
@@ -84,6 +87,7 @@ public class ImageConvertNode : ITransformNode
         FileInfo outputInfo = new(newPath);
         if (!outputInfo.Exists || outputInfo.Length == 0)
         {
+            _logger.LogWarning("ImageConvert: output file {OutputPath} is missing or empty after save", newPath);
             job.Status = FileJobStatus.Failed;
             job.ErrorMessage = $"ImageConvert: output file '{newPath}' is missing or empty after save. Original preserved.";
             return new[] { job };
@@ -99,6 +103,7 @@ public class ImageConvertNode : ITransformNode
             }
             catch (IOException ex)
             {
+                _logger.LogWarning(ex, "ImageConvert: failed to delete original file {OriginalPath}", job.CurrentPath);
                 job.NodeLog.Add($"ImageConvert: Could not delete original '{Path.GetFileName(job.CurrentPath)}': {ex.Message}");
             }
         }

@@ -11,6 +11,7 @@ public class FolderOutputNode : IOutputNode
 
     public FolderOutputNode(ILogger<FolderOutputNode> logger)
     {
+        ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
     }
 
@@ -78,6 +79,9 @@ public class FolderOutputNode : IOutputNode
         {
             _enableBackup = backupElement.GetBoolean();
         }
+
+        _logger.LogDebug("FolderOutput: configured with Path={Path}, Mode={Mode}, Overwrite={Overwrite}, PreserveStructure={PreserveStructure}, EnableBackup={EnableBackup}",
+            _path, _mode, _overwrite, _preserveStructure, _enableBackup);
 
         if (config.TryGetValue("backupSuffix", out JsonElement suffixElement))
         {

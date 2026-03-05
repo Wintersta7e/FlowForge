@@ -14,6 +14,8 @@ public class PipelineRunner
 
     public PipelineRunner(NodeRegistry registry, ILogger<PipelineRunner> logger, int maxConcurrency = 0)
     {
+        ArgumentNullException.ThrowIfNull(registry);
+        ArgumentNullException.ThrowIfNull(logger);
         _registry = registry;
         _logger = logger;
         _maxConcurrency = maxConcurrency > 0 ? maxConcurrency : Environment.ProcessorCount;

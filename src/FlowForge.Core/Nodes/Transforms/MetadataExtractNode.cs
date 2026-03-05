@@ -14,6 +14,7 @@ public class MetadataExtractNode : ITransformNode
 
     public MetadataExtractNode(ILogger<MetadataExtractNode> logger)
     {
+        ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
     }
 

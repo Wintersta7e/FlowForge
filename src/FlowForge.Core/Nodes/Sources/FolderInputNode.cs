@@ -12,6 +12,7 @@ public class FolderInputNode : ISourceNode
 
     public FolderInputNode(ILogger<FolderInputNode> logger)
     {
+        ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
     }
 

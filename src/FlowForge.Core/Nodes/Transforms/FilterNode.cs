@@ -13,6 +13,7 @@ public class FilterNode : ITransformNode
 
     public FilterNode(ILogger<FilterNode> logger)
     {
+        ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
     }
 

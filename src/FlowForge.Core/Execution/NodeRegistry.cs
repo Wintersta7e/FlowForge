@@ -132,6 +132,7 @@ public class NodeRegistry
 
     public static NodeRegistry CreateDefault(ILoggerFactory loggerFactory)
     {
+        ArgumentNullException.ThrowIfNull(loggerFactory);
         var registry = new NodeRegistry();
 
         // Sources

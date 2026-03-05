@@ -16,6 +16,7 @@ public class ImageCompressNode : ITransformNode
 
     public ImageCompressNode(ILogger<ImageCompressNode> logger)
     {
+        ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
     }
 
@@ -50,6 +51,8 @@ public class ImageCompressNode : ITransformNode
         {
             _format = formatEl.GetString()?.ToLowerInvariant();
         }
+
+        _logger.LogDebug("ImageCompress: configured with Quality={Quality}, Format={Format}", _quality, _format ?? "original");
     }
 
     public async Task<IEnumerable<FileJob>> TransformAsync(FileJob job, bool dryRun, CancellationToken ct = default)
@@ -68,6 +71,7 @@ public class ImageCompressNode : ITransformNode
         string[] supportedFormats = { "jpg", "jpeg", "png", "webp" };
         if (!supportedFormats.Contains(targetFormat))
         {
+            _logger.LogWarning("ImageCompress: unsupported format {Format} for file {FilePath}", targetFormat, job.CurrentPath);
             job.Status = FileJobStatus.Failed;
             job.ErrorMessage = $"ImageCompress: unsupported format '{targetFormat}'. Supported: jpg, jpeg, png, webp.";
             return new[] { job };

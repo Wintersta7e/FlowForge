@@ -11,6 +11,7 @@ public class RenameAddAffixNode : ITransformNode
 
     public RenameAddAffixNode(ILogger<RenameAddAffixNode> logger)
     {
+        ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
     }
 
@@ -43,6 +44,8 @@ public class RenameAddAffixNode : ITransformNode
         {
             throw new NodeConfigurationException("RenameAddAffix: At least one of 'prefix' or 'suffix' must be provided.");
         }
+
+        _logger.LogDebug("RenameAddAffix: configured with Prefix={Prefix}, Suffix={Suffix}", _prefix, _suffix);
     }
 
     public Task<IEnumerable<FileJob>> TransformAsync(FileJob job, bool dryRun, CancellationToken ct = default)

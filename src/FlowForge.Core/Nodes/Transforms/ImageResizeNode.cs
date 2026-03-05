@@ -13,6 +13,7 @@ public class ImageResizeNode : ITransformNode
 
     public ImageResizeNode(ILogger<ImageResizeNode> logger)
     {
+        ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
     }
 
@@ -65,6 +66,9 @@ public class ImageResizeNode : ITransformNode
         {
             _dpi = dpiEl.GetInt32();
         }
+
+        _logger.LogDebug("ImageResize: configured with Width={Width}, Height={Height}, Mode={Mode}, MaintainAspect={MaintainAspect}, DPI={DPI}",
+            _width, _height, _mode, _maintainAspect, _dpi);
     }
 
     public async Task<IEnumerable<FileJob>> TransformAsync(FileJob job, bool dryRun, CancellationToken ct = default)

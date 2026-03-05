@@ -16,6 +16,7 @@ public class SortNode : ITransformNode, IBufferedTransformNode
 
     public SortNode(ILogger<SortNode> logger)
     {
+        ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
     }
 
