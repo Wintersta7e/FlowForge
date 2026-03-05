@@ -157,6 +157,8 @@ public class ConfigFieldTemplateSelector : IDataTemplate
             }
             catch (Exception ex)
             {
+                // No user-visible feedback: file picker failure is rare and the dialog simply doesn't appear.
+                // The error is logged for diagnostics.
                 Logger.LogError(ex, "ConfigFieldTemplateSelector: file picker failed for '{Label}'", field.Label);
             }
         };
@@ -207,6 +209,8 @@ public class ConfigFieldTemplateSelector : IDataTemplate
             }
             catch (Exception ex)
             {
+                // No user-visible feedback: folder picker failure is rare and the dialog simply doesn't appear.
+                // The error is logged for diagnostics.
                 Logger.LogError(ex, "ConfigFieldTemplateSelector: folder picker failed for '{Label}'", field.Label);
             }
         };

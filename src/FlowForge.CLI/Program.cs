@@ -107,7 +107,12 @@ static async Task<int> RunPipelineAsync(
     var services = new ServiceCollection();
     services.AddLogging(builder => builder.AddSerilog(dispose: true));
     services.AddFlowForgeCore();
+    // dispose: true on AddSerilog ensures Serilog flushes when the ServiceProvider is disposed
     await using ServiceProvider sp = services.BuildServiceProvider();
+
+    // Resolve runner from DI container before the try block so that DI failures
+    // are not caught by the InvalidOperationException handler below.
+    var runner = sp.GetRequiredService<PipelineRunner>();
 
     try
     {
@@ -163,9 +168,6 @@ static async Task<int> RunPipelineAsync(
         }
 
         statusWriter.WriteLine();
-
-        // Resolve runner from DI container
-        var runner = sp.GetRequiredService<PipelineRunner>();
 
         // Progress reporter
         IProgress<FileJob> progress = new Progress<FileJob>(job =>
@@ -253,6 +255,8 @@ static async Task<int> RunPipelineAsync(
     }
     catch (InvalidOperationException ex)
     {
+        // Pipeline validation errors (e.g. missing connections, invalid config).
+        // DI resolution failures won't reach here — GetRequiredService is called above the try block.
         Console.Error.WriteLine($"Pipeline error: {ex.Message}");
         return 2;
     }

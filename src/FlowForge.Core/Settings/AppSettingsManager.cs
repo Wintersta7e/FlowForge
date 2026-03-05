@@ -96,8 +96,16 @@ public sealed class AppSettingsManager
         finally
         {
             try
-            { if (File.Exists(tmpPath)) File.Delete(tmpPath); }
-            catch { /* best-effort */ }
+            {
+                if (File.Exists(tmpPath))
+                {
+                    File.Delete(tmpPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to clean up temp file '{TmpPath}'", tmpPath);
+            }
         }
     }
 
