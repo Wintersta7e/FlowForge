@@ -4,6 +4,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using FlowForge.Core.DependencyInjection;
+using FlowForge.UI.Services;
 using FlowForge.UI.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -13,7 +14,10 @@ namespace FlowForge.UI;
 
 public partial class App : Application
 {
-    public static IServiceProvider Services { get; private set; } = null!;
+    private static IServiceProvider? _services;
+
+    public static IServiceProvider Services => _services
+        ?? throw new InvalidOperationException("DI container not initialized. Application startup failed.");
 
     public override void Initialize()
     {
@@ -39,18 +43,28 @@ public partial class App : Application
         var services = new ServiceCollection();
         services.AddLogging(builder => builder.AddSerilog(dispose: true));
         services.AddFlowForgeCore();
+        services.AddSingleton<IDialogService, DialogService>();
         services.AddSingleton<MainWindowViewModel>();
-        services.AddTransient<EditorViewModel>();
-        Services = services.BuildServiceProvider();
+        services.AddSingleton<EditorViewModel>();
+        _services = services.BuildServiceProvider();
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             desktop.ShutdownRequested += (_, _) =>
             {
-                if (Services is IDisposable disposable)
+                try
                 {
-                    disposable.Dispose();
+                    if (_services is IDisposable disposable)
+                    {
+                        disposable.Dispose();
+                    }
                 }
+                catch (Exception ex)
+                {
+                    System.Console.Error.WriteLine($"Error during shutdown disposal: {ex}");
+                }
+
+                Log.CloseAndFlush();
             };
 
             var viewModel = Services.GetRequiredService<MainWindowViewModel>();
@@ -68,14 +82,15 @@ public partial class App : Application
 
     private static async System.Threading.Tasks.Task InitializeViewModelAsync(MainWindowViewModel viewModel)
     {
+        ILogger<App> logger = Services.GetRequiredService<ILogger<App>>();
         try
         {
             await viewModel.InitializeAsync();
         }
         catch (Exception ex)
         {
-            var logger = Services.GetRequiredService<ILogger<App>>();
             logger.LogError(ex, "Failed to initialize application settings");
+            viewModel.ExecutionLog.Summary = "Warning: Could not load settings. Using defaults.";
         }
     }
 }
