@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2026-03-05
+
+### Changed
+
+- **Dependency injection** — full DI container (`Microsoft.Extensions.DependencyInjection`) across Core, UI, and CLI projects
+- **Structured logging** — replaced static `Serilog.Log.Logger` with dependency-injected `ILogger<T>` via `Microsoft.Extensions.Logging`; Serilog remains as the provider behind the abstraction
+- **Core DI registration** — new `AddFlowForgeCore()` extension method as single source of truth for service registration (NodeRegistry, PipelineRunner, AppSettingsManager)
+- **Node logger injection** — all 11 nodes receive typed `ILogger<T>` via `ILoggerFactory` in `NodeRegistry.CreateDefault()`
+- **Test logging** — migrated all tests from Serilog boilerplate to `NullLogger<T>.Instance`
+- **App startup safety** — guarded `App.Services` property throws descriptive error on DI failure instead of NRE
+- **Shutdown resilience** — disposal wrapped in try-catch with `Log.CloseAndFlush()` fallback
+- **Constructor guards** — `ArgumentNullException.ThrowIfNull` on all node, runner, and view model constructors
+- **Diagnostic logging** — `LogDebug` in Configure methods and `LogWarning` on error paths for all nodes
+- **DI cleanup** — `IDialogService` and `IServiceProvider` injected via constructor instead of service locator
+- **Captive dependency fix** — `EditorViewModel` registered as singleton to match its actual lifetime in singleton `MainWindowViewModel`
+- **Error handling** — replaced bare `catch {}` in `AppSettingsManager.SaveAsync`, narrowed CLI catch scope for DI vs pipeline errors
+- **243 tests** — 7 new DI registration tests verifying service resolution and lifetimes
+
 ## [1.1.0] - 2026-02-28
 
 ### Added

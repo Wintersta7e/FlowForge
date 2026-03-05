@@ -70,7 +70,7 @@ flowforge run pipeline.ffpipe [--input <dir>] [--output <dir>] [--dry-run] [--ve
 - Override input/output directories per run
 - Dry-run mode for safe previewing
 - JSON output mode (`--format json`) for machine-readable results
-- Structured logging with Serilog (routed to stderr in JSON mode)
+- Structured logging via `ILogger<T>` (routed to stderr in JSON mode)
 - Exit codes: 0 (success), 1 (partial failure), 2 (total failure / invalid arguments)
 
 ### Pipeline Format
@@ -99,7 +99,9 @@ Pipelines are saved as `.ffpipe` files (human-readable JSON, UTF-8):
 | [CommunityToolkit.Mvvm](https://learn.microsoft.com/dotnet/communitytoolkit/mvvm) | MVVM framework |
 | [SixLabors.ImageSharp](https://sixlabors.com/products/imagesharp) | Image processing (resize, convert, compress) |
 | [MetadataExtractor](https://github.com/drewnoakes/metadata-extractor-dotnet) | EXIF and file metadata reading |
-| [Serilog](https://serilog.net) | Structured logging |
+| [Microsoft.Extensions.Logging](https://learn.microsoft.com/dotnet/core/extensions/logging) | Logging abstraction (`ILogger<T>`) |
+| [Serilog](https://serilog.net) | Logging provider (console + rolling file) |
+| [Microsoft.Extensions.DependencyInjection](https://learn.microsoft.com/dotnet/core/extensions/dependency-injection) | IoC container |
 | [System.CommandLine](https://learn.microsoft.com/dotnet/standard/commandline) | CLI argument parsing |
 | [xUnit](https://xunit.net) + [FluentAssertions](https://fluentassertions.com) | Testing framework |
 
@@ -110,6 +112,7 @@ FlowForge/
 ├── FlowForge.sln
 ├── src/
 │   ├── FlowForge.Core/           # Business logic (no UI references)
+│   │   ├── DependencyInjection/  # AddFlowForgeCore() service registration
 │   │   ├── Execution/            # PipelineRunner, NodeRegistry
 │   │   ├── Models/               # FileJob, ExecutionResult
 │   │   ├── Nodes/
@@ -126,7 +129,8 @@ FlowForge/
 │   │   └── Services/             # DialogService
 │   └── FlowForge.CLI/            # CLI runner (System.CommandLine)
 └── tests/
-    └── FlowForge.Tests/          # 236 xUnit tests
+    └── FlowForge.Tests/          # 243 xUnit tests
+        ├── DependencyInjection/  # DI registration tests
         ├── Nodes/                # 11 node test files
         ├── Execution/            # Runner + registry tests
         ├── Pipeline/             # Serializer + template tests
@@ -161,7 +165,7 @@ dotnet run --project src/FlowForge.CLI -- run pipeline.ffpipe --dry-run
 ### Run Tests
 
 ```bash
-# Run all 236 tests
+# Run all 243 tests
 dotnet test --logger "console;verbosity=normal"
 
 # Run specific test class
