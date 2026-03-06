@@ -6,6 +6,7 @@ using System.ComponentModel;
 using System.Linq;
 using Avalonia;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using FlowForge.Core.Execution;
 using FlowForge.Core.Pipeline;
 using FlowForge.UI.UndoRedo;
@@ -18,6 +19,7 @@ public partial class EditorViewModel : ViewModelBase
 {
     private readonly ILogger<EditorViewModel> _logger;
     private readonly HashSet<PipelineNodeViewModel> _subscribedNodes = new();
+    private Dictionary<PipelineNodeViewModel, Point>? _dragStartPositions;
     private string _graphName = "Untitled Pipeline";
 
     public ObservableCollection<PipelineNodeViewModel> Nodes { get; } = new();
@@ -238,5 +240,36 @@ public partial class EditorViewModel : ViewModelBase
 
         UndoRedo.Execute(new RemoveNodesCommand(Nodes, Connections, selected, attachedConnections));
         SelectedNode = null;
+    }
+
+    [RelayCommand]
+    private void ItemsDragStarted()
+    {
+        _dragStartPositions = Nodes
+            .Where(n => n.IsSelected)
+            .ToDictionary(n => n, n => n.Location);
+    }
+
+    [RelayCommand]
+    private void ItemsDragCompleted()
+    {
+        if (_dragStartPositions is null)
+        {
+            return;
+        }
+
+        foreach (KeyValuePair<PipelineNodeViewModel, Point> kvp in _dragStartPositions)
+        {
+            PipelineNodeViewModel node = kvp.Key;
+            Point oldPos = kvp.Value;
+            Point newPos = node.Location;
+
+            if (oldPos != newPos)
+            {
+                UndoRedo.PushExecuted(new MoveNodeCommand(node, oldPos, newPos));
+            }
+        }
+
+        _dragStartPositions = null;
     }
 }
