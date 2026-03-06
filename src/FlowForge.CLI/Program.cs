@@ -170,33 +170,54 @@ static async Task<int> RunPipelineAsync(
         statusWriter.WriteLine();
 
         // Progress reporter
+        int discoveredCount = 0;
         IProgress<PipelineProgressEvent> progress = new Progress<PipelineProgressEvent>(evt =>
         {
-            if (evt is FileProcessed fileProcessed)
+            switch (evt)
             {
-                FileJob job = fileProcessed.Job;
-                string statusIcon = job.Status switch
-                {
-                    FileJobStatus.Succeeded => "[OK]",
-                    FileJobStatus.Failed => "[FAIL]",
-                    FileJobStatus.Skipped => "[SKIP]",
-                    _ => "[??]"
-                };
+                case PhaseChanged { Phase: ExecutionPhase.Enumerating }:
+                    statusWriter.Write("Scanning...");
+                    break;
 
-                statusWriter.WriteLine($"  {statusIcon} {Path.GetFileName(job.OriginalPath)}");
+                case FilesDiscovered discovered:
+                    discoveredCount = discovered.Count;
+                    statusWriter.Write($"\rScanning... {discovered.Count} files found");
+                    break;
 
-                if (verbose)
-                {
-                    foreach (string logEntry in job.NodeLog)
+                case PhaseChanged { Phase: ExecutionPhase.Processing }:
+                    statusWriter.WriteLine();
+                    statusWriter.WriteLine($"Processing {discoveredCount} files...");
+                    statusWriter.WriteLine();
+                    break;
+
+                case FileProcessed { Job: var job }:
+                    string statusIcon = job.Status switch
                     {
-                        statusWriter.WriteLine($"        {logEntry}");
-                    }
-                }
+                        FileJobStatus.Succeeded => "[OK]",
+                        FileJobStatus.Failed => "[FAIL]",
+                        FileJobStatus.Skipped => "[SKIP]",
+                        _ => "[??]"
+                    };
 
-                if (job.Status == FileJobStatus.Failed && job.ErrorMessage is not null)
-                {
-                    Console.Error.WriteLine($"        Error: {job.ErrorMessage}");
-                }
+                    statusWriter.WriteLine($"  {statusIcon} {Path.GetFileName(job.OriginalPath)}");
+
+                    if (verbose)
+                    {
+                        foreach (string logEntry in job.NodeLog)
+                        {
+                            statusWriter.WriteLine($"        {logEntry}");
+                        }
+                    }
+
+                    if (job.Status == FileJobStatus.Failed && job.ErrorMessage is not null)
+                    {
+                        Console.Error.WriteLine($"        Error: {job.ErrorMessage}");
+                    }
+
+                    break;
+
+                case PhaseChanged { Phase: ExecutionPhase.Complete }:
+                    break;
             }
         });
 
@@ -204,6 +225,10 @@ static async Task<int> RunPipelineAsync(
         ExecutionResult result = await runner.RunAsync(graph, dryRun, progress, cancellationToken);
 
         // Print summary
+        double filesPerSec = result.Duration.TotalSeconds > 0
+            ? result.TotalFiles / result.Duration.TotalSeconds
+            : 0;
+
         statusWriter.WriteLine();
         statusWriter.WriteLine("--- Pipeline Summary ---");
         statusWriter.WriteLine($"  Total files : {result.TotalFiles}");
@@ -211,6 +236,11 @@ static async Task<int> RunPipelineAsync(
         statusWriter.WriteLine($"  Failed      : {result.Failed}");
         statusWriter.WriteLine($"  Skipped     : {result.Skipped}");
         statusWriter.WriteLine($"  Duration    : {result.Duration.TotalMilliseconds:F0} ms");
+        if (filesPerSec > 0)
+        {
+            statusWriter.WriteLine($"  Throughput  : {filesPerSec:F1} files/sec");
+        }
+
         statusWriter.WriteLine($"  Dry run     : {result.IsDryRun}");
 
         // JSON output: structured result to stdout for machine consumption

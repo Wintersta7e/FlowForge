@@ -309,23 +309,19 @@ public partial class MainWindowViewModel : ViewModelBase
 
             Progress<PipelineProgressEvent> progress = new(evt =>
             {
-                if (evt is FileProcessed fileProcessed)
-                {
-                    ExecutionLog.ReportProgress(fileProcessed.Job);
-                }
+                ExecutionLog.ReportProgressEvent(evt);
             });
 
             ExecutionResult result = await runner.RunAsync(graph, dryRun, progress, _cts.Token);
 
-            // Update total from actual result (corrects any estimate)
-            ExecutionLog.TotalFiles = result.TotalFiles;
-            int processed = ExecutionLog.Succeeded + ExecutionLog.Failed + ExecutionLog.Skipped;
-            ExecutionLog.Progress = result.TotalFiles > 0
-                ? (double)processed / result.TotalFiles * 100.0
-                : 100.0;
+            // Summary with throughput
+            double filesPerSec = result.Duration.TotalSeconds > 0
+                ? result.TotalFiles / result.Duration.TotalSeconds
+                : 0;
+            string throughput = filesPerSec > 0 ? $", {filesPerSec:F1} files/sec" : string.Empty;
             ExecutionLog.Summary = dryRun
-                ? $"Preview complete: {result.TotalFiles} files, {result.Succeeded} OK, {result.Failed} failed, {result.Skipped} skipped ({result.Duration.TotalMilliseconds:F0}ms)"
-                : $"Run complete: {result.TotalFiles} files, {result.Succeeded} OK, {result.Failed} failed, {result.Skipped} skipped ({result.Duration.TotalMilliseconds:F0}ms)";
+                ? $"Preview complete: {result.TotalFiles} files, {result.Succeeded} OK, {result.Failed} failed, {result.Skipped} skipped ({result.Duration.TotalMilliseconds:F0}ms{throughput})"
+                : $"Run complete: {result.TotalFiles} files, {result.Succeeded} OK, {result.Failed} failed, {result.Skipped} skipped ({result.Duration.TotalMilliseconds:F0}ms{throughput})";
         }
         catch (OperationCanceledException)
         {
