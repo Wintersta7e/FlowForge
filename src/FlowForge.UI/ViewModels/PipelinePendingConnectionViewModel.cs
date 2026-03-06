@@ -1,6 +1,7 @@
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using FlowForge.UI.UndoRedo.Commands;
 
 namespace FlowForge.UI.ViewModels;
 
@@ -44,9 +45,8 @@ public partial class PipelinePendingConnectionViewModel : ViewModelBase
                 c.Source == source && c.Target == target);
             if (!alreadyConnected)
             {
-                source.IsConnected = true;
-                target.IsConnected = true;
-                _editor.Connections.Add(new PipelineConnectionViewModel(source, target));
+                var connection = new PipelineConnectionViewModel(source, target);
+                _editor.UndoRedo.Execute(new ConnectCommand(_editor.Connections, connection));
             }
         }
 

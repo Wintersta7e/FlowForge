@@ -8,6 +8,8 @@ using Avalonia;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FlowForge.Core.Execution;
 using FlowForge.Core.Pipeline;
+using FlowForge.UI.UndoRedo;
+using FlowForge.UI.UndoRedo.Commands;
 using Microsoft.Extensions.Logging;
 
 namespace FlowForge.UI.ViewModels;
@@ -22,6 +24,7 @@ public partial class EditorViewModel : ViewModelBase
     public bool HasNodes => Nodes.Count > 0;
     public ObservableCollection<PipelineConnectionViewModel> Connections { get; } = new();
     public PipelinePendingConnectionViewModel PendingConnection { get; }
+    public UndoRedoManager UndoRedo { get; } = new();
 
     /// <summary>
     /// Raised when any graph content changes (node config edits, structural changes).
@@ -115,6 +118,7 @@ public partial class EditorViewModel : ViewModelBase
         Connections.Clear();
         SelectedNode = null;
         _graphName = "Untitled Pipeline";
+        UndoRedo.Clear();
     }
 
     public int LoadGraph(PipelineGraph graph, NodeRegistry registry)
@@ -165,6 +169,7 @@ public partial class EditorViewModel : ViewModelBase
             Connections.Add(new PipelineConnectionViewModel(sourceConnector, targetConnector));
         }
 
+        UndoRedo.Clear();
         return droppedConnections;
     }
 
@@ -204,6 +209,9 @@ public partial class EditorViewModel : ViewModelBase
         return graph;
     }
 
+    public void Undo() => UndoRedo.Undo();
+    public void Redo() => UndoRedo.Redo();
+
     public void AddNode(string typeKey, Point position, NodeRegistry registry)
     {
         NodeDefinition definition = new()
@@ -213,30 +221,22 @@ public partial class EditorViewModel : ViewModelBase
         };
 
         PipelineNodeViewModel nodeVm = new(definition, registry);
-        Nodes.Add(nodeVm);
+        UndoRedo.Execute(new AddNodeCommand(Nodes, nodeVm));
     }
 
     public void RemoveSelectedNodes()
     {
         List<PipelineNodeViewModel> selected = Nodes.Where(n => n.IsSelected).ToList();
-
-        foreach (PipelineNodeViewModel node in selected)
+        if (selected.Count == 0)
         {
-            // Remove connections attached to this node
-            List<PipelineConnectionViewModel> attachedConnections = Connections
-                .Where(c => c.Source.Node == node || c.Target.Node == node)
-                .ToList();
-
-            foreach (PipelineConnectionViewModel conn in attachedConnections)
-            {
-                conn.Source.IsConnected = false;
-                conn.Target.IsConnected = false;
-                Connections.Remove(conn);
-            }
-
-            Nodes.Remove(node);
+            return;
         }
 
+        List<PipelineConnectionViewModel> attachedConnections = Connections
+            .Where(c => selected.Contains(c.Source.Node) || selected.Contains(c.Target.Node))
+            .ToList();
+
+        UndoRedo.Execute(new RemoveNodesCommand(Nodes, Connections, selected, attachedConnections));
         SelectedNode = null;
     }
 }

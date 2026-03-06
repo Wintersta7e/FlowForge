@@ -3,13 +3,15 @@ using System.Collections.Generic;
 using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FlowForge.Core.Nodes.Base;
+using FlowForge.UI.UndoRedo;
+using FlowForge.UI.UndoRedo.Commands;
 
 namespace FlowForge.UI.ViewModels;
 
 public partial class ConfigFieldViewModel : ViewModelBase
 {
     private readonly Dictionary<string, JsonElement> _configDictionary;
-    private readonly Action? _onValueChanged;
+    private readonly Action<IUndoableCommand>? _onConfigChanged;
 
     [ObservableProperty]
     private string? _value;
@@ -26,10 +28,10 @@ public partial class ConfigFieldViewModel : ViewModelBase
     public ConfigFieldViewModel(
         ConfigField field,
         Dictionary<string, JsonElement> configDictionary,
-        Action? onValueChanged = null)
+        Action<IUndoableCommand>? onConfigChanged = null)
     {
         _configDictionary = configDictionary;
-        _onValueChanged = onValueChanged;
+        _onConfigChanged = onConfigChanged;
         Key = field.Key;
         Label = field.Label;
         FieldType = field.Type;
@@ -54,17 +56,17 @@ public partial class ConfigFieldViewModel : ViewModelBase
 
     partial void OnValueChanged(string? value)
     {
-        // Write back to config dictionary
         if (value is not null)
         {
-            // For Int fields, only update config if the value is a valid integer;
-            // skip update for partial/invalid input to keep the last valid value
             if (FieldType == ConfigFieldType.Int && !int.TryParse(value, out _))
             {
                 return;
             }
 
-            _configDictionary[Key] = FieldType switch
+            // Capture old value before mutation
+            _configDictionary.TryGetValue(Key, out JsonElement oldElement);
+
+            JsonElement newElement = FieldType switch
             {
                 ConfigFieldType.Bool when bool.TryParse(value, out bool b) =>
                     JsonSerializer.SerializeToElement(b),
@@ -72,12 +74,13 @@ public partial class ConfigFieldViewModel : ViewModelBase
                     JsonSerializer.SerializeToElement(i),
                 _ => JsonSerializer.SerializeToElement(value)
             };
+
+            _configDictionary[Key] = newElement;
+            _onConfigChanged?.Invoke(new ChangeConfigCommand(_configDictionary, Key, oldElement, newElement, $"Change {Label}"));
         }
         else
         {
             _configDictionary.Remove(Key);
         }
-
-        _onValueChanged?.Invoke();
     }
 }

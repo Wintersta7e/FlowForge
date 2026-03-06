@@ -85,7 +85,11 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             if (args.PropertyName == nameof(EditorViewModel.SelectedNode))
             {
-                Properties.LoadNode(Editor.SelectedNode, _registry, () => Editor.RaiseGraphChanged());
+                Properties.LoadNode(Editor.SelectedNode, _registry, cmd =>
+                {
+                    Editor.UndoRedo.PushExecuted(cmd);
+                    Editor.RaiseGraphChanged();
+                });
             }
         };
 
