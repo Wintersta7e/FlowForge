@@ -170,29 +170,33 @@ static async Task<int> RunPipelineAsync(
         statusWriter.WriteLine();
 
         // Progress reporter
-        IProgress<FileJob> progress = new Progress<FileJob>(job =>
+        IProgress<PipelineProgressEvent> progress = new Progress<PipelineProgressEvent>(evt =>
         {
-            string statusIcon = job.Status switch
+            if (evt is FileProcessed fileProcessed)
             {
-                FileJobStatus.Succeeded => "[OK]",
-                FileJobStatus.Failed => "[FAIL]",
-                FileJobStatus.Skipped => "[SKIP]",
-                _ => "[??]"
-            };
-
-            statusWriter.WriteLine($"  {statusIcon} {Path.GetFileName(job.OriginalPath)}");
-
-            if (verbose)
-            {
-                foreach (string logEntry in job.NodeLog)
+                FileJob job = fileProcessed.Job;
+                string statusIcon = job.Status switch
                 {
-                    statusWriter.WriteLine($"        {logEntry}");
-                }
-            }
+                    FileJobStatus.Succeeded => "[OK]",
+                    FileJobStatus.Failed => "[FAIL]",
+                    FileJobStatus.Skipped => "[SKIP]",
+                    _ => "[??]"
+                };
 
-            if (job.Status == FileJobStatus.Failed && job.ErrorMessage is not null)
-            {
-                Console.Error.WriteLine($"        Error: {job.ErrorMessage}");
+                statusWriter.WriteLine($"  {statusIcon} {Path.GetFileName(job.OriginalPath)}");
+
+                if (verbose)
+                {
+                    foreach (string logEntry in job.NodeLog)
+                    {
+                        statusWriter.WriteLine($"        {logEntry}");
+                    }
+                }
+
+                if (job.Status == FileJobStatus.Failed && job.ErrorMessage is not null)
+                {
+                    Console.Error.WriteLine($"        Error: {job.ErrorMessage}");
+                }
             }
         });
 

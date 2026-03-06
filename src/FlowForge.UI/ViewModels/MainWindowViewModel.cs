@@ -307,9 +307,12 @@ public partial class MainWindowViewModel : ViewModelBase
             // Resolve fresh PipelineRunner per execution (transient lifetime)
             PipelineRunner runner = _serviceProvider.GetRequiredService<PipelineRunner>();
 
-            Progress<FileJob> progress = new(job =>
+            Progress<PipelineProgressEvent> progress = new(evt =>
             {
-                ExecutionLog.ReportProgress(job);
+                if (evt is FileProcessed fileProcessed)
+                {
+                    ExecutionLog.ReportProgress(fileProcessed.Job);
+                }
             });
 
             ExecutionResult result = await runner.RunAsync(graph, dryRun, progress, _cts.Token);

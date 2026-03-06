@@ -24,11 +24,13 @@ public class PipelineRunner
     public async Task<ExecutionResult> RunAsync(
         PipelineGraph graph,
         bool dryRun = false,
-        IProgress<FileJob>? progress = null,
+        IProgress<PipelineProgressEvent>? progress = null,
         CancellationToken ct = default)
     {
         var stopwatch = Stopwatch.StartNew();
         var result = new ExecutionResult { IsDryRun = dryRun };
+
+        progress?.Report(new PhaseChanged(ExecutionPhase.Enumerating));
 
         // 1. Validate graph
         ValidateGraph(graph);
@@ -77,10 +79,13 @@ public class PipelineRunner
             {
                 ct.ThrowIfCancellationRequested();
                 allJobs.Add(job);
+                progress?.Report(new FilesDiscovered(allJobs.Count));
             }
         }
 
         result.TotalFiles = allJobs.Count;
+
+        progress?.Report(new PhaseChanged(ExecutionPhase.Processing));
 
         // 6. Walk the transform chain (handles buffered nodes like SortNode)
         IReadOnlyList<FileJob> currentJobs = allJobs;
@@ -105,7 +110,7 @@ public class PipelineRunner
                     result.Skipped++;
                     result.Jobs.Add(job);
                 }
-                progress?.Report(job);
+                progress?.Report(new FileProcessed(job));
                 continue;
             }
 
@@ -122,6 +127,8 @@ public class PipelineRunner
         _logger.LogInformation(
             "Pipeline completed: {Total} files, {Succeeded} succeeded, {Failed} failed, {Skipped} skipped ({Duration}ms)",
             result.TotalFiles, result.Succeeded, result.Failed, result.Skipped, result.Duration.TotalMilliseconds);
+
+        progress?.Report(new PhaseChanged(ExecutionPhase.Complete));
 
         return result;
     }
@@ -228,7 +235,7 @@ public class PipelineRunner
         List<IOutputNode> outputs,
         bool dryRun,
         ExecutionResult result,
-        IProgress<FileJob>? progress,
+        IProgress<PipelineProgressEvent>? progress,
         SemaphoreSlim semaphore,
         CancellationToken ct)
     {
@@ -245,7 +252,7 @@ public class PipelineRunner
                 result.Succeeded++;
                 result.Jobs.Add(job);
             }
-            progress?.Report(job);
+            progress?.Report(new FileProcessed(job));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -258,7 +265,7 @@ public class PipelineRunner
                 result.Failed++;
                 result.Jobs.Add(job);
             }
-            progress?.Report(job);
+            progress?.Report(new FileProcessed(job));
         }
         finally
         {
