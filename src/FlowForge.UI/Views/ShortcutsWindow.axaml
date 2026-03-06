@@ -13,7 +13,7 @@
                    FontWeight="Bold"
                    Foreground="{DynamicResource MidnightText}" />
 
-        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
               Margin="0,8,0,0">
             <Grid.Styles>
                 <Style Selector="TextBlock.key">
@@ -54,8 +54,14 @@
             <TextBlock Grid.Row="7" Grid.Column="0" Classes="key" Text="Ctrl+Scroll" />
             <TextBlock Grid.Row="7" Grid.Column="1" Classes="desc" Text="Zoom in/out" />
 
-            <TextBlock Grid.Row="8" Grid.Column="0" Classes="key" Text="F1" />
-            <TextBlock Grid.Row="8" Grid.Column="1" Classes="desc" Text="Show this help" />
+            <TextBlock Grid.Row="8" Grid.Column="0" Classes="key" Text="Ctrl+Z" />
+            <TextBlock Grid.Row="8" Grid.Column="1" Classes="desc" Text="Undo" />
+
+            <TextBlock Grid.Row="9" Grid.Column="0" Classes="key" Text="Ctrl+Y" />
+            <TextBlock Grid.Row="9" Grid.Column="1" Classes="desc" Text="Redo" />
+
+            <TextBlock Grid.Row="10" Grid.Column="0" Classes="key" Text="F1" />
+            <TextBlock Grid.Row="10" Grid.Column="1" Classes="desc" Text="Show this help" />
         </Grid>
 
         <Button Content="Close"
