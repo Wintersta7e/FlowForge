@@ -85,12 +85,36 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             if (args.PropertyName == nameof(EditorViewModel.SelectedNode))
             {
-                Properties.LoadNode(Editor.SelectedNode, _registry, () => Editor.RaiseGraphChanged());
+                RefreshPropertiesPanel();
             }
         };
 
+        // Refresh properties panel on undo/redo so fields read fresh config values
+        Editor.UndoRedo.StateChanged += (_, _) => RefreshPropertiesPanel();
+
         // Track all graph changes (structural + config edits) for IsDirty
         Editor.GraphChanged += (_, _) => IsDirty = true;
+    }
+
+    private void RefreshPropertiesPanel()
+    {
+        // PushExecuted (not Execute) because the MVVM binding already mutated the config dictionary.
+        // PushOrCoalesce merges repeated keystrokes on the same field into a single undo entry.
+        Properties.LoadNode(Editor.SelectedNode, _registry, cmd =>
+        {
+            if (cmd is UndoRedo.Commands.ChangeConfigCommand configCmd)
+            {
+                Editor.UndoRedo.PushOrCoalesce(cmd, prev =>
+                    prev is UndoRedo.Commands.ChangeConfigCommand prevConfig
+                    && prevConfig.ConfigKey == configCmd.ConfigKey);
+            }
+            else
+            {
+                Editor.UndoRedo.PushExecuted(cmd);
+            }
+
+            Editor.RaiseGraphChanged();
+        });
     }
 
     public async Task InitializeAsync()
@@ -307,22 +331,21 @@ public partial class MainWindowViewModel : ViewModelBase
             // Resolve fresh PipelineRunner per execution (transient lifetime)
             PipelineRunner runner = _serviceProvider.GetRequiredService<PipelineRunner>();
 
-            Progress<FileJob> progress = new(job =>
+            Progress<PipelineProgressEvent> progress = new(evt =>
             {
-                ExecutionLog.ReportProgress(job);
+                ExecutionLog.ReportProgressEvent(evt);
             });
 
             ExecutionResult result = await runner.RunAsync(graph, dryRun, progress, _cts.Token);
 
-            // Update total from actual result (corrects any estimate)
-            ExecutionLog.TotalFiles = result.TotalFiles;
-            int processed = ExecutionLog.Succeeded + ExecutionLog.Failed + ExecutionLog.Skipped;
-            ExecutionLog.Progress = result.TotalFiles > 0
-                ? (double)processed / result.TotalFiles * 100.0
-                : 100.0;
+            // Summary with throughput
+            double filesPerSec = result.Duration.TotalSeconds > 0
+                ? result.TotalFiles / result.Duration.TotalSeconds
+                : 0;
+            string throughput = filesPerSec > 0 ? $", {filesPerSec:F1} files/sec" : string.Empty;
             ExecutionLog.Summary = dryRun
-                ? $"Preview complete: {result.TotalFiles} files, {result.Succeeded} OK, {result.Failed} failed, {result.Skipped} skipped ({result.Duration.TotalMilliseconds:F0}ms)"
-                : $"Run complete: {result.TotalFiles} files, {result.Succeeded} OK, {result.Failed} failed, {result.Skipped} skipped ({result.Duration.TotalMilliseconds:F0}ms)";
+                ? $"Preview complete: {result.TotalFiles} files, {result.Succeeded} OK, {result.Failed} failed, {result.Skipped} skipped ({result.Duration.TotalMilliseconds:F0}ms{throughput})"
+                : $"Run complete: {result.TotalFiles} files, {result.Succeeded} OK, {result.Failed} failed, {result.Skipped} skipped ({result.Duration.TotalMilliseconds:F0}ms{throughput})";
         }
         catch (OperationCanceledException)
         {

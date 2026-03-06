@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FlowForge.Core.Execution;
 using FlowForge.Core.Nodes.Base;
+using FlowForge.UI.UndoRedo;
 
 namespace FlowForge.UI.ViewModels;
 
@@ -17,7 +18,7 @@ public partial class PropertiesViewModel : ViewModelBase
 
     public ObservableCollection<ConfigFieldViewModel> Fields { get; } = new();
 
-    public void LoadNode(PipelineNodeViewModel? node, NodeRegistry registry, Action? onConfigChanged = null)
+    public void LoadNode(PipelineNodeViewModel? node, NodeRegistry registry, Action<IUndoableCommand>? onConfigChanged = null)
     {
         Fields.Clear();
 

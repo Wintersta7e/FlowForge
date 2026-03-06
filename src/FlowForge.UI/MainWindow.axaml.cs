@@ -34,5 +34,16 @@ public partial class MainWindow : Window
             await shortcuts.ShowDialog(this);
             e.Handled = true;
         }
+        else if (e.Key == Key.Z && e.KeyModifiers == KeyModifiers.Control)
+        {
+            vm.Editor.Undo();
+            e.Handled = true;
+        }
+        else if ((e.Key == Key.Y && e.KeyModifiers == KeyModifiers.Control)
+            || (e.Key == Key.Z && e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift)))
+        {
+            vm.Editor.Redo();
+            e.Handled = true;
+        }
     }
 }

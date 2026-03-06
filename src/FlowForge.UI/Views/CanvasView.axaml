@@ -16,6 +16,8 @@
                              ItemsSource="{Binding Nodes}"
                              Connections="{Binding Connections}"
                              PendingConnection="{Binding PendingConnection}"
+                             ItemsDragStartedCommand="{Binding ItemsDragStartedCommand}"
+                             ItemsDragCompletedCommand="{Binding ItemsDragCompletedCommand}"
                              Background="{DynamicResource MidnightBg}"
                              DragDrop.AllowDrop="True">
 

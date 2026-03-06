@@ -3,6 +3,7 @@
     <OutputType>WinExe</OutputType>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
     <!-- CA1848: Use LoggerMessage delegates for performance — deferred to future optimization pass -->
     <!-- CA1873: Avoid expensive argument evaluation when logging is disabled -->
     <NoWarn>$(NoWarn);CA1848;CA1873</NoWarn>
@@ -30,5 +31,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\FlowForge.Core\FlowForge.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\icon.png" />
   </ItemGroup>
 </Project>

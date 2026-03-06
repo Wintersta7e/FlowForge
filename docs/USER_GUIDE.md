@@ -28,6 +28,8 @@ dotnet run --project src/FlowForge.UI
 - **Move** — drag selected nodes
 - **Connect** — drag from an output pin to an input pin to create a wire
 - **Delete** — select a node or connection and press Delete
+- **Undo** — Ctrl+Z to undo the last action (up to 25 steps)
+- **Redo** — Ctrl+Y to redo the last undone action
 - **Zoom to Fit** — click the toolbar button to fit the entire graph into view
 
 ### Node Library
@@ -49,6 +51,17 @@ Click any node to see its configuration in the Properties panel. Fields are auto
 - Dropdowns for enumerated options
 - Hover any field label to see its tooltip description
 
+### Undo/Redo
+
+FlowForge tracks all editor actions and supports full undo/redo:
+
+- **Supported actions** — add node, delete node(s), move node, connect, disconnect, and config field changes
+- **History depth** — 25 steps (oldest actions are dropped when the limit is reached)
+- **Config coalescing** — rapid edits to the same config field (e.g., typing a path) are merged into a single undo entry
+- **Keyboard shortcuts** — Ctrl+Z (undo), Ctrl+Y (redo)
+
+Undo/redo state is cleared when you load a new pipeline or create a new one.
+
 ### Execution Log
 
 The bottom panel shows pipeline execution results:
@@ -58,6 +71,7 @@ The bottom panel shows pipeline execution results:
 - **Warnings tab** — files that were skipped
 - **Progress bar** — live progress during execution
 - **Summary line** — total files, success/fail/skip counts, and duration
+- **Real-time progress** — file scanning count updates live during enumeration, followed by per-file processing status
 
 ## Nodes
 

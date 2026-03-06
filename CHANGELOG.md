@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0] - 2026-03-06
+
+### Added
+
+- **Undo/redo system** — full command-pattern undo/redo for all editor actions: add node, delete node(s), move node, connect, disconnect, and config changes
+- **UndoRedoManager** — linked-list-backed stack with 25-entry cap, `StateChanged` event, and `PushOrCoalesce` for keystroke coalescing
+- **6 undoable commands** — `AddNodeCommand`, `RemoveNodesCommand`, `MoveNodeCommand`, `ConnectCommand`, `DisconnectCommand`, `ChangeConfigCommand`, plus `CompositeCommand` for batch operations
+- **Keyboard shortcuts** — Ctrl+Z (undo) and Ctrl+Y (redo) wired in the editor
+- **Real-time progress reporting** — `PipelineProgressEvent` discriminated union (`PhaseChanged`, `FilesDiscovered`, `FileProcessed`) with live UI and CLI updates
+- **Progress phases** — Enumerating → Processing → Complete with file discovery count throttled every 100 files
+- **CLI progress output** — live scanning count and per-file status with lock-based thread safety
+- **Execution log cap** — output, error, and warning tabs capped at 5,000 entries to prevent memory growth on large pipelines
+- **309 tests** — 66 new tests covering undo/redo manager, all 6 commands, progress reporting, execution log view model, and editor undo/redo integration
+
+### Fixed
+
+- **SemaphoreSlim disposal** — proper await of in-flight tasks before disposing semaphore under cancellation
+- **Command loss on exception** — undo/redo executes the operation before modifying the stack, preserving commands on failure
+- **IsConnected recalculation** — `RemoveNodesCommand` splits removal and recalculation into two passes for correct multi-connection handling
+- **Selection state restoration** — `RemoveNodesCommand.Undo()` restores node selection state from before deletion
+- **Properties panel sync** — undo/redo refreshes the properties panel via `StateChanged` subscription instead of per-command callbacks
+- **Pipeline Complete event** — only reported on successful completion, not on cancellation or failure
+
 ## [1.2.0] - 2026-03-05
 
 ### Changed

@@ -17,8 +17,9 @@ A visual node-based file processing pipeline tool. Build reusable workflows for 
 FlowForge lets you visually connect source, transform, and output nodes to build file processing pipelines:
 
 - **Visual Node Editor** — Drag-and-drop canvas with pan, zoom, and wire connections
+- **Undo/Redo** — Full undo/redo for all editor actions (add, delete, move, connect, disconnect, config changes) with Ctrl+Z / Ctrl+Y
 - **11 Built-in Nodes** — Sources, transforms, and outputs covering common file operations
-- **Real-time Preview** — Simulate runs without touching any files
+- **Real-time Progress** — Live scanning count, per-file processing status, and throughput reporting
 - **Pipeline Templates** — Pre-wired workflows for common tasks (photo import, batch rename, web export, compression)
 - **CLI Runner** — Execute pipelines from the command line for automation and scripting
 - **Cross-platform** — Runs on Windows, macOS, and Linux via Avalonia UI
@@ -46,6 +47,7 @@ FlowForge lets you visually connect source, transform, and output nodes to build
 - **Canvas** — Nodify-powered node graph with pan, zoom, drag, and rubber-band selection
 - **Node Library** — Categorized sidebar with search and drag-to-canvas support
 - **Properties Panel** — Auto-generated config forms from node schemas (text, number, boolean, file/folder picker, dropdown)
+- **Undo/Redo** — Ctrl+Z / Ctrl+Y for all editor actions with 25-step history; config field edits coalesce into single undo entries
 - **Execution Log** — Live progress with success/fail/skip counts and per-file details
 - **Templates** — One-click pipeline starters: Photo Import, Batch Rename, Web Export, Compress
 - **Recent Pipelines** — MRU menu with quick access to recently opened files
@@ -125,17 +127,20 @@ FlowForge/
 │   ├── FlowForge.UI/             # Avalonia desktop app (MVVM)
 │   │   ├── ViewModels/           # 14 view models
 │   │   ├── Views/                # 5 view pairs + template selector
+│   │   ├── UndoRedo/             # Command pattern undo/redo system
 │   │   ├── Themes/               # MidnightTheme.axaml
 │   │   └── Services/             # DialogService
 │   └── FlowForge.CLI/            # CLI runner (System.CommandLine)
 └── tests/
-    └── FlowForge.Tests/          # 243 xUnit tests
+    └── FlowForge.Tests/          # 309 xUnit tests
         ├── DependencyInjection/  # DI registration tests
         ├── Nodes/                # 11 node test files
-        ├── Execution/            # Runner + registry tests
+        ├── Execution/            # Runner + progress tests
         ├── Pipeline/             # Serializer + template tests
         ├── Models/               # FileJob tests
         ├── Settings/             # AppSettings tests
+        ├── UndoRedo/             # UndoRedoManager + command tests
+        ├── ViewModels/           # ViewModel tests
         └── Helpers/              # TempDirectory, TestFileFactory, PipelineBuilder
 ```
 
@@ -165,7 +170,7 @@ dotnet run --project src/FlowForge.CLI -- run pipeline.ffpipe --dry-run
 ### Run Tests
 
 ```bash
-# Run all 243 tests
+# Run all 309 tests
 dotnet test --logger "console;verbosity=normal"
 
 # Run specific test class

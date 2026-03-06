@@ -6,8 +6,11 @@ using System.ComponentModel;
 using System.Linq;
 using Avalonia;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using FlowForge.Core.Execution;
 using FlowForge.Core.Pipeline;
+using FlowForge.UI.UndoRedo;
+using FlowForge.UI.UndoRedo.Commands;
 using Microsoft.Extensions.Logging;
 
 namespace FlowForge.UI.ViewModels;
@@ -16,12 +19,14 @@ public partial class EditorViewModel : ViewModelBase
 {
     private readonly ILogger<EditorViewModel> _logger;
     private readonly HashSet<PipelineNodeViewModel> _subscribedNodes = new();
+    private Dictionary<PipelineNodeViewModel, Point>? _dragStartPositions;
     private string _graphName = "Untitled Pipeline";
 
     public ObservableCollection<PipelineNodeViewModel> Nodes { get; } = new();
     public bool HasNodes => Nodes.Count > 0;
     public ObservableCollection<PipelineConnectionViewModel> Connections { get; } = new();
     public PipelinePendingConnectionViewModel PendingConnection { get; }
+    public UndoRedoManager UndoRedo { get; } = new();
 
     /// <summary>
     /// Raised when any graph content changes (node config edits, structural changes).
@@ -115,6 +120,7 @@ public partial class EditorViewModel : ViewModelBase
         Connections.Clear();
         SelectedNode = null;
         _graphName = "Untitled Pipeline";
+        UndoRedo.Clear();
     }
 
     public int LoadGraph(PipelineGraph graph, NodeRegistry registry)
@@ -165,6 +171,7 @@ public partial class EditorViewModel : ViewModelBase
             Connections.Add(new PipelineConnectionViewModel(sourceConnector, targetConnector));
         }
 
+        UndoRedo.Clear();
         return droppedConnections;
     }
 
@@ -204,6 +211,9 @@ public partial class EditorViewModel : ViewModelBase
         return graph;
     }
 
+    public void Undo() => UndoRedo.Undo();
+    public void Redo() => UndoRedo.Redo();
+
     public void AddNode(string typeKey, Point position, NodeRegistry registry)
     {
         NodeDefinition definition = new()
@@ -213,30 +223,63 @@ public partial class EditorViewModel : ViewModelBase
         };
 
         PipelineNodeViewModel nodeVm = new(definition, registry);
-        Nodes.Add(nodeVm);
+        UndoRedo.Execute(new AddNodeCommand(Nodes, nodeVm));
     }
 
     public void RemoveSelectedNodes()
     {
         List<PipelineNodeViewModel> selected = Nodes.Where(n => n.IsSelected).ToList();
-
-        foreach (PipelineNodeViewModel node in selected)
+        if (selected.Count == 0)
         {
-            // Remove connections attached to this node
-            List<PipelineConnectionViewModel> attachedConnections = Connections
-                .Where(c => c.Source.Node == node || c.Target.Node == node)
-                .ToList();
-
-            foreach (PipelineConnectionViewModel conn in attachedConnections)
-            {
-                conn.Source.IsConnected = false;
-                conn.Target.IsConnected = false;
-                Connections.Remove(conn);
-            }
-
-            Nodes.Remove(node);
+            return;
         }
 
+        List<PipelineConnectionViewModel> attachedConnections = Connections
+            .Where(c => selected.Contains(c.Source.Node) || selected.Contains(c.Target.Node))
+            .ToList();
+
+        UndoRedo.Execute(new RemoveNodesCommand(Nodes, Connections, selected, attachedConnections));
         SelectedNode = null;
+    }
+
+    [RelayCommand]
+    private void ItemsDragStarted()
+    {
+        _dragStartPositions = Nodes
+            .Where(n => n.IsSelected)
+            .ToDictionary(n => n, n => n.Location);
+    }
+
+    [RelayCommand]
+    private void ItemsDragCompleted()
+    {
+        if (_dragStartPositions is null)
+        {
+            return;
+        }
+
+        var moves = new List<IUndoableCommand>();
+        foreach (KeyValuePair<PipelineNodeViewModel, Point> kvp in _dragStartPositions)
+        {
+            PipelineNodeViewModel node = kvp.Key;
+            Point oldPos = kvp.Value;
+            Point newPos = node.Location;
+
+            if (oldPos != newPos)
+            {
+                moves.Add(new MoveNodeCommand(node, oldPos, newPos));
+            }
+        }
+
+        if (moves.Count == 1)
+        {
+            UndoRedo.PushExecuted(moves[0]);
+        }
+        else if (moves.Count > 1)
+        {
+            UndoRedo.PushExecuted(new CompositeCommand(moves, $"Move {moves.Count} nodes"));
+        }
+
+        _dragStartPositions = null;
     }
 }
