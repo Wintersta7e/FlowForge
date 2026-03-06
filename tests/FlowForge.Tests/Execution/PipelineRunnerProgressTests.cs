@@ -72,7 +72,7 @@ public class PipelineRunnerProgressTests
 
         List<FilesDiscovered> discovered = progress.Events.OfType<FilesDiscovered>().ToList();
         discovered.Should().NotBeEmpty();
-        discovered[discovered.Count - 1].Count.Should().Be(3);
+        discovered[discovered.Count - 1].TotalCount.Should().Be(3);
     }
 
     [Fact]
@@ -142,5 +142,50 @@ public class PipelineRunnerProgressTests
 
         progress.Events.Should().NotBeEmpty();
         progress.Events[progress.Events.Count - 1].Should().Be(new PhaseChanged(ExecutionPhase.Complete));
+    }
+
+    [Fact]
+    public async Task RunAsync_Cancelled_DoesNotReportComplete()
+    {
+        using var dir = new TempDirectory();
+        dir.CreateFiles("a.txt", "b.txt", "c.txt");
+
+        PipelineGraph pipeline = PipelineBuilder
+            .New("Cancel Test")
+            .AddSource("FolderInput", new { path = dir.Path, recursive = false, filter = "*.txt" })
+            .AddOutput("FolderOutput", new { path = dir.OutputPath, mode = "copy" })
+            .Build();
+
+        var progress = new SyncProgress<PipelineProgressEvent>();
+        PipelineRunner runner = CreateRunner();
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        Func<Task> act = () => runner.RunAsync(pipeline, dryRun: true, progress, cts.Token);
+        await act.Should().ThrowAsync<OperationCanceledException>();
+
+        progress.Events.OfType<PhaseChanged>()
+            .Should().NotContain(p => p.Phase == ExecutionPhase.Complete);
+    }
+
+    [Fact]
+    public async Task RunAsync_WithNullProgress_CompletesSuccessfully()
+    {
+        using var dir = new TempDirectory();
+        dir.CreateFiles("a.txt");
+
+        PipelineGraph pipeline = PipelineBuilder
+            .New("Null Progress Test")
+            .AddSource("FolderInput", new { path = dir.Path, recursive = false, filter = "*.txt" })
+            .AddOutput("FolderOutput", new { path = dir.OutputPath, mode = "copy" })
+            .Build();
+
+        PipelineRunner runner = CreateRunner();
+
+        ExecutionResult result = await runner.RunAsync(pipeline, dryRun: true, progress: null);
+
+        result.TotalFiles.Should().Be(1);
+        result.Succeeded.Should().Be(1);
     }
 }

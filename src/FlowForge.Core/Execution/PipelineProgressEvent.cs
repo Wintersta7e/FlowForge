@@ -11,7 +11,7 @@ public enum ExecutionPhase
 
 public abstract record PipelineProgressEvent;
 
-public sealed record FilesDiscovered(int Count) : PipelineProgressEvent;
+public sealed record FilesDiscovered(int TotalCount) : PipelineProgressEvent;
 
 public sealed record FileProcessed(FileJob Job) : PipelineProgressEvent;
 

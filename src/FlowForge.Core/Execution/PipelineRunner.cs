@@ -29,106 +29,155 @@ public class PipelineRunner
     {
         var stopwatch = Stopwatch.StartNew();
         var result = new ExecutionResult { IsDryRun = dryRun };
+        bool succeeded = false;
 
-        progress?.Report(new PhaseChanged(ExecutionPhase.Enumerating));
-
-        // 1. Validate graph
-        ValidateGraph(graph);
-
-        // 2. Topological sort
-        List<Guid> sortedNodeIds = TopologicalSort(graph);
-
-        // 3. Classify nodes
-        var sourceNodeDefs = new List<NodeDefinition>();
-        var transformNodeDefs = new List<NodeDefinition>();
-        var outputNodeDefs = new List<NodeDefinition>();
-
-        Dictionary<Guid, NodeDefinition> nodeMap = graph.Nodes.ToDictionary(n => n.Id);
-
-        foreach (Guid nodeId in sortedNodeIds)
+        try
         {
-            NodeDefinition def = nodeMap[nodeId];
-            NodeCategory category = _registry.GetCategoryForTypeKey(def.TypeKey);
-            switch (category)
+            progress?.Report(new PhaseChanged(ExecutionPhase.Enumerating));
+
+            // 1. Validate graph
+            ValidateGraph(graph);
+
+            // 2. Topological sort
+            List<Guid> sortedNodeIds = TopologicalSort(graph);
+
+            // 3. Classify nodes
+            var sourceNodeDefs = new List<NodeDefinition>();
+            var transformNodeDefs = new List<NodeDefinition>();
+            var outputNodeDefs = new List<NodeDefinition>();
+
+            Dictionary<Guid, NodeDefinition> nodeMap = graph.Nodes.ToDictionary(n => n.Id);
+
+            foreach (Guid nodeId in sortedNodeIds)
             {
-                case NodeCategory.Source:
-                    sourceNodeDefs.Add(def);
-                    break;
-                case NodeCategory.Transform:
-                    transformNodeDefs.Add(def);
-                    break;
-                case NodeCategory.Output:
-                    outputNodeDefs.Add(def);
-                    break;
+                NodeDefinition def = nodeMap[nodeId];
+                NodeCategory category = _registry.GetCategoryForTypeKey(def.TypeKey);
+                switch (category)
+                {
+                    case NodeCategory.Source:
+                        sourceNodeDefs.Add(def);
+                        break;
+                    case NodeCategory.Transform:
+                        transformNodeDefs.Add(def);
+                        break;
+                    case NodeCategory.Output:
+                        outputNodeDefs.Add(def);
+                        break;
+                }
             }
-        }
 
-        // Build the ordered transform chain based on connections
-        List<NodeDefinition> orderedTransforms = BuildTransformChain(graph, sortedNodeIds, transformNodeDefs);
+            // Build the ordered transform chain based on connections
+            List<NodeDefinition> orderedTransforms = BuildTransformChain(graph, sortedNodeIds, transformNodeDefs);
 
-        // 4. Create node instances
-        var sourceNodes = sourceNodeDefs.Select(d => _registry.GetSource(d)).ToList();
-        var transformNodes = orderedTransforms.Select(d => _registry.GetTransform(d)).ToList();
-        var outputNodes = outputNodeDefs.Select(d => _registry.GetOutput(d)).ToList();
+            // 4. Create node instances
+            var sourceNodes = sourceNodeDefs.Select(d => _registry.GetSource(d)).ToList();
+            var transformNodes = orderedTransforms.Select(d => _registry.GetTransform(d)).ToList();
+            var outputNodes = outputNodeDefs.Select(d => _registry.GetOutput(d)).ToList();
 
-        // 5. Collect all jobs from sources
-        var allJobs = new List<FileJob>();
-        foreach (ISourceNode source in sourceNodes)
-        {
-            await foreach (FileJob job in source.ProduceAsync(ct))
+            // 5. Collect all jobs from sources
+            var allJobs = new List<FileJob>();
+            int lastReportedCount = 0;
+            foreach (ISourceNode source in sourceNodes)
             {
-                ct.ThrowIfCancellationRequested();
-                allJobs.Add(job);
+                await foreach (FileJob job in source.ProduceAsync(ct))
+                {
+                    ct.ThrowIfCancellationRequested();
+                    allJobs.Add(job);
+
+                    // Throttle discovery progress to every 100 files (M2)
+                    if (allJobs.Count == 1 || allJobs.Count - lastReportedCount >= 100)
+                    {
+                        lastReportedCount = allJobs.Count;
+                        progress?.Report(new FilesDiscovered(allJobs.Count));
+                    }
+                }
+            }
+
+            // Report final count
+            if (allJobs.Count != lastReportedCount)
+            {
                 progress?.Report(new FilesDiscovered(allJobs.Count));
             }
-        }
 
-        result.TotalFiles = allJobs.Count;
+            result.TotalFiles = allJobs.Count;
 
-        progress?.Report(new PhaseChanged(ExecutionPhase.Processing));
+            progress?.Report(new PhaseChanged(ExecutionPhase.Processing));
 
-        // 6. Walk the transform chain (handles buffered nodes like SortNode)
-        IReadOnlyList<FileJob> currentJobs = allJobs;
-        foreach (ITransformNode transform in transformNodes)
-        {
-            currentJobs = await ApplyTransformAsync(transform, currentJobs, dryRun, result, ct);
-        }
-
-        // 7. Send to output nodes with concurrency control
-        using var semaphore = new SemaphoreSlim(_maxConcurrency);
-        var outputTasks = new List<Task>();
-
-        foreach (FileJob job in currentJobs)
-        {
-            ct.ThrowIfCancellationRequested();
-
-            // Jobs that arrived with Skipped status (e.g. from FilterNode) bypass output
-            if (job.Status == FileJobStatus.Skipped)
+            // 6. Walk the transform chain (handles buffered nodes like SortNode)
+            IReadOnlyList<FileJob> currentJobs = allJobs;
+            foreach (ITransformNode transform in transformNodes)
             {
-                lock (result)
-                {
-                    result.Skipped++;
-                    result.Jobs.Add(job);
-                }
-                progress?.Report(new FileProcessed(job));
-                continue;
+                currentJobs = await ApplyTransformAsync(transform, currentJobs, dryRun, result, ct);
             }
 
-            await semaphore.WaitAsync(ct);
-            Task task = ConsumeJobAsync(job, outputNodes, dryRun, result, progress, semaphore, ct);
-            outputTasks.Add(task);
+            // 7. Send to output nodes with concurrency control
+            var semaphore = new SemaphoreSlim(_maxConcurrency);
+            var outputTasks = new List<Task>();
+
+            try
+            {
+                foreach (FileJob job in currentJobs)
+                {
+                    ct.ThrowIfCancellationRequested();
+
+                    // Jobs that arrived with Skipped status (e.g. from FilterNode) bypass output
+                    if (job.Status == FileJobStatus.Skipped)
+                    {
+                        lock (result)
+                        {
+                            result.Skipped++;
+                            result.Jobs.Add(job);
+                        }
+                        progress?.Report(new FileProcessed(job));
+                        continue;
+                    }
+
+                    await semaphore.WaitAsync(ct);
+                    Task task = ConsumeJobAsync(job, outputNodes, dryRun, result, progress, semaphore, ct);
+                    outputTasks.Add(task);
+                }
+
+                await Task.WhenAll(outputTasks);
+            }
+            catch
+            {
+                // Wait for in-flight tasks before disposing semaphore (I2)
+                if (outputTasks.Count > 0)
+                {
+                    try
+                    {
+                        await Task.WhenAll(outputTasks);
+                    }
+                    catch
+                    {
+                        // tasks handle their own errors
+                    }
+                }
+
+                throw;
+            }
+            finally
+            {
+                semaphore.Dispose();
+            }
+
+            succeeded = true;
         }
+        finally
+        {
+            stopwatch.Stop();
+            result.Duration = stopwatch.Elapsed;
 
-        await Task.WhenAll(outputTasks);
+            _logger.LogInformation(
+                "Pipeline {Outcome}: {Total} files, {Succeeded} succeeded, {Failed} failed, {Skipped} skipped ({Duration}ms)",
+                succeeded ? "completed" : "aborted",
+                result.TotalFiles, result.Succeeded, result.Failed, result.Skipped, result.Duration.TotalMilliseconds);
 
-        stopwatch.Stop();
-        result.Duration = stopwatch.Elapsed;
-
-        _logger.LogInformation(
-            "Pipeline completed: {Total} files, {Succeeded} succeeded, {Failed} failed, {Skipped} skipped ({Duration}ms)",
-            result.TotalFiles, result.Succeeded, result.Failed, result.Skipped, result.Duration.TotalMilliseconds);
-
-        progress?.Report(new PhaseChanged(ExecutionPhase.Complete));
+            if (succeeded)
+            {
+                progress?.Report(new PhaseChanged(ExecutionPhase.Complete));
+            }
+        }
 
         return result;
     }

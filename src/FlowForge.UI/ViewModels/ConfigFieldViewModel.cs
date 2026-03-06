@@ -64,7 +64,7 @@ public partial class ConfigFieldViewModel : ViewModelBase
             }
 
             // Capture old value before mutation
-            _configDictionary.TryGetValue(Key, out JsonElement oldElement);
+            bool keyExisted = _configDictionary.TryGetValue(Key, out JsonElement oldElement);
 
             JsonElement newElement = FieldType switch
             {
@@ -76,11 +76,23 @@ public partial class ConfigFieldViewModel : ViewModelBase
             };
 
             _configDictionary[Key] = newElement;
-            _onConfigChanged?.Invoke(new ChangeConfigCommand(_configDictionary, Key, oldElement, newElement, $"Change {Label}"));
+            _onConfigChanged?.Invoke(new ChangeConfigCommand(
+                _configDictionary, Key, oldElement, newElement, keyExisted,
+                $"Change {Label}"));
         }
         else
         {
+            // Guard: only create undo entry when key actually existed (I6)
+            bool keyExisted = _configDictionary.TryGetValue(Key, out JsonElement oldElement);
+            if (!keyExisted)
+            {
+                return;
+            }
+
             _configDictionary.Remove(Key);
+            _onConfigChanged?.Invoke(new ChangeConfigCommand(
+                _configDictionary, Key, oldElement, default, keyExisted,
+                $"Clear {Label}"));
         }
     }
 }

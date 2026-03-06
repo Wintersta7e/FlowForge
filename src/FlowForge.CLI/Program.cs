@@ -171,53 +171,57 @@ static async Task<int> RunPipelineAsync(
 
         // Progress reporter
         int discoveredCount = 0;
+        var outputLock = new object();
         IProgress<PipelineProgressEvent> progress = new Progress<PipelineProgressEvent>(evt =>
         {
-            switch (evt)
+            lock (outputLock)
             {
-                case PhaseChanged { Phase: ExecutionPhase.Enumerating }:
-                    statusWriter.Write("Scanning...");
-                    break;
+                switch (evt)
+                {
+                    case PhaseChanged { Phase: ExecutionPhase.Enumerating }:
+                        statusWriter.Write("Scanning...");
+                        break;
 
-                case FilesDiscovered discovered:
-                    discoveredCount = discovered.Count;
-                    statusWriter.Write($"\rScanning... {discovered.Count} files found");
-                    break;
+                    case FilesDiscovered discovered:
+                        discoveredCount = discovered.TotalCount;
+                        statusWriter.Write($"\rScanning... {discovered.TotalCount} files found");
+                        break;
 
-                case PhaseChanged { Phase: ExecutionPhase.Processing }:
-                    statusWriter.WriteLine();
-                    statusWriter.WriteLine($"Processing {discoveredCount} files...");
-                    statusWriter.WriteLine();
-                    break;
+                    case PhaseChanged { Phase: ExecutionPhase.Processing }:
+                        statusWriter.WriteLine();
+                        statusWriter.WriteLine($"Processing {discoveredCount} files...");
+                        statusWriter.WriteLine();
+                        break;
 
-                case FileProcessed { Job: var job }:
-                    string statusIcon = job.Status switch
-                    {
-                        FileJobStatus.Succeeded => "[OK]",
-                        FileJobStatus.Failed => "[FAIL]",
-                        FileJobStatus.Skipped => "[SKIP]",
-                        _ => "[??]"
-                    };
-
-                    statusWriter.WriteLine($"  {statusIcon} {Path.GetFileName(job.OriginalPath)}");
-
-                    if (verbose)
-                    {
-                        foreach (string logEntry in job.NodeLog)
+                    case FileProcessed { Job: var job }:
+                        string statusIcon = job.Status switch
                         {
-                            statusWriter.WriteLine($"        {logEntry}");
+                            FileJobStatus.Succeeded => "[OK]",
+                            FileJobStatus.Failed => "[FAIL]",
+                            FileJobStatus.Skipped => "[SKIP]",
+                            _ => "[??]"
+                        };
+
+                        statusWriter.WriteLine($"  {statusIcon} {Path.GetFileName(job.OriginalPath)}");
+
+                        if (verbose)
+                        {
+                            foreach (string logEntry in job.NodeLog)
+                            {
+                                statusWriter.WriteLine($"        {logEntry}");
+                            }
                         }
-                    }
 
-                    if (job.Status == FileJobStatus.Failed && job.ErrorMessage is not null)
-                    {
-                        Console.Error.WriteLine($"        Error: {job.ErrorMessage}");
-                    }
+                        if (job.Status == FileJobStatus.Failed && job.ErrorMessage is not null)
+                        {
+                            Console.Error.WriteLine($"        Error: {job.ErrorMessage}");
+                        }
 
-                    break;
+                        break;
 
-                case PhaseChanged { Phase: ExecutionPhase.Complete }:
-                    break;
+                    case PhaseChanged { Phase: ExecutionPhase.Complete }:
+                        break;
+                }
             }
         });
 

@@ -85,16 +85,36 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             if (args.PropertyName == nameof(EditorViewModel.SelectedNode))
             {
-                Properties.LoadNode(Editor.SelectedNode, _registry, cmd =>
-                {
-                    Editor.UndoRedo.PushExecuted(cmd);
-                    Editor.RaiseGraphChanged();
-                });
+                RefreshPropertiesPanel();
             }
         };
 
+        // Refresh properties panel on undo/redo so fields read fresh config values
+        Editor.UndoRedo.StateChanged += (_, _) => RefreshPropertiesPanel();
+
         // Track all graph changes (structural + config edits) for IsDirty
         Editor.GraphChanged += (_, _) => IsDirty = true;
+    }
+
+    private void RefreshPropertiesPanel()
+    {
+        // PushExecuted (not Execute) because the MVVM binding already mutated the config dictionary.
+        // PushOrCoalesce merges repeated keystrokes on the same field into a single undo entry.
+        Properties.LoadNode(Editor.SelectedNode, _registry, cmd =>
+        {
+            if (cmd is UndoRedo.Commands.ChangeConfigCommand configCmd)
+            {
+                Editor.UndoRedo.PushOrCoalesce(cmd, prev =>
+                    prev is UndoRedo.Commands.ChangeConfigCommand prevConfig
+                    && prevConfig.ConfigKey == configCmd.ConfigKey);
+            }
+            else
+            {
+                Editor.UndoRedo.PushExecuted(cmd);
+            }
+
+            Editor.RaiseGraphChanged();
+        });
     }
 
     public async Task InitializeAsync()

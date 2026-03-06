@@ -50,6 +50,28 @@ public class UndoRedoManager
         StateChanged?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <summary>
+    /// Replaces the last command on the undo stack if the predicate matches,
+    /// otherwise pushes as a new entry. Used to coalesce repeated edits (e.g., keystrokes).
+    /// </summary>
+    public void PushOrCoalesce(IUndoableCommand command, Func<IUndoableCommand, bool> shouldReplace)
+    {
+        if (_undoStack.Count > 0 && shouldReplace(_undoStack.Last!.Value))
+        {
+            _undoStack.RemoveLast();
+        }
+
+        _undoStack.AddLast(command);
+
+        if (_undoStack.Count > MaxStackSize)
+        {
+            _undoStack.RemoveFirst();
+        }
+
+        _redoStack.Clear();
+        StateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
     public void Undo()
     {
         if (_undoStack.Count == 0)
@@ -58,8 +80,8 @@ public class UndoRedoManager
         }
 
         IUndoableCommand command = _undoStack.Last!.Value;
-        _undoStack.RemoveLast();
         command.Undo();
+        _undoStack.RemoveLast();
         _redoStack.Push(command);
         StateChanged?.Invoke(this, EventArgs.Empty);
     }
@@ -71,8 +93,9 @@ public class UndoRedoManager
             return;
         }
 
-        IUndoableCommand command = _redoStack.Pop();
+        IUndoableCommand command = _redoStack.Peek();
         command.Execute();
+        _redoStack.Pop();
         _undoStack.AddLast(command);
 
         if (_undoStack.Count > MaxStackSize)

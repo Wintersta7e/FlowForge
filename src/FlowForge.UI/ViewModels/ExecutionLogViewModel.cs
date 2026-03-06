@@ -54,6 +54,8 @@ public partial class ExecutionLogViewModel : ViewModelBase
     [ObservableProperty]
     private string _throughputRate = string.Empty;
 
+    private const double MinElapsedSecondsForThroughput = 0.1;
+    private const int MaxLogEntries = 5000;
     private readonly Stopwatch _processingStopwatch = new();
 
     public bool IsOutputTabSelected => SelectedTabIndex == 0;
@@ -146,8 +148,8 @@ public partial class ExecutionLogViewModel : ViewModelBase
                 break;
 
             case FilesDiscovered discovered:
-                DiscoveredFiles = discovered.Count;
-                PhaseLabel = $"Scanning... {discovered.Count} files found";
+                DiscoveredFiles = discovered.TotalCount;
+                PhaseLabel = $"Scanning... {discovered.TotalCount} files found";
                 break;
 
             case FileProcessed processed:
@@ -161,7 +163,12 @@ public partial class ExecutionLogViewModel : ViewModelBase
     public void ReportProgress(FileJob job)
     {
         var entry = new FileJobLogEntryViewModel(job);
-        Entries.Add(entry);
+
+        if (Entries.Count < MaxLogEntries)
+        {
+            Entries.Add(entry);
+        }
+
         CurrentFile = job.FileName;
 
         switch (job.Status)
@@ -171,11 +178,19 @@ public partial class ExecutionLogViewModel : ViewModelBase
                 break;
             case FileJobStatus.Failed:
                 Failed++;
-                ErrorEntries.Add(entry);
+                if (ErrorEntries.Count < MaxLogEntries)
+                {
+                    ErrorEntries.Add(entry);
+                }
+
                 break;
             case FileJobStatus.Skipped:
                 Skipped++;
-                WarningEntries.Add(entry);
+                if (WarningEntries.Count < MaxLogEntries)
+                {
+                    WarningEntries.Add(entry);
+                }
+
                 break;
         }
 
@@ -201,7 +216,7 @@ public partial class ExecutionLogViewModel : ViewModelBase
     {
         int processed = Succeeded + Failed + Skipped;
         double elapsed = _processingStopwatch.Elapsed.TotalSeconds;
-        if (elapsed > 0.1)
+        if (elapsed > MinElapsedSecondsForThroughput)
         {
             double rate = processed / elapsed;
             ThroughputRate = $"{rate:F1} files/sec";

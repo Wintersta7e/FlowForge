@@ -258,6 +258,7 @@ public partial class EditorViewModel : ViewModelBase
             return;
         }
 
+        var moves = new List<IUndoableCommand>();
         foreach (KeyValuePair<PipelineNodeViewModel, Point> kvp in _dragStartPositions)
         {
             PipelineNodeViewModel node = kvp.Key;
@@ -266,8 +267,17 @@ public partial class EditorViewModel : ViewModelBase
 
             if (oldPos != newPos)
             {
-                UndoRedo.PushExecuted(new MoveNodeCommand(node, oldPos, newPos));
+                moves.Add(new MoveNodeCommand(node, oldPos, newPos));
             }
+        }
+
+        if (moves.Count == 1)
+        {
+            UndoRedo.PushExecuted(moves[0]);
+        }
+        else if (moves.Count > 1)
+        {
+            UndoRedo.PushExecuted(new CompositeCommand(moves, $"Move {moves.Count} nodes"));
         }
 
         _dragStartPositions = null;
