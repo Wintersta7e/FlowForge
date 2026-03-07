@@ -6,12 +6,17 @@ using Avalonia.Layout;
 using Avalonia.Platform.Storage;
 using FlowForge.Core.Nodes.Base;
 using FlowForge.UI.ViewModels;
-using Serilog;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace FlowForge.UI.Views;
 
 public class ConfigFieldTemplateSelector : IDataTemplate
 {
+    private ILogger<ConfigFieldTemplateSelector>? _logger;
+    private ILogger<ConfigFieldTemplateSelector> Logger =>
+        _logger ??= App.Services.GetRequiredService<ILogger<ConfigFieldTemplateSelector>>();
+
     public Control Build(object? param)
     {
         if (param is not ConfigFieldViewModel field)
@@ -21,10 +26,10 @@ public class ConfigFieldTemplateSelector : IDataTemplate
 
         Border cardBorder = new()
         {
-            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#1C2128")),
-            BorderBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#30363D")),
+            Background = GetThemeBrush("ForgeDeep", "#0e0c11"),
+            BorderBrush = GetThemeBrush("ForgeBorder", "#2a2230"),
             BorderThickness = new Avalonia.Thickness(1),
-            CornerRadius = new Avalonia.CornerRadius(6),
+            CornerRadius = new Avalonia.CornerRadius(12),
             Padding = new Avalonia.Thickness(12, 8),
             Margin = new Avalonia.Thickness(0, 0, 0, 8)
         };
@@ -39,7 +44,7 @@ public class ConfigFieldTemplateSelector : IDataTemplate
             Text = field.IsRequired ? $"{field.Label} *" : field.Label,
             FontWeight = Avalonia.Media.FontWeight.SemiBold,
             FontSize = 12,
-            Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#E6EDF3")),
+            Foreground = GetThemeBrush("ForgeText", "#ede6f0"),
             Margin = new Avalonia.Thickness(0, 0, 0, 2)
         };
         panel.Children.Add(label);
@@ -111,7 +116,7 @@ public class ConfigFieldTemplateSelector : IDataTemplate
         return toggle;
     }
 
-    private static DockPanel BuildFilePathEditor(ConfigFieldViewModel field)
+    private DockPanel BuildFilePathEditor(ConfigFieldViewModel field)
     {
         DockPanel dock = new();
 
@@ -152,7 +157,9 @@ public class ConfigFieldTemplateSelector : IDataTemplate
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "ConfigFieldTemplateSelector: file picker failed for '{Label}'", field.Label);
+                // No user-visible feedback: file picker failure is rare and the dialog simply doesn't appear.
+                // The error is logged for diagnostics.
+                Logger.LogError(ex, "ConfigFieldTemplateSelector: file picker failed for '{Label}'", field.Label);
             }
         };
 
@@ -161,7 +168,7 @@ public class ConfigFieldTemplateSelector : IDataTemplate
         return dock;
     }
 
-    private static DockPanel BuildFolderPathEditor(ConfigFieldViewModel field)
+    private DockPanel BuildFolderPathEditor(ConfigFieldViewModel field)
     {
         DockPanel dock = new();
 
@@ -202,7 +209,9 @@ public class ConfigFieldTemplateSelector : IDataTemplate
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "ConfigFieldTemplateSelector: folder picker failed for '{Label}'", field.Label);
+                // No user-visible feedback: folder picker failure is rare and the dialog simply doesn't appear.
+                // The error is logged for diagnostics.
+                Logger.LogError(ex, "ConfigFieldTemplateSelector: folder picker failed for '{Label}'", field.Label);
             }
         };
 
@@ -245,5 +254,15 @@ public class ConfigFieldTemplateSelector : IDataTemplate
         textBox.Bind(TextBox.TextProperty,
             new Avalonia.Data.Binding("Value"));
         return textBox;
+    }
+
+    private static Avalonia.Media.IBrush GetThemeBrush(string key, string fallback)
+    {
+        if (Avalonia.Application.Current?.TryFindResource(key, Avalonia.Application.Current.ActualThemeVariant, out object? resource) == true && resource is Avalonia.Media.IBrush brush)
+        {
+            return brush;
+        }
+
+        return new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(fallback));
     }
 }

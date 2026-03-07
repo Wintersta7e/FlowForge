@@ -2,7 +2,7 @@ using FluentAssertions;
 using FlowForge.Core.Execution;
 using FlowForge.Core.Pipeline;
 using FlowForge.Tests.Helpers;
-using Serilog;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlowForge.Tests.Execution;
 
@@ -10,9 +10,8 @@ public class Phase1IntegrationTests
 {
     private static PipelineRunner CreateRunner()
     {
-        NodeRegistry registry = NodeRegistry.CreateDefault();
-        ILogger logger = new LoggerConfiguration().CreateLogger();
-        return new PipelineRunner(registry, logger, maxConcurrency: 2);
+        NodeRegistry registry = NodeRegistry.CreateDefault(NullLoggerFactory.Instance);
+        return new PipelineRunner(registry, NullLogger<PipelineRunner>.Instance, maxConcurrency: 2);
     }
 
     [Fact]

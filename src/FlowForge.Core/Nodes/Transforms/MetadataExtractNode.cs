@@ -4,12 +4,20 @@ using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
 using MetadataExtractor;
 using MetadataExtractor.Formats.Exif;
-using Serilog;
+using Microsoft.Extensions.Logging;
 
 namespace FlowForge.Core.Nodes.Transforms;
 
 public class MetadataExtractNode : ITransformNode
 {
+    private readonly ILogger<MetadataExtractNode> _logger;
+
+    public MetadataExtractNode(ILogger<MetadataExtractNode> logger)
+    {
+        ArgumentNullException.ThrowIfNull(logger);
+        _logger = logger;
+    }
+
     public string TypeKey => "MetadataExtract";
 
     public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]
@@ -76,7 +84,7 @@ public class MetadataExtractNode : ITransformNode
         return Task.FromResult(result);
     }
 
-    private static string? ExtractValue(string key, string filePath)
+    private string? ExtractValue(string key, string filePath)
     {
         // File-level metadata (doesn't need MetadataExtractor)
         if (key.StartsWith("File:", StringComparison.OrdinalIgnoreCase))
@@ -110,7 +118,7 @@ public class MetadataExtractNode : ITransformNode
         };
     }
 
-    private static string? ExtractExifMetadata(string key, string filePath)
+    private string? ExtractExifMetadata(string key, string filePath)
     {
         if (!File.Exists(filePath))
             return null;
@@ -134,7 +142,7 @@ public class MetadataExtractNode : ITransformNode
         }
         catch (ImageProcessingException ex)
         {
-            Log.Warning("MetadataExtract: failed to read EXIF from '{FileName}': {ErrorMessage}",
+            _logger.LogWarning("MetadataExtract: failed to read EXIF from '{FileName}': {ErrorMessage}",
                 Path.GetFileName(filePath), ex.Message);
             return null;
         }

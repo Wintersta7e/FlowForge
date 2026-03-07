@@ -2,12 +2,15 @@
 
   <PropertyGroup>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- CA1848: Use LoggerMessage delegates for performance — deferred to future optimization pass -->
+    <!-- CA1873: Avoid expensive argument evaluation when logging is disabled -->
+    <NoWarn>$(NoWarn);CA1848;CA1873</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="MetadataExtractor" Version="2.9.0" />
-    <PackageReference Include="Serilog" Version="4.3.1" />
-    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.3" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.3" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
   </ItemGroup>
 

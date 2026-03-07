@@ -4,6 +4,7 @@ using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Transforms;
 using FlowForge.Core.Nodes.Base;
 using FlowForge.Tests.Helpers;
+using Microsoft.Extensions.Logging.Abstractions;
 using SixLabors.ImageSharp;
 
 namespace FlowForge.Tests.Nodes;
@@ -25,7 +26,7 @@ public class ImageResizeNodeTests
         string filePath = Path.Combine(dir.Path, "wide.jpg");
         TestFileFactory.CreateTestImage(filePath, width: 800, height: 600);
 
-        var node = new ImageResizeNode();
+        var node = new ImageResizeNode(NullLogger<ImageResizeNode>.Instance);
         node.Configure(MakeConfig(new { width = 400, mode = "max" }));
 
         var job = new FileJob
@@ -49,7 +50,7 @@ public class ImageResizeNodeTests
         string filePath = Path.Combine(dir.Path, "tall.jpg");
         TestFileFactory.CreateTestImage(filePath, width: 600, height: 800);
 
-        var node = new ImageResizeNode();
+        var node = new ImageResizeNode(NullLogger<ImageResizeNode>.Instance);
         node.Configure(MakeConfig(new { height = 400, mode = "max" }));
 
         var job = new FileJob
@@ -73,7 +74,7 @@ public class ImageResizeNodeTests
         string filePath = Path.Combine(dir.Path, "stretch.jpg");
         TestFileFactory.CreateTestImage(filePath, width: 800, height: 600);
 
-        var node = new ImageResizeNode();
+        var node = new ImageResizeNode(NullLogger<ImageResizeNode>.Instance);
         node.Configure(MakeConfig(new { width = 200, height = 200, mode = "stretch" }));
 
         var job = new FileJob
@@ -97,7 +98,7 @@ public class ImageResizeNodeTests
         TestFileFactory.CreateTestImage(filePath, width: 800, height: 600);
         long originalSize = new FileInfo(filePath).Length;
 
-        var node = new ImageResizeNode();
+        var node = new ImageResizeNode(NullLogger<ImageResizeNode>.Instance);
         node.Configure(MakeConfig(new { width = 100 }));
 
         var job = new FileJob
@@ -116,7 +117,7 @@ public class ImageResizeNodeTests
     [Fact]
     public void Missing_dimensions_throws()
     {
-        var node = new ImageResizeNode();
+        var node = new ImageResizeNode(NullLogger<ImageResizeNode>.Instance);
         Action act = () => node.Configure(MakeConfig(new { mode = "max" }));
         act.Should().Throw<NodeConfigurationException>();
     }

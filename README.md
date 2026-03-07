@@ -17,8 +17,9 @@ A visual node-based file processing pipeline tool. Build reusable workflows for 
 FlowForge lets you visually connect source, transform, and output nodes to build file processing pipelines:
 
 - **Visual Node Editor** — Drag-and-drop canvas with pan, zoom, and wire connections
+- **Undo/Redo** — Full undo/redo for all editor actions (add, delete, move, connect, disconnect, config changes) with Ctrl+Z / Ctrl+Y
 - **11 Built-in Nodes** — Sources, transforms, and outputs covering common file operations
-- **Real-time Preview** — Simulate runs without touching any files
+- **Real-time Progress** — Live scanning count, per-file processing status, and throughput reporting
 - **Pipeline Templates** — Pre-wired workflows for common tasks (photo import, batch rename, web export, compression)
 - **CLI Runner** — Execute pipelines from the command line for automation and scripting
 - **Cross-platform** — Runs on Windows, macOS, and Linux via Avalonia UI
@@ -46,19 +47,21 @@ FlowForge lets you visually connect source, transform, and output nodes to build
 - **Canvas** — Nodify-powered node graph with pan, zoom, drag, and rubber-band selection
 - **Node Library** — Categorized sidebar with search and drag-to-canvas support
 - **Properties Panel** — Auto-generated config forms from node schemas (text, number, boolean, file/folder picker, dropdown)
+- **Undo/Redo** — Ctrl+Z / Ctrl+Y for all editor actions with 25-step history; config field edits coalesce into single undo entries
 - **Execution Log** — Live progress with success/fail/skip counts and per-file details
 - **Templates** — One-click pipeline starters: Photo Import, Batch Rename, Web Export, Compress
 - **Recent Pipelines** — MRU menu with quick access to recently opened files
 - **Keyboard Shortcuts** — Help dialog showing all available shortcuts
 - **Zoom-to-Fit** — Toolbar button to fit the entire graph into the viewport
 - **Config Tooltips** — Hover descriptions on all node configuration fields
-- **Midnight Theme** — Custom dark theme with GitHub Dark-inspired color palette
+- **Molten Forge Theme** — Custom dark theme with warm amber accent and category-colored nodes
 
 <p align="center">
   <img src="screenshots/node-pipeline.png" alt="Node Pipeline" width="600">
 </p>
 <p align="center">
-  <img src="screenshots/output-panel.png" alt="Output Panel">
+  <img src="screenshots/node-library.png" alt="Node Library" width="300">
+  <img src="screenshots/properties-panel.png" alt="Properties Panel" width="300">
 </p>
 
 ### CLI Runner
@@ -70,7 +73,7 @@ flowforge run pipeline.ffpipe [--input <dir>] [--output <dir>] [--dry-run] [--ve
 - Override input/output directories per run
 - Dry-run mode for safe previewing
 - JSON output mode (`--format json`) for machine-readable results
-- Structured logging with Serilog (routed to stderr in JSON mode)
+- Structured logging via `ILogger<T>` (routed to stderr in JSON mode)
 - Exit codes: 0 (success), 1 (partial failure), 2 (total failure / invalid arguments)
 
 ### Pipeline Format
@@ -99,7 +102,9 @@ Pipelines are saved as `.ffpipe` files (human-readable JSON, UTF-8):
 | [CommunityToolkit.Mvvm](https://learn.microsoft.com/dotnet/communitytoolkit/mvvm) | MVVM framework |
 | [SixLabors.ImageSharp](https://sixlabors.com/products/imagesharp) | Image processing (resize, convert, compress) |
 | [MetadataExtractor](https://github.com/drewnoakes/metadata-extractor-dotnet) | EXIF and file metadata reading |
-| [Serilog](https://serilog.net) | Structured logging |
+| [Microsoft.Extensions.Logging](https://learn.microsoft.com/dotnet/core/extensions/logging) | Logging abstraction (`ILogger<T>`) |
+| [Serilog](https://serilog.net) | Logging provider (console + rolling file) |
+| [Microsoft.Extensions.DependencyInjection](https://learn.microsoft.com/dotnet/core/extensions/dependency-injection) | IoC container |
 | [System.CommandLine](https://learn.microsoft.com/dotnet/standard/commandline) | CLI argument parsing |
 | [xUnit](https://xunit.net) + [FluentAssertions](https://fluentassertions.com) | Testing framework |
 
@@ -110,6 +115,7 @@ FlowForge/
 ├── FlowForge.sln
 ├── src/
 │   ├── FlowForge.Core/           # Business logic (no UI references)
+│   │   ├── DependencyInjection/  # AddFlowForgeCore() service registration
 │   │   ├── Execution/            # PipelineRunner, NodeRegistry
 │   │   ├── Models/               # FileJob, ExecutionResult
 │   │   ├── Nodes/
@@ -122,16 +128,20 @@ FlowForge/
 │   ├── FlowForge.UI/             # Avalonia desktop app (MVVM)
 │   │   ├── ViewModels/           # 14 view models
 │   │   ├── Views/                # 5 view pairs + template selector
-│   │   ├── Themes/               # MidnightTheme.axaml
+│   │   ├── UndoRedo/             # Command pattern undo/redo system
+│   │   ├── Themes/               # MoltenForgeTheme.axaml
 │   │   └── Services/             # DialogService
 │   └── FlowForge.CLI/            # CLI runner (System.CommandLine)
 └── tests/
-    └── FlowForge.Tests/          # 236 xUnit tests
+    └── FlowForge.Tests/          # 309 xUnit tests
+        ├── DependencyInjection/  # DI registration tests
         ├── Nodes/                # 11 node test files
-        ├── Execution/            # Runner + registry tests
+        ├── Execution/            # Runner + progress tests
         ├── Pipeline/             # Serializer + template tests
         ├── Models/               # FileJob tests
         ├── Settings/             # AppSettings tests
+        ├── UndoRedo/             # UndoRedoManager + command tests
+        ├── ViewModels/           # ViewModel tests
         └── Helpers/              # TempDirectory, TestFileFactory, PipelineBuilder
 ```
 
@@ -161,7 +171,7 @@ dotnet run --project src/FlowForge.CLI -- run pipeline.ffpipe --dry-run
 ### Run Tests
 
 ```bash
-# Run all 236 tests
+# Run all 309 tests
 dotnet test --logger "console;verbosity=normal"
 
 # Run specific test class

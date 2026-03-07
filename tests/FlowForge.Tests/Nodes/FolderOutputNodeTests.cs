@@ -4,6 +4,7 @@ using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Outputs;
 using FlowForge.Core.Nodes.Base;
 using FlowForge.Tests.Helpers;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlowForge.Tests.Nodes;
 
@@ -26,7 +27,7 @@ public class FolderOutputNodeTests
         string sourcePath = Path.Combine(dir.Path, "photo.jpg");
         var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
 
-        var node = new FolderOutputNode();
+        var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         node.Configure(MakeConfig(new { path = dir.OutputPath, mode = "copy" }));
 
         await node.ConsumeAsync(job, dryRun: false);
@@ -44,7 +45,7 @@ public class FolderOutputNodeTests
         string sourcePath = Path.Combine(dir.Path, "photo.jpg");
         var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
 
-        var node = new FolderOutputNode();
+        var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         node.Configure(MakeConfig(new { path = dir.OutputPath, mode = "move" }));
 
         await node.ConsumeAsync(job, dryRun: false);
@@ -62,7 +63,7 @@ public class FolderOutputNodeTests
         string sourcePath = Path.Combine(dir.Path, "photo.jpg");
         var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
 
-        var node = new FolderOutputNode();
+        var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         string destDir = Path.Combine(dir.Path, "nonexistent_output");
         node.Configure(MakeConfig(new { path = destDir, mode = "copy" }));
 
@@ -75,7 +76,7 @@ public class FolderOutputNodeTests
     [Fact]
     public void Missing_path_throws_NodeConfigurationException()
     {
-        var node = new FolderOutputNode();
+        var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         var config = new Dictionary<string, JsonElement>();
 
         Action act = () => node.Configure(config);
@@ -86,7 +87,7 @@ public class FolderOutputNodeTests
     [Fact]
     public void Invalid_mode_throws_NodeConfigurationException()
     {
-        var node = new FolderOutputNode();
+        var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
 
         Action act = () => node.Configure(MakeConfig(new { path = "/tmp/out", mode = "link" }));
 
@@ -106,7 +107,7 @@ public class FolderOutputNodeTests
         string newOutputDir = Path.Combine(dir.Path, "brand_new_folder");
         Directory.Exists(newOutputDir).Should().BeFalse("directory should not exist before test");
 
-        var node = new FolderOutputNode();
+        var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         node.Configure(MakeConfig(new { path = newOutputDir, mode = "copy" }));
 
         await node.ConsumeAsync(job, dryRun: false);
@@ -127,7 +128,7 @@ public class FolderOutputNodeTests
 
         var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
 
-        var node = new FolderOutputNode();
+        var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         node.Configure(MakeConfig(new { path = dir.OutputPath, mode = "copy", overwrite = true }));
 
         await node.ConsumeAsync(job, dryRun: false);
@@ -148,7 +149,7 @@ public class FolderOutputNodeTests
 
         var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
 
-        var node = new FolderOutputNode();
+        var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         node.Configure(MakeConfig(new { path = dir.OutputPath, mode = "copy", overwrite = false }));
 
         Func<Task> act = async () => await node.ConsumeAsync(job, dryRun: false);
@@ -169,7 +170,7 @@ public class FolderOutputNodeTests
 
         var job = new FileJob { OriginalPath = sourceFile, CurrentPath = sourceFile };
 
-        var node = new FolderOutputNode();
+        var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         node.Configure(MakeConfig(new
         {
             path = dir.OutputPath,
@@ -194,7 +195,7 @@ public class FolderOutputNodeTests
         string sourcePath = Path.Combine(dir.Path, "photo.jpg");
         var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
 
-        var node = new FolderOutputNode();
+        var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         node.Configure(MakeConfig(new { path = dir.OutputPath, mode = "copy" }));
 
         using var cts = new CancellationTokenSource();
@@ -213,7 +214,7 @@ public class FolderOutputNodeTests
         string sourcePath = Path.Combine(dir.Path, "report.txt");
         var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
 
-        var node = new FolderOutputNode();
+        var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         node.Configure(MakeConfig(new { path = dir.OutputPath, mode = "copy" }));
 
         await node.ConsumeAsync(job, dryRun: false);
@@ -235,7 +236,7 @@ public class FolderOutputNodeTests
 
         var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
 
-        var node = new FolderOutputNode();
+        var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         node.Configure(MakeConfig(new
         {
             path = dir.OutputPath,
@@ -262,7 +263,7 @@ public class FolderOutputNodeTests
 
         var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
 
-        var node = new FolderOutputNode();
+        var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         node.Configure(MakeConfig(new
         {
             path = dir.OutputPath,
@@ -290,7 +291,7 @@ public class FolderOutputNodeTests
 
         var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
 
-        var node = new FolderOutputNode();
+        var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         node.Configure(MakeConfig(new
         {
             path = dir.OutputPath,
@@ -318,7 +319,7 @@ public class FolderOutputNodeTests
 
         var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
 
-        var node = new FolderOutputNode();
+        var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         node.Configure(MakeConfig(new
         {
             path = dir.OutputPath,
@@ -344,7 +345,7 @@ public class FolderOutputNodeTests
 
         var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
 
-        var node = new FolderOutputNode();
+        var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         node.Configure(MakeConfig(new
         {
             path = dir.OutputPath,
@@ -364,7 +365,7 @@ public class FolderOutputNodeTests
     [Fact]
     public void Backup_suffix_with_path_separator_throws()
     {
-        var node = new FolderOutputNode();
+        var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         Action act = () => node.Configure(MakeConfig(new
         {
             path = "/tmp/out",
@@ -380,7 +381,7 @@ public class FolderOutputNodeTests
     [Fact]
     public void Backup_suffix_lone_dot_throws()
     {
-        var node = new FolderOutputNode();
+        var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         Action act = () => node.Configure(MakeConfig(new
         {
             path = "/tmp/out",
@@ -396,7 +397,7 @@ public class FolderOutputNodeTests
     [Fact]
     public void Backup_suffix_without_dot_throws()
     {
-        var node = new FolderOutputNode();
+        var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         Action act = () => node.Configure(MakeConfig(new
         {
             path = "/tmp/out",
@@ -421,7 +422,7 @@ public class FolderOutputNodeTests
 
         var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
 
-        var node = new FolderOutputNode();
+        var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         node.Configure(MakeConfig(new
         {
             path = dir.OutputPath,

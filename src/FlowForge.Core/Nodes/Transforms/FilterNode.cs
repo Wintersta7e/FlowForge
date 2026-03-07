@@ -3,12 +3,20 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
-using Serilog;
+using Microsoft.Extensions.Logging;
 
 namespace FlowForge.Core.Nodes.Transforms;
 
 public class FilterNode : ITransformNode
 {
+    private readonly ILogger<FilterNode> _logger;
+
+    public FilterNode(ILogger<FilterNode> logger)
+    {
+        ArgumentNullException.ThrowIfNull(logger);
+        _logger = logger;
+    }
+
     public string TypeKey => "Filter";
 
     public static IReadOnlyList<ConfigField> ConfigSchema { get; } = new[]
@@ -108,7 +116,7 @@ public class FilterNode : ITransformNode
         };
     }
 
-    private static string GetFieldValue(string field, FileJob job)
+    private string GetFieldValue(string field, FileJob job)
     {
         return field.ToLowerInvariant() switch
         {
@@ -121,32 +129,32 @@ public class FilterNode : ITransformNode
         };
     }
 
-    private static string GetFileSize(string path)
+    private string GetFileSize(string path)
     {
         if (!File.Exists(path))
         {
-            Log.Warning("Filter: file not found at '{FilePath}', using default size 0", path);
+            _logger.LogWarning("Filter: file not found at '{FilePath}', using default size 0", path);
             return "0";
         }
         var info = new FileInfo(path);
         return info.Length.ToString(CultureInfo.InvariantCulture);
     }
 
-    private static string GetFileCreatedAt(string path)
+    private string GetFileCreatedAt(string path)
     {
         if (!File.Exists(path))
         {
-            Log.Warning("Filter: file not found at '{FilePath}', using default date", path);
+            _logger.LogWarning("Filter: file not found at '{FilePath}', using default date", path);
             return string.Empty;
         }
         return File.GetCreationTimeUtc(path).ToString("o", CultureInfo.InvariantCulture);
     }
 
-    private static string GetFileModifiedAt(string path)
+    private string GetFileModifiedAt(string path)
     {
         if (!File.Exists(path))
         {
-            Log.Warning("Filter: file not found at '{FilePath}', using default date", path);
+            _logger.LogWarning("Filter: file not found at '{FilePath}', using default date", path);
             return string.Empty;
         }
         return File.GetLastWriteTimeUtc(path).ToString("o", CultureInfo.InvariantCulture);

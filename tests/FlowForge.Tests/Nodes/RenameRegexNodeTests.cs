@@ -4,6 +4,7 @@ using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Transforms;
 using FlowForge.Core.Nodes.Base;
 using FlowForge.Tests.Helpers;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlowForge.Tests.Nodes;
 
@@ -29,7 +30,7 @@ public class RenameRegexNodeTests
     [Fact]
     public async Task Filename_regex_replacement_replaces_digits_with_X()
     {
-        var node = new RenameRegexNode();
+        var node = new RenameRegexNode(NullLogger<RenameRegexNode>.Instance);
         node.Configure(MakeConfig(new { pattern = @"\d+", replacement = "X" }));
 
         FileJob job = MakeJob(Path.Combine("/tmp", "photo123.jpg"));
@@ -42,7 +43,7 @@ public class RenameRegexNodeTests
     [Fact]
     public async Task Capture_groups_with_backreferences_in_replacement()
     {
-        var node = new RenameRegexNode();
+        var node = new RenameRegexNode(NullLogger<RenameRegexNode>.Instance);
         node.Configure(MakeConfig(new { pattern = @"(\w+)-(\w+)", replacement = "$2_$1" }));
 
         FileJob job = MakeJob(Path.Combine("/tmp", "hello-world.txt"));
@@ -55,7 +56,7 @@ public class RenameRegexNodeTests
     [Fact]
     public async Task Scope_filename_only_matches_filename_part()
     {
-        var node = new RenameRegexNode();
+        var node = new RenameRegexNode(NullLogger<RenameRegexNode>.Instance);
         node.Configure(MakeConfig(new { pattern = "tmp", replacement = "REPLACED", scope = "filename" }));
 
         FileJob job = MakeJob(Path.Combine("/tmp", "tmp_file.txt"));
@@ -75,7 +76,7 @@ public class RenameRegexNodeTests
         string filePath = Path.Combine(tempDir.Path, "abc_test.txt");
         FileJob job = MakeJob(filePath);
 
-        var node = new RenameRegexNode();
+        var node = new RenameRegexNode(NullLogger<RenameRegexNode>.Instance);
         node.Configure(MakeConfig(new { pattern = "abc", replacement = "xyz", scope = "fullpath" }));
 
         IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
@@ -94,7 +95,7 @@ public class RenameRegexNodeTests
         string filePath = Path.Combine(tempDir.Path, "safe.txt");
         FileJob job = MakeJob(filePath);
 
-        var node = new RenameRegexNode();
+        var node = new RenameRegexNode(NullLogger<RenameRegexNode>.Instance);
         node.Configure(MakeConfig(new { pattern = "safe\\.txt", replacement = "../escaped.txt", scope = "fullpath" }));
 
         IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
@@ -106,7 +107,7 @@ public class RenameRegexNodeTests
     [Fact]
     public void Missing_pattern_throws_NodeConfigurationException()
     {
-        var node = new RenameRegexNode();
+        var node = new RenameRegexNode(NullLogger<RenameRegexNode>.Instance);
         var config = MakeConfig(new { replacement = "X" });
 
         Action act = () => node.Configure(config);
@@ -117,7 +118,7 @@ public class RenameRegexNodeTests
     [Fact]
     public void Invalid_regex_throws_NodeConfigurationException()
     {
-        var node = new RenameRegexNode();
+        var node = new RenameRegexNode(NullLogger<RenameRegexNode>.Instance);
 
         Action act = () => node.Configure(MakeConfig(new { pattern = "[invalid", replacement = "X" }));
         act.Should().Throw<NodeConfigurationException>()
@@ -127,7 +128,7 @@ public class RenameRegexNodeTests
     [Fact]
     public void Missing_replacement_throws_NodeConfigurationException()
     {
-        var node = new RenameRegexNode();
+        var node = new RenameRegexNode(NullLogger<RenameRegexNode>.Instance);
         var config = MakeConfig(new { pattern = @"\d+" });
 
         Action act = () => node.Configure(config);
@@ -138,7 +139,7 @@ public class RenameRegexNodeTests
     [Fact]
     public async Task No_matches_leaves_filename_unchanged()
     {
-        var node = new RenameRegexNode();
+        var node = new RenameRegexNode(NullLogger<RenameRegexNode>.Instance);
         node.Configure(MakeConfig(new { pattern = @"\d+", replacement = "X" }));
 
         FileJob job = MakeJob(Path.Combine("/tmp", "nodigits.txt"));
@@ -151,7 +152,7 @@ public class RenameRegexNodeTests
     [Fact]
     public async Task DryRun_updates_CurrentPath_without_calling_File_Move()
     {
-        var node = new RenameRegexNode();
+        var node = new RenameRegexNode(NullLogger<RenameRegexNode>.Instance);
         node.Configure(MakeConfig(new { pattern = @"\d+", replacement = "X" }));
 
         FileJob job = MakeJob(Path.Combine("/nonexistent/path", "file99.txt"));
@@ -167,7 +168,7 @@ public class RenameRegexNodeTests
     [Fact]
     public async Task CancellationToken_cancelled_throws_OperationCanceledException()
     {
-        var node = new RenameRegexNode();
+        var node = new RenameRegexNode(NullLogger<RenameRegexNode>.Instance);
         node.Configure(MakeConfig(new { pattern = @"\d+", replacement = "X" }));
 
         FileJob job = MakeJob(Path.Combine("/tmp", "file1.txt"));

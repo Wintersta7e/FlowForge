@@ -4,6 +4,7 @@ using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Transforms;
 using FlowForge.Core.Nodes.Base;
 using FlowForge.Tests.Helpers;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlowForge.Tests.Nodes;
 
@@ -24,7 +25,7 @@ public class MetadataExtractNodeTests
         string filePath = Path.Combine(dir.Path, "testfile.txt");
         File.WriteAllText(filePath, "some content here");
 
-        var node = new MetadataExtractNode();
+        var node = new MetadataExtractNode(NullLogger<MetadataExtractNode>.Instance);
         node.Configure(MakeConfig(new { keys = new[] { "File:SizeBytes" } }));
 
         var job = new FileJob
@@ -50,7 +51,7 @@ public class MetadataExtractNodeTests
         string filePath = Path.Combine(dir.Path, "testfile.txt");
         File.WriteAllText(filePath, "content");
 
-        var node = new MetadataExtractNode();
+        var node = new MetadataExtractNode(NullLogger<MetadataExtractNode>.Instance);
         node.Configure(MakeConfig(new { keys = new[] { "File:CreatedAt" } }));
 
         var job = new FileJob
@@ -75,7 +76,7 @@ public class MetadataExtractNodeTests
         string filePath = Path.Combine(dir.Path, "testfile.txt");
         File.WriteAllText(filePath, "content");
 
-        var node = new MetadataExtractNode();
+        var node = new MetadataExtractNode(NullLogger<MetadataExtractNode>.Instance);
         node.Configure(MakeConfig(new { keys = new[] { "File:ModifiedAt" } }));
 
         var job = new FileJob
@@ -100,7 +101,7 @@ public class MetadataExtractNodeTests
         string filePath = Path.Combine(dir.Path, "plaintext.txt");
         File.WriteAllText(filePath, "this is not an image");
 
-        var node = new MetadataExtractNode();
+        var node = new MetadataExtractNode(NullLogger<MetadataExtractNode>.Instance);
         node.Configure(MakeConfig(new { keys = new[] { "EXIF:DateTaken" } }));
 
         var job = new FileJob
@@ -124,7 +125,7 @@ public class MetadataExtractNodeTests
         string filePath = Path.Combine(dir.Path, "testfile.txt");
         File.WriteAllText(filePath, "content");
 
-        var node = new MetadataExtractNode();
+        var node = new MetadataExtractNode(NullLogger<MetadataExtractNode>.Instance);
         node.Configure(MakeConfig(new { keys = new[] { "UnknownPrefix:Something" } }));
 
         var job = new FileJob
@@ -144,7 +145,7 @@ public class MetadataExtractNodeTests
     [Fact]
     public void Empty_keys_array_throws_NodeConfigurationException()
     {
-        var node = new MetadataExtractNode();
+        var node = new MetadataExtractNode(NullLogger<MetadataExtractNode>.Instance);
         Dictionary<string, JsonElement> config = MakeConfig(new { keys = Array.Empty<string>() });
 
         Action act = () => node.Configure(config);
@@ -155,7 +156,7 @@ public class MetadataExtractNodeTests
     [Fact]
     public void Keys_as_comma_separated_string_is_accepted()
     {
-        var node = new MetadataExtractNode();
+        var node = new MetadataExtractNode(NullLogger<MetadataExtractNode>.Instance);
 
         string json = JsonSerializer.Serialize(new { keys = "File:SizeBytes, EXIF:DateTaken" });
         JsonDocument doc = JsonDocument.Parse(json);
@@ -170,7 +171,7 @@ public class MetadataExtractNodeTests
     [Fact]
     public void Keys_as_number_throws_NodeConfigurationException()
     {
-        var node = new MetadataExtractNode();
+        var node = new MetadataExtractNode(NullLogger<MetadataExtractNode>.Instance);
 
         string json = JsonSerializer.Serialize(new { keys = 42 });
         JsonDocument doc = JsonDocument.Parse(json);
@@ -185,7 +186,7 @@ public class MetadataExtractNodeTests
     [Fact]
     public void Keys_as_null_throws_NodeConfigurationException()
     {
-        var node = new MetadataExtractNode();
+        var node = new MetadataExtractNode(NullLogger<MetadataExtractNode>.Instance);
 
         string json = """{"keys": null}""";
         JsonDocument doc = JsonDocument.Parse(json);
@@ -202,7 +203,7 @@ public class MetadataExtractNodeTests
     {
         string fakePath = Path.Combine(Path.GetTempPath(), "does_not_exist_" + Guid.NewGuid().ToString("N") + ".txt");
 
-        var node = new MetadataExtractNode();
+        var node = new MetadataExtractNode(NullLogger<MetadataExtractNode>.Instance);
         node.Configure(MakeConfig(new { keys = new[] { "File:SizeBytes", "EXIF:DateTaken" } }));
 
         var job = new FileJob
@@ -227,7 +228,7 @@ public class MetadataExtractNodeTests
         string filePath = Path.Combine(dir.Path, "multikey.txt");
         File.WriteAllText(filePath, "test data for multiple keys");
 
-        var node = new MetadataExtractNode();
+        var node = new MetadataExtractNode(NullLogger<MetadataExtractNode>.Instance);
         node.Configure(MakeConfig(new { keys = new[] { "File:SizeBytes", "File:CreatedAt", "File:ModifiedAt" } }));
 
         var job = new FileJob

@@ -32,6 +32,9 @@ jobs:
           awk "/^## \\[${VERSION}\\]/{found=1; next} /^## \\[/{if(found) exit} found{print}" CHANGELOG.md > release-notes.md
           if [ ! -s release-notes.md ]; then
             echo "See [CHANGELOG.md](https://github.com/${REPO}/blob/main/CHANGELOG.md) for details." > release-notes.md
+          else
+            echo "" >> release-notes.md
+            echo "See [CHANGELOG.md](https://github.com/${REPO}/blob/main/CHANGELOG.md) for full history." >> release-notes.md
           fi
           gh release create "$GITHUB_REF_NAME" \
             FlowForge-win-x64.zip \

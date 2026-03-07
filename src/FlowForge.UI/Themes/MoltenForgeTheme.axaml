@@ -1,0 +1,325 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Styles.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+
+                <!-- ═══════════════════════════════════════════ -->
+                <!-- ═══ DARK VARIANT ═══════════════════════════ -->
+                <!-- ═══════════════════════════════════════════ -->
+                <ResourceDictionary x:Key="Dark">
+
+                    <!-- Background layers (darkest to lightest) -->
+                    <Color x:Key="ForgeBgColor">#08070a</Color>
+                    <Color x:Key="ForgeDeepColor">#0e0c11</Color>
+                    <Color x:Key="ForgePanelColor">#141218</Color>
+                    <Color x:Key="ForgeSurfaceColor">#1c1820</Color>
+                    <Color x:Key="ForgeElevatedColor">#252029</Color>
+                    <Color x:Key="ForgeHoverColor">#2e2735</Color>
+
+                    <!-- Borders -->
+                    <Color x:Key="ForgeBorderColor">#2a2230</Color>
+                    <Color x:Key="ForgeBorderFocusColor">#3d2f48</Color>
+
+                    <!-- Text -->
+                    <Color x:Key="ForgeTextColor">#ede6f0</Color>
+                    <Color x:Key="ForgeTextSecondaryColor">#9a8da8</Color>
+                    <Color x:Key="ForgeTextMutedColor">#564a62</Color>
+
+                    <!-- Accent -->
+                    <Color x:Key="ForgeAccentColor">#e8932f</Color>
+                    <Color x:Key="ForgeAccentBrightColor">#f5a623</Color>
+
+                    <!-- Categories -->
+                    <Color x:Key="ForgeSourceColor">#5bb8f5</Color>
+                    <Color x:Key="ForgeTransformColor">#5ce0a0</Color>
+                    <Color x:Key="ForgeOutputColor">#e8932f</Color>
+
+                    <!-- Status -->
+                    <Color x:Key="ForgeSuccessColor">#5ce0a0</Color>
+                    <Color x:Key="ForgeErrorColor">#f2716a</Color>
+                    <Color x:Key="ForgeWarningColor">#f5c842</Color>
+
+                    <!-- Molten gradient stops -->
+                    <Color x:Key="ForgeMoltenFromColor">#d4612c</Color>
+                    <Color x:Key="ForgeMoltenToColor">#f5c842</Color>
+
+                    <!-- ═══ Brush Resources ═══ -->
+
+                    <!-- Background brushes -->
+                    <SolidColorBrush x:Key="ForgeBg" Color="{StaticResource ForgeBgColor}" />
+                    <SolidColorBrush x:Key="ForgeDeep" Color="{StaticResource ForgeDeepColor}" />
+                    <SolidColorBrush x:Key="ForgePanel" Color="{StaticResource ForgePanelColor}" />
+                    <SolidColorBrush x:Key="ForgeSurface" Color="{StaticResource ForgeSurfaceColor}" />
+                    <SolidColorBrush x:Key="ForgeElevated" Color="{StaticResource ForgeElevatedColor}" />
+                    <SolidColorBrush x:Key="ForgeHover" Color="{StaticResource ForgeHoverColor}" />
+
+                    <!-- Border brushes -->
+                    <SolidColorBrush x:Key="ForgeBorder" Color="{StaticResource ForgeBorderColor}" />
+                    <SolidColorBrush x:Key="ForgeBorderFocus" Color="{StaticResource ForgeBorderFocusColor}" />
+
+                    <!-- Text brushes -->
+                    <SolidColorBrush x:Key="ForgeText" Color="{StaticResource ForgeTextColor}" />
+                    <SolidColorBrush x:Key="ForgeTextSecondary" Color="{StaticResource ForgeTextSecondaryColor}" />
+                    <SolidColorBrush x:Key="ForgeTextMuted" Color="{StaticResource ForgeTextMutedColor}" />
+
+                    <!-- Accent brushes -->
+                    <SolidColorBrush x:Key="ForgeAccent" Color="{StaticResource ForgeAccentColor}" />
+                    <SolidColorBrush x:Key="ForgeAccentBright" Color="{StaticResource ForgeAccentBrightColor}" />
+
+                    <!-- Category brushes -->
+                    <SolidColorBrush x:Key="ForgeSource" Color="{StaticResource ForgeSourceColor}" />
+                    <SolidColorBrush x:Key="ForgeTransform" Color="{StaticResource ForgeTransformColor}" />
+                    <SolidColorBrush x:Key="ForgeOutput" Color="{StaticResource ForgeOutputColor}" />
+
+                    <!-- Status brushes -->
+                    <SolidColorBrush x:Key="ForgeSuccess" Color="{StaticResource ForgeSuccessColor}" />
+                    <SolidColorBrush x:Key="ForgeError" Color="{StaticResource ForgeErrorColor}" />
+                    <SolidColorBrush x:Key="ForgeWarning" Color="{StaticResource ForgeWarningColor}" />
+
+                    <!-- Molten gradient brushes -->
+                    <SolidColorBrush x:Key="ForgeMoltenFrom" Color="{StaticResource ForgeMoltenFromColor}" />
+                    <SolidColorBrush x:Key="ForgeMoltenTo" Color="{StaticResource ForgeMoltenToColor}" />
+
+                    <!-- Dim variants (~15% opacity) for badges -->
+                    <SolidColorBrush x:Key="ForgeSourceDim" Color="#265bb8f5" />
+                    <SolidColorBrush x:Key="ForgeTransformDim" Color="#265ce0a0" />
+                    <SolidColorBrush x:Key="ForgeOutputDim" Color="#26e8932f" />
+                    <SolidColorBrush x:Key="ForgeSuccessDim" Color="#265ce0a0" />
+                    <SolidColorBrush x:Key="ForgeErrorDim" Color="#26f2716a" />
+                    <SolidColorBrush x:Key="ForgeWarningDim" Color="#26f5c842" />
+
+                </ResourceDictionary>
+
+                <!-- ═══════════════════════════════════════════ -->
+                <!-- ═══ LIGHT VARIANT ═════════════════════════ -->
+                <!-- ═══════════════════════════════════════════ -->
+                <ResourceDictionary x:Key="Light">
+
+                    <!-- Background layers (lightest to darkest) -->
+                    <Color x:Key="ForgeBgColor">#f5f2ee</Color>
+                    <Color x:Key="ForgeDeepColor">#eee9e3</Color>
+                    <Color x:Key="ForgePanelColor">#faf8f5</Color>
+                    <Color x:Key="ForgeSurfaceColor">#ffffff</Color>
+                    <Color x:Key="ForgeElevatedColor">#f0ece6</Color>
+                    <Color x:Key="ForgeHoverColor">#e8e3db</Color>
+
+                    <!-- Borders -->
+                    <Color x:Key="ForgeBorderColor">#ddd5ca</Color>
+                    <Color x:Key="ForgeBorderFocusColor">#c9bfb2</Color>
+
+                    <!-- Text -->
+                    <Color x:Key="ForgeTextColor">#1c1714</Color>
+                    <Color x:Key="ForgeTextSecondaryColor">#6b5e52</Color>
+                    <Color x:Key="ForgeTextMutedColor">#a89c8e</Color>
+
+                    <!-- Accent -->
+                    <Color x:Key="ForgeAccentColor">#d07a18</Color>
+                    <Color x:Key="ForgeAccentBrightColor">#e8932f</Color>
+
+                    <!-- Categories -->
+                    <Color x:Key="ForgeSourceColor">#2680c2</Color>
+                    <Color x:Key="ForgeTransformColor">#1a9a6c</Color>
+                    <Color x:Key="ForgeOutputColor">#d07a18</Color>
+
+                    <!-- Status -->
+                    <Color x:Key="ForgeSuccessColor">#1a9a6c</Color>
+                    <Color x:Key="ForgeErrorColor">#d44040</Color>
+                    <Color x:Key="ForgeWarningColor">#c88a15</Color>
+
+                    <!-- Molten gradient stops -->
+                    <Color x:Key="ForgeMoltenFromColor">#c05820</Color>
+                    <Color x:Key="ForgeMoltenToColor">#e8b530</Color>
+
+                    <!-- ═══ Brush Resources ═══ -->
+
+                    <!-- Background brushes -->
+                    <SolidColorBrush x:Key="ForgeBg" Color="{StaticResource ForgeBgColor}" />
+                    <SolidColorBrush x:Key="ForgeDeep" Color="{StaticResource ForgeDeepColor}" />
+                    <SolidColorBrush x:Key="ForgePanel" Color="{StaticResource ForgePanelColor}" />
+                    <SolidColorBrush x:Key="ForgeSurface" Color="{StaticResource ForgeSurfaceColor}" />
+                    <SolidColorBrush x:Key="ForgeElevated" Color="{StaticResource ForgeElevatedColor}" />
+                    <SolidColorBrush x:Key="ForgeHover" Color="{StaticResource ForgeHoverColor}" />
+
+                    <!-- Border brushes -->
+                    <SolidColorBrush x:Key="ForgeBorder" Color="{StaticResource ForgeBorderColor}" />
+                    <SolidColorBrush x:Key="ForgeBorderFocus" Color="{StaticResource ForgeBorderFocusColor}" />
+
+                    <!-- Text brushes -->
+                    <SolidColorBrush x:Key="ForgeText" Color="{StaticResource ForgeTextColor}" />
+                    <SolidColorBrush x:Key="ForgeTextSecondary" Color="{StaticResource ForgeTextSecondaryColor}" />
+                    <SolidColorBrush x:Key="ForgeTextMuted" Color="{StaticResource ForgeTextMutedColor}" />
+
+                    <!-- Accent brushes -->
+                    <SolidColorBrush x:Key="ForgeAccent" Color="{StaticResource ForgeAccentColor}" />
+                    <SolidColorBrush x:Key="ForgeAccentBright" Color="{StaticResource ForgeAccentBrightColor}" />
+
+                    <!-- Category brushes -->
+                    <SolidColorBrush x:Key="ForgeSource" Color="{StaticResource ForgeSourceColor}" />
+                    <SolidColorBrush x:Key="ForgeTransform" Color="{StaticResource ForgeTransformColor}" />
+                    <SolidColorBrush x:Key="ForgeOutput" Color="{StaticResource ForgeOutputColor}" />
+
+                    <!-- Status brushes -->
+                    <SolidColorBrush x:Key="ForgeSuccess" Color="{StaticResource ForgeSuccessColor}" />
+                    <SolidColorBrush x:Key="ForgeError" Color="{StaticResource ForgeErrorColor}" />
+                    <SolidColorBrush x:Key="ForgeWarning" Color="{StaticResource ForgeWarningColor}" />
+
+                    <!-- Molten gradient brushes -->
+                    <SolidColorBrush x:Key="ForgeMoltenFrom" Color="{StaticResource ForgeMoltenFromColor}" />
+                    <SolidColorBrush x:Key="ForgeMoltenTo" Color="{StaticResource ForgeMoltenToColor}" />
+
+                    <!-- Dim variants (~15% opacity) for badges -->
+                    <SolidColorBrush x:Key="ForgeSourceDim" Color="#262680c2" />
+                    <SolidColorBrush x:Key="ForgeTransformDim" Color="#261a9a6c" />
+                    <SolidColorBrush x:Key="ForgeOutputDim" Color="#26d07a18" />
+                    <SolidColorBrush x:Key="ForgeSuccessDim" Color="#261a9a6c" />
+                    <SolidColorBrush x:Key="ForgeErrorDim" Color="#26d44040" />
+                    <SolidColorBrush x:Key="ForgeWarningDim" Color="#26c88a15" />
+
+                </ResourceDictionary>
+
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Styles.Resources>
+
+    <!-- ═══ Global Style Overrides ═══ -->
+
+    <!-- Button: forge surface bg, border, rounded 8px -->
+    <Style Selector="Button">
+        <Setter Property="Background" Value="{DynamicResource ForgeSurface}" />
+        <Setter Property="Foreground" Value="{DynamicResource ForgeText}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ForgeBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="10,5" />
+    </Style>
+    <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ForgeElevated}" />
+    </Style>
+    <Style Selector="Button:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ForgeHover}" />
+    </Style>
+
+    <!-- Button.accent: forge accent run button -->
+    <Style Selector="Button.accent">
+        <Setter Property="Background" Value="{DynamicResource ForgeAccent}" />
+        <Setter Property="Foreground" Value="#08070a" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.accent:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ForgeAccentBright}" />
+    </Style>
+
+    <!-- Button.preview: transparent outline with accent -->
+    <Style Selector="Button.preview">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ForgeAccent}" />
+        <Setter Property="Foreground" Value="{DynamicResource ForgeAccent}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.preview:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#26e8932f" />
+    </Style>
+
+    <!-- Button.toolbarIcon: icon-only toolbar buttons -->
+    <Style Selector="Button.toolbarIcon">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Width" Value="34" />
+        <Setter Property="Height" Value="34" />
+        <Setter Property="Padding" Value="7" />
+        <Setter Property="CornerRadius" Value="8" />
+    </Style>
+    <Style Selector="Button.toolbarIcon:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ForgeElevated}" />
+        <Setter Property="CornerRadius" Value="8" />
+    </Style>
+
+    <!-- Button.templateButton: template quick-start buttons -->
+    <Style Selector="Button.templateButton">
+        <Setter Property="Background" Value="{DynamicResource ForgeSurface}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ForgeBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="Padding" Value="14,10" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.templateButton:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ForgeElevated}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ForgeAccent}" />
+    </Style>
+
+    <!-- TextBox: forge surface bg, rounded 6px -->
+    <Style Selector="TextBox">
+        <Setter Property="Background" Value="{DynamicResource ForgeSurface}" />
+        <Setter Property="Foreground" Value="{DynamicResource ForgeText}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ForgeBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="6" />
+    </Style>
+    <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="{DynamicResource ForgeAccent}" />
+    </Style>
+
+    <!-- ComboBox -->
+    <Style Selector="ComboBox">
+        <Setter Property="Background" Value="{DynamicResource ForgeSurface}" />
+        <Setter Property="Foreground" Value="{DynamicResource ForgeText}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ForgeBorder}" />
+        <Setter Property="CornerRadius" Value="6" />
+    </Style>
+
+    <!-- ToggleSwitch -->
+    <Style Selector="ToggleSwitch">
+        <Setter Property="Foreground" Value="{DynamicResource ForgeText}" />
+    </Style>
+
+    <!-- TreeView -->
+    <Style Selector="TreeView">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="TreeViewItem">
+        <Setter Property="Foreground" Value="{DynamicResource ForgeText}" />
+    </Style>
+
+    <!-- ScrollViewer -->
+    <Style Selector="ScrollViewer">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+    <!-- ProgressBar -->
+    <Style Selector="ProgressBar">
+        <Setter Property="Background" Value="{DynamicResource ForgeSurface}" />
+        <Setter Property="Foreground" Value="{DynamicResource ForgeAccent}" />
+        <Setter Property="CornerRadius" Value="4" />
+    </Style>
+
+    <!-- Expander -->
+    <Style Selector="Expander">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource ForgeText}" />
+    </Style>
+
+    <!-- ToggleButton.outputTab: flat tab button for output panel -->
+    <Style Selector="ToggleButton.outputTab">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource ForgeTextSecondary}" />
+        <Setter Property="BorderThickness" Value="0,0,0,2" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="Padding" Value="12,6" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="ToggleButton.outputTab:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ForgeSurface}" />
+    </Style>
+    <Style Selector="ToggleButton.outputTab:checked /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ForgePanel}" />
+    </Style>
+    <Style Selector="ToggleButton.outputTab:checked">
+        <Setter Property="Foreground" Value="{DynamicResource ForgeText}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ForgeAccent}" />
+    </Style>
+
+</Styles>

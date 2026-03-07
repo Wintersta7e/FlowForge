@@ -5,6 +5,8 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia;
+using Avalonia.Styling;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FlowForge.Core.Execution;
@@ -13,7 +15,8 @@ using FlowForge.Core.Pipeline;
 using FlowForge.Core.Pipeline.Templates;
 using FlowForge.Core.Settings;
 using FlowForge.UI.Services;
-using Serilog;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace FlowForge.UI.ViewModels;
 
@@ -23,8 +26,9 @@ public partial class MainWindowViewModel : ViewModelBase
 {
     private readonly NodeRegistry _registry;
     private readonly IDialogService _dialogService;
-    private readonly ILogger _logger;
+    private readonly ILogger<MainWindowViewModel> _logger;
     private readonly AppSettingsManager _settingsManager;
+    private readonly IServiceProvider _serviceProvider;
     private readonly TaskCompletionSource _initComplete = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private AppSettings _appSettings = new();
 
@@ -41,6 +45,12 @@ public partial class MainWindowViewModel : ViewModelBase
     private bool _isDirty;
 
     [ObservableProperty]
+    private bool _isDarkTheme = true;
+
+    [ObservableProperty]
+    private string _themeIcon = "\u263E";
+
+    [ObservableProperty]
     private ObservableCollection<string> _recentPipelines = new();
 
     public List<RecentPipelineItem> RecentPipelineItems { get; private set; } = new();
@@ -50,14 +60,28 @@ public partial class MainWindowViewModel : ViewModelBase
     public PropertiesViewModel Properties { get; }
     public ExecutionLogViewModel ExecutionLog { get; }
 
-    public MainWindowViewModel()
+    public MainWindowViewModel(
+        ILogger<MainWindowViewModel> logger,
+        AppSettingsManager settingsManager,
+        NodeRegistry registry,
+        EditorViewModel editor,
+        IDialogService dialogService,
+        IServiceProvider serviceProvider)
     {
-        _registry = NodeRegistry.CreateDefault();
-        _dialogService = new DialogService();
-        _logger = Log.Logger;
-        _settingsManager = new AppSettingsManager(_logger);
+        ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(settingsManager);
+        ArgumentNullException.ThrowIfNull(registry);
+        ArgumentNullException.ThrowIfNull(editor);
+        ArgumentNullException.ThrowIfNull(dialogService);
+        ArgumentNullException.ThrowIfNull(serviceProvider);
 
-        Editor = new EditorViewModel();
+        _registry = registry;
+        _dialogService = dialogService;
+        _logger = logger;
+        _settingsManager = settingsManager;
+        _serviceProvider = serviceProvider;
+
+        Editor = editor;
         NodeLibrary = new NodeLibraryViewModel();
         Properties = new PropertiesViewModel();
         ExecutionLog = new ExecutionLogViewModel();
@@ -69,12 +93,36 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             if (args.PropertyName == nameof(EditorViewModel.SelectedNode))
             {
-                Properties.LoadNode(Editor.SelectedNode, _registry, () => Editor.RaiseGraphChanged());
+                RefreshPropertiesPanel();
             }
         };
 
+        // Refresh properties panel on undo/redo so fields read fresh config values
+        Editor.UndoRedo.StateChanged += (_, _) => RefreshPropertiesPanel();
+
         // Track all graph changes (structural + config edits) for IsDirty
         Editor.GraphChanged += (_, _) => IsDirty = true;
+    }
+
+    private void RefreshPropertiesPanel()
+    {
+        // PushExecuted (not Execute) because the MVVM binding already mutated the config dictionary.
+        // PushOrCoalesce merges repeated keystrokes on the same field into a single undo entry.
+        Properties.LoadNode(Editor.SelectedNode, _registry, cmd =>
+        {
+            if (cmd is UndoRedo.Commands.ChangeConfigCommand configCmd)
+            {
+                Editor.UndoRedo.PushOrCoalesce(cmd, prev =>
+                    prev is UndoRedo.Commands.ChangeConfigCommand prevConfig
+                    && prevConfig.ConfigKey == configCmd.ConfigKey);
+            }
+            else
+            {
+                Editor.UndoRedo.PushExecuted(cmd);
+            }
+
+            Editor.RaiseGraphChanged();
+        });
     }
 
     public async Task InitializeAsync()
@@ -148,7 +196,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _logger.Error(ex, "Failed to load pipeline from {Path}", path);
+            _logger.LogError(ex, "Failed to load pipeline from {Path}", path);
             ExecutionLog.Summary = $"Failed to open: {ex.Message}";
         }
     }
@@ -199,12 +247,12 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (PipelineLoadException ex)
         {
-            _logger.Error(ex, "Failed to load pipeline from {Path}", path);
+            _logger.LogError(ex, "Failed to load pipeline from {Path}", path);
             ExecutionLog.Summary = $"Failed to open: {ex.Message}";
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _logger.Error(ex, "Failed to load pipeline from {Path}", path);
+            _logger.LogError(ex, "Failed to load pipeline from {Path}", path);
             ExecutionLog.Summary = $"Failed to open: {ex.Message}";
         }
     }
@@ -255,7 +303,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _logger.Error(ex, "Failed to save pipeline to {Path}", path);
+            _logger.LogError(ex, "Failed to save pipeline to {Path}", path);
             ExecutionLog.Summary = $"Save failed: {ex.Message}";
         }
     }
@@ -287,24 +335,25 @@ public partial class MainWindowViewModel : ViewModelBase
         try
         {
             PipelineGraph graph = Editor.BuildGraph();
-            PipelineRunner runner = new(_registry, _logger);
 
-            Progress<FileJob> progress = new(job =>
+            // Resolve fresh PipelineRunner per execution (transient lifetime)
+            PipelineRunner runner = _serviceProvider.GetRequiredService<PipelineRunner>();
+
+            Progress<PipelineProgressEvent> progress = new(evt =>
             {
-                ExecutionLog.ReportProgress(job);
+                ExecutionLog.ReportProgressEvent(evt);
             });
 
             ExecutionResult result = await runner.RunAsync(graph, dryRun, progress, _cts.Token);
 
-            // Update total from actual result (corrects any estimate)
-            ExecutionLog.TotalFiles = result.TotalFiles;
-            int processed = ExecutionLog.Succeeded + ExecutionLog.Failed + ExecutionLog.Skipped;
-            ExecutionLog.Progress = result.TotalFiles > 0
-                ? (double)processed / result.TotalFiles * 100.0
-                : 100.0;
+            // Summary with throughput
+            double filesPerSec = result.Duration.TotalSeconds > 0
+                ? result.TotalFiles / result.Duration.TotalSeconds
+                : 0;
+            string throughput = filesPerSec > 0 ? $", {filesPerSec:F1} files/sec" : string.Empty;
             ExecutionLog.Summary = dryRun
-                ? $"Preview complete: {result.TotalFiles} files, {result.Succeeded} OK, {result.Failed} failed, {result.Skipped} skipped ({result.Duration.TotalMilliseconds:F0}ms)"
-                : $"Run complete: {result.TotalFiles} files, {result.Succeeded} OK, {result.Failed} failed, {result.Skipped} skipped ({result.Duration.TotalMilliseconds:F0}ms)";
+                ? $"Preview complete: {result.TotalFiles} files, {result.Succeeded} OK, {result.Failed} failed, {result.Skipped} skipped ({result.Duration.TotalMilliseconds:F0}ms{throughput})"
+                : $"Run complete: {result.TotalFiles} files, {result.Succeeded} OK, {result.Failed} failed, {result.Skipped} skipped ({result.Duration.TotalMilliseconds:F0}ms{throughput})";
         }
         catch (OperationCanceledException)
         {
@@ -312,7 +361,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            _logger.Error(ex, "Pipeline execution failed");
+            _logger.LogError(ex, "Pipeline execution failed");
             ExecutionLog.Summary = $"Execution failed: {ex.Message}";
         }
         finally
@@ -327,6 +376,31 @@ public partial class MainWindowViewModel : ViewModelBase
     private void Cancel()
     {
         _cts?.Cancel();
+    }
+
+    [RelayCommand]
+    private void Undo()
+    {
+        Editor.Undo();
+    }
+
+    [RelayCommand]
+    private void Redo()
+    {
+        Editor.Redo();
+    }
+
+    [RelayCommand]
+    private void ToggleTheme()
+    {
+        if (Application.Current is null)
+        {
+            return;
+        }
+
+        IsDarkTheme = !IsDarkTheme;
+        Application.Current.RequestedThemeVariant = IsDarkTheme ? ThemeVariant.Dark : ThemeVariant.Light;
+        ThemeIcon = IsDarkTheme ? "\u263E" : "\u2600";
     }
 
     [RelayCommand]
@@ -349,7 +423,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _logger.Error(ex, "Failed to load template {TemplateId}", templateId);
+            _logger.LogError(ex, "Failed to load template {TemplateId}", templateId);
             ExecutionLog.Summary = $"Template load failed: {ex.Message}";
         }
     }
