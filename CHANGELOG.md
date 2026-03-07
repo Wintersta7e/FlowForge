@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.0] - 2026-03-07
+
+### Added
+
+- **Molten Forge theme** — complete visual overhaul with warm amber accent, category-colored nodes (blue/green/amber), gradient tinted backgrounds, and diamond-shaped connectors
+- **Light/dark theme toggle** — toolbar button to switch between dark and light variants at runtime; nodes, connectors, and all panels update dynamically
+- **Custom node template** — rounded corners, emoji icons, config preview text, and category-colored headers replacing Nodify built-in node control
+- **Node library icons** — colored icon boxes with category headers in the sidebar
+- **Properties badge** — category-colored badge on the properties panel header
+
+### Changed
+
+- Theme resource keys renamed from `Midnight*` to `Forge*` across all views
+- Node brushes rebuild dynamically on theme change via `ActualThemeVariantChanged`
+- Hardcoded dark-mode colors replaced with theme resource lookups throughout XAML
+- Updated screenshots for Molten Forge theme (editor-overview, node-pipeline, node-library, properties-panel)
+
 ## [1.3.0] - 2026-03-06
 
 ### Added
