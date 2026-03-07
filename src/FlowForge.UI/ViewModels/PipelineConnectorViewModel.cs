@@ -27,5 +27,12 @@ public partial class PipelineConnectorViewModel : ViewModelBase
         _title = title;
         IsInput = isInput;
         Node = node;
+        node.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(PipelineNodeViewModel.CategoryBrush))
+            {
+                OnPropertyChanged(nameof(ConnectorBrush));
+            }
+        };
     }
 }

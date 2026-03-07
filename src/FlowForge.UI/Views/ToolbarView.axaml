@@ -201,6 +201,17 @@
                         </StackPanel>
                     </Button>
 
+                    <!-- Theme toggle -->
+                    <Button Classes="toolbarIcon"
+                            Command="{Binding ToggleThemeCommand}"
+                            ToolTip.Tip="Toggle Light/Dark Theme">
+                        <TextBlock Text="{Binding ThemeIcon}"
+                                   FontSize="16"
+                                   Foreground="{DynamicResource ForgeTextSecondary}"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center" />
+                    </Button>
+
                     <!-- Shortcuts -->
                     <Button Classes="toolbarIcon"
                             ToolTip.Tip="Keyboard Shortcuts (F1)"

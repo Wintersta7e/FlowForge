@@ -5,6 +5,8 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia;
+using Avalonia.Styling;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FlowForge.Core.Execution;
@@ -41,6 +43,12 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     private bool _isDirty;
+
+    [ObservableProperty]
+    private bool _isDarkTheme = true;
+
+    [ObservableProperty]
+    private string _themeIcon = "\u263E";
 
     [ObservableProperty]
     private ObservableCollection<string> _recentPipelines = new();
@@ -380,6 +388,19 @@ public partial class MainWindowViewModel : ViewModelBase
     private void Redo()
     {
         Editor.Redo();
+    }
+
+    [RelayCommand]
+    private void ToggleTheme()
+    {
+        if (Application.Current is null)
+        {
+            return;
+        }
+
+        IsDarkTheme = !IsDarkTheme;
+        Application.Current.RequestedThemeVariant = IsDarkTheme ? ThemeVariant.Dark : ThemeVariant.Light;
+        ThemeIcon = IsDarkTheme ? "\u263E" : "\u2600";
     }
 
     [RelayCommand]

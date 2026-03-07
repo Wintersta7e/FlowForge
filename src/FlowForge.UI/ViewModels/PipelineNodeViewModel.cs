@@ -22,59 +22,15 @@ public partial class PipelineNodeViewModel : ViewModelBase
         return new SolidColorBrush(Color.Parse(fallback));
     }
 
-    // Category solid colors (for text, connectors)
-    private static readonly IBrush SourceBrush = GetBrush("ForgeSource", "#5bb8f5");
-    private static readonly IBrush TransformBrush = GetBrush("ForgeTransform", "#5ce0a0");
-    private static readonly IBrush OutputBrush = GetBrush("ForgeOutput", "#e8932f");
-
-    // Category border colors (~20% opacity)
-    private static readonly IBrush SourceBorderBrush = new SolidColorBrush(Color.Parse("#335bb8f5"));
-    private static readonly IBrush TransformBorderBrush = new SolidColorBrush(Color.Parse("#335ce0a0"));
-    private static readonly IBrush OutputBorderBrush = new SolidColorBrush(Color.Parse("#33e8932f"));
-
-    // Category header gradients (subtle, not solid blocks)
-    private static readonly IBrush SourceHeaderGradient = new LinearGradientBrush
+    private static Color GetThemeColor(string key, string fallback)
     {
-        StartPoint = new RelativePoint(0, 0.5, RelativeUnit.Relative),
-        EndPoint = new RelativePoint(1, 0.5, RelativeUnit.Relative),
-        GradientStops = { new GradientStop(Color.Parse("#0D5bb8f5"), 0), new GradientStop(Colors.Transparent, 1) }
-    };
+        if (Application.Current?.TryFindResource(key, Application.Current.ActualThemeVariant, out object? resource) == true && resource is Color color)
+        {
+            return color;
+        }
 
-    private static readonly IBrush TransformHeaderGradient = new LinearGradientBrush
-    {
-        StartPoint = new RelativePoint(0, 0.5, RelativeUnit.Relative),
-        EndPoint = new RelativePoint(1, 0.5, RelativeUnit.Relative),
-        GradientStops = { new GradientStop(Color.Parse("#0D5ce0a0"), 0), new GradientStop(Colors.Transparent, 1) }
-    };
-
-    private static readonly IBrush OutputHeaderGradient = new LinearGradientBrush
-    {
-        StartPoint = new RelativePoint(0, 0.5, RelativeUnit.Relative),
-        EndPoint = new RelativePoint(1, 0.5, RelativeUnit.Relative),
-        GradientStops = { new GradientStop(Color.Parse("#0Ee8932f"), 0), new GradientStop(Colors.Transparent, 1) }
-    };
-
-    // Category-tinted gradient backgrounds
-    private static readonly IBrush SourceNodeBg = new LinearGradientBrush
-    {
-        StartPoint = new RelativePoint(0.5, 0, RelativeUnit.Relative),
-        EndPoint = new RelativePoint(0.5, 1, RelativeUnit.Relative),
-        GradientStops = { new GradientStop(Color.Parse("#0F5bb8f5"), 0), new GradientStop(Color.Parse("#1c1820"), 0.5) }
-    };
-
-    private static readonly IBrush TransformNodeBg = new LinearGradientBrush
-    {
-        StartPoint = new RelativePoint(0.5, 0, RelativeUnit.Relative),
-        EndPoint = new RelativePoint(0.5, 1, RelativeUnit.Relative),
-        GradientStops = { new GradientStop(Color.Parse("#0F5ce0a0"), 0), new GradientStop(Color.Parse("#1c1820"), 0.5) }
-    };
-
-    private static readonly IBrush OutputNodeBg = new LinearGradientBrush
-    {
-        StartPoint = new RelativePoint(0.5, 0, RelativeUnit.Relative),
-        EndPoint = new RelativePoint(0.5, 1, RelativeUnit.Relative),
-        GradientStops = { new GradientStop(Color.Parse("#14e8932f"), 0), new GradientStop(Color.Parse("#1c1820"), 0.5) }
-    };
+        return Color.Parse(fallback);
+    }
 
     // Icon emoji per node type
     private static readonly Dictionary<string, string> NodeIcons = new()
@@ -108,17 +64,17 @@ public partial class PipelineNodeViewModel : ViewModelBase
     public ObservableCollection<PipelineConnectorViewModel> Output { get; } = new();
     public Dictionary<string, JsonElement> Config { get; }
 
-    /// <summary>Solid category color for text and connector fills.</summary>
-    public IBrush CategoryBrush { get; }
+    [ObservableProperty]
+    private IBrush _categoryBrush = null!;
 
-    /// <summary>Subtle gradient for the node header area.</summary>
-    public IBrush HeaderBrush { get; }
+    [ObservableProperty]
+    private IBrush _headerBrush = null!;
 
-    /// <summary>20% opacity category color for the node border.</summary>
-    public IBrush NodeBorderBrush { get; }
+    [ObservableProperty]
+    private IBrush _nodeBorderBrush = null!;
 
-    /// <summary>Top-down gradient with subtle category tint.</summary>
-    public IBrush NodeBackground { get; }
+    [ObservableProperty]
+    private IBrush _nodeBackground = null!;
 
     public PipelineNodeViewModel(NodeDefinition definition, NodeRegistry registry)
     {
@@ -131,37 +87,12 @@ public partial class PipelineNodeViewModel : ViewModelBase
         ConfigPreview = BuildConfigPreview(definition.Config);
         _location = new Point(definition.Position.X, definition.Position.Y);
 
-        CategoryBrush = Category switch
-        {
-            NodeCategory.Source => SourceBrush,
-            NodeCategory.Transform => TransformBrush,
-            NodeCategory.Output => OutputBrush,
-            _ => TransformBrush
-        };
+        RebuildBrushes();
 
-        HeaderBrush = Category switch
+        if (Application.Current is not null)
         {
-            NodeCategory.Source => SourceHeaderGradient,
-            NodeCategory.Transform => TransformHeaderGradient,
-            NodeCategory.Output => OutputHeaderGradient,
-            _ => TransformHeaderGradient
-        };
-
-        NodeBorderBrush = Category switch
-        {
-            NodeCategory.Source => SourceBorderBrush,
-            NodeCategory.Transform => TransformBorderBrush,
-            NodeCategory.Output => OutputBorderBrush,
-            _ => TransformBorderBrush
-        };
-
-        NodeBackground = Category switch
-        {
-            NodeCategory.Source => SourceNodeBg,
-            NodeCategory.Transform => TransformNodeBg,
-            NodeCategory.Output => OutputNodeBg,
-            _ => TransformNodeBg
-        };
+            Application.Current.ActualThemeVariantChanged += (_, _) => RebuildBrushes();
+        }
 
         // Source nodes have no input; output nodes have no output
         if (Category != NodeCategory.Source)
@@ -173,6 +104,56 @@ public partial class PipelineNodeViewModel : ViewModelBase
         {
             Output.Add(new PipelineConnectorViewModel("Out", isInput: false, this));
         }
+    }
+
+    private void RebuildBrushes()
+    {
+        Color categoryColor = Category switch
+        {
+            NodeCategory.Source => GetThemeColor("ForgeSourceColor", "#5bb8f5"),
+            NodeCategory.Transform => GetThemeColor("ForgeTransformColor", "#5ce0a0"),
+            NodeCategory.Output => GetThemeColor("ForgeOutputColor", "#e8932f"),
+            _ => GetThemeColor("ForgeTransformColor", "#5ce0a0")
+        };
+
+        Color surfaceColor = GetThemeColor("ForgeSurfaceColor", "#1c1820");
+
+        CategoryBrush = Category switch
+        {
+            NodeCategory.Source => GetBrush("ForgeSource", "#5bb8f5"),
+            NodeCategory.Transform => GetBrush("ForgeTransform", "#5ce0a0"),
+            NodeCategory.Output => GetBrush("ForgeOutput", "#e8932f"),
+            _ => GetBrush("ForgeTransform", "#5ce0a0")
+        };
+
+        // Header gradient: ~5% opacity category color → transparent
+        byte headerAlpha = (byte)(Category == NodeCategory.Output ? 0x0E : 0x0D);
+        HeaderBrush = new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 0.5, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(1, 0.5, RelativeUnit.Relative),
+            GradientStops =
+            {
+                new GradientStop(Color.FromArgb(headerAlpha, categoryColor.R, categoryColor.G, categoryColor.B), 0),
+                new GradientStop(Colors.Transparent, 1)
+            }
+        };
+
+        // Border: ~20% opacity
+        NodeBorderBrush = new SolidColorBrush(Color.FromArgb(0x33, categoryColor.R, categoryColor.G, categoryColor.B));
+
+        // Node background: subtle category tint → surface
+        byte bgAlpha = (byte)(Category == NodeCategory.Output ? 0x14 : 0x0F);
+        NodeBackground = new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0.5, 0, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(0.5, 1, RelativeUnit.Relative),
+            GradientStops =
+            {
+                new GradientStop(Color.FromArgb(bgAlpha, categoryColor.R, categoryColor.G, categoryColor.B), 0),
+                new GradientStop(surfaceColor, 0.5)
+            }
+        };
     }
 
     private static string BuildConfigPreview(Dictionary<string, JsonElement> config)
