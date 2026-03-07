@@ -54,13 +54,14 @@ FlowForge lets you visually connect source, transform, and output nodes to build
 - **Keyboard Shortcuts** — Help dialog showing all available shortcuts
 - **Zoom-to-Fit** — Toolbar button to fit the entire graph into the viewport
 - **Config Tooltips** — Hover descriptions on all node configuration fields
-- **Midnight Theme** — Custom dark theme with GitHub Dark-inspired color palette
+- **Molten Forge Theme** — Custom dark theme with warm amber accent and category-colored nodes
 
 <p align="center">
   <img src="screenshots/node-pipeline.png" alt="Node Pipeline" width="600">
 </p>
 <p align="center">
-  <img src="screenshots/output-panel.png" alt="Output Panel">
+  <img src="screenshots/node-library.png" alt="Node Library" width="300">
+  <img src="screenshots/properties-panel.png" alt="Properties Panel" width="300">
 </p>
 
 ### CLI Runner
@@ -128,7 +129,7 @@ FlowForge/
 │   │   ├── ViewModels/           # 14 view models
 │   │   ├── Views/                # 5 view pairs + template selector
 │   │   ├── UndoRedo/             # Command pattern undo/redo system
-│   │   ├── Themes/               # MidnightTheme.axaml
+│   │   ├── Themes/               # MoltenForgeTheme.axaml
 │   │   └── Services/             # DialogService
 │   └── FlowForge.CLI/            # CLI runner (System.CommandLine)
 └── tests/
