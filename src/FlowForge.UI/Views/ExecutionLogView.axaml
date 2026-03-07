@@ -34,12 +34,12 @@
                               Command="{Binding SelectTabCommand}"
                               CommandParameter="0">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="Output" VerticalAlignment="Center" FontSize="14" />
+                        <TextBlock Text="Output" VerticalAlignment="Center" FontSize="12" />
                         <Border Background="#265ce0a0" CornerRadius="8" Padding="6,1"
                                 IsVisible="{Binding !!TotalFiles}">
                             <TextBlock Text="{Binding Succeeded}"
                                        Foreground="{DynamicResource ForgeSuccess}"
-                                       FontSize="15" FontWeight="SemiBold" />
+                                       FontSize="10" FontWeight="Bold" />
                         </Border>
                     </StackPanel>
                 </ToggleButton>
@@ -51,12 +51,12 @@
                               Command="{Binding SelectTabCommand}"
                               CommandParameter="1">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="Errors" VerticalAlignment="Center" FontSize="14" />
+                        <TextBlock Text="Errors" VerticalAlignment="Center" FontSize="12" />
                         <Border Background="#26f2716a" CornerRadius="8" Padding="6,1"
                                 IsVisible="{Binding !!Failed}">
                             <TextBlock Text="{Binding Failed}"
                                        Foreground="{DynamicResource ForgeError}"
-                                       FontSize="15" FontWeight="SemiBold" />
+                                       FontSize="10" FontWeight="Bold" />
                         </Border>
                     </StackPanel>
                 </ToggleButton>
@@ -68,12 +68,12 @@
                               Command="{Binding SelectTabCommand}"
                               CommandParameter="2">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="Warnings" VerticalAlignment="Center" FontSize="14" />
+                        <TextBlock Text="Warnings" VerticalAlignment="Center" FontSize="12" />
                         <Border Background="#26f5c842" CornerRadius="8" Padding="6,1"
                                 IsVisible="{Binding !!Skipped}">
                             <TextBlock Text="{Binding Skipped}"
                                        Foreground="{DynamicResource ForgeWarning}"
-                                       FontSize="15" FontWeight="SemiBold" />
+                                       FontSize="10" FontWeight="Bold" />
                         </Border>
                     </StackPanel>
                 </ToggleButton>
@@ -102,16 +102,16 @@
                     <TextBlock DockPanel.Dock="Right"
                                Text="{Binding ProgressText}"
                                Foreground="{DynamicResource ForgeTextSecondary}"
-                               FontSize="14" VerticalAlignment="Center"
+                               FontSize="12" VerticalAlignment="Center"
                                Margin="8,0,0,0" />
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <TextBlock Text="Processing"
                                    Foreground="{DynamicResource ForgeAccent}"
-                                   FontWeight="SemiBold" FontSize="14" />
+                                   FontWeight="SemiBold" FontSize="12" />
                         <TextBlock Text="{Binding CurrentFile}"
                                    TextTrimming="CharacterEllipsis"
                                    Foreground="{DynamicResource ForgeTextSecondary}"
-                                   FontSize="14" />
+                                   FontSize="12" />
                     </StackPanel>
                 </DockPanel>
                 <ProgressBar Grid.Row="1"

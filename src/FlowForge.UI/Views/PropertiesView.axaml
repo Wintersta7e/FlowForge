@@ -20,13 +20,13 @@
                            FontWeight="Bold"
                            Foreground="{DynamicResource ForgeTextMuted}" />
                 <Border IsVisible="{Binding HasSelection}"
-                        Background="{DynamicResource ForgeElevated}"
+                        Background="{Binding BadgeBackground}"
                         CornerRadius="8"
                         Padding="10,6">
                     <TextBlock Text="{Binding SelectedNodeTitle}"
                                FontSize="12"
                                FontWeight="SemiBold"
-                               Foreground="{DynamicResource ForgeAccent}" />
+                               Foreground="{Binding BadgeForeground}" />
                 </Border>
             </StackPanel>
         </Border>

@@ -27,15 +27,17 @@
                     </Style>
                 </Border.Styles>
                 <StackPanel Orientation="Horizontal" Spacing="10">
-                    <Border Width="28" Height="28" CornerRadius="8"
-                            Background="{DynamicResource ForgeElevated}">
+                    <Border Width="32" Height="32" CornerRadius="8"
+                            Background="{Binding IconBackground}">
                         <TextBlock Text="{Binding Icon}"
-                                   FontSize="14"
+                                   FontFamily="Segoe UI Emoji"
+                                   FontSize="15"
+                                   Foreground="{Binding IconForeground}"
                                    HorizontalAlignment="Center"
                                    VerticalAlignment="Center" />
                     </Border>
                     <TextBlock Text="{Binding DisplayName}"
-                               Foreground="{DynamicResource ForgeText}"
+                               Foreground="{DynamicResource ForgeTextSecondary}"
                                FontSize="12.5"
                                FontWeight="Medium"
                                VerticalAlignment="Center" />
@@ -47,19 +49,18 @@
     <DockPanel>
         <StackPanel DockPanel.Dock="Top" Margin="14,14,14,4">
             <TextBlock Text="NODE LIBRARY"
-                       FontSize="10"
+                       FontSize="11"
                        FontWeight="Bold"
+                       LetterSpacing="1.2"
                        Foreground="{DynamicResource ForgeTextMuted}"
                        Margin="0,0,0,2" />
-            <TextBlock Text="Drag or double-click to add"
-                       FontSize="11"
-                       Foreground="{DynamicResource ForgeTextSecondary}"
-                       Margin="0,2,0,0" />
         </StackPanel>
 
         <TextBox DockPanel.Dock="Top"
                  Text="{Binding SearchText}"
                  Watermark="Search nodes..."
+                 Background="{DynamicResource ForgeDeep}"
+                 CornerRadius="12"
                  Margin="10,10,10,4" />
 
         <TreeView ItemsSource="{Binding Groups}"
@@ -68,11 +69,19 @@
             <TreeView.ItemTemplate>
                 <TreeDataTemplate x:DataType="vm:NodeLibraryGroupViewModel"
                                   ItemsSource="{Binding Items}">
-                    <TextBlock Text="{Binding Category}"
-                               FontWeight="Bold"
-                               FontSize="10"
-                               Foreground="{DynamicResource ForgeTextMuted}"
-                               Margin="0,10,0,4" />
+                    <DockPanel Margin="0,10,0,4">
+                        <TextBlock DockPanel.Dock="Left"
+                                   Text="{Binding Category}"
+                                   FontWeight="ExtraBold"
+                                   FontSize="10"
+                                   LetterSpacing="1"
+                                   Foreground="{Binding CategoryBrush}" />
+                        <Border Height="1"
+                                VerticalAlignment="Center"
+                                Margin="8,0,0,0"
+                                Background="{Binding CategoryBrush}"
+                                Opacity="0.25" />
+                    </DockPanel>
                 </TreeDataTemplate>
             </TreeView.ItemTemplate>
         </TreeView>
