@@ -8,10 +8,10 @@
              x:Class="FlowForge.UI.Views.ExecutionLogView"
              x:DataType="vm:ExecutionLogViewModel">
 
-    <DockPanel Background="{DynamicResource MidnightPanel}">
+    <DockPanel Background="{DynamicResource ForgePanel}">
         <!-- Tab strip -->
         <Border DockPanel.Dock="Top"
-                BorderBrush="{DynamicResource MidnightBorder}"
+                BorderBrush="{DynamicResource ForgeBorder}"
                 BorderThickness="0,1,0,0">
             <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto">
                 <!-- Output tab -->
@@ -25,7 +25,7 @@
                         <Border Background="#1A3FB950" CornerRadius="8" Padding="6,1"
                                 IsVisible="{Binding !!TotalFiles}">
                             <TextBlock Text="{Binding Succeeded}"
-                                       Foreground="{DynamicResource MidnightSuccess}"
+                                       Foreground="{DynamicResource ForgeSuccess}"
                                        FontSize="15" FontWeight="SemiBold" />
                         </Border>
                     </StackPanel>
@@ -42,7 +42,7 @@
                         <Border Background="#1AF85149" CornerRadius="8" Padding="6,1"
                                 IsVisible="{Binding !!Failed}">
                             <TextBlock Text="{Binding Failed}"
-                                       Foreground="{DynamicResource MidnightError}"
+                                       Foreground="{DynamicResource ForgeError}"
                                        FontSize="15" FontWeight="SemiBold" />
                         </Border>
                     </StackPanel>
@@ -59,7 +59,7 @@
                         <Border Background="#1AD29922" CornerRadius="8" Padding="6,1"
                                 IsVisible="{Binding !!Skipped}">
                             <TextBlock Text="{Binding Skipped}"
-                                       Foreground="{DynamicResource MidnightWarning}"
+                                       Foreground="{DynamicResource ForgeWarning}"
                                        FontSize="15" FontWeight="SemiBold" />
                         </Border>
                     </StackPanel>
@@ -71,7 +71,7 @@
                            TextTrimming="CharacterEllipsis"
                            VerticalAlignment="Center"
                            HorizontalAlignment="Right"
-                           Foreground="{DynamicResource MidnightTextSecondary}"
+                           Foreground="{DynamicResource ForgeTextSecondary}"
                            FontSize="15"
                            Margin="8,0,12,0"
                            IsVisible="{Binding !IsRunning}" />
@@ -81,23 +81,23 @@
         <!-- Progress bar (docked below tab strip, visible when running) -->
         <Border DockPanel.Dock="Top"
                 Padding="12,6"
-                BorderBrush="{DynamicResource MidnightBorder}"
+                BorderBrush="{DynamicResource ForgeBorder}"
                 BorderThickness="0,0,0,1"
                 IsVisible="{Binding IsRunning}">
             <Grid RowDefinitions="Auto,Auto">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Right"
                                Text="{Binding ProgressText}"
-                               Foreground="{DynamicResource MidnightTextSecondary}"
+                               Foreground="{DynamicResource ForgeTextSecondary}"
                                FontSize="14" VerticalAlignment="Center"
                                Margin="8,0,0,0" />
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <TextBlock Text="Processing"
-                                   Foreground="{DynamicResource MidnightAccent}"
+                                   Foreground="{DynamicResource ForgeAccent}"
                                    FontWeight="SemiBold" FontSize="14" />
                         <TextBlock Text="{Binding CurrentFile}"
                                    TextTrimming="CharacterEllipsis"
-                                   Foreground="{DynamicResource MidnightTextSecondary}"
+                                   Foreground="{DynamicResource ForgeTextSecondary}"
                                    FontSize="14" />
                     </StackPanel>
                 </DockPanel>
@@ -116,26 +116,26 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:FileJobLogEntryViewModel">
                                 <Border Padding="12,3"
-                                        BorderBrush="{DynamicResource MidnightBorder}"
+                                        BorderBrush="{DynamicResource ForgeBorder}"
                                         BorderThickness="0,0,0,1">
                                     <Grid ColumnDefinitions="55,Auto,*">
                                         <Panel Grid.Column="0">
                                             <TextBlock Text="{Binding StatusText}"
                                                        FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
                                                        FontWeight="Bold" FontSize="15"
-                                                       Foreground="{DynamicResource MidnightSuccess}"
+                                                       Foreground="{DynamicResource ForgeSuccess}"
                                                        VerticalAlignment="Center"
                                                        IsVisible="{Binding IsSuccess}" />
                                             <TextBlock Text="{Binding StatusText}"
                                                        FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
                                                        FontWeight="Bold" FontSize="15"
-                                                       Foreground="{DynamicResource MidnightError}"
+                                                       Foreground="{DynamicResource ForgeError}"
                                                        VerticalAlignment="Center"
                                                        IsVisible="{Binding IsError}" />
                                             <TextBlock Text="{Binding StatusText}"
                                                        FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
                                                        FontWeight="Bold" FontSize="15"
-                                                       Foreground="{DynamicResource MidnightWarning}"
+                                                       Foreground="{DynamicResource ForgeWarning}"
                                                        VerticalAlignment="Center"
                                                        IsVisible="{Binding IsWarning}" />
                                         </Panel>
@@ -143,13 +143,13 @@
                                                    Text="{Binding FileName}"
                                                    FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
                                                    VerticalAlignment="Center"
-                                                   Foreground="{DynamicResource MidnightText}"
+                                                   Foreground="{DynamicResource ForgeText}"
                                                    FontSize="15"
                                                    Margin="0,0,8,0" />
                                         <TextBlock Grid.Column="2"
                                                    Text="{Binding ErrorMessage}"
                                                    FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
-                                                   Foreground="{DynamicResource MidnightError}"
+                                                   Foreground="{DynamicResource ForgeError}"
                                                    FontSize="15"
                                                    VerticalAlignment="Center"
                                                    TextTrimming="CharacterEllipsis"
@@ -167,7 +167,7 @@
                 <TextBlock Text="No errors"
                            HorizontalAlignment="Center"
                            VerticalAlignment="Center"
-                           Foreground="{DynamicResource MidnightTextMuted}"
+                           Foreground="{DynamicResource ForgeTextMuted}"
                            FontSize="15"
                            IsVisible="{Binding !ErrorEntries.Count}" />
 
@@ -176,26 +176,26 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:FileJobLogEntryViewModel">
                                 <Border Padding="12,3"
-                                        BorderBrush="{DynamicResource MidnightBorder}"
+                                        BorderBrush="{DynamicResource ForgeBorder}"
                                         BorderThickness="0,0,0,1">
                                     <Grid ColumnDefinitions="55,Auto,*">
                                         <TextBlock Grid.Column="0"
                                                    Text="{Binding StatusText}"
                                                    FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
                                                    FontWeight="Bold" FontSize="15"
-                                                   Foreground="{DynamicResource MidnightError}"
+                                                   Foreground="{DynamicResource ForgeError}"
                                                    VerticalAlignment="Center" />
                                         <TextBlock Grid.Column="1"
                                                    Text="{Binding FileName}"
                                                    FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
                                                    VerticalAlignment="Center"
-                                                   Foreground="{DynamicResource MidnightText}"
+                                                   Foreground="{DynamicResource ForgeText}"
                                                    FontSize="15"
                                                    Margin="0,0,8,0" />
                                         <TextBlock Grid.Column="2"
                                                    Text="{Binding ErrorMessage}"
                                                    FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
-                                                   Foreground="{DynamicResource MidnightError}"
+                                                   Foreground="{DynamicResource ForgeError}"
                                                    FontSize="15"
                                                    VerticalAlignment="Center"
                                                    TextTrimming="CharacterEllipsis" />
@@ -212,7 +212,7 @@
                 <TextBlock Text="No warnings"
                            HorizontalAlignment="Center"
                            VerticalAlignment="Center"
-                           Foreground="{DynamicResource MidnightTextMuted}"
+                           Foreground="{DynamicResource ForgeTextMuted}"
                            FontSize="15"
                            IsVisible="{Binding !WarningEntries.Count}" />
 
@@ -221,26 +221,26 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:FileJobLogEntryViewModel">
                                 <Border Padding="12,3"
-                                        BorderBrush="{DynamicResource MidnightBorder}"
+                                        BorderBrush="{DynamicResource ForgeBorder}"
                                         BorderThickness="0,0,0,1">
                                     <Grid ColumnDefinitions="55,Auto,*">
                                         <TextBlock Grid.Column="0"
                                                    Text="{Binding StatusText}"
                                                    FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
                                                    FontWeight="Bold" FontSize="15"
-                                                   Foreground="{DynamicResource MidnightWarning}"
+                                                   Foreground="{DynamicResource ForgeWarning}"
                                                    VerticalAlignment="Center" />
                                         <TextBlock Grid.Column="1"
                                                    Text="{Binding FileName}"
                                                    FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
                                                    VerticalAlignment="Center"
-                                                   Foreground="{DynamicResource MidnightText}"
+                                                   Foreground="{DynamicResource ForgeText}"
                                                    FontSize="15"
                                                    Margin="0,0,8,0" />
                                         <TextBlock Grid.Column="2"
                                                    Text="{Binding ErrorMessage}"
                                                    FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
-                                                   Foreground="{DynamicResource MidnightWarning}"
+                                                   Foreground="{DynamicResource ForgeWarning}"
                                                    FontSize="15"
                                                    VerticalAlignment="Center"
                                                    TextTrimming="CharacterEllipsis"

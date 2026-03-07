@@ -18,7 +18,7 @@
                              PendingConnection="{Binding PendingConnection}"
                              ItemsDragStartedCommand="{Binding ItemsDragStartedCommand}"
                              ItemsDragCompletedCommand="{Binding ItemsDragCompletedCommand}"
-                             Background="{DynamicResource MidnightBg}"
+                             Background="{DynamicResource ForgeBg}"
                              DragDrop.AllowDrop="True">
 
             <nodify:NodifyEditor.Styles>
@@ -81,7 +81,7 @@
                         Spacing="16"
                         MaxWidth="360">
                 <PathIcon Data="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z"
-                          Foreground="{DynamicResource MidnightTextMuted}"
+                          Foreground="{DynamicResource ForgeTextMuted}"
                           Width="48" Height="48"
                           HorizontalAlignment="Center" />
 
@@ -89,18 +89,18 @@
                     <TextBlock Text="Drag a node from the sidebar"
                                FontSize="16"
                                FontWeight="SemiBold"
-                               Foreground="{DynamicResource MidnightText}"
+                               Foreground="{DynamicResource ForgeText}"
                                HorizontalAlignment="Center" />
                     <TextBlock Text="or double-click to add"
                                FontSize="16"
                                FontWeight="SemiBold"
-                               Foreground="{DynamicResource MidnightText}"
+                               Foreground="{DynamicResource ForgeText}"
                                HorizontalAlignment="Center" />
                 </StackPanel>
 
                 <TextBlock Text="&#x2014; or use a template &#x2014;"
                            FontSize="12"
-                           Foreground="{DynamicResource MidnightTextSecondary}"
+                           Foreground="{DynamicResource ForgeTextSecondary}"
                            HorizontalAlignment="Center" />
 
                 <WrapPanel HorizontalAlignment="Center" Orientation="Horizontal">

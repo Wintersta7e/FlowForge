@@ -20,11 +20,11 @@
                     PointerReleased="OnLibraryItemPointerReleased">
                 <Border.Styles>
                     <Style Selector="Border:pointerover">
-                        <Setter Property="Background" Value="{DynamicResource MidnightElevated}" />
+                        <Setter Property="Background" Value="{DynamicResource ForgeElevated}" />
                     </Style>
                 </Border.Styles>
                 <TextBlock Text="{Binding DisplayName}"
-                           Foreground="{DynamicResource MidnightText}"
+                           Foreground="{DynamicResource ForgeText}"
                            FontSize="12" />
             </Border>
         </DataTemplate>
@@ -35,10 +35,10 @@
             <TextBlock Text="Nodes"
                        FontSize="16"
                        FontWeight="SemiBold"
-                       Foreground="{DynamicResource MidnightText}" />
+                       Foreground="{DynamicResource ForgeText}" />
             <TextBlock Text="Drag or double-click to add"
                        FontSize="11"
-                       Foreground="{DynamicResource MidnightTextSecondary}"
+                       Foreground="{DynamicResource ForgeTextSecondary}"
                        Margin="0,2,0,0" />
         </StackPanel>
 
@@ -56,7 +56,7 @@
                     <TextBlock Text="{Binding Category}"
                                FontWeight="SemiBold"
                                FontSize="13"
-                               Foreground="{DynamicResource MidnightTextSecondary}"
+                               Foreground="{DynamicResource ForgeTextSecondary}"
                                Margin="0,8,0,4" />
                 </TreeDataTemplate>
             </TreeView.ItemTemplate>

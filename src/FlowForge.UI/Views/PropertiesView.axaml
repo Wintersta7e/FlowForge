@@ -12,16 +12,16 @@
     <DockPanel>
         <Border DockPanel.Dock="Top"
                 Padding="12,12,12,8"
-                BorderBrush="{DynamicResource MidnightBorder}"
+                BorderBrush="{DynamicResource ForgeBorder}"
                 BorderThickness="0,0,0,1">
             <StackPanel>
                 <TextBlock Text="Properties"
                            FontSize="16"
                            FontWeight="SemiBold"
-                           Foreground="{DynamicResource MidnightText}" />
+                           Foreground="{DynamicResource ForgeText}" />
                 <TextBlock Text="{Binding SelectedNodeTitle}"
                            FontSize="12"
-                           Foreground="{DynamicResource MidnightTextSecondary}"
+                           Foreground="{DynamicResource ForgeTextSecondary}"
                            IsVisible="{Binding HasSelection}"
                            Margin="0,2,0,0" />
             </StackPanel>
@@ -34,13 +34,13 @@
                     Margin="16">
             <TextBlock Text="Select a node on the canvas"
                        FontSize="13"
-                       Foreground="{DynamicResource MidnightTextSecondary}"
+                       Foreground="{DynamicResource ForgeTextSecondary}"
                        HorizontalAlignment="Center"
                        TextWrapping="Wrap"
                        TextAlignment="Center" />
             <TextBlock Text="to edit its settings"
                        FontSize="13"
-                       Foreground="{DynamicResource MidnightTextSecondary}"
+                       Foreground="{DynamicResource ForgeTextSecondary}"
                        HorizontalAlignment="Center"
                        TextWrapping="Wrap"
                        TextAlignment="Center" />

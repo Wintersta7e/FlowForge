@@ -5,13 +5,13 @@
         Width="400" Height="400"
         CanResize="False"
         WindowStartupLocation="CenterOwner"
-        Background="{DynamicResource MidnightPanel}">
+        Background="{DynamicResource ForgePanel}">
 
     <StackPanel Margin="24" Spacing="16">
         <TextBlock Text="Keyboard Shortcuts"
                    FontSize="20"
                    FontWeight="Bold"
-                   Foreground="{DynamicResource MidnightText}" />
+                   Foreground="{DynamicResource ForgeText}" />
 
         <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
               Margin="0,8,0,0">
@@ -19,12 +19,12 @@
                 <Style Selector="TextBlock.key">
                     <Setter Property="FontFamily" Value="Cascadia Mono,Consolas,monospace" />
                     <Setter Property="FontSize" Value="13" />
-                    <Setter Property="Foreground" Value="{DynamicResource MidnightAccent}" />
+                    <Setter Property="Foreground" Value="{DynamicResource ForgeAccent}" />
                     <Setter Property="Margin" Value="0,4,24,4" />
                 </Style>
                 <Style Selector="TextBlock.desc">
                     <Setter Property="FontSize" Value="13" />
-                    <Setter Property="Foreground" Value="{DynamicResource MidnightText}" />
+                    <Setter Property="Foreground" Value="{DynamicResource ForgeText}" />
                     <Setter Property="Margin" Value="0,4" />
                     <Setter Property="VerticalAlignment" Value="Center" />
                 </Style>

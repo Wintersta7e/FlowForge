@@ -8,8 +8,8 @@
              x:Class="FlowForge.UI.Views.ToolbarView"
              x:DataType="vm:MainWindowViewModel">
 
-    <Border Background="{DynamicResource MidnightPanel}"
-            BorderBrush="{DynamicResource MidnightBorder}"
+    <Border Background="{DynamicResource ForgePanel}"
+            BorderBrush="{DynamicResource ForgeBorder}"
             BorderThickness="0,0,0,1"
             Padding="8,4">
         <DockPanel>
@@ -21,14 +21,14 @@
                 <TextBlock Text="?"
                            FontWeight="Bold"
                            FontSize="14"
-                           Foreground="{DynamicResource MidnightText}"
+                           Foreground="{DynamicResource ForgeText}"
                            HorizontalAlignment="Center"
                            VerticalAlignment="Center" />
             </Button>
 
             <TextBlock DockPanel.Dock="Right"
                        Text="{Binding Title}"
-                       Foreground="{DynamicResource MidnightTextSecondary}"
+                       Foreground="{DynamicResource ForgeTextSecondary}"
                        VerticalAlignment="Center"
                        FontSize="12"
                        Margin="8,0" />
@@ -38,14 +38,14 @@
                         Command="{Binding NewCommand}"
                         ToolTip.Tip="New Pipeline (Ctrl+N)">
                     <PathIcon Data="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"
-                              Foreground="{DynamicResource MidnightText}"
+                              Foreground="{DynamicResource ForgeText}"
                               Width="16" Height="16" />
                 </Button>
                 <Button Classes="toolbarIcon"
                         Command="{Binding OpenCommand}"
                         ToolTip.Tip="Open Pipeline (Ctrl+O)">
                     <PathIcon Data="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z"
-                              Foreground="{DynamicResource MidnightText}"
+                              Foreground="{DynamicResource ForgeText}"
                               Width="16" Height="16" />
                 </Button>
                 <Button x:Name="RecentButton"
@@ -55,21 +55,21 @@
                         <MenuFlyout Placement="BottomEdgeAlignedLeft" />
                     </Button.Flyout>
                     <PathIcon Data="M12,6V9L16,5L12,1V4A8,8 0 0,0 4,12C4,13.57 4.46,15.03 5.24,16.26L6.7,14.8C6.25,13.97 6,13 6,12A6,6 0 0,1 12,6M18.76,7.74L17.3,9.2C17.74,10.04 18,11 18,12A6,6 0 0,1 12,18V15L8,19L12,23V20A8,8 0 0,0 20,12C20,10.43 19.54,8.97 18.76,7.74Z"
-                              Foreground="{DynamicResource MidnightText}"
+                              Foreground="{DynamicResource ForgeText}"
                               Width="16" Height="16" />
                 </Button>
                 <Button Classes="toolbarIcon"
                         Command="{Binding SaveCommand}"
                         ToolTip.Tip="Save (Ctrl+S)">
                     <PathIcon Data="M15,9H5V5H15M12,19A3,3 0 0,1 9,16A3,3 0 0,1 12,13A3,3 0 0,1 15,16A3,3 0 0,1 12,19M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V7L17,3Z"
-                              Foreground="{DynamicResource MidnightText}"
+                              Foreground="{DynamicResource ForgeText}"
                               Width="16" Height="16" />
                 </Button>
                 <Button Classes="toolbarIcon"
                         Command="{Binding SaveAsCommand}"
                         ToolTip.Tip="Save As (Ctrl+Shift+S)">
                     <PathIcon Data="M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V7L17,3M15,9H5V5H15M12,19A3,3 0 0,1 9,16A3,3 0 0,1 12,13A3,3 0 0,1 15,16A3,3 0 0,1 12,19Z"
-                              Foreground="{DynamicResource MidnightTextSecondary}"
+                              Foreground="{DynamicResource ForgeTextSecondary}"
                               Width="16" Height="16" />
                 </Button>
 
@@ -77,13 +77,13 @@
                         ToolTip.Tip="Fit to Screen (Ctrl+0)"
                         Click="OnFitToScreenClick">
                     <PathIcon Data="M3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5A2,2 0 0,0 19,3H5A2,2 0 0,0 3,5M5,5H19V19H5V5M7,7V9H9V7H7M15,7V9H17V7H15M7,15V17H9V15H7M15,15V17H17V15H15Z"
-                              Foreground="{DynamicResource MidnightText}"
+                              Foreground="{DynamicResource ForgeText}"
                               Width="16" Height="16" />
                 </Button>
 
                 <Border Width="1"
                         Height="24"
-                        Background="{DynamicResource MidnightBorder}"
+                        Background="{DynamicResource ForgeBorder}"
                         VerticalAlignment="Center"
                         Margin="4,0" />
 
@@ -115,9 +115,9 @@
                         Padding="12,4">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <PathIcon Data="M18,18H6V6H18V18Z"
-                                  Foreground="{DynamicResource MidnightError}"
+                                  Foreground="{DynamicResource ForgeError}"
                                   Width="12" Height="12" />
-                        <TextBlock Text="Stop" Foreground="{DynamicResource MidnightError}" VerticalAlignment="Center" />
+                        <TextBlock Text="Stop" Foreground="{DynamicResource ForgeError}" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
             </StackPanel>
