@@ -19,12 +19,32 @@
                              ItemsDragStartedCommand="{Binding ItemsDragStartedCommand}"
                              ItemsDragCompletedCommand="{Binding ItemsDragCompletedCommand}"
                              Background="{DynamicResource ForgeBg}"
+                             GridCellSize="20"
                              DragDrop.AllowDrop="True">
 
             <nodify:NodifyEditor.Styles>
                 <Style Selector="nodify|ItemContainer" x:DataType="vm:PipelineNodeViewModel">
                     <Setter Property="Location" Value="{Binding Location, Mode=TwoWay}" />
                     <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                </Style>
+                <Style Selector="nodifyNodes|Node">
+                    <Setter Property="CornerRadius" Value="16" />
+                    <Setter Property="Background" Value="{DynamicResource ForgeSurface}" />
+                    <Setter Property="Foreground" Value="{DynamicResource ForgeText}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource ForgeBorder}" />
+                    <Setter Property="BorderThickness" Value="1" />
+                    <Setter Property="Padding" Value="0" />
+                    <Setter Property="FontSize" Value="13" />
+                </Style>
+                <Style Selector="nodifyConn|Connector">
+                    <Setter Property="Width" Value="12" />
+                    <Setter Property="Height" Value="12" />
+                    <Setter Property="Background" Value="{DynamicResource ForgeAccent}" />
+                    <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+                    <Setter Property="RenderTransform">
+                        <RotateTransform Angle="45" />
+                    </Setter>
+                    <Setter Property="CornerRadius" Value="2" />
                 </Style>
             </nodify:NodifyEditor.Styles>
 
@@ -54,7 +74,9 @@
             <nodify:NodifyEditor.ConnectionTemplate>
                 <DataTemplate x:DataType="vm:PipelineConnectionViewModel">
                     <nodifyConn:Connection Source="{Binding Source.Anchor}"
-                                           Target="{Binding Target.Anchor}" />
+                                           Target="{Binding Target.Anchor}"
+                                           Stroke="{DynamicResource ForgeAccent}"
+                                           StrokeThickness="2.5" />
                 </DataTemplate>
             </nodify:NodifyEditor.ConnectionTemplate>
 
@@ -73,54 +95,81 @@
 
         <!-- Empty state overlay -->
         <Border IsVisible="{Binding !HasNodes}"
-                Background="#B00D1117"
                 IsHitTestVisible="True"
                 DragDrop.AllowDrop="True">
+            <Border.Background>
+                <SolidColorBrush Color="#08070a" Opacity="0.7" />
+            </Border.Background>
             <StackPanel HorizontalAlignment="Center"
                         VerticalAlignment="Center"
-                        Spacing="16"
-                        MaxWidth="360">
-                <PathIcon Data="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z"
-                          Foreground="{DynamicResource ForgeTextMuted}"
-                          Width="48" Height="48"
-                          HorizontalAlignment="Center" />
+                        Spacing="20"
+                        MaxWidth="400">
 
-                <StackPanel Spacing="4" HorizontalAlignment="Center">
-                    <TextBlock Text="Drag a node from the sidebar"
-                               FontSize="16"
-                               FontWeight="SemiBold"
-                               Foreground="{DynamicResource ForgeText}"
-                               HorizontalAlignment="Center" />
-                    <TextBlock Text="or double-click to add"
-                               FontSize="16"
-                               FontWeight="SemiBold"
-                               Foreground="{DynamicResource ForgeText}"
-                               HorizontalAlignment="Center" />
-                </StackPanel>
+                <!-- Large forge icon with glow ring -->
+                <Border Width="84" Height="84"
+                        CornerRadius="22"
+                        HorizontalAlignment="Center"
+                        BorderThickness="2"
+                        BorderBrush="{DynamicResource ForgeAccent}">
+                    <Border.Background>
+                        <SolidColorBrush Color="#e8932f" Opacity="0.08" />
+                    </Border.Background>
+                    <PathIcon Data="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z"
+                              Foreground="{DynamicResource ForgeAccent}"
+                              Width="40" Height="40"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center" />
+                </Border>
 
-                <TextBlock Text="&#x2014; or use a template &#x2014;"
-                           FontSize="12"
-                           Foreground="{DynamicResource ForgeTextSecondary}"
+                <!-- Heading -->
+                <TextBlock Text="Forge your pipeline"
+                           FontSize="20"
+                           FontWeight="Bold"
+                           Foreground="{DynamicResource ForgeAccent}"
                            HorizontalAlignment="Center" />
 
-                <WrapPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                <TextBlock Text="Drag nodes from the sidebar or start with a template"
+                           FontSize="13"
+                           Foreground="{DynamicResource ForgeTextSecondary}"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center" />
+
+                <!-- Template buttons 2x2 grid -->
+                <UniformGrid Columns="2" HorizontalAlignment="Center"
+                             Rows="2" MaxWidth="320">
                     <Button Classes="templateButton" Margin="4"
-                            Content="Photo Import"
                             Tag="photo-import-by-date"
-                            Click="OnTemplateButtonClick" />
+                            Click="OnTemplateButtonClick">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="&#x1F4F7;" FontSize="16" VerticalAlignment="Center" />
+                            <TextBlock Text="Photo Import" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
                     <Button Classes="templateButton" Margin="4"
-                            Content="Batch Rename"
                             Tag="batch-sequential-rename"
-                            Click="OnTemplateButtonClick" />
+                            Click="OnTemplateButtonClick">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="&#x270E;" FontSize="16" VerticalAlignment="Center" />
+                            <TextBlock Text="Batch Rename" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
                     <Button Classes="templateButton" Margin="4"
-                            Content="Web Export"
                             Tag="image-web-export"
-                            Click="OnTemplateButtonClick" />
+                            Click="OnTemplateButtonClick">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="&#x1F310;" FontSize="16" VerticalAlignment="Center" />
+                            <TextBlock Text="Web Export" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
                     <Button Classes="templateButton" Margin="4"
-                            Content="Compress"
                             Tag="bulk-image-compress"
-                            Click="OnTemplateButtonClick" />
-                </WrapPanel>
+                            Click="OnTemplateButtonClick">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="&#x1F4E6;" FontSize="16" VerticalAlignment="Center" />
+                            <TextBlock Text="Compress" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </UniformGrid>
             </StackPanel>
         </Border>
     </Grid>
