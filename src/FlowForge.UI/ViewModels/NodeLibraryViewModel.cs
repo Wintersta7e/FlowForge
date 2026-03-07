@@ -47,7 +47,8 @@ public partial class NodeLibraryViewModel : ViewModelBase
                 categoryItems[categoryName] = existingItems;
             }
 
-            existingItems.Add(new NodeLibraryItemViewModel(typeKey, displayName));
+            string icon = GetIconForTypeKey(typeKey);
+            existingItems.Add(new NodeLibraryItemViewModel(typeKey, displayName, icon));
         }
 
         // Add groups in canonical order: Input, Process, Save To
@@ -61,6 +62,25 @@ public partial class NodeLibraryViewModel : ViewModelBase
                 Groups.Add(group);
             }
         }
+    }
+
+    private static string GetIconForTypeKey(string typeKey)
+    {
+        return typeKey switch
+        {
+            "FolderInput" => "\U0001F4C1",
+            "PatternRename" => "\u270E",
+            "RegexRename" => ".*",
+            "AffixRename" => "+a",
+            "Filter" => "\U0001F50D",
+            "Sort" => "\u21C5",
+            "ImageResize" => "\U0001F4F7",
+            "ImageConvert" => "\U0001F3A8",
+            "ImageCompress" => "\U0001F4E6",
+            "MetadataExtract" => "\U0001F4C4",
+            "FolderOutput" => "\U0001F4E5",
+            _ => "\u2699",
+        };
     }
 
     private void FilterItems()
