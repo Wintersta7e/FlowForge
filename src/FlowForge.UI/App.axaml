@@ -6,7 +6,7 @@
     <Application.Styles>
         <FluentTheme />
         <StyleInclude Source="avares://Nodify.Avalonia/Themes/Controls.xaml" />
-        <StyleInclude Source="avares://FlowForge.UI/Themes/MidnightTheme.axaml" />
+        <StyleInclude Source="avares://FlowForge.UI/Themes/MoltenForgeTheme.axaml" />
     </Application.Styles>
 
     <Application.Resources>

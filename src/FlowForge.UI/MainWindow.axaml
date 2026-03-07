@@ -12,11 +12,11 @@
         Width="1200" Height="700"
         MinWidth="800" MinHeight="500"
         Icon="avares://FlowForge.UI/Assets/icon.png"
-        FontSize="14"
-        Background="{DynamicResource MidnightBg}"
+        FontSize="13"
+        Background="{DynamicResource ForgeBg}"
         KeyDown="OnKeyDown">
 
-    <Grid RowDefinitions="Auto,*,Auto,180">
+    <Grid RowDefinitions="Auto,*,Auto,185">
         <!-- Toolbar (row 0) -->
         <views:ToolbarView Grid.Row="0"
                            DataContext="{Binding}" />
@@ -25,18 +25,18 @@
         <DockPanel Grid.Row="1">
             <!-- Node library (left) -->
             <Border DockPanel.Dock="Left"
-                    Width="200"
-                    Background="{DynamicResource MidnightPanel}"
-                    BorderBrush="{DynamicResource MidnightBorder}"
+                    Width="250"
+                    Background="{DynamicResource ForgePanel}"
+                    BorderBrush="{DynamicResource ForgeBorder}"
                     BorderThickness="0,0,1,0">
                 <views:NodeLibraryView DataContext="{Binding NodeLibrary}" />
             </Border>
 
             <!-- Properties panel (right) -->
             <Border DockPanel.Dock="Right"
-                    Width="250"
-                    Background="{DynamicResource MidnightPanel}"
-                    BorderBrush="{DynamicResource MidnightBorder}"
+                    Width="290"
+                    Background="{DynamicResource ForgePanel}"
+                    BorderBrush="{DynamicResource ForgeBorder}"
                     BorderThickness="1,0,0,0">
                 <views:PropertiesView DataContext="{Binding Properties}" />
             </Border>
@@ -49,7 +49,7 @@
         <GridSplitter Grid.Row="2"
                       Height="4"
                       HorizontalAlignment="Stretch"
-                      Background="{DynamicResource MidnightBorder}"
+                      Background="{DynamicResource ForgeBorder}"
                       ResizeDirection="Rows" />
 
         <!-- Output panel (row 3) -->

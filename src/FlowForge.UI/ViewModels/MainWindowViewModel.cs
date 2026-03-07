@@ -371,6 +371,18 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private void Undo()
+    {
+        Editor.Undo();
+    }
+
+    [RelayCommand]
+    private void Redo()
+    {
+        Editor.Redo();
+    }
+
+    [RelayCommand]
     private void LoadTemplate(string templateId)
     {
         try
