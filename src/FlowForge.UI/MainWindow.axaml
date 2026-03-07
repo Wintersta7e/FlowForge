@@ -16,7 +16,7 @@
         Background="{DynamicResource ForgeBg}"
         KeyDown="OnKeyDown">
 
-    <Grid RowDefinitions="Auto,*,Auto,180">
+    <Grid RowDefinitions="Auto,*,Auto,185">
         <!-- Toolbar (row 0) -->
         <views:ToolbarView Grid.Row="0"
                            DataContext="{Binding}" />
@@ -25,7 +25,7 @@
         <DockPanel Grid.Row="1">
             <!-- Node library (left) -->
             <Border DockPanel.Dock="Left"
-                    Width="200"
+                    Width="250"
                     Background="{DynamicResource ForgePanel}"
                     BorderBrush="{DynamicResource ForgeBorder}"
                     BorderThickness="0,0,1,0">
@@ -34,7 +34,7 @@
 
             <!-- Properties panel (right) -->
             <Border DockPanel.Dock="Right"
-                    Width="250"
+                    Width="290"
                     Background="{DynamicResource ForgePanel}"
                     BorderBrush="{DynamicResource ForgeBorder}"
                     BorderThickness="1,0,0,0">
