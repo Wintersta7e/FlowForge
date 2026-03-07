@@ -5,49 +5,47 @@
              xmlns:vm="using:FlowForge.UI.ViewModels"
              xmlns:views="using:FlowForge.UI.Views"
              mc:Ignorable="d"
-             d:DesignWidth="250" d:DesignHeight="600"
+             d:DesignWidth="290" d:DesignHeight="600"
              x:Class="FlowForge.UI.Views.PropertiesView"
              x:DataType="vm:PropertiesViewModel">
 
     <DockPanel>
         <Border DockPanel.Dock="Top"
-                Padding="12,12,12,8"
+                Padding="14,14,14,10"
                 BorderBrush="{DynamicResource ForgeBorder}"
                 BorderThickness="0,0,0,1">
-            <StackPanel>
-                <TextBlock Text="Properties"
-                           FontSize="16"
-                           FontWeight="SemiBold"
-                           Foreground="{DynamicResource ForgeText}" />
-                <TextBlock Text="{Binding SelectedNodeTitle}"
-                           FontSize="12"
-                           Foreground="{DynamicResource ForgeTextSecondary}"
-                           IsVisible="{Binding HasSelection}"
-                           Margin="0,2,0,0" />
+            <StackPanel Spacing="8">
+                <TextBlock Text="PROPERTIES"
+                           FontSize="10"
+                           FontWeight="Bold"
+                           Foreground="{DynamicResource ForgeTextMuted}" />
+                <Border IsVisible="{Binding HasSelection}"
+                        Background="{DynamicResource ForgeElevated}"
+                        CornerRadius="8"
+                        Padding="10,6">
+                    <TextBlock Text="{Binding SelectedNodeTitle}"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource ForgeAccent}" />
+                </Border>
             </StackPanel>
         </Border>
 
         <StackPanel IsVisible="{Binding !HasSelection}"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
-                    Spacing="8"
+                    Spacing="4"
                     Margin="16">
-            <TextBlock Text="Select a node on the canvas"
+            <TextBlock Text="Select a node to edit its settings"
                        FontSize="13"
-                       Foreground="{DynamicResource ForgeTextSecondary}"
-                       HorizontalAlignment="Center"
-                       TextWrapping="Wrap"
-                       TextAlignment="Center" />
-            <TextBlock Text="to edit its settings"
-                       FontSize="13"
-                       Foreground="{DynamicResource ForgeTextSecondary}"
+                       Foreground="{DynamicResource ForgeTextMuted}"
                        HorizontalAlignment="Center"
                        TextWrapping="Wrap"
                        TextAlignment="Center" />
         </StackPanel>
 
         <ScrollViewer IsVisible="{Binding HasSelection}"
-                      Padding="8">
+                      Padding="10">
             <ItemsControl ItemsSource="{Binding Fields}">
                 <ItemsControl.ItemTemplate>
                     <views:ConfigFieldTemplateSelector />
