@@ -22,9 +22,9 @@ public partial class PipelineNodeViewModel : ViewModelBase
         return new SolidColorBrush(Color.Parse(fallback));
     }
 
-    private static readonly IBrush SourceBrush = GetBrush("MidnightSource", "#58A6FF");
-    private static readonly IBrush TransformBrush = GetBrush("MidnightTransform", "#3FB950");
-    private static readonly IBrush OutputBrush = GetBrush("MidnightOutput", "#D29922");
+    private static readonly IBrush SourceBrush = GetBrush("ForgeSource", "#5bb8f5");
+    private static readonly IBrush TransformBrush = GetBrush("ForgeTransform", "#5ce0a0");
+    private static readonly IBrush OutputBrush = GetBrush("ForgeOutput", "#e8932f");
 
     [ObservableProperty]
     private Point _location;
