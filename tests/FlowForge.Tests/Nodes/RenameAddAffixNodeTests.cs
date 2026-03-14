@@ -119,4 +119,12 @@ public class RenameAddAffixNodeTests
 
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
+
+    [Fact]
+    public void Configure_prefix_with_path_separator_throws()
+    {
+        var node = new RenameAddAffixNode(NullLogger<RenameAddAffixNode>.Instance);
+        Action act = () => node.Configure(MakeConfig(new { prefix = "../../" }));
+        act.Should().Throw<NodeConfigurationException>();
+    }
 }

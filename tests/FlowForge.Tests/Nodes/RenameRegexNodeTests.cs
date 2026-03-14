@@ -178,4 +178,21 @@ public class RenameRegexNodeTests
         Func<Task> act = () => node.TransformAsync(job, dryRun: true, ct: cts.Token);
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
+
+    [Fact]
+    public async Task TransformAsync_pathological_regex_times_out_and_fails()
+    {
+        var node = new RenameRegexNode(NullLogger<RenameRegexNode>.Instance);
+        node.Configure(MakeConfig(new { pattern = @"(a+)+$", replacement = "x", scope = "filename" }));
+
+        // Pathological input: many 'a's followed by '!' to trigger catastrophic backtracking
+        string maliciousName = new string('a', 30) + "!.txt";
+        FileJob job = MakeJob(Path.Combine("/tmp", maliciousName));
+
+        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+
+        result.Should().ContainSingle();
+        job.Status.Should().Be(FileJobStatus.Failed);
+        job.ErrorMessage.Should().Contain("regex match timed out");
+    }
 }

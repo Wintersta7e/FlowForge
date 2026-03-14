@@ -3,6 +3,7 @@ using FluentAssertions;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Transforms;
 using FlowForge.Core.Nodes.Base;
+using FlowForge.Tests.Helpers;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlowForge.Tests.Nodes;
@@ -159,5 +160,40 @@ public class RenamePatternNodeTests
 
         Action act = () => node.Configure(emptyConfig);
         act.Should().Throw<NodeConfigurationException>();
+    }
+
+    [Fact]
+    public async Task CancellationToken_cancelled_throws_OperationCanceledException()
+    {
+        var node = new RenamePatternNode(NullLogger<RenamePatternNode>.Instance);
+        node.Configure(MakeConfig("{name}{ext}"));
+
+        FileJob job = MakeJob(Path.Combine("/tmp", "test.txt"));
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        Func<Task> act = () => node.TransformAsync(job, dryRun: true, ct: cts.Token);
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
+    public async Task TransformAsync_path_traversal_blocked()
+    {
+        using var dir = new TempDirectory();
+        dir.CreateFiles("malicious.txt");
+
+        string filePath = Path.Combine(dir.Path, "malicious.txt");
+        var node = new RenamePatternNode(NullLogger<RenamePatternNode>.Instance);
+        node.Configure(MakeConfig("{name}{ext}"));
+
+        var job = new FileJob
+        {
+            OriginalPath = Path.Combine(dir.Path, "..", "..", "malicious.txt"),
+            CurrentPath = Path.Combine(dir.Path, "..", "..", "malicious.txt")
+        };
+
+        Func<Task> act = () => node.TransformAsync(job, dryRun: false);
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Path traversal blocked*");
     }
 }

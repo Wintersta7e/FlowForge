@@ -119,6 +119,8 @@ public class FolderOutputNode : IOutputNode
 
         string destinationPath = Path.Combine(destinationDir, fileName);
 
+        PathGuard.EnsureWithinDirectory(destinationPath, _path);
+
         if (dryRun)
         {
             if (_enableBackup && _overwrite && File.Exists(destinationPath))
@@ -143,7 +145,7 @@ public class FolderOutputNode : IOutputNode
 
             await using FileStream backupSrc = new(destinationPath, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true);
             await using FileStream backupDst = new(backupPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true);
-            await backupSrc.CopyToAsync(backupDst, ct);
+            await backupSrc.CopyToAsync(backupDst, ct).ConfigureAwait(false);
             job.NodeLog.Add($"FolderOutput: Backed up '{destinationPath}' → '{backupPath}'");
         }
 
@@ -158,7 +160,7 @@ public class FolderOutputNode : IOutputNode
             FileMode destMode = _overwrite ? FileMode.Create : FileMode.CreateNew;
             await using FileStream sourceStream = new(job.CurrentPath, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true);
             await using FileStream destStream = new(destinationPath, destMode, FileAccess.Write, FileShare.None, 81920, useAsync: true);
-            await sourceStream.CopyToAsync(destStream, ct);
+            await sourceStream.CopyToAsync(destStream, ct).ConfigureAwait(false);
 
             // Restore original timestamps on the copy
             var sourceInfo = new FileInfo(job.CurrentPath);

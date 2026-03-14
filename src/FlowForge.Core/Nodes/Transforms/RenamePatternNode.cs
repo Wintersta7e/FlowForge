@@ -106,6 +106,8 @@ public class RenamePatternNode : ITransformNode
         string oldPath = job.CurrentPath;
         string newPath = Path.Combine(directory, newName);
 
+        PathGuard.EnsureWithinDirectory(newPath, directory);
+
         if (!dryRun)
         {
             newPath = ResolveConflict(newPath);

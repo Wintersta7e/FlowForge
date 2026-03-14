@@ -40,6 +40,16 @@ public class RenameAddAffixNode : ITransformNode
             _suffix = suffixElement.GetString() ?? string.Empty;
         }
 
+        if (_prefix.Contains(Path.DirectorySeparatorChar) || _prefix.Contains(Path.AltDirectorySeparatorChar) || _prefix.Contains(".."))
+        {
+            throw new NodeConfigurationException("RenameAddAffix: 'prefix' must not contain path separators or '..' sequences.");
+        }
+
+        if (_suffix.Contains(Path.DirectorySeparatorChar) || _suffix.Contains(Path.AltDirectorySeparatorChar) || _suffix.Contains(".."))
+        {
+            throw new NodeConfigurationException("RenameAddAffix: 'suffix' must not contain path separators or '..' sequences.");
+        }
+
         if (string.IsNullOrEmpty(_prefix) && string.IsNullOrEmpty(_suffix))
         {
             throw new NodeConfigurationException("RenameAddAffix: At least one of 'prefix' or 'suffix' must be provided.");
@@ -60,6 +70,8 @@ public class RenameAddAffixNode : ITransformNode
         string newFileName = $"{_prefix}{nameWithoutExt}{_suffix}{extension}";
         string oldPath = job.CurrentPath;
         string newPath = Path.Combine(directory, newFileName);
+
+        PathGuard.EnsureWithinDirectory(newPath, directory);
 
         if (!dryRun && !string.Equals(oldPath, newPath, StringComparison.OrdinalIgnoreCase))
         {
