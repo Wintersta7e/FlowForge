@@ -99,21 +99,18 @@ public class ConfigFieldTemplateSelector : IDataTemplate
         return textBox;
     }
 
-    private static ToggleSwitch BuildBoolEditor(ConfigFieldViewModel field)
+    private static CheckBox BuildBoolEditor(ConfigFieldViewModel field)
     {
-        ToggleSwitch toggle = new()
+        CheckBox checkBox = new()
         {
-            OnContent = "Yes",
-            OffContent = "No"
+            Content = field.Label
         };
-        // Bind IsChecked via a converter or handle in code;
-        // for simplicity, bind to Value as string "True"/"False"
-        toggle.Bind(ToggleSwitch.IsCheckedProperty,
+        checkBox.Bind(CheckBox.IsCheckedProperty,
             new Avalonia.Data.Binding("Value")
             {
                 Converter = BoolStringConverter.Instance
             });
-        return toggle;
+        return checkBox;
     }
 
     private DockPanel BuildFilePathEditor(ConfigFieldViewModel field)
