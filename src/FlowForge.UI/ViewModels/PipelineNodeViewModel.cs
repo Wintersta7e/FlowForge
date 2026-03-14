@@ -89,9 +89,9 @@ public partial class PipelineNodeViewModel : ViewModelBase
 
         RebuildBrushes();
 
-        if (Application.Current is not null)
+        if (Application.Current is { } app)
         {
-            Application.Current.ActualThemeVariantChanged += (_, _) => RebuildBrushes();
+            app.ActualThemeVariantChanged += (_, _) => RebuildBrushes();
         }
 
         // Source nodes have no input; output nodes have no output
