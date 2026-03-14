@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using Avalonia;
-using Avalonia.Controls;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FlowForge.Core.Execution;
@@ -45,10 +43,10 @@ public partial class PropertiesViewModel : ViewModelBase
         BadgeForeground = node.HeaderBrush;
         BadgeBackground = node.Category switch
         {
-            NodeCategory.Source => GetBrush("ForgeSourceDim", "#265bb8f5"),
-            NodeCategory.Transform => GetBrush("ForgeTransformDim", "#265ce0a0"),
-            NodeCategory.Output => GetBrush("ForgeOutputDim", "#26e8932f"),
-            _ => GetBrush("ForgeElevated", "#252029")
+            NodeCategory.Source => ThemeHelper.GetBrush("ForgeSourceDim", "#265bb8f5"),
+            NodeCategory.Transform => ThemeHelper.GetBrush("ForgeTransformDim", "#265ce0a0"),
+            NodeCategory.Output => ThemeHelper.GetBrush("ForgeOutputDim", "#26e8932f"),
+            _ => ThemeHelper.GetBrush("ForgeElevated", "#252029")
         };
 
         IReadOnlyList<ConfigField> schema = registry.GetConfigSchema(node.TypeKey);
@@ -56,14 +54,5 @@ public partial class PropertiesViewModel : ViewModelBase
         {
             Fields.Add(new ConfigFieldViewModel(field, node.Config, onConfigChanged));
         }
-    }
-
-    private static IBrush GetBrush(string key, string fallback)
-    {
-        if (Application.Current?.TryFindResource(key, Application.Current.ActualThemeVariant, out object? resource) == true && resource is IBrush brush)
-        {
-            return brush;
-        }
-        return new SolidColorBrush(Color.Parse(fallback));
     }
 }

@@ -1,9 +1,5 @@
-using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
-using Avalonia;
-using Avalonia.Controls;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FlowForge.Core.Execution;
@@ -17,21 +13,6 @@ public partial class NodeLibraryViewModel : ViewModelBase
         ["Source"] = "Input",
         ["Transform"] = "Process",
         ["Output"] = "Save To"
-    };
-
-    private static readonly Dictionary<string, string> NodeIcons = new()
-    {
-        ["FolderInput"] = "\U0001F4C1",
-        ["RenamePattern"] = "\u270E",
-        ["RenameRegex"] = ".*",
-        ["RenameAddAffix"] = "+a",
-        ["Filter"] = "\U0001F50D",
-        ["Sort"] = "\u21C5",
-        ["ImageResize"] = "\U0001F4F8",
-        ["ImageConvert"] = "\U0001F3A8",
-        ["ImageCompress"] = "\U0001F4E6",
-        ["MetadataExtract"] = "\U0001F4C4",
-        ["FolderOutput"] = "\U0001F4E5",
     };
 
     private List<NodeLibraryGroupViewModel> _allGroups = new();
@@ -67,9 +48,9 @@ public partial class NodeLibraryViewModel : ViewModelBase
                 categoryKeys[categoryName] = category;
             }
 
-            string icon = NodeIcons.GetValueOrDefault(typeKey, "\u2699");
-            var brushes = GetCategoryBrushes(category);
-            existingItems.Add(new NodeLibraryItemViewModel(typeKey, displayName, icon, brushes.IconBg, brushes.IconFg));
+            string icon = NodeIconMap.Icons.GetValueOrDefault(typeKey, "\u2699");
+            (IBrush iconBg, IBrush iconFg) = GetCategoryBrushes(category);
+            existingItems.Add(new NodeLibraryItemViewModel(typeKey, displayName, icon, iconBg, iconFg));
         }
 
         string[] orderedCategories = ["Input", "Process", "Save To"];
@@ -89,10 +70,10 @@ public partial class NodeLibraryViewModel : ViewModelBase
     {
         return category switch
         {
-            NodeCategory.Source => (GetBrush("ForgeSourceDim", "#145bb8f5"), GetBrush("ForgeSource", "#5bb8f5")),
-            NodeCategory.Transform => (GetBrush("ForgeTransformDim", "#145ce0a0"), GetBrush("ForgeTransform", "#5ce0a0")),
-            NodeCategory.Output => (GetBrush("ForgeOutputDim", "#14e8932f"), GetBrush("ForgeOutput", "#e8932f")),
-            _ => (GetBrush("ForgeElevated", "#252029"), GetBrush("ForgeTextMuted", "#564a62"))
+            NodeCategory.Source => (ThemeHelper.GetBrush("ForgeSourceDim", "#145bb8f5"), ThemeHelper.GetBrush("ForgeSource", "#5bb8f5")),
+            NodeCategory.Transform => (ThemeHelper.GetBrush("ForgeTransformDim", "#145ce0a0"), ThemeHelper.GetBrush("ForgeTransform", "#5ce0a0")),
+            NodeCategory.Output => (ThemeHelper.GetBrush("ForgeOutputDim", "#14e8932f"), ThemeHelper.GetBrush("ForgeOutput", "#e8932f")),
+            _ => (ThemeHelper.GetBrush("ForgeElevated", "#252029"), ThemeHelper.GetBrush("ForgeTextMuted", "#564a62"))
         };
     }
 
@@ -100,46 +81,46 @@ public partial class NodeLibraryViewModel : ViewModelBase
     {
         return category switch
         {
-            NodeCategory.Source => GetBrush("ForgeSource", "#5bb8f5"),
-            NodeCategory.Transform => GetBrush("ForgeTransform", "#5ce0a0"),
-            NodeCategory.Output => GetBrush("ForgeOutput", "#e8932f"),
-            _ => GetBrush("ForgeTextMuted", "#564a62")
+            NodeCategory.Source => ThemeHelper.GetBrush("ForgeSource", "#5bb8f5"),
+            NodeCategory.Transform => ThemeHelper.GetBrush("ForgeTransform", "#5ce0a0"),
+            NodeCategory.Output => ThemeHelper.GetBrush("ForgeOutput", "#e8932f"),
+            _ => ThemeHelper.GetBrush("ForgeTextMuted", "#564a62")
         };
-    }
-
-    private static IBrush GetBrush(string key, string fallback)
-    {
-        if (Application.Current?.TryFindResource(key, Application.Current.ActualThemeVariant, out object? resource) == true && resource is IBrush brush)
-        {
-            return brush;
-        }
-        return new SolidColorBrush(Color.Parse(fallback));
     }
 
     private void FilterItems()
     {
-        Groups.Clear();
-
         string search = SearchText.Trim();
 
+        // Reuse existing group VMs: apply filter in-place and toggle visibility
+        // by adding/removing from Groups rather than recreating group instances.
         foreach (NodeLibraryGroupViewModel group in _allGroups)
         {
-            if (string.IsNullOrEmpty(search))
+            bool hasMatches = group.ApplyFilter(search);
+            bool isVisible = Groups.Contains(group);
+
+            if (hasMatches && !isVisible)
             {
-                Groups.Add(group);
-                continue;
+                // Insert at the correct position to maintain category order
+                int insertIndex = 0;
+                foreach (NodeLibraryGroupViewModel existing in _allGroups)
+                {
+                    if (existing == group)
+                    {
+                        break;
+                    }
+
+                    if (Groups.Contains(existing))
+                    {
+                        insertIndex++;
+                    }
+                }
+
+                Groups.Insert(insertIndex, group);
             }
-
-            List<NodeLibraryItemViewModel> filtered = group.Items
-                .Where(item => item.DisplayName.Contains(search, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-
-            if (filtered.Count > 0)
+            else if (!hasMatches && isVisible)
             {
-                Groups.Add(new NodeLibraryGroupViewModel(
-                    group.Category,
-                    new ObservableCollection<NodeLibraryItemViewModel>(filtered),
-                    group.CategoryBrush));
+                Groups.Remove(group);
             }
         }
     }

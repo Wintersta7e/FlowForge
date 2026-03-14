@@ -26,8 +26,8 @@ public class ConfigFieldTemplateSelector : IDataTemplate
 
         Border cardBorder = new()
         {
-            Background = GetThemeBrush("ForgeDeep", "#0e0c11"),
-            BorderBrush = GetThemeBrush("ForgeBorder", "#2a2230"),
+            Background = ThemeHelper.GetBrush("ForgeDeep", "#0e0c11"),
+            BorderBrush = ThemeHelper.GetBrush("ForgeBorder", "#2a2230"),
             BorderThickness = new Avalonia.Thickness(1),
             CornerRadius = new Avalonia.CornerRadius(12),
             Padding = new Avalonia.Thickness(12, 8),
@@ -44,7 +44,7 @@ public class ConfigFieldTemplateSelector : IDataTemplate
             Text = field.IsRequired ? $"{field.Label} *" : field.Label,
             FontWeight = Avalonia.Media.FontWeight.SemiBold,
             FontSize = 12,
-            Foreground = GetThemeBrush("ForgeText", "#ede6f0"),
+            Foreground = ThemeHelper.GetBrush("ForgeText", "#ede6f0"),
             Margin = new Avalonia.Thickness(0, 0, 0, 2)
         };
         panel.Children.Add(label);
@@ -254,15 +254,5 @@ public class ConfigFieldTemplateSelector : IDataTemplate
         textBox.Bind(TextBox.TextProperty,
             new Avalonia.Data.Binding("Value"));
         return textBox;
-    }
-
-    private static Avalonia.Media.IBrush GetThemeBrush(string key, string fallback)
-    {
-        if (Avalonia.Application.Current?.TryFindResource(key, Avalonia.Application.Current.ActualThemeVariant, out object? resource) == true && resource is Avalonia.Media.IBrush brush)
-        {
-            return brush;
-        }
-
-        return new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(fallback));
     }
 }
