@@ -79,7 +79,7 @@ public class PipelineRunner
             int lastReportedCount = 0;
             foreach (ISourceNode source in sourceNodes)
             {
-                await foreach (FileJob job in source.ProduceAsync(ct))
+                await foreach (FileJob job in source.ProduceAsync(ct).ConfigureAwait(false))
                 {
                     ct.ThrowIfCancellationRequested();
                     allJobs.Add(job);
@@ -107,7 +107,7 @@ public class PipelineRunner
             IReadOnlyList<FileJob> currentJobs = allJobs;
             foreach (ITransformNode transform in transformNodes)
             {
-                currentJobs = await ApplyTransformAsync(transform, currentJobs, dryRun, result, ct);
+                currentJobs = await ApplyTransformAsync(transform, currentJobs, dryRun, result, ct).ConfigureAwait(false);
             }
 
             // 7. Send to output nodes with concurrency control
@@ -132,12 +132,12 @@ public class PipelineRunner
                         continue;
                     }
 
-                    await semaphore.WaitAsync(ct);
+                    await semaphore.WaitAsync(ct).ConfigureAwait(false);
                     Task task = ConsumeJobAsync(job, outputNodes, dryRun, result, progress, semaphore, ct);
                     outputTasks.Add(task);
                 }
 
-                await Task.WhenAll(outputTasks);
+                await Task.WhenAll(outputTasks).ConfigureAwait(false);
             }
             catch
             {
@@ -146,7 +146,7 @@ public class PipelineRunner
                 {
                     try
                     {
-                        await Task.WhenAll(outputTasks);
+                        await Task.WhenAll(outputTasks).ConfigureAwait(false);
                     }
                     catch
                     {
@@ -197,7 +197,7 @@ public class PipelineRunner
             try
             {
                 job.Status = FileJobStatus.Processing;
-                IEnumerable<FileJob> transformed = await transform.TransformAsync(job, dryRun, ct);
+                IEnumerable<FileJob> transformed = await transform.TransformAsync(job, dryRun, ct).ConfigureAwait(false);
                 List<FileJob> transformedList = transformed.ToList();
 
                 if (transformedList.Count == 0)
@@ -213,6 +213,21 @@ public class PipelineRunner
                     }
                     else if (job.Status == FileJobStatus.Skipped)
                     {
+                        lock (result)
+                        {
+                            result.Skipped++;
+                            result.Jobs.Add(job);
+                        }
+                    }
+                    else
+                    {
+                        // Job still has Processing status but was not returned by the
+                        // transform — treat as silently dropped / skipped.
+                        job.Status = FileJobStatus.Skipped;
+                        job.NodeLog.Add($"Transform '{transform.TypeKey}' returned empty with no status change — treated as skipped.");
+                        _logger.LogWarning(
+                            "Transform {NodeType} returned empty for {File} with status Processing — treating as skipped",
+                            transform.TypeKey, job.OriginalPath);
                         lock (result)
                         {
                             result.Skipped++;
@@ -257,7 +272,7 @@ public class PipelineRunner
         // If this is a buffered node, flush to get the sorted/processed results
         if (transform is IBufferedTransformNode buffered)
         {
-            IEnumerable<FileJob> flushed = await buffered.FlushAsync(ct);
+            IEnumerable<FileJob> flushed = await buffered.FlushAsync(dryRun: dryRun, ct: ct).ConfigureAwait(false);
             foreach (FileJob fj in flushed)
             {
                 if (fj.Status == FileJobStatus.Failed)
@@ -290,31 +305,49 @@ public class PipelineRunner
     {
         try
         {
+            bool anyFailed = false;
+
+            // Each output node is wrapped individually so one failure
+            // does not prevent subsequent outputs from executing.
             foreach (IOutputNode output in outputs)
             {
-                await output.ConsumeAsync(job, dryRun, ct);
+                try
+                {
+                    await output.ConsumeAsync(job, dryRun, ct).ConfigureAwait(false);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    anyFailed = true;
+                    job.Status = FileJobStatus.Failed;
+                    job.NodeLog.Add($"Output '{output.TypeKey}' failed: {ex.Message}");
+                    _logger.LogError(ex, "Output node {Node} failed for {File}", output.TypeKey, job.FileName);
+                }
             }
 
-            job.Status = FileJobStatus.Succeeded;
+            if (!anyFailed)
+            {
+                job.Status = FileJobStatus.Succeeded;
+            }
+
             lock (result)
             {
-                result.Succeeded++;
+                if (anyFailed)
+                {
+                    result.Failed++;
+                }
+                else
+                {
+                    result.Succeeded++;
+                }
+
                 result.Jobs.Add(job);
             }
+
             progress?.Report(new FileProcessed(job));
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (OperationCanceledException)
         {
-            job.Status = FileJobStatus.Failed;
-            job.ErrorMessage = ex.Message;
-            _logger.LogError(ex, "Job failed for {File}", job.OriginalPath);
-
-            lock (result)
-            {
-                result.Failed++;
-                result.Jobs.Add(job);
-            }
-            progress?.Report(new FileProcessed(job));
+            throw;
         }
         finally
         {
