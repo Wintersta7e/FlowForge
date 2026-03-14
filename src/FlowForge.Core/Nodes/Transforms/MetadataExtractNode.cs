@@ -65,6 +65,13 @@ public class MetadataExtractNode : ITransformNode
     {
         ct.ThrowIfCancellationRequested();
 
+        if (dryRun)
+        {
+            job.NodeLog.Add("Dry-run: skipping metadata extraction");
+            IEnumerable<FileJob> dryRunResult = new[] { job };
+            return Task.FromResult(dryRunResult);
+        }
+
         foreach (string key in _keys)
         {
             string? value = ExtractValue(key, job.CurrentPath);

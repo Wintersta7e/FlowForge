@@ -205,4 +205,26 @@ public class FilterNodeTests
         Action act = () => node.Configure(config);
         act.Should().Throw<NodeConfigurationException>();
     }
+
+    [Fact]
+    public async Task CancellationToken_cancelled_throws_OperationCanceledException()
+    {
+        var node = new FilterNode(NullLogger<FilterNode>.Instance);
+        node.Configure(MakeConfig(new[]
+        {
+            new { field = "extension", @operator = "equals", value = ".jpg" }
+        }));
+
+        var job = new FileJob
+        {
+            OriginalPath = Path.Combine("/tmp", "test.jpg"),
+            CurrentPath = Path.Combine("/tmp", "test.jpg")
+        };
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        Func<Task> act = () => node.TransformAsync(job, dryRun: true, ct: cts.Token);
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
 }

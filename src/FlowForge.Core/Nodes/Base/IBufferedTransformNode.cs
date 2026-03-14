@@ -9,5 +9,5 @@ namespace FlowForge.Core.Nodes.Base;
 /// </summary>
 public interface IBufferedTransformNode
 {
-    Task<IEnumerable<FileJob>> FlushAsync(CancellationToken ct = default);
+    Task<IEnumerable<FileJob>> FlushAsync(bool dryRun = false, CancellationToken ct = default);
 }

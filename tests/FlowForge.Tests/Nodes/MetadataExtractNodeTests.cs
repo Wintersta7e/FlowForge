@@ -247,4 +247,45 @@ public class MetadataExtractNodeTests
         resultJob.Metadata.Should().ContainKey("File:ModifiedAt");
         resultJob.NodeLog.Should().Contain(l => l.Contains("extracted 3 keys"));
     }
+
+    [Fact]
+    public async Task CancellationToken_cancelled_throws_OperationCanceledException()
+    {
+        var node = new MetadataExtractNode(NullLogger<MetadataExtractNode>.Instance);
+        node.Configure(MakeConfig(new { keys = new[] { "File:SizeBytes" } }));
+
+        var job = new FileJob
+        {
+            OriginalPath = "/tmp/test.txt",
+            CurrentPath = "/tmp/test.txt"
+        };
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        Func<Task> act = () => node.TransformAsync(job, dryRun: false, ct: cts.Token);
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
+    public async Task TransformAsync_dryRun_skips_extraction()
+    {
+        string fakePath = Path.Combine(Path.GetTempPath(), "does_not_exist_dryrun_" + Guid.NewGuid().ToString("N") + ".txt");
+
+        var node = new MetadataExtractNode(NullLogger<MetadataExtractNode>.Instance);
+        node.Configure(MakeConfig(new { keys = new[] { "File:SizeBytes", "EXIF:DateTaken" } }));
+
+        var job = new FileJob
+        {
+            OriginalPath = fakePath,
+            CurrentPath = fakePath
+        };
+
+        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+
+        result.Should().ContainSingle();
+        FileJob resultJob = result.First();
+        resultJob.Metadata.Should().BeEmpty("dry-run should not extract metadata");
+        resultJob.NodeLog.Should().Contain(l => l.Contains("Dry-run"));
+    }
 }

@@ -191,7 +191,7 @@ public class SortNodeTests
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        Func<Task> act = () => node.FlushAsync(cts.Token);
+        Func<Task> act = () => node.FlushAsync(ct: cts.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
@@ -223,6 +223,32 @@ public class SortNodeTests
         {
             j.Status.Should().Be(FileJobStatus.Failed);
             j.ErrorMessage.Should().Contain("Sort: failed during flush");
+        });
+    }
+
+    [Fact]
+    public async Task FlushAsync_dryRun_sorts_without_file_IO()
+    {
+        var node = new SortNode(NullLogger<SortNode>.Instance);
+        node.Configure(MakeConfig(new { field = "size", direction = "asc" }));
+
+        // Non-existent files — dry-run should not try to read file sizes from disk
+        FileJob job1 = MakeJob(Path.Combine("/nonexistent", "large.txt"));
+        FileJob job2 = MakeJob(Path.Combine("/nonexistent", "small.txt"));
+        FileJob job3 = MakeJob(Path.Combine("/nonexistent", "medium.txt"));
+
+        await node.TransformAsync(job1, dryRun: true);
+        await node.TransformAsync(job2, dryRun: true);
+        await node.TransformAsync(job3, dryRun: true);
+
+        // Should not throw even though files don't exist (dry-run returns default size 0)
+        IEnumerable<FileJob> result = await node.FlushAsync(dryRun: true);
+        List<FileJob> resultList = result.ToList();
+
+        resultList.Should().HaveCount(3);
+        resultList.Should().AllSatisfy(j =>
+        {
+            j.Status.Should().NotBe(FileJobStatus.Failed);
         });
     }
 }

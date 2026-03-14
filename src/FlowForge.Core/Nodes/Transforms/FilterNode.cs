@@ -28,6 +28,7 @@ public class FilterNode : ITransformNode
 
     private List<FilterCondition> _conditions = new();
     private readonly Dictionary<int, Regex> _compiledRegexes = new();
+    private bool _dryRun;
 
     public void Configure(Dictionary<string, JsonElement> config)
     {
@@ -49,7 +50,8 @@ public class FilterNode : ITransformNode
             string value = condElement.GetProperty("value").GetString()
                 ?? throw new NodeConfigurationException("Filter: condition 'value' is required.");
 
-            _conditions.Add(new FilterCondition(field, op, value));
+            // Normalize field and operator at configure time (M5)
+            _conditions.Add(new FilterCondition(field.ToLowerInvariant(), op.ToLowerInvariant(), value));
 
             if (string.Equals(op, "matches", StringComparison.OrdinalIgnoreCase))
             {
@@ -70,6 +72,7 @@ public class FilterNode : ITransformNode
     public Task<IEnumerable<FileJob>> TransformAsync(FileJob job, bool dryRun, CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
+        _dryRun = dryRun;
 
         bool matches;
         try
@@ -100,7 +103,8 @@ public class FilterNode : ITransformNode
     {
         string fieldValue = GetFieldValue(condition.Field, job);
 
-        return condition.Operator.ToLowerInvariant() switch
+        // Operator is already lowercased at configure time (M5)
+        return condition.Operator switch
         {
             "equals" => fieldValue.Equals(condition.Value, StringComparison.OrdinalIgnoreCase),
             "notequals" => !fieldValue.Equals(condition.Value, StringComparison.OrdinalIgnoreCase),
@@ -116,9 +120,10 @@ public class FilterNode : ITransformNode
         };
     }
 
+    // Field is already lowercased at configure time (M5)
     private string GetFieldValue(string field, FileJob job)
     {
-        return field.ToLowerInvariant() switch
+        return field switch
         {
             "extension" => job.Extension,
             "filename" => job.FileName,
@@ -131,32 +136,50 @@ public class FilterNode : ITransformNode
 
     private string GetFileSize(string path)
     {
+        if (_dryRun)
+        {
+            return "0";
+        }
+
         if (!File.Exists(path))
         {
             _logger.LogWarning("Filter: file not found at '{FilePath}', using default size 0", path);
             return "0";
         }
+
         var info = new FileInfo(path);
         return info.Length.ToString(CultureInfo.InvariantCulture);
     }
 
     private string GetFileCreatedAt(string path)
     {
+        if (_dryRun)
+        {
+            return DateTime.MinValue.ToString("o", CultureInfo.InvariantCulture);
+        }
+
         if (!File.Exists(path))
         {
             _logger.LogWarning("Filter: file not found at '{FilePath}', using default date", path);
             return string.Empty;
         }
+
         return File.GetCreationTimeUtc(path).ToString("o", CultureInfo.InvariantCulture);
     }
 
     private string GetFileModifiedAt(string path)
     {
+        if (_dryRun)
+        {
+            return DateTime.MinValue.ToString("o", CultureInfo.InvariantCulture);
+        }
+
         if (!File.Exists(path))
         {
             _logger.LogWarning("Filter: file not found at '{FilePath}', using default date", path);
             return string.Empty;
         }
+
         return File.GetLastWriteTimeUtc(path).ToString("o", CultureInfo.InvariantCulture);
     }
 
