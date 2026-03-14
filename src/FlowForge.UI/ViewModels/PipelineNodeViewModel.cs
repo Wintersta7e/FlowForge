@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Text.Json;
 using Avalonia;
-using Avalonia.Controls;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FlowForge.Core.Execution;
@@ -13,41 +12,6 @@ namespace FlowForge.UI.ViewModels;
 
 public partial class PipelineNodeViewModel : ViewModelBase
 {
-    private static IBrush GetBrush(string key, string fallback)
-    {
-        if (Application.Current?.TryFindResource(key, Application.Current.ActualThemeVariant, out object? resource) == true && resource is IBrush brush)
-        {
-            return brush;
-        }
-        return new SolidColorBrush(Color.Parse(fallback));
-    }
-
-    private static Color GetThemeColor(string key, string fallback)
-    {
-        if (Application.Current?.TryFindResource(key, Application.Current.ActualThemeVariant, out object? resource) == true && resource is Color color)
-        {
-            return color;
-        }
-
-        return Color.Parse(fallback);
-    }
-
-    // Icon emoji per node type
-    private static readonly Dictionary<string, string> NodeIcons = new()
-    {
-        ["FolderInput"] = "\U0001F4C1",
-        ["RenamePattern"] = "\u270E",
-        ["RenameRegex"] = ".*",
-        ["RenameAddAffix"] = "+a",
-        ["Filter"] = "\U0001F50D",
-        ["Sort"] = "\u21C5",
-        ["ImageResize"] = "\U0001F4F8",
-        ["ImageConvert"] = "\U0001F3A8",
-        ["ImageCompress"] = "\U0001F4E6",
-        ["MetadataExtract"] = "\U0001F4C4",
-        ["FolderOutput"] = "\U0001F4E5",
-    };
-
     [ObservableProperty]
     private Point _location;
 
@@ -76,6 +40,8 @@ public partial class PipelineNodeViewModel : ViewModelBase
     [ObservableProperty]
     private IBrush _nodeBackground = null!;
 
+    private readonly EventHandler? _themeChangedHandler;
+
     public PipelineNodeViewModel(NodeDefinition definition, NodeRegistry registry)
     {
         Id = definition.Id;
@@ -83,7 +49,7 @@ public partial class PipelineNodeViewModel : ViewModelBase
         Title = registry.GetDisplayName(definition.TypeKey);
         Category = registry.GetCategoryForTypeKey(definition.TypeKey);
         Config = definition.Config;
-        IconEmoji = NodeIcons.GetValueOrDefault(definition.TypeKey, "\u2699");
+        IconEmoji = NodeIconMap.Icons.GetValueOrDefault(definition.TypeKey, "\u2699");
         ConfigPreview = BuildConfigPreview(definition.Config);
         _location = new Point(definition.Position.X, definition.Position.Y);
 
@@ -91,7 +57,8 @@ public partial class PipelineNodeViewModel : ViewModelBase
 
         if (Application.Current is { } app)
         {
-            app.ActualThemeVariantChanged += (_, _) => RebuildBrushes();
+            _themeChangedHandler = new EventHandler((_, _) => RebuildBrushes());
+            app.ActualThemeVariantChanged += _themeChangedHandler;
         }
 
         // Source nodes have no input; output nodes have no output
@@ -106,24 +73,32 @@ public partial class PipelineNodeViewModel : ViewModelBase
         }
     }
 
+    public void Detach()
+    {
+        if (Application.Current is { } app)
+        {
+            app.ActualThemeVariantChanged -= _themeChangedHandler;
+        }
+    }
+
     private void RebuildBrushes()
     {
         Color categoryColor = Category switch
         {
-            NodeCategory.Source => GetThemeColor("ForgeSourceColor", "#5bb8f5"),
-            NodeCategory.Transform => GetThemeColor("ForgeTransformColor", "#5ce0a0"),
-            NodeCategory.Output => GetThemeColor("ForgeOutputColor", "#e8932f"),
-            _ => GetThemeColor("ForgeTransformColor", "#5ce0a0")
+            NodeCategory.Source => ThemeHelper.GetColor("ForgeSourceColor", "#5bb8f5"),
+            NodeCategory.Transform => ThemeHelper.GetColor("ForgeTransformColor", "#5ce0a0"),
+            NodeCategory.Output => ThemeHelper.GetColor("ForgeOutputColor", "#e8932f"),
+            _ => ThemeHelper.GetColor("ForgeTransformColor", "#5ce0a0")
         };
 
-        Color surfaceColor = GetThemeColor("ForgeSurfaceColor", "#1c1820");
+        Color surfaceColor = ThemeHelper.GetColor("ForgeSurfaceColor", "#1c1820");
 
         CategoryBrush = Category switch
         {
-            NodeCategory.Source => GetBrush("ForgeSource", "#5bb8f5"),
-            NodeCategory.Transform => GetBrush("ForgeTransform", "#5ce0a0"),
-            NodeCategory.Output => GetBrush("ForgeOutput", "#e8932f"),
-            _ => GetBrush("ForgeTransform", "#5ce0a0")
+            NodeCategory.Source => ThemeHelper.GetBrush("ForgeSource", "#5bb8f5"),
+            NodeCategory.Transform => ThemeHelper.GetBrush("ForgeTransform", "#5ce0a0"),
+            NodeCategory.Output => ThemeHelper.GetBrush("ForgeOutput", "#e8932f"),
+            _ => ThemeHelper.GetBrush("ForgeTransform", "#5ce0a0")
         };
 
         // Header gradient: ~5% opacity category color → transparent

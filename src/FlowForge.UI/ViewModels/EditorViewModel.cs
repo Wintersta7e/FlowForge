@@ -52,9 +52,24 @@ public partial class EditorViewModel : ViewModelBase
         _logger = logger;
         PendingConnection = new PipelinePendingConnectionViewModel(this);
         Nodes.CollectionChanged += OnNodesCollectionChanged;
-        Nodes.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasNodes));
-        Nodes.CollectionChanged += (_, _) => GraphChanged?.Invoke(this, EventArgs.Empty);
-        Connections.CollectionChanged += (_, _) => GraphChanged?.Invoke(this, EventArgs.Empty);
+        Nodes.CollectionChanged += OnNodesHasNodesChanged;
+        Nodes.CollectionChanged += OnNodesGraphChanged;
+        Connections.CollectionChanged += OnConnectionsGraphChanged;
+    }
+
+    private void OnNodesHasNodesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        OnPropertyChanged(nameof(HasNodes));
+    }
+
+    private void OnNodesGraphChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        GraphChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OnConnectionsGraphChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        GraphChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public void RaiseGraphChanged() => GraphChanged?.Invoke(this, EventArgs.Empty);
@@ -86,6 +101,18 @@ public partial class EditorViewModel : ViewModelBase
             {
                 node.PropertyChanged -= OnNodePropertyChanged;
                 _subscribedNodes.Remove(node);
+
+                foreach (PipelineConnectorViewModel connector in node.Input)
+                {
+                    connector.Detach();
+                }
+
+                foreach (PipelineConnectorViewModel connector in node.Output)
+                {
+                    connector.Detach();
+                }
+
+                node.Detach();
             }
         }
 
@@ -116,11 +143,30 @@ public partial class EditorViewModel : ViewModelBase
     public void ClearAll()
     {
         UnsubscribeAllNodes();
+        DetachAllNodesAndConnectors();
         Nodes.Clear();
         Connections.Clear();
         SelectedNode = null;
         _graphName = "Untitled Pipeline";
         UndoRedo.Clear();
+    }
+
+    private void DetachAllNodesAndConnectors()
+    {
+        foreach (PipelineNodeViewModel node in Nodes)
+        {
+            foreach (PipelineConnectorViewModel connector in node.Input)
+            {
+                connector.Detach();
+            }
+
+            foreach (PipelineConnectorViewModel connector in node.Output)
+            {
+                connector.Detach();
+            }
+
+            node.Detach();
+        }
     }
 
     public int LoadGraph(PipelineGraph graph, NodeRegistry registry)

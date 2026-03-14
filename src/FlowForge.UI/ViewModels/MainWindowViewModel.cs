@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -50,9 +49,6 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private string _themeIcon = "\u263E";
 
-    [ObservableProperty]
-    private ObservableCollection<string> _recentPipelines = new();
-
     public List<RecentPipelineItem> RecentPipelineItems { get; private set; } = new();
 
     public EditorViewModel Editor { get; }
@@ -89,19 +85,31 @@ public partial class MainWindowViewModel : ViewModelBase
         NodeLibrary.Initialize(_registry);
 
         // Wire selection changes to properties panel
-        Editor.PropertyChanged += (sender, args) =>
-        {
-            if (args.PropertyName == nameof(EditorViewModel.SelectedNode))
-            {
-                RefreshPropertiesPanel();
-            }
-        };
+        Editor.PropertyChanged += OnEditorPropertyChanged;
 
         // Refresh properties panel on undo/redo so fields read fresh config values
-        Editor.UndoRedo.StateChanged += (_, _) => RefreshPropertiesPanel();
+        Editor.UndoRedo.StateChanged += OnUndoRedoStateChanged;
 
         // Track all graph changes (structural + config edits) for IsDirty
-        Editor.GraphChanged += (_, _) => IsDirty = true;
+        Editor.GraphChanged += OnEditorGraphChanged;
+    }
+
+    private void OnEditorPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName == nameof(EditorViewModel.SelectedNode))
+        {
+            RefreshPropertiesPanel();
+        }
+    }
+
+    private void OnUndoRedoStateChanged(object? sender, EventArgs e)
+    {
+        RefreshPropertiesPanel();
+    }
+
+    private void OnEditorGraphChanged(object? sender, EventArgs e)
+    {
+        IsDirty = true;
     }
 
     private void RefreshPropertiesPanel()
@@ -140,10 +148,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void RefreshRecentPipelines()
     {
-        RecentPipelines = new ObservableCollection<string>(
-            _appSettings.RecentPipelines
-                .Where(p => p.EndsWith(".ffpipe", StringComparison.OrdinalIgnoreCase) && File.Exists(p)));
-        RecentPipelineItems = RecentPipelines
+        RecentPipelineItems = _appSettings.RecentPipelines
+            .Where(p => p.EndsWith(".ffpipe", StringComparison.OrdinalIgnoreCase) && File.Exists(p))
             .Select(p => new RecentPipelineItem(Path.GetFileName(p), p))
             .ToList();
         OnPropertyChanged(nameof(RecentPipelineItems));
@@ -166,20 +172,6 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private async Task OpenRecentAsync(string path)
     {
-        if (!File.Exists(path))
-        {
-            _appSettings.RecentPipelines.RemoveAll(p =>
-                string.Equals(p, path, StringComparison.OrdinalIgnoreCase));
-            RecentPipelines.Remove(path);
-            RecentPipelineItems = RecentPipelineItems
-                .Where(item => !string.Equals(item.FullPath, path, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-            OnPropertyChanged(nameof(RecentPipelineItems));
-            await _settingsManager.SaveAsync(_appSettings);
-            ExecutionLog.Summary = $"File not found: {Path.GetFileName(path)}";
-            return;
-        }
-
         try
         {
             PipelineGraph graph = await PipelineSerializer.LoadAsync(path, CancellationToken.None);
@@ -194,6 +186,22 @@ public partial class MainWindowViewModel : ViewModelBase
                 ExecutionLog.Summary = $"Loaded with {droppedConnections} dropped connection(s).";
             }
         }
+        catch (FileNotFoundException)
+        {
+            _appSettings.RecentPipelines.RemoveAll(p =>
+                string.Equals(p, path, StringComparison.OrdinalIgnoreCase));
+            RefreshRecentPipelines();
+            await _settingsManager.SaveAsync(_appSettings);
+            ExecutionLog.Summary = $"File not found: {Path.GetFileName(path)}";
+        }
+        catch (DirectoryNotFoundException)
+        {
+            _appSettings.RecentPipelines.RemoveAll(p =>
+                string.Equals(p, path, StringComparison.OrdinalIgnoreCase));
+            RefreshRecentPipelines();
+            await _settingsManager.SaveAsync(_appSettings);
+            ExecutionLog.Summary = $"File not found: {Path.GetFileName(path)}";
+        }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogError(ex, "Failed to load pipeline from {Path}", path);
@@ -205,7 +213,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private async Task ClearRecentAsync()
     {
         _appSettings.ClearRecentPipelines();
-        RecentPipelines.Clear();
+        RefreshRecentPipelines();
         await _settingsManager.SaveAsync(_appSettings);
     }
 
@@ -244,11 +252,6 @@ public partial class MainWindowViewModel : ViewModelBase
             {
                 ExecutionLog.Summary = $"Loaded with {droppedConnections} dropped connection(s).";
             }
-        }
-        catch (PipelineLoadException ex)
-        {
-            _logger.LogError(ex, "Failed to load pipeline from {Path}", path);
-            ExecutionLog.Summary = $"Failed to open: {ex.Message}";
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -367,15 +370,15 @@ public partial class MainWindowViewModel : ViewModelBase
         finally
         {
             ExecutionLog.IsRunning = false;
-            _cts.Dispose();
-            _cts = null;
+            Interlocked.Exchange(ref _cts, null)?.Dispose();
         }
     }
 
     [RelayCommand]
     private void Cancel()
     {
-        _cts?.Cancel();
+        CancellationTokenSource? cts = _cts;
+        cts?.Cancel();
     }
 
     [RelayCommand]
