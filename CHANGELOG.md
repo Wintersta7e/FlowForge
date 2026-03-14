@@ -2,6 +2,45 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.1] - 2026-03-14
+
+### Fixed
+
+- **Critical crash on bool config fields** — ToggleSwitch crashes with `PART_MovingKnobs` KeyNotFoundException when Molten Forge theme is active; replaced with CheckBox
+- **Memory leaks** — PipelineNodeViewModel and PipelineConnectorViewModel event subscriptions to `ActualThemeVariantChanged` and `PropertyChanged` were never unsubscribed, preventing GC; added `Detach()` cleanup on node removal
+- **Path traversal** — crafted filenames could escape output directories via RenamePatternNode, RenameAddAffixNode, RenameRegexNode (filename mode), and FolderOutputNode; added `PathGuard.EnsureWithinDirectory()` checks
+- **ReDoS vulnerability** — RenameRegexNode compiled user-supplied regex with no timeout; added 2-second timeout matching FilterNode
+- **Dry-run file I/O** — MetadataExtractNode, FilterNode, and SortNode performed disk reads during dry-run; now return defaults without file access
+- **ImageCompressNode data loss** — overwrote original file in-place; now saves to temp file and swaps atomically
+- **Output node error isolation** — first output node failure no longer prevents subsequent outputs from running
+- **Silently dropped jobs** — transforms returning empty with Processing status are now counted as skipped
+- **CTS race condition** — `Cancel()` and `Dispose()` on `_cts` could race; fixed with `Interlocked.Exchange`
+- **Predictable temp files** — PipelineSerializer and AppSettingsManager used `.tmp` suffix; now use random GUID suffix
+- **Serializer TOCTOU** — removed redundant `File.Exists` check before `ReadAllTextAsync`
+- **Sync File.Exists on UI thread** — removed blocking call from `OpenRecentAsync`
+
+### Added
+
+- **Path traversal protection** — `PathGuard.EnsureWithinDirectory()` helper used by all rename nodes and FolderOutputNode
+- **Decompression bomb guard** — 500 MB file size check and `MaxFrames = 1` decoder option on all image nodes
+- **ImageResize dimension bounds** — width/height validated to 1-32768 in `Configure()`
+- **Crash log handler** — unhandled exceptions write to `crash.log` in app directory
+- **13 new tests** — cancellation, dry-run, path traversal, ReDoS timeout, bounds validation, serializer edge cases (322 total)
+
+### Changed
+
+- **ConfigureAwait(false)** — added to all Core async methods to avoid unnecessary UI thread marshaling
+- **SortNode performance** — pre-compute sort keys to eliminate O(n log n) filesystem calls
+- **FileJob property caching** — `Extension`, `FileName`, `DirectoryName` cached with lazy invalidation
+- **Streaming serialization** — PipelineSerializer and AppSettingsManager stream to FileStream instead of string buffer
+- **Execution log batching** — buffer FileProcessed events with 50ms DispatcherTimer flush to reduce UI layout thrashing
+- **FilterNode normalization** — operator/field strings lowercased at configure time instead of per-file
+- **ImageConvertNode encoder caching** — encoder created once in `Configure()` instead of per file
+- **DRY refactoring** — extracted `ThemeHelper`, `NodeIconMap`, shared `ConfigHelper` test helper
+- **Named event handlers** — anonymous lambdas replaced with named methods in EditorViewModel and MainWindowViewModel
+- **NodeLibrary filtering** — reuses group VMs with `ApplyFilter()` instead of recreating per keystroke
+- Microsoft.Extensions.* 10.0.3 → 10.0.5, System.CommandLine 2.0.3 → 2.0.5
+
 ## [1.4.0] - 2026-03-07
 
 ### Added
