@@ -222,4 +222,27 @@ public class ImageCompressNodeTests
         new FileInfo(filePath).Length.Should().Be(originalSize);
         job.NodeLog.Should().ContainSingle(log => log.Contains("would compress"));
     }
+
+    [Fact]
+    public async Task CancellationToken_cancelled_throws_OperationCanceledException()
+    {
+        using var dir = new TempDirectory();
+        string filePath = Path.Combine(dir.Path, "cancel.jpg");
+        TestFileFactory.CreateTestImage(filePath, width: 100, height: 100);
+
+        var node = new ImageCompressNode(NullLogger<ImageCompressNode>.Instance);
+        node.Configure(MakeConfig(new { quality = 50 }));
+
+        var job = new FileJob
+        {
+            OriginalPath = filePath,
+            CurrentPath = filePath
+        };
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        Func<Task> act = () => node.TransformAsync(job, dryRun: false, ct: cts.Token);
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
 }

@@ -12,6 +12,15 @@ namespace FlowForge.Core.Nodes.Transforms;
 
 public class ImageCompressNode : ITransformNode
 {
+    private static readonly string[] SupportedFormats = { "jpg", "jpeg", "png", "webp" };
+
+    private static readonly DecoderOptions SafeDecoderOptions = new()
+    {
+        MaxFrames = 1
+    };
+
+    private const long MaxFileSizeBytes = 500 * 1024 * 1024; // 500 MB
+
     private readonly ILogger<ImageCompressNode> _logger;
 
     public ImageCompressNode(ILogger<ImageCompressNode> logger)
@@ -65,24 +74,61 @@ public class ImageCompressNode : ITransformNode
             return new[] { job };
         }
 
-        using Image image = await Image.LoadAsync(job.CurrentPath, ct);
-
-        string targetFormat = _format ?? job.Extension.TrimStart('.').ToLowerInvariant();
-        string[] supportedFormats = { "jpg", "jpeg", "png", "webp" };
-        if (!supportedFormats.Contains(targetFormat))
+        var fileInfo = new FileInfo(job.CurrentPath);
+        if (fileInfo.Length > MaxFileSizeBytes)
         {
-            _logger.LogWarning("ImageCompress: unsupported format {Format} for file {FilePath}", targetFormat, job.CurrentPath);
             job.Status = FileJobStatus.Failed;
-            job.ErrorMessage = $"ImageCompress: unsupported format '{targetFormat}'. Supported: jpg, jpeg, png, webp.";
+            job.NodeLog.Add($"ImageCompress: File too large ({fileInfo.Length / (1024 * 1024)} MB, max 500 MB).");
             return new[] { job };
         }
-        IImageEncoder encoder = GetEncoder(targetFormat);
 
-        await image.SaveAsync(job.CurrentPath, encoder, ct);
+        string tmpPath = job.CurrentPath + $".{Guid.NewGuid():N}.tmp";
+        try
+        {
+            using Image image = await Image.LoadAsync(SafeDecoderOptions, job.CurrentPath, ct).ConfigureAwait(false);
 
-        long newSize = new FileInfo(job.CurrentPath).Length;
-        job.NodeLog.Add($"ImageCompress: compressed to quality={_quality} ({newSize} bytes)");
-        return new[] { job };
+            string targetFormat = _format ?? job.Extension.TrimStart('.').ToLowerInvariant();
+            if (!SupportedFormats.Contains(targetFormat))
+            {
+                _logger.LogWarning("ImageCompress: unsupported format {Format} for file {FilePath}", targetFormat, job.CurrentPath);
+                job.Status = FileJobStatus.Failed;
+                job.ErrorMessage = $"ImageCompress: unsupported format '{targetFormat}'. Supported: jpg, jpeg, png, webp.";
+                return new[] { job };
+            }
+
+            IImageEncoder encoder = GetEncoder(targetFormat);
+
+            await image.SaveAsync(tmpPath, encoder, ct).ConfigureAwait(false);
+
+            var tmpInfo = new FileInfo(tmpPath);
+            if (!tmpInfo.Exists || tmpInfo.Length == 0)
+            {
+                _logger.LogWarning("ImageCompress: temp file {TmpPath} is missing or empty after save", tmpPath);
+                job.Status = FileJobStatus.Failed;
+                job.ErrorMessage = "ImageCompress: compressed output is missing or empty. Original preserved.";
+                return new[] { job };
+            }
+
+            File.Move(tmpPath, job.CurrentPath, overwrite: true);
+
+            long newSize = new FileInfo(job.CurrentPath).Length;
+            job.NodeLog.Add($"ImageCompress: compressed to quality={_quality} ({newSize} bytes)");
+            return new[] { job };
+        }
+        finally
+        {
+            if (File.Exists(tmpPath))
+            {
+                try
+                {
+                    File.Delete(tmpPath);
+                }
+                catch (IOException ex)
+                {
+                    _logger.LogWarning(ex, "ImageCompress: failed to clean up temp file {TmpPath}", tmpPath);
+                }
+            }
+        }
     }
 
     private IImageEncoder GetEncoder(string format)

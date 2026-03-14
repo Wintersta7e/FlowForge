@@ -14,6 +14,13 @@ namespace FlowForge.Core.Nodes.Transforms;
 
 public class ImageConvertNode : ITransformNode
 {
+    private static readonly DecoderOptions SafeDecoderOptions = new()
+    {
+        MaxFrames = 1
+    };
+
+    private const long MaxFileSizeBytes = 500 * 1024 * 1024; // 500 MB
+
     private readonly ILogger<ImageConvertNode> _logger;
 
     public ImageConvertNode(ILogger<ImageConvertNode> logger)
@@ -31,6 +38,7 @@ public class ImageConvertNode : ITransformNode
     };
 
     private string _format = string.Empty;
+    private IImageEncoder _encoder = null!;
 
     public void Configure(Dictionary<string, JsonElement> config)
     {
@@ -49,6 +57,8 @@ public class ImageConvertNode : ITransformNode
         {
             throw new NodeConfigurationException($"ImageConvert: Unsupported format '{_format}'. Supported: {string.Join(", ", validFormats)}");
         }
+
+        _encoder = CreateEncoder(_format);
 
         _logger.LogDebug("ImageConvert: configured with TargetFormat={TargetFormat}", _format);
     }
@@ -78,10 +88,17 @@ public class ImageConvertNode : ITransformNode
             return new[] { job };
         }
 
-        using Image image = await Image.LoadAsync(job.CurrentPath, ct);
+        var fileInfo = new FileInfo(job.CurrentPath);
+        if (fileInfo.Length > MaxFileSizeBytes)
+        {
+            job.Status = FileJobStatus.Failed;
+            job.NodeLog.Add($"ImageConvert: File too large ({fileInfo.Length / (1024 * 1024)} MB, max 500 MB).");
+            return new[] { job };
+        }
 
-        IImageEncoder encoder = GetEncoder();
-        await image.SaveAsync(newPath, encoder, ct);
+        using Image image = await Image.LoadAsync(SafeDecoderOptions, job.CurrentPath, ct).ConfigureAwait(false);
+
+        await image.SaveAsync(newPath, _encoder, ct).ConfigureAwait(false);
 
         // Verify output before deleting original
         FileInfo outputInfo = new(newPath);
@@ -114,16 +131,16 @@ public class ImageConvertNode : ITransformNode
         return new[] { job };
     }
 
-    private IImageEncoder GetEncoder()
+    private static IImageEncoder CreateEncoder(string format)
     {
-        return _format switch
+        return format switch
         {
             "jpg" or "jpeg" => new JpegEncoder(),
             "png" => new PngEncoder(),
             "webp" => new WebpEncoder(),
             "bmp" => new BmpEncoder(),
             "tiff" => new TiffEncoder(),
-            _ => throw new InvalidOperationException($"No encoder for format '{_format}'")
+            _ => throw new InvalidOperationException($"No encoder for format '{format}'")
         };
     }
 }

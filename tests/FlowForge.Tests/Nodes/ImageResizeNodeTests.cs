@@ -121,4 +121,35 @@ public class ImageResizeNodeTests
         Action act = () => node.Configure(MakeConfig(new { mode = "max" }));
         act.Should().Throw<NodeConfigurationException>();
     }
+
+    [Fact]
+    public async Task CancellationToken_cancelled_throws_OperationCanceledException()
+    {
+        using var dir = new TempDirectory();
+        string filePath = Path.Combine(dir.Path, "cancel.png");
+        TestFileFactory.CreateTestPng(filePath, width: 100, height: 100);
+
+        var node = new ImageResizeNode(NullLogger<ImageResizeNode>.Instance);
+        node.Configure(MakeConfig(new { width = 50 }));
+
+        var job = new FileJob
+        {
+            OriginalPath = filePath,
+            CurrentPath = filePath
+        };
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        Func<Task> act = () => node.TransformAsync(job, dryRun: false, ct: cts.Token);
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
+    public void Configure_width_exceeds_max_throws()
+    {
+        var node = new ImageResizeNode(NullLogger<ImageResizeNode>.Instance);
+        Action act = () => node.Configure(MakeConfig(new { width = 50000 }));
+        act.Should().Throw<NodeConfigurationException>();
+    }
 }
