@@ -1,5 +1,8 @@
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FlowForge.Core.Execution;
@@ -56,7 +59,10 @@ public partial class ExecutionLogViewModel : ViewModelBase
 
     private const double MinElapsedSecondsForThroughput = 0.1;
     private const int MaxLogEntries = 5000;
+    private static readonly TimeSpan FlushInterval = TimeSpan.FromMilliseconds(50);
     private readonly Stopwatch _processingStopwatch = new();
+    private readonly List<FileJob> _pendingJobs = new();
+    private DispatcherTimer? _flushTimer;
 
     public bool IsOutputTabSelected => SelectedTabIndex == 0;
     public bool IsErrorsTabSelected => SelectedTabIndex == 1;
@@ -100,6 +106,8 @@ public partial class ExecutionLogViewModel : ViewModelBase
 
     public void Clear()
     {
+        StopFlushTimer();
+        _pendingJobs.Clear();
         Entries.Clear();
         ErrorEntries.Clear();
         WarningEntries.Clear();
@@ -124,6 +132,7 @@ public partial class ExecutionLogViewModel : ViewModelBase
         switch (evt)
         {
             case PhaseChanged phaseEvt:
+                FlushPendingJobs();
                 Phase = phaseEvt.Phase;
                 switch (phaseEvt.Phase)
                 {
@@ -135,9 +144,11 @@ public partial class ExecutionLogViewModel : ViewModelBase
                         IsIndeterminate = false;
                         TotalFiles = DiscoveredFiles;
                         _processingStopwatch.Restart();
+                        EnsureFlushTimerRunning();
                         UpdatePhaseLabel();
                         break;
                     case ExecutionPhase.Complete:
+                        StopFlushTimer();
                         _processingStopwatch.Stop();
                         IsIndeterminate = false;
                         Progress = 100.0;
@@ -153,50 +164,105 @@ public partial class ExecutionLogViewModel : ViewModelBase
                 break;
 
             case FileProcessed processed:
-                ReportProgress(processed.Job);
-                UpdateThroughput();
-                UpdatePhaseLabel();
+                _pendingJobs.Add(processed.Job);
+                FlushPendingJobs();
                 break;
         }
     }
 
     public void ReportProgress(FileJob job)
     {
-        var entry = new FileJobLogEntryViewModel(job);
+        _pendingJobs.Add(job);
+        FlushPendingJobs();
+    }
 
-        if (Entries.Count < MaxLogEntries)
+    private void FlushPendingJobs()
+    {
+        if (_pendingJobs.Count == 0)
         {
-            Entries.Add(entry);
+            return;
         }
 
-        CurrentFile = job.FileName;
+        int succeededDelta = 0;
+        int failedDelta = 0;
+        int skippedDelta = 0;
+        string? lastFileName = null;
 
-        switch (job.Status)
+        foreach (FileJob job in _pendingJobs)
         {
-            case FileJobStatus.Succeeded:
-                Succeeded++;
-                break;
-            case FileJobStatus.Failed:
-                Failed++;
-                if (ErrorEntries.Count < MaxLogEntries)
-                {
-                    ErrorEntries.Add(entry);
-                }
+            var entry = new FileJobLogEntryViewModel(job);
+            lastFileName = job.FileName;
 
-                break;
-            case FileJobStatus.Skipped:
-                Skipped++;
-                if (WarningEntries.Count < MaxLogEntries)
-                {
-                    WarningEntries.Add(entry);
-                }
+            if (Entries.Count < MaxLogEntries)
+            {
+                Entries.Add(entry);
+            }
 
-                break;
+            switch (job.Status)
+            {
+                case FileJobStatus.Succeeded:
+                    succeededDelta++;
+                    break;
+                case FileJobStatus.Failed:
+                    failedDelta++;
+                    if (ErrorEntries.Count < MaxLogEntries)
+                    {
+                        ErrorEntries.Add(entry);
+                    }
+
+                    break;
+                case FileJobStatus.Skipped:
+                    skippedDelta++;
+                    if (WarningEntries.Count < MaxLogEntries)
+                    {
+                        WarningEntries.Add(entry);
+                    }
+
+                    break;
+            }
         }
+
+        _pendingJobs.Clear();
+
+        Succeeded += succeededDelta;
+        Failed += failedDelta;
+        Skipped += skippedDelta;
+        CurrentFile = lastFileName;
 
         int processed = Succeeded + Failed + Skipped;
         Progress = TotalFiles > 0 ? (double)processed / TotalFiles * 100.0 : 0;
         OnPropertyChanged(nameof(ProgressText));
+        UpdateThroughput();
+        UpdatePhaseLabel();
+    }
+
+    private void EnsureFlushTimerRunning()
+    {
+        if (_flushTimer is not null)
+        {
+            return;
+        }
+
+        _flushTimer = new DispatcherTimer { Interval = FlushInterval };
+        _flushTimer.Tick += OnFlushTimerTick;
+        _flushTimer.Start();
+    }
+
+    private void StopFlushTimer()
+    {
+        if (_flushTimer is null)
+        {
+            return;
+        }
+
+        _flushTimer.Stop();
+        _flushTimer.Tick -= OnFlushTimerTick;
+        _flushTimer = null;
+    }
+
+    private void OnFlushTimerTick(object? sender, EventArgs e)
+    {
+        FlushPendingJobs();
     }
 
     private void UpdatePhaseLabel()
