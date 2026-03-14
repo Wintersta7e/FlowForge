@@ -18,13 +18,13 @@ public static class PipelineSerializer
         }
 
         graph.UpdatedAt = DateTime.UtcNow;
-        string json = JsonSerializer.Serialize(graph, Options);
 
-        // Atomic write: write to temp file, then rename
-        string tmpPath = filePath + ".tmp";
+        // Atomic write: stream to temp file, then rename
+        string tmpPath = $"{filePath}.{Guid.NewGuid():N}.tmp";
         try
         {
-            await File.WriteAllTextAsync(tmpPath, json, ct);
+            await using FileStream stream = new(tmpPath, FileMode.Create, FileAccess.Write, FileShare.None);
+            await JsonSerializer.SerializeAsync(stream, graph, Options, ct).ConfigureAwait(false);
             File.Move(tmpPath, filePath, overwrite: true);
         }
         finally
@@ -37,17 +37,12 @@ public static class PipelineSerializer
 
     public static async Task<PipelineGraph> LoadAsync(string filePath, CancellationToken ct = default)
     {
-        if (!File.Exists(filePath))
-        {
-            throw new FileNotFoundException($"Pipeline file not found: '{filePath}'", filePath);
-        }
-
         if (!filePath.EndsWith(".ffpipe", StringComparison.OrdinalIgnoreCase))
         {
             throw new ArgumentException("Pipeline file must have .ffpipe extension.", nameof(filePath));
         }
 
-        string json = await File.ReadAllTextAsync(filePath, ct);
+        string json = await File.ReadAllTextAsync(filePath, ct).ConfigureAwait(false);
 
         try
         {

@@ -109,6 +109,6 @@ public class FolderInputNode : ISourceNode
             };
         }
 
-        await Task.CompletedTask; // Satisfy async requirement
+        await Task.CompletedTask.ConfigureAwait(false); // Satisfy async requirement
     }
 }

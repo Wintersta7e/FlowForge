@@ -53,7 +53,7 @@ public sealed class AppSettingsManager
             return new AppSettings();
         }
 
-        string json = await File.ReadAllTextAsync(_settingsFilePath, ct);
+        string json = await File.ReadAllTextAsync(_settingsFilePath, ct).ConfigureAwait(false);
 
         try
         {
@@ -84,13 +84,12 @@ public sealed class AppSettingsManager
             Directory.CreateDirectory(directory);
         }
 
-        string json = JsonSerializer.Serialize(settings, SerializerOptions);
-
-        // Atomic write: write to temp file, then rename.
-        string tmpPath = _settingsFilePath + ".tmp";
+        // Atomic write: stream to temp file, then rename.
+        string tmpPath = $"{_settingsFilePath}.{Guid.NewGuid():N}.tmp";
         try
         {
-            await File.WriteAllTextAsync(tmpPath, json, ct);
+            await using FileStream stream = new(tmpPath, FileMode.Create, FileAccess.Write, FileShare.None);
+            await JsonSerializer.SerializeAsync(stream, settings, SerializerOptions, ct).ConfigureAwait(false);
             File.Move(tmpPath, _settingsFilePath, overwrite: true);
         }
         finally
