@@ -3,7 +3,6 @@ using FlowForge.Core.Execution;
 using FlowForge.Core.Settings;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 namespace FlowForge.Tests.DependencyInjection;
 

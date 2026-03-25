@@ -13,7 +13,7 @@ public class RenamePatternNodeTests
     private static Dictionary<string, JsonElement> MakeConfig(string pattern, int startIndex = 1)
     {
         string json = JsonSerializer.Serialize(new { pattern, startIndex });
-        JsonDocument doc = JsonDocument.Parse(json);
+        var doc = JsonDocument.Parse(json);
         return doc.RootElement.EnumerateObject()
             .ToDictionary(p => p.Name, p => p.Value.Clone());
     }

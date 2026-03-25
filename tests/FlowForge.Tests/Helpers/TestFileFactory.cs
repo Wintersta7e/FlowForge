@@ -10,7 +10,9 @@ public static class TestFileFactory
     {
         string? dir = Path.GetDirectoryName(filePath);
         if (dir != null)
+        {
             Directory.CreateDirectory(dir);
+        }
 
         using var image = new Image<Rgba32>(width, height, Color.CornflowerBlue);
         image.SaveAsJpeg(filePath);
@@ -21,7 +23,9 @@ public static class TestFileFactory
     {
         string? dir = Path.GetDirectoryName(filePath);
         if (dir != null)
+        {
             Directory.CreateDirectory(dir);
+        }
 
         using var image = new Image<Rgba32>(width, height, Color.CornflowerBlue);
         image.SaveAsPng(filePath);
@@ -32,7 +36,9 @@ public static class TestFileFactory
     {
         string? dir = Path.GetDirectoryName(filePath);
         if (dir != null)
+        {
             Directory.CreateDirectory(dir);
+        }
 
         using var image = new Image<Rgba32>(width, height, Color.CornflowerBlue);
         image.SaveAsBmp(filePath);
@@ -46,10 +52,14 @@ public static class TestFileFactory
         {
             string ext = Path.GetExtension(fileName).ToLowerInvariant();
             string filePath = Path.Combine(directory, fileName);
-            if (ext == ".png")
+            if (string.Equals(ext, ".png", StringComparison.Ordinal))
+            {
                 CreateTestPng(filePath);
+            }
             else
+            {
                 CreateTestImage(filePath);
+            }
         }
     }
 }

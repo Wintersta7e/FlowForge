@@ -13,7 +13,7 @@ public class FolderInputNodeTests
     private static Dictionary<string, JsonElement> MakeConfig(object config)
     {
         string json = JsonSerializer.Serialize(config);
-        JsonDocument doc = JsonDocument.Parse(json);
+        var doc = JsonDocument.Parse(json);
         return doc.RootElement.EnumerateObject()
             .ToDictionary(p => p.Name, p => p.Value.Clone());
     }
@@ -185,7 +185,7 @@ public class FolderInputNodeTests
 
         List<FileJob> jobs = await CollectJobsAsync(node);
 
-        List<string> fileNames = jobs.Select(j => Path.GetFileName(j.OriginalPath)).ToList();
+        var fileNames = jobs.Select(j => Path.GetFileName(j.OriginalPath)).ToList();
         fileNames.Should().BeInAscendingOrder(StringComparer.OrdinalIgnoreCase);
         fileNames.Should().HaveCount(4);
     }

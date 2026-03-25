@@ -13,7 +13,7 @@ public class MetadataExtractNodeTests
     private static Dictionary<string, JsonElement> MakeConfig(object config)
     {
         string json = JsonSerializer.Serialize(config);
-        JsonDocument doc = JsonDocument.Parse(json);
+        var doc = JsonDocument.Parse(json);
         return doc.RootElement.EnumerateObject()
             .ToDictionary(p => p.Name, p => p.Value.Clone());
     }
@@ -40,7 +40,7 @@ public class MetadataExtractNodeTests
         FileJob resultJob = result.First();
         resultJob.Metadata.Should().ContainKey("File:SizeBytes");
         resultJob.Metadata["File:SizeBytes"].Should().NotBeNullOrWhiteSpace();
-        long.TryParse(resultJob.Metadata["File:SizeBytes"], out long size).Should().BeTrue();
+        long.TryParse(resultJob.Metadata["File:SizeBytes"], System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out long size).Should().BeTrue();
         size.Should().BeGreaterThan(0);
     }
 
@@ -159,8 +159,8 @@ public class MetadataExtractNodeTests
         var node = new MetadataExtractNode(NullLogger<MetadataExtractNode>.Instance);
 
         string json = JsonSerializer.Serialize(new { keys = "File:SizeBytes, EXIF:DateTaken" });
-        JsonDocument doc = JsonDocument.Parse(json);
-        Dictionary<string, JsonElement> config = doc.RootElement.EnumerateObject()
+        var doc = JsonDocument.Parse(json);
+        var config = doc.RootElement.EnumerateObject()
             .ToDictionary(p => p.Name, p => p.Value.Clone());
 
         Action act = () => node.Configure(config);
@@ -174,8 +174,8 @@ public class MetadataExtractNodeTests
         var node = new MetadataExtractNode(NullLogger<MetadataExtractNode>.Instance);
 
         string json = JsonSerializer.Serialize(new { keys = 42 });
-        JsonDocument doc = JsonDocument.Parse(json);
-        Dictionary<string, JsonElement> config = doc.RootElement.EnumerateObject()
+        var doc = JsonDocument.Parse(json);
+        var config = doc.RootElement.EnumerateObject()
             .ToDictionary(p => p.Name, p => p.Value.Clone());
 
         Action act = () => node.Configure(config);
@@ -189,8 +189,8 @@ public class MetadataExtractNodeTests
         var node = new MetadataExtractNode(NullLogger<MetadataExtractNode>.Instance);
 
         string json = """{"keys": null}""";
-        JsonDocument doc = JsonDocument.Parse(json);
-        Dictionary<string, JsonElement> config = doc.RootElement.EnumerateObject()
+        var doc = JsonDocument.Parse(json);
+        var config = doc.RootElement.EnumerateObject()
             .ToDictionary(p => p.Name, p => p.Value.Clone());
 
         Action act = () => node.Configure(config);

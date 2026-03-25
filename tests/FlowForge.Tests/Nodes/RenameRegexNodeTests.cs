@@ -13,7 +13,7 @@ public class RenameRegexNodeTests
     private static Dictionary<string, JsonElement> MakeConfig(object obj)
     {
         string json = JsonSerializer.Serialize(obj);
-        JsonDocument doc = JsonDocument.Parse(json);
+        var doc = JsonDocument.Parse(json);
         return doc.RootElement.EnumerateObject()
             .ToDictionary(p => p.Name, p => p.Value.Clone());
     }
@@ -108,7 +108,7 @@ public class RenameRegexNodeTests
     public void Missing_pattern_throws_NodeConfigurationException()
     {
         var node = new RenameRegexNode(NullLogger<RenameRegexNode>.Instance);
-        var config = MakeConfig(new { replacement = "X" });
+        Dictionary<string, JsonElement> config = MakeConfig(new { replacement = "X" });
 
         Action act = () => node.Configure(config);
         act.Should().Throw<NodeConfigurationException>()
@@ -129,7 +129,7 @@ public class RenameRegexNodeTests
     public void Missing_replacement_throws_NodeConfigurationException()
     {
         var node = new RenameRegexNode(NullLogger<RenameRegexNode>.Instance);
-        var config = MakeConfig(new { pattern = @"\d+" });
+        Dictionary<string, JsonElement> config = MakeConfig(new { pattern = @"\d+" });
 
         Action act = () => node.Configure(config);
         act.Should().Throw<NodeConfigurationException>()

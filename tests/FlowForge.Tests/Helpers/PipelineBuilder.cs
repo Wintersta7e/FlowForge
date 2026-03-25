@@ -57,8 +57,8 @@ public class PipelineBuilder
     private static NodeDefinition CreateNode(string typeKey, object config)
     {
         string json = JsonSerializer.Serialize(config);
-        JsonDocument doc = JsonDocument.Parse(json);
-        Dictionary<string, JsonElement> configDict = doc.RootElement
+        var doc = JsonDocument.Parse(json);
+        var configDict = doc.RootElement
             .EnumerateObject()
             .ToDictionary(p => p.Name, p => p.Value.Clone());
 

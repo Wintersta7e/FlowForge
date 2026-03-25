@@ -42,7 +42,7 @@ public class JsonOutputTests
         });
 
         string json = JsonSerializer.Serialize(result, JsonOptions);
-        using JsonDocument doc = JsonDocument.Parse(json);
+        using var doc = JsonDocument.Parse(json);
         JsonElement root = doc.RootElement;
 
         root.GetProperty("isDryRun").GetBoolean().Should().BeTrue();

@@ -2,7 +2,6 @@ using System.Text.Json;
 using FluentAssertions;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Transforms;
-using FlowForge.Core.Nodes.Base;
 using FlowForge.Tests.Helpers;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -13,7 +12,7 @@ public class SortNodeTests
     private static Dictionary<string, JsonElement> MakeConfig(object config)
     {
         string json = JsonSerializer.Serialize(config);
-        JsonDocument doc = JsonDocument.Parse(json);
+        var doc = JsonDocument.Parse(json);
         return doc.RootElement.EnumerateObject()
             .ToDictionary(p => p.Name, p => p.Value.Clone());
     }
@@ -69,7 +68,7 @@ public class SortNodeTests
         await node.TransformAsync(jobA, dryRun: false);
         await node.TransformAsync(jobC, dryRun: false);
 
-        List<FileJob> result = (await node.FlushAsync()).ToList();
+        var result = (await node.FlushAsync()).ToList();
 
         result.Should().HaveCount(3);
         result[0].FileName.Should().Be("a.txt");
@@ -91,7 +90,7 @@ public class SortNodeTests
         await node.TransformAsync(jobA, dryRun: false);
         await node.TransformAsync(jobC, dryRun: false);
 
-        List<FileJob> result = (await node.FlushAsync()).ToList();
+        var result = (await node.FlushAsync()).ToList();
 
         result.Should().HaveCount(3);
         result[0].FileName.Should().Be("c.txt");
@@ -113,7 +112,7 @@ public class SortNodeTests
         await node.TransformAsync(jobJpg, dryRun: false);
         await node.TransformAsync(jobTxt, dryRun: false);
 
-        List<FileJob> result = (await node.FlushAsync()).ToList();
+        var result = (await node.FlushAsync()).ToList();
 
         result.Should().HaveCount(3);
         result[0].FileName.Should().Be("file.jpg");
@@ -141,7 +140,7 @@ public class SortNodeTests
         await node.TransformAsync(MakeJob(smallPath), dryRun: false);
         await node.TransformAsync(MakeJob(mediumPath), dryRun: false);
 
-        List<FileJob> result = (await node.FlushAsync()).ToList();
+        var result = (await node.FlushAsync()).ToList();
 
         result.Should().HaveCount(3);
         result[0].FileName.Should().Be("small.txt");
@@ -174,7 +173,7 @@ public class SortNodeTests
         FileJob job = MakeJob(Path.Combine("/tmp", "only.txt"));
         await node.TransformAsync(job, dryRun: false);
 
-        List<FileJob> result = (await node.FlushAsync()).ToList();
+        var result = (await node.FlushAsync()).ToList();
 
         result.Should().HaveCount(1);
         result[0].FileName.Should().Be("only.txt");
@@ -216,7 +215,7 @@ public class SortNodeTests
         await node2.TransformAsync(job2, dryRun: false);
 
         IEnumerable<FileJob> result = await node2.FlushAsync();
-        List<FileJob> resultList = result.ToList();
+        var resultList = result.ToList();
 
         resultList.Should().HaveCount(2);
         resultList.Should().AllSatisfy(j =>
@@ -243,7 +242,7 @@ public class SortNodeTests
 
         // Should not throw even though files don't exist (dry-run returns default size 0)
         IEnumerable<FileJob> result = await node.FlushAsync(dryRun: true);
-        List<FileJob> resultList = result.ToList();
+        var resultList = result.ToList();
 
         resultList.Should().HaveCount(3);
         resultList.Should().AllSatisfy(j =>

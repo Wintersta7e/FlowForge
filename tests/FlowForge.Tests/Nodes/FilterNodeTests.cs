@@ -13,7 +13,7 @@ public class FilterNodeTests
     private static Dictionary<string, JsonElement> MakeConfig(object conditions)
     {
         string json = JsonSerializer.Serialize(new { conditions });
-        JsonDocument doc = JsonDocument.Parse(json);
+        var doc = JsonDocument.Parse(json);
         return doc.RootElement.EnumerateObject()
             .ToDictionary(p => p.Name, p => p.Value.Clone());
     }
@@ -178,10 +178,10 @@ public class FilterNodeTests
     public async Task Regex_timeout_sets_failed_and_returns_empty()
     {
         var node = new FilterNode(NullLogger<FilterNode>.Instance);
-        // Catastrophic backtracking pattern: (a+)+ against a long string of 'a's followed by '!'
+        // Catastrophic backtracking pattern: named group still captured with ExplicitCapture
         node.Configure(MakeConfig(new[]
         {
-            new { field = "filename", @operator = "matches", value = @"^(a+)+$" }
+            new { field = "filename", @operator = "matches", value = @"^(?<g>a+)+$" }
         }));
 
         var job = new FileJob

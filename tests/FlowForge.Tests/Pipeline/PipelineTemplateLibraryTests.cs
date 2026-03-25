@@ -20,7 +20,7 @@ public class PipelineTemplateLibraryTests
     public void Templates_contains_expected_id(string expectedId)
     {
         PipelineTemplateLibrary.Templates
-            .Should().Contain(t => t.Id == expectedId);
+            .Should().Contain(t => string.Equals(t.Id, expectedId, StringComparison.Ordinal));
     }
 
     [Fact]
@@ -39,8 +39,8 @@ public class PipelineTemplateLibraryTests
         PipelineGraph first = PipelineTemplateLibrary.CreateFromTemplate("batch-sequential-rename");
         PipelineGraph second = PipelineTemplateLibrary.CreateFromTemplate("batch-sequential-rename");
 
-        List<Guid> firstIds = first.Nodes.Select(n => n.Id).ToList();
-        List<Guid> secondIds = second.Nodes.Select(n => n.Id).ToList();
+        var firstIds = first.Nodes.Select(n => n.Id).ToList();
+        var secondIds = second.Nodes.Select(n => n.Id).ToList();
 
         firstIds.Should().NotIntersectWith(secondIds);
     }
@@ -93,7 +93,7 @@ public class PipelineTemplateLibraryTests
     {
         PipelineGraph graph = PipelineTemplateLibrary.CreateFromTemplate(templateId);
 
-        List<string> actualKeys = graph.Nodes.Select(n => n.TypeKey).ToList();
+        var actualKeys = graph.Nodes.Select(n => n.TypeKey).ToList();
         actualKeys.Should().Equal(expectedTypeKeys);
     }
 }
