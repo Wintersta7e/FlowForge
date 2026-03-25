@@ -43,7 +43,7 @@ public class ImageResizeNode : ITransformNode
     private bool _maintainAspect = true;
     private int? _dpi;
 
-    public void Configure(Dictionary<string, JsonElement> config)
+    public void Configure(IDictionary<string, JsonElement> config)
     {
         if (config.TryGetValue("width", out JsonElement widthEl) && widthEl.ValueKind == JsonValueKind.Number)
         {

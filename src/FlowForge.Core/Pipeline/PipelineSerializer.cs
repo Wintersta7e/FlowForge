@@ -23,14 +23,23 @@ public static class PipelineSerializer
         string tmpPath = $"{filePath}.{Guid.NewGuid():N}.tmp";
         try
         {
-            await using FileStream stream = new(tmpPath, FileMode.Create, FileAccess.Write, FileShare.None);
-            await JsonSerializer.SerializeAsync(stream, graph, Options, ct).ConfigureAwait(false);
+            FileStream stream = new(tmpPath, FileMode.Create, FileAccess.Write, FileShare.None);
+            await using (stream.ConfigureAwait(false))
+            {
+                await JsonSerializer.SerializeAsync(stream, graph, Options, ct).ConfigureAwait(false);
+            }
+
             File.Move(tmpPath, filePath, overwrite: true);
         }
         finally
         {
             try
-            { if (File.Exists(tmpPath)) File.Delete(tmpPath); }
+            {
+                if (File.Exists(tmpPath))
+                {
+                    File.Delete(tmpPath);
+                }
+            }
             catch { /* best-effort */ }
         }
     }

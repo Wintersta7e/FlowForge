@@ -29,7 +29,7 @@ public class FolderInputNode : ISourceNode
     private bool _recursive;
     private string _filter = "*";
 
-    public void Configure(Dictionary<string, JsonElement> config)
+    public void Configure(IDictionary<string, JsonElement> config)
     {
         if (!config.TryGetValue("path", out JsonElement pathElement) ||
             pathElement.ValueKind == JsonValueKind.Null)

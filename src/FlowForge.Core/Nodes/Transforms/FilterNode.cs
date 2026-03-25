@@ -30,7 +30,7 @@ public class FilterNode : ITransformNode
     private readonly Dictionary<int, Regex> _compiledRegexes = new();
     private bool _dryRun;
 
-    public void Configure(Dictionary<string, JsonElement> config)
+    public void Configure(IDictionary<string, JsonElement> config)
     {
         if (!config.TryGetValue("conditions", out JsonElement conditionsElement) ||
             conditionsElement.ValueKind != JsonValueKind.Array)
@@ -57,7 +57,7 @@ public class FilterNode : ITransformNode
             {
                 try
                 {
-                    _compiledRegexes[i] = new Regex(value, RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromSeconds(2));
+                    _compiledRegexes[i] = new Regex(value, RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.ExplicitCapture, TimeSpan.FromSeconds(2));
                 }
                 catch (ArgumentException ex)
                 {
@@ -115,7 +115,7 @@ public class FilterNode : ITransformNode
             "lessthan" => CompareNumeric(fieldValue, condition.Value) < 0,
             "matches" => _compiledRegexes.TryGetValue(index, out Regex? compiledRegex)
                 ? compiledRegex.IsMatch(fieldValue)
-                : Regex.IsMatch(fieldValue, condition.Value, RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1)),
+                : Regex.IsMatch(fieldValue, condition.Value, RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture, TimeSpan.FromSeconds(1)),
             _ => throw new InvalidOperationException($"Unknown filter operator: '{condition.Operator}'")
         };
     }
@@ -185,7 +185,8 @@ public class FilterNode : ITransformNode
 
     private static int CompareNumeric(string a, string b)
     {
-        if (long.TryParse(a, out long numA) && long.TryParse(b, out long numB))
+        if (long.TryParse(a, NumberStyles.Integer, CultureInfo.InvariantCulture, out long numA) &&
+            long.TryParse(b, NumberStyles.Integer, CultureInfo.InvariantCulture, out long numB))
         {
             return numA.CompareTo(numB);
         }

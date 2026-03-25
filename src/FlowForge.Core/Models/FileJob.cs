@@ -1,7 +1,5 @@
 namespace FlowForge.Core.Models;
 
-public enum FileJobStatus { Pending, Processing, Succeeded, Failed, Skipped }
-
 public class FileJob
 {
     private string _currentPath = string.Empty;
@@ -28,13 +26,13 @@ public class FileJob
     }
 
     /// <summary>Key-value metadata bag (EXIF, ID3, custom). Values are strings.</summary>
-    public Dictionary<string, string> Metadata { get; init; } = new();
+    public IDictionary<string, string> Metadata { get; init; } = new Dictionary<string, string>(StringComparer.Ordinal);
 
     public FileJobStatus Status { get; set; } = FileJobStatus.Pending;
     public string? ErrorMessage { get; set; }
 
     /// <summary>Ordered log of what each node did to this file.</summary>
-    public List<string> NodeLog { get; init; } = new();
+    public IList<string> NodeLog { get; init; } = new List<string>();
 
     /// <summary>Cached — recomputed lazily when <see cref="CurrentPath"/> changes.</summary>
     public string FileName => _cachedFileName ??= Path.GetFileName(_currentPath);

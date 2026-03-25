@@ -34,7 +34,7 @@ public class SortNode : ITransformNode, IBufferedTransformNode
     private string _direction = "asc";
     private readonly List<FileJob> _buffer = new();
 
-    public void Configure(Dictionary<string, JsonElement> config)
+    public void Configure(IDictionary<string, JsonElement> config)
     {
         if (config.TryGetValue("field", out JsonElement fieldElement) &&
             fieldElement.ValueKind == JsonValueKind.String)

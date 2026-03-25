@@ -40,7 +40,7 @@ public class ImageConvertNode : ITransformNode
     private string _format = string.Empty;
     private IImageEncoder _encoder = null!;
 
-    public void Configure(Dictionary<string, JsonElement> config)
+    public void Configure(IDictionary<string, JsonElement> config)
     {
         if (!config.TryGetValue("format", out JsonElement formatEl) ||
             formatEl.ValueKind == JsonValueKind.Null)

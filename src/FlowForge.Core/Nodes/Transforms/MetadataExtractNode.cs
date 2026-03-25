@@ -29,7 +29,7 @@ public class MetadataExtractNode : ITransformNode
 
     private List<string> _keys = new();
 
-    public void Configure(Dictionary<string, JsonElement> config)
+    public void Configure(IDictionary<string, JsonElement> config)
     {
         if (!config.TryGetValue("keys", out JsonElement keysEl) ||
             keysEl.ValueKind == JsonValueKind.Null)
@@ -111,7 +111,9 @@ public class MetadataExtractNode : ITransformNode
     private static string? ExtractFileMetadata(string key, string filePath)
     {
         if (!File.Exists(filePath))
+        {
             return null;
+        }
 
         var fileInfo = new FileInfo(filePath);
         string fieldName = key["File:".Length..];
@@ -128,7 +130,9 @@ public class MetadataExtractNode : ITransformNode
     private string? ExtractExifMetadata(string key, string filePath)
     {
         if (!File.Exists(filePath))
+        {
             return null;
+        }
 
         try
         {

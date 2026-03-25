@@ -35,131 +35,28 @@ public class PipelineRunner
         {
             progress?.Report(new PhaseChanged(ExecutionPhase.Enumerating));
 
-            // 1. Validate graph
             ValidateGraph(graph);
-
-            // 2. Topological sort
             List<Guid> sortedNodeIds = TopologicalSort(graph);
+            (List<NodeDefinition> sourceNodeDefs, List<NodeDefinition> transformNodeDefs, List<NodeDefinition> outputNodeDefs) = ClassifyNodes(graph, sortedNodeIds);
 
-            // 3. Classify nodes
-            var sourceNodeDefs = new List<NodeDefinition>();
-            var transformNodeDefs = new List<NodeDefinition>();
-            var outputNodeDefs = new List<NodeDefinition>();
-
-            Dictionary<Guid, NodeDefinition> nodeMap = graph.Nodes.ToDictionary(n => n.Id);
-
-            foreach (Guid nodeId in sortedNodeIds)
-            {
-                NodeDefinition def = nodeMap[nodeId];
-                NodeCategory category = _registry.GetCategoryForTypeKey(def.TypeKey);
-                switch (category)
-                {
-                    case NodeCategory.Source:
-                        sourceNodeDefs.Add(def);
-                        break;
-                    case NodeCategory.Transform:
-                        transformNodeDefs.Add(def);
-                        break;
-                    case NodeCategory.Output:
-                        outputNodeDefs.Add(def);
-                        break;
-                }
-            }
-
-            // Build the ordered transform chain based on connections
             List<NodeDefinition> orderedTransforms = BuildTransformChain(graph, sortedNodeIds, transformNodeDefs);
 
-            // 4. Create node instances
             var sourceNodes = sourceNodeDefs.Select(d => _registry.GetSource(d)).ToList();
             var transformNodes = orderedTransforms.Select(d => _registry.GetTransform(d)).ToList();
             var outputNodes = outputNodeDefs.Select(d => _registry.GetOutput(d)).ToList();
 
-            // 5. Collect all jobs from sources
-            var allJobs = new List<FileJob>();
-            int lastReportedCount = 0;
-            foreach (ISourceNode source in sourceNodes)
-            {
-                await foreach (FileJob job in source.ProduceAsync(ct).ConfigureAwait(false))
-                {
-                    ct.ThrowIfCancellationRequested();
-                    allJobs.Add(job);
-
-                    // Throttle discovery progress to every 100 files (M2)
-                    if (allJobs.Count == 1 || allJobs.Count - lastReportedCount >= 100)
-                    {
-                        lastReportedCount = allJobs.Count;
-                        progress?.Report(new FilesDiscovered(allJobs.Count));
-                    }
-                }
-            }
-
-            // Report final count
-            if (allJobs.Count != lastReportedCount)
-            {
-                progress?.Report(new FilesDiscovered(allJobs.Count));
-            }
-
+            List<FileJob> allJobs = await CollectSourceJobsAsync(sourceNodes, progress, ct).ConfigureAwait(false);
             result.TotalFiles = allJobs.Count;
 
             progress?.Report(new PhaseChanged(ExecutionPhase.Processing));
 
-            // 6. Walk the transform chain (handles buffered nodes like SortNode)
             IReadOnlyList<FileJob> currentJobs = allJobs;
             foreach (ITransformNode transform in transformNodes)
             {
                 currentJobs = await ApplyTransformAsync(transform, currentJobs, dryRun, result, ct).ConfigureAwait(false);
             }
 
-            // 7. Send to output nodes with concurrency control
-            var semaphore = new SemaphoreSlim(_maxConcurrency);
-            var outputTasks = new List<Task>();
-
-            try
-            {
-                foreach (FileJob job in currentJobs)
-                {
-                    ct.ThrowIfCancellationRequested();
-
-                    // Jobs that arrived with Skipped status (e.g. from FilterNode) bypass output
-                    if (job.Status == FileJobStatus.Skipped)
-                    {
-                        lock (result)
-                        {
-                            result.Skipped++;
-                            result.Jobs.Add(job);
-                        }
-                        progress?.Report(new FileProcessed(job));
-                        continue;
-                    }
-
-                    await semaphore.WaitAsync(ct).ConfigureAwait(false);
-                    Task task = ConsumeJobAsync(job, outputNodes, dryRun, result, progress, semaphore, ct);
-                    outputTasks.Add(task);
-                }
-
-                await Task.WhenAll(outputTasks).ConfigureAwait(false);
-            }
-            catch
-            {
-                // Wait for in-flight tasks before disposing semaphore (I2)
-                if (outputTasks.Count > 0)
-                {
-                    try
-                    {
-                        await Task.WhenAll(outputTasks).ConfigureAwait(false);
-                    }
-                    catch
-                    {
-                        // tasks handle their own errors
-                    }
-                }
-
-                throw;
-            }
-            finally
-            {
-                semaphore.Dispose();
-            }
+            await DispatchOutputJobsAsync(currentJobs, outputNodes, dryRun, result, progress, ct).ConfigureAwait(false);
 
             succeeded = true;
         }
@@ -182,6 +79,124 @@ public class PipelineRunner
         return result;
     }
 
+    private (List<NodeDefinition> Sources, List<NodeDefinition> Transforms, List<NodeDefinition> Outputs) ClassifyNodes(
+        PipelineGraph graph,
+        List<Guid> sortedNodeIds)
+    {
+        var sourceNodeDefs = new List<NodeDefinition>();
+        var transformNodeDefs = new List<NodeDefinition>();
+        var outputNodeDefs = new List<NodeDefinition>();
+        var nodeMap = graph.Nodes.ToDictionary(n => n.Id);
+
+        foreach (Guid nodeId in sortedNodeIds)
+        {
+            NodeDefinition def = nodeMap[nodeId];
+            NodeCategory category = _registry.GetCategoryForTypeKey(def.TypeKey);
+            switch (category)
+            {
+                case NodeCategory.Source:
+                    sourceNodeDefs.Add(def);
+                    break;
+                case NodeCategory.Transform:
+                    transformNodeDefs.Add(def);
+                    break;
+                case NodeCategory.Output:
+                    outputNodeDefs.Add(def);
+                    break;
+            }
+        }
+
+        return (sourceNodeDefs, transformNodeDefs, outputNodeDefs);
+    }
+
+    private static async Task<List<FileJob>> CollectSourceJobsAsync(
+        List<ISourceNode> sourceNodes,
+        IProgress<PipelineProgressEvent>? progress,
+        CancellationToken ct)
+    {
+        var allJobs = new List<FileJob>();
+        int lastReportedCount = 0;
+
+        foreach (ISourceNode source in sourceNodes)
+        {
+            await foreach (FileJob job in source.ProduceAsync(ct).ConfigureAwait(false))
+            {
+                ct.ThrowIfCancellationRequested();
+                allJobs.Add(job);
+
+                if (allJobs.Count == 1 || allJobs.Count - lastReportedCount >= 100)
+                {
+                    lastReportedCount = allJobs.Count;
+                    progress?.Report(new FilesDiscovered(allJobs.Count));
+                }
+            }
+        }
+
+        if (allJobs.Count != lastReportedCount)
+        {
+            progress?.Report(new FilesDiscovered(allJobs.Count));
+        }
+
+        return allJobs;
+    }
+
+    private async Task DispatchOutputJobsAsync(
+        IReadOnlyList<FileJob> jobs,
+        List<IOutputNode> outputNodes,
+        bool dryRun,
+        ExecutionResult result,
+        IProgress<PipelineProgressEvent>? progress,
+        CancellationToken ct)
+    {
+        var semaphore = new SemaphoreSlim(_maxConcurrency);
+        var outputTasks = new List<Task>();
+
+        try
+        {
+            foreach (FileJob job in jobs)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                if (job.Status == FileJobStatus.Skipped)
+                {
+                    lock (result)
+                    {
+                        result.Skipped++;
+                        result.Jobs.Add(job);
+                    }
+                    progress?.Report(new FileProcessed(job));
+                    continue;
+                }
+
+                await semaphore.WaitAsync(ct).ConfigureAwait(false);
+                Task task = ConsumeJobAsync(job, outputNodes, dryRun, result, progress, semaphore, ct);
+                outputTasks.Add(task);
+            }
+
+            await Task.WhenAll(outputTasks).ConfigureAwait(false);
+        }
+        catch
+        {
+            if (outputTasks.Count > 0)
+            {
+                try
+                {
+                    await Task.WhenAll(outputTasks).ConfigureAwait(false);
+                }
+                catch
+                {
+                    // tasks handle their own errors
+                }
+            }
+
+            throw;
+        }
+        finally
+        {
+            semaphore.Dispose();
+        }
+    }
+
     private async Task<IReadOnlyList<FileJob>> ApplyTransformAsync(
         ITransformNode transform,
         IReadOnlyList<FileJob> jobs,
@@ -198,62 +213,15 @@ public class PipelineRunner
             {
                 job.Status = FileJobStatus.Processing;
                 IEnumerable<FileJob> transformed = await transform.TransformAsync(job, dryRun, ct).ConfigureAwait(false);
-                List<FileJob> transformedList = transformed.ToList();
+                var transformedList = transformed.ToList();
 
                 if (transformedList.Count == 0)
                 {
-                    if (job.Status == FileJobStatus.Failed)
-                    {
-                        _logger.LogError("Transform {NodeType} set Failed for {File}", transform.TypeKey, job.OriginalPath);
-                        lock (result)
-                        {
-                            result.Failed++;
-                            result.Jobs.Add(job);
-                        }
-                    }
-                    else if (job.Status == FileJobStatus.Skipped)
-                    {
-                        lock (result)
-                        {
-                            result.Skipped++;
-                            result.Jobs.Add(job);
-                        }
-                    }
-                    else
-                    {
-                        // Job still has Processing status but was not returned by the
-                        // transform — treat as silently dropped / skipped.
-                        job.Status = FileJobStatus.Skipped;
-                        job.NodeLog.Add($"Transform '{transform.TypeKey}' returned empty with no status change — treated as skipped.");
-                        _logger.LogWarning(
-                            "Transform {NodeType} returned empty for {File} with status Processing — treating as skipped",
-                            transform.TypeKey, job.OriginalPath);
-                        lock (result)
-                        {
-                            result.Skipped++;
-                            result.Jobs.Add(job);
-                        }
-                    }
+                    HandleEmptyTransformResult(transform, job, result);
                 }
                 else
                 {
-                    // Filter out any jobs the transform marked as Failed
-                    foreach (FileJob tj in transformedList)
-                    {
-                        if (tj.Status == FileJobStatus.Failed)
-                        {
-                            _logger.LogError("Transform {NodeType} set Failed for {File}", transform.TypeKey, tj.OriginalPath);
-                            lock (result)
-                            {
-                                result.Failed++;
-                                result.Jobs.Add(tj);
-                            }
-                        }
-                        else
-                        {
-                            nextJobs.Add(tj);
-                        }
-                    }
+                    PartitionTransformResults(transform, transformedList, nextJobs, result);
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -269,29 +237,97 @@ public class PipelineRunner
             }
         }
 
-        // If this is a buffered node, flush to get the sorted/processed results
         if (transform is IBufferedTransformNode buffered)
         {
-            IEnumerable<FileJob> flushed = await buffered.FlushAsync(dryRun: dryRun, ct: ct).ConfigureAwait(false);
-            foreach (FileJob fj in flushed)
-            {
-                if (fj.Status == FileJobStatus.Failed)
-                {
-                    _logger.LogError("Transform {NodeType} flush set Failed for {File}", transform.TypeKey, fj.OriginalPath);
-                    lock (result)
-                    {
-                        result.Failed++;
-                        result.Jobs.Add(fj);
-                    }
-                }
-                else
-                {
-                    nextJobs.Add(fj);
-                }
-            }
+            await FlushBufferedTransformAsync(buffered, transform.TypeKey, nextJobs, result, dryRun, ct).ConfigureAwait(false);
         }
 
         return nextJobs;
+    }
+
+    private void HandleEmptyTransformResult(ITransformNode transform, FileJob job, ExecutionResult result)
+    {
+        if (job.Status == FileJobStatus.Failed)
+        {
+            _logger.LogError("Transform {NodeType} set Failed for {File}", transform.TypeKey, job.OriginalPath);
+            lock (result)
+            {
+                result.Failed++;
+                result.Jobs.Add(job);
+            }
+        }
+        else if (job.Status == FileJobStatus.Skipped)
+        {
+            lock (result)
+            {
+                result.Skipped++;
+                result.Jobs.Add(job);
+            }
+        }
+        else
+        {
+            job.Status = FileJobStatus.Skipped;
+            job.NodeLog.Add($"Transform '{transform.TypeKey}' returned empty with no status change — treated as skipped.");
+            _logger.LogWarning(
+                "Transform {NodeType} returned empty for {File} with status Processing — treating as skipped",
+                transform.TypeKey, job.OriginalPath);
+            lock (result)
+            {
+                result.Skipped++;
+                result.Jobs.Add(job);
+            }
+        }
+    }
+
+    private void PartitionTransformResults(
+        ITransformNode transform,
+        List<FileJob> transformedList,
+        List<FileJob> nextJobs,
+        ExecutionResult result)
+    {
+        foreach (FileJob tj in transformedList)
+        {
+            if (tj.Status == FileJobStatus.Failed)
+            {
+                _logger.LogError("Transform {NodeType} set Failed for {File}", transform.TypeKey, tj.OriginalPath);
+                lock (result)
+                {
+                    result.Failed++;
+                    result.Jobs.Add(tj);
+                }
+            }
+            else
+            {
+                nextJobs.Add(tj);
+            }
+        }
+    }
+
+    private async Task FlushBufferedTransformAsync(
+        IBufferedTransformNode buffered,
+        string typeKey,
+        List<FileJob> nextJobs,
+        ExecutionResult result,
+        bool dryRun,
+        CancellationToken ct)
+    {
+        IEnumerable<FileJob> flushed = await buffered.FlushAsync(dryRun: dryRun, ct: ct).ConfigureAwait(false);
+        foreach (FileJob fj in flushed)
+        {
+            if (fj.Status == FileJobStatus.Failed)
+            {
+                _logger.LogError("Transform {NodeType} flush set Failed for {File}", typeKey, fj.OriginalPath);
+                lock (result)
+                {
+                    result.Failed++;
+                    result.Jobs.Add(fj);
+                }
+            }
+            else
+            {
+                nextJobs.Add(fj);
+            }
+        }
     }
 
     private async Task ConsumeJobAsync(
@@ -307,8 +343,6 @@ public class PipelineRunner
         {
             bool anyFailed = false;
 
-            // Each output node is wrapped individually so one failure
-            // does not prevent subsequent outputs from executing.
             foreach (IOutputNode output in outputs)
             {
                 try
@@ -370,7 +404,7 @@ public class PipelineRunner
             }
         }
 
-        HashSet<Guid> nodeIds = graph.Nodes.Select(n => n.Id).ToHashSet();
+        var nodeIds = graph.Nodes.Select(n => n.Id).ToHashSet();
         foreach (Connection conn in graph.Connections)
         {
             if (!nodeIds.Contains(conn.FromNode))
@@ -432,7 +466,7 @@ public class PipelineRunner
         List<Guid> sortedNodeIds,
         List<NodeDefinition> transformNodeDefs)
     {
-        Dictionary<Guid, NodeDefinition> transformMap = transformNodeDefs.ToDictionary(n => n.Id);
+        var transformMap = transformNodeDefs.ToDictionary(n => n.Id);
         var ordered = new List<NodeDefinition>();
 
         foreach (Guid nodeId in sortedNodeIds)

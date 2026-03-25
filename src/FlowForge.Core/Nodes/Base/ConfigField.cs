@@ -1,20 +1,6 @@
 namespace FlowForge.Core.Nodes.Base;
 
 /// <summary>
-/// Defines the type of UI control to render for a node configuration field.
-/// </summary>
-public enum ConfigFieldType
-{
-    String,
-    Int,
-    Bool,
-    FilePath,
-    FolderPath,
-    Select,
-    MultiLine
-}
-
-/// <summary>
 /// Describes a single configurable property on a node, enabling the UI
 /// to auto-generate property forms without hard-coding per-node knowledge.
 /// </summary>

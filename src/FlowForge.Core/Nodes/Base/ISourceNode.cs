@@ -7,6 +7,6 @@ namespace FlowForge.Core.Nodes.Base;
 public interface ISourceNode
 {
     string TypeKey { get; }
-    void Configure(Dictionary<string, JsonElement> config);
+    void Configure(IDictionary<string, JsonElement> config);
     IAsyncEnumerable<FileJob> ProduceAsync(CancellationToken ct = default);
 }

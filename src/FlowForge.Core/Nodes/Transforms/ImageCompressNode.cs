@@ -41,7 +41,7 @@ public class ImageCompressNode : ITransformNode
     private int _quality = 80;
     private string? _format;
 
-    public void Configure(Dictionary<string, JsonElement> config)
+    public void Configure(IDictionary<string, JsonElement> config)
     {
         if (!config.TryGetValue("quality", out JsonElement qualityEl) ||
             qualityEl.ValueKind != JsonValueKind.Number)

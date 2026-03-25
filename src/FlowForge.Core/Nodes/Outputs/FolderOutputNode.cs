@@ -39,7 +39,7 @@ public class FolderOutputNode : IOutputNode
     private bool _enableBackup;
     private string _backupSuffix = ".bak";
 
-    public void Configure(Dictionary<string, JsonElement> config)
+    public void Configure(IDictionary<string, JsonElement> config)
     {
         if (!config.TryGetValue("path", out JsonElement pathElement) ||
             pathElement.ValueKind == JsonValueKind.Null)
@@ -134,19 +134,9 @@ public class FolderOutputNode : IOutputNode
 
         Directory.CreateDirectory(destinationDir);
 
-        // Backup existing destination file before overwriting
         if (_enableBackup && _overwrite && File.Exists(destinationPath))
         {
-            string backupPath = destinationPath + _backupSuffix;
-            if (File.Exists(backupPath))
-            {
-                job.NodeLog.Add($"FolderOutput: Replacing previous backup at '{backupPath}'");
-            }
-
-            await using FileStream backupSrc = new(destinationPath, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true);
-            await using FileStream backupDst = new(backupPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true);
-            await backupSrc.CopyToAsync(backupDst, ct).ConfigureAwait(false);
-            job.NodeLog.Add($"FolderOutput: Backed up '{destinationPath}' → '{backupPath}'");
+            await BackupFileAsync(job, destinationPath, ct).ConfigureAwait(false);
         }
 
         if (_mode.Equals("move", StringComparison.OrdinalIgnoreCase))
@@ -158,9 +148,15 @@ public class FolderOutputNode : IOutputNode
         {
             // Use async streams for copy to avoid blocking the thread pool on large files
             FileMode destMode = _overwrite ? FileMode.Create : FileMode.CreateNew;
-            await using FileStream sourceStream = new(job.CurrentPath, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true);
-            await using FileStream destStream = new(destinationPath, destMode, FileAccess.Write, FileShare.None, 81920, useAsync: true);
-            await sourceStream.CopyToAsync(destStream, ct).ConfigureAwait(false);
+            FileStream sourceStream = new(job.CurrentPath, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true);
+            await using (sourceStream.ConfigureAwait(false))
+            {
+                FileStream destStream = new(destinationPath, destMode, FileAccess.Write, FileShare.None, 81920, useAsync: true);
+                await using (destStream.ConfigureAwait(false))
+                {
+                    await sourceStream.CopyToAsync(destStream, ct).ConfigureAwait(false);
+                }
+            }
 
             // Restore original timestamps on the copy
             var sourceInfo = new FileInfo(job.CurrentPath);
@@ -170,5 +166,26 @@ public class FolderOutputNode : IOutputNode
 
         job.CurrentPath = destinationPath;
         job.NodeLog.Add($"FolderOutput: → '{destinationPath}' ({_mode})");
+    }
+
+    private async Task BackupFileAsync(FileJob job, string destinationPath, CancellationToken ct)
+    {
+        string backupPath = destinationPath + _backupSuffix;
+        if (File.Exists(backupPath))
+        {
+            job.NodeLog.Add($"FolderOutput: Replacing previous backup at '{backupPath}'");
+        }
+
+        FileStream backupSrc = new(destinationPath, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true);
+        await using (backupSrc.ConfigureAwait(false))
+        {
+            FileStream backupDst = new(backupPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true);
+            await using (backupDst.ConfigureAwait(false))
+            {
+                await backupSrc.CopyToAsync(backupDst, ct).ConfigureAwait(false);
+            }
+        }
+
+        job.NodeLog.Add($"FolderOutput: Backed up '{destinationPath}' → '{backupPath}'");
     }
 }

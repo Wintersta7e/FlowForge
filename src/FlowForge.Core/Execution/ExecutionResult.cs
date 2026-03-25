@@ -21,5 +21,5 @@ public class ExecutionResult
     /// For very large pipelines (100k+ files), callers should consider streaming
     /// results via <see cref="PipelineProgressEvent"/> rather than inspecting this list.
     /// </summary>
-    public List<FileJob> Jobs { get; init; } = new();
+    public IList<FileJob> Jobs { get; init; } = new List<FileJob>();
 }

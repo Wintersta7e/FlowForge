@@ -30,7 +30,7 @@ public class RenameRegexNode : ITransformNode
     private string _replacement = string.Empty;
     private string _scope = "filename";
 
-    public void Configure(Dictionary<string, JsonElement> config)
+    public void Configure(IDictionary<string, JsonElement> config)
     {
         if (!config.TryGetValue("pattern", out JsonElement patternElement) ||
             patternElement.ValueKind == JsonValueKind.Null)
@@ -43,7 +43,9 @@ public class RenameRegexNode : ITransformNode
 
         try
         {
+#pragma warning disable MA0023 // ExplicitCapture would break $1/$2 backreferences in replacement strings
             _regex = new Regex(pattern, RegexOptions.Compiled, TimeSpan.FromSeconds(2));
+#pragma warning restore MA0023
         }
         catch (ArgumentException ex)
         {

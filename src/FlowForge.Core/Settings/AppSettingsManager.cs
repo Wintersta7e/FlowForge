@@ -88,8 +88,12 @@ public sealed class AppSettingsManager
         string tmpPath = $"{_settingsFilePath}.{Guid.NewGuid():N}.tmp";
         try
         {
-            await using FileStream stream = new(tmpPath, FileMode.Create, FileAccess.Write, FileShare.None);
-            await JsonSerializer.SerializeAsync(stream, settings, SerializerOptions, ct).ConfigureAwait(false);
+            FileStream stream = new(tmpPath, FileMode.Create, FileAccess.Write, FileShare.None);
+            await using (stream.ConfigureAwait(false))
+            {
+                await JsonSerializer.SerializeAsync(stream, settings, SerializerOptions, ct).ConfigureAwait(false);
+            }
+
             File.Move(tmpPath, _settingsFilePath, overwrite: true);
         }
         finally

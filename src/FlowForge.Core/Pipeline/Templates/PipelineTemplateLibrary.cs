@@ -14,8 +14,8 @@ public static class PipelineTemplateLibrary
 
     public static PipelineGraph CreateFromTemplate(string templateId)
     {
-        PipelineTemplate template = Templates.FirstOrDefault(t => t.Id == templateId)
-            ?? throw new ArgumentException($"Unknown template: '{templateId}'");
+        PipelineTemplate template = Templates.FirstOrDefault(t => string.Equals(t.Id, templateId, StringComparison.Ordinal))
+            ?? throw new ArgumentException($"Unknown template: '{templateId}'", nameof(templateId));
 
         // Deep clone by serializing and deserializing
         string json = JsonSerializer.Serialize(template.Graph);
@@ -27,14 +27,14 @@ public static class PipelineTemplateLibrary
         var newNodes = new List<NodeDefinition>();
         foreach (NodeDefinition n in clone.Nodes)
         {
-            Guid newId = Guid.NewGuid();
+            var newId = Guid.NewGuid();
             idMap[n.Id] = newId;
             newNodes.Add(new NodeDefinition
             {
                 Id = newId,
                 TypeKey = n.TypeKey,
                 Position = n.Position,
-                Config = new Dictionary<string, JsonElement>(n.Config)
+                Config = new Dictionary<string, JsonElement>(n.Config, StringComparer.Ordinal)
             });
         }
 
@@ -133,10 +133,10 @@ public static class PipelineTemplateLibrary
     private static NodeDefinition Node(string typeKey, object config)
     {
         string json = JsonSerializer.Serialize(config);
-        using JsonDocument doc = JsonDocument.Parse(json);
-        Dictionary<string, JsonElement> configDict = doc.RootElement
+        using var doc = JsonDocument.Parse(json);
+        var configDict = doc.RootElement
             .EnumerateObject()
-            .ToDictionary(p => p.Name, p => p.Value.Clone());
+            .ToDictionary(p => p.Name, p => p.Value.Clone(), StringComparer.Ordinal);
 
         return new NodeDefinition
         {
@@ -148,7 +148,10 @@ public static class PipelineTemplateLibrary
     private static PipelineGraph BuildLinearGraph(string name, params NodeDefinition[] nodes)
     {
         var graph = new PipelineGraph { Name = name };
-        graph.Nodes.AddRange(nodes);
+        foreach (NodeDefinition node in nodes)
+        {
+            graph.Nodes.Add(node);
+        }
 
         for (int i = 0; i < nodes.Length - 1; i++)
         {
@@ -162,5 +165,3 @@ public static class PipelineTemplateLibrary
         return graph;
     }
 }
-
-public record PipelineTemplate(string Id, string Name, PipelineGraph Graph);

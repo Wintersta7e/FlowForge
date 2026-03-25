@@ -26,7 +26,7 @@ public class RenameAddAffixNode : ITransformNode
     private string _prefix = string.Empty;
     private string _suffix = string.Empty;
 
-    public void Configure(Dictionary<string, JsonElement> config)
+    public void Configure(IDictionary<string, JsonElement> config)
     {
         if (config.TryGetValue("prefix", out JsonElement prefixElement) &&
             prefixElement.ValueKind == JsonValueKind.String)

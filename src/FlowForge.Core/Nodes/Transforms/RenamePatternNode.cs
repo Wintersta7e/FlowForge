@@ -31,9 +31,10 @@ public class RenamePatternNode : ITransformNode
 
     private static readonly Regex TokenRegex = new(
         @"\{(?<token>name|ext|counter|date|meta)(?::(?<format>[^}]+))?\}",
-        RegexOptions.Compiled);
+        RegexOptions.Compiled | RegexOptions.ExplicitCapture,
+        TimeSpan.FromSeconds(5));
 
-    public void Configure(Dictionary<string, JsonElement> config)
+    public void Configure(IDictionary<string, JsonElement> config)
     {
         if (!config.TryGetValue("pattern", out JsonElement patternElement) ||
             patternElement.ValueKind == JsonValueKind.Null)
@@ -57,7 +58,7 @@ public class RenamePatternNode : ITransformNode
         MatchCollection dateMatches = TokenRegex.Matches(_pattern);
         foreach (Match m in dateMatches)
         {
-            if (m.Groups["token"].Value == "date" && !string.IsNullOrEmpty(m.Groups["format"].Value))
+            if (string.Equals(m.Groups["token"].Value, "date", StringComparison.Ordinal) && !string.IsNullOrEmpty(m.Groups["format"].Value))
             {
                 try
                 {
@@ -156,7 +157,9 @@ public class RenamePatternNode : ITransformNode
         {
             candidate = Path.Combine(directory, $"{nameWithoutExt}_{suffix}{extension}");
             if (suffix > 10000)
+            {
                 throw new InvalidOperationException($"Too many filename conflicts for '{path}'.");
+            }
             suffix++;
         } while (File.Exists(candidate));
 
