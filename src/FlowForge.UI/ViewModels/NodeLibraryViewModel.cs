@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using Avalonia.Media;
@@ -8,7 +9,7 @@ namespace FlowForge.UI.ViewModels;
 
 public partial class NodeLibraryViewModel : ViewModelBase
 {
-    private static readonly Dictionary<string, string> CategoryDisplayNames = new()
+    private static readonly Dictionary<string, string> CategoryDisplayNames = new(StringComparer.Ordinal)
     {
         ["Source"] = "Input",
         ["Transform"] = "Process",
@@ -32,8 +33,8 @@ public partial class NodeLibraryViewModel : ViewModelBase
         _allGroups.Clear();
         Groups.Clear();
 
-        Dictionary<string, List<NodeLibraryItemViewModel>> categoryItems = new();
-        Dictionary<string, NodeCategory> categoryKeys = new();
+        Dictionary<string, List<NodeLibraryItemViewModel>> categoryItems = new(StringComparer.Ordinal);
+        Dictionary<string, NodeCategory> categoryKeys = new(StringComparer.Ordinal);
 
         foreach (string typeKey in registry.GetRegisteredTypeKeys())
         {

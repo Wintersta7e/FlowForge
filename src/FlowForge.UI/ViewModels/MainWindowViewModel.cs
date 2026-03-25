@@ -9,7 +9,6 @@ using Avalonia.Styling;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FlowForge.Core.Execution;
-using FlowForge.Core.Models;
 using FlowForge.Core.Pipeline;
 using FlowForge.Core.Pipeline.Templates;
 using FlowForge.Core.Settings;
@@ -19,8 +18,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FlowForge.UI.ViewModels;
 
-public record RecentPipelineItem(string FileName, string FullPath);
-
+[System.Diagnostics.CodeAnalysis.SuppressMessage("IDisposable", "CA1001", Justification = "CTS lifetime managed by MVVM lifecycle, not IDisposable")]
 public partial class MainWindowViewModel : ViewModelBase
 {
     private readonly NodeRegistry _registry;
@@ -49,7 +47,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private string _themeIcon = "\u263E";
 
-    public List<RecentPipelineItem> RecentPipelineItems { get; private set; } = new();
+    public IReadOnlyList<RecentPipelineItem> RecentPipelineItems { get; private set; } = new List<RecentPipelineItem>();
 
     public EditorViewModel Editor { get; }
     public NodeLibraryViewModel NodeLibrary { get; }
@@ -96,7 +94,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void OnEditorPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
     {
-        if (args.PropertyName == nameof(EditorViewModel.SelectedNode))
+        if (string.Equals(args.PropertyName, nameof(EditorViewModel.SelectedNode), StringComparison.Ordinal))
         {
             RefreshPropertiesPanel();
         }
@@ -122,7 +120,7 @@ public partial class MainWindowViewModel : ViewModelBase
             {
                 Editor.UndoRedo.PushOrCoalesce(cmd, prev =>
                     prev is UndoRedo.Commands.ChangeConfigCommand prevConfig
-                    && prevConfig.ConfigKey == configCmd.ConfigKey);
+                    && string.Equals(prevConfig.ConfigKey, configCmd.ConfigKey, StringComparison.Ordinal));
             }
             else
             {
@@ -153,6 +151,17 @@ public partial class MainWindowViewModel : ViewModelBase
             .Select(p => new RecentPipelineItem(Path.GetFileName(p), p))
             .ToList();
         OnPropertyChanged(nameof(RecentPipelineItems));
+    }
+
+    private static void RemoveRecentPipeline(IList<string> list, string path)
+    {
+        for (int i = list.Count - 1; i >= 0; i--)
+        {
+            if (string.Equals(list[i], path, StringComparison.OrdinalIgnoreCase))
+            {
+                list.RemoveAt(i);
+            }
+        }
     }
 
     private async Task TrackRecentPipelineAsync(string path)
@@ -188,16 +197,14 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch (FileNotFoundException)
         {
-            _appSettings.RecentPipelines.RemoveAll(p =>
-                string.Equals(p, path, StringComparison.OrdinalIgnoreCase));
+            RemoveRecentPipeline(_appSettings.RecentPipelines, path);
             RefreshRecentPipelines();
             await _settingsManager.SaveAsync(_appSettings);
             ExecutionLog.Summary = $"File not found: {Path.GetFileName(path)}";
         }
         catch (DirectoryNotFoundException)
         {
-            _appSettings.RecentPipelines.RemoveAll(p =>
-                string.Equals(p, path, StringComparison.OrdinalIgnoreCase));
+            RemoveRecentPipeline(_appSettings.RecentPipelines, path);
             RefreshRecentPipelines();
             await _settingsManager.SaveAsync(_appSettings);
             ExecutionLog.Summary = $"File not found: {Path.GetFileName(path)}";

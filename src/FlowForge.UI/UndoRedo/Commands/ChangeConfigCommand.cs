@@ -5,7 +5,7 @@ namespace FlowForge.UI.UndoRedo.Commands;
 
 public sealed class ChangeConfigCommand : IUndoableCommand
 {
-    private readonly Dictionary<string, JsonElement> _config;
+    private readonly IDictionary<string, JsonElement> _config;
     private readonly string _key;
     private readonly JsonElement _oldValue;
     private readonly JsonElement _newValue;
@@ -19,7 +19,7 @@ public sealed class ChangeConfigCommand : IUndoableCommand
     public string ConfigKey => _key;
 
     public ChangeConfigCommand(
-        Dictionary<string, JsonElement> config,
+        IDictionary<string, JsonElement> config,
         string key,
         JsonElement oldValue,
         JsonElement newValue,

@@ -1,3 +1,4 @@
+using System;
 using System.ComponentModel;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
@@ -31,7 +32,7 @@ public partial class ToolbarView : UserControl
         {
             _vmPropertyChangedHandler = (_, args) =>
             {
-                if (args.PropertyName == nameof(MainWindowViewModel.RecentPipelineItems))
+                if (string.Equals(args.PropertyName, nameof(MainWindowViewModel.RecentPipelineItems), StringComparison.Ordinal))
                 {
                     RebuildRecentMenu(vm);
                 }
@@ -46,7 +47,7 @@ public partial class ToolbarView : UserControl
     private async void OnShowShortcutsClick(object? sender, RoutedEventArgs e)
     {
         var window = new ShortcutsWindow();
-        Window? topLevel = TopLevel.GetTopLevel(this) as Window;
+        var topLevel = TopLevel.GetTopLevel(this) as Window;
         if (topLevel is not null)
         {
             await window.ShowDialog(topLevel);

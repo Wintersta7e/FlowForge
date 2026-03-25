@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using FlowForge.Core.Models;
 
 namespace FlowForge.UI.ViewModels;
@@ -11,7 +12,7 @@ public class FileJobLogEntryViewModel : ViewModelBase
     public FileJobStatus Status { get; }
     public string StatusText { get; }
     public string? ErrorMessage { get; }
-    public List<string> NodeLog { get; }
+    public IReadOnlyList<string> NodeLog { get; }
     public bool IsSuccess { get; }
     public bool IsError { get; }
     public bool IsWarning { get; }
@@ -22,7 +23,7 @@ public class FileJobLogEntryViewModel : ViewModelBase
         FileName = job.FileName;
         Status = job.Status;
         ErrorMessage = job.ErrorMessage;
-        NodeLog = job.NodeLog;
+        NodeLog = job.NodeLog as IReadOnlyList<string> ?? job.NodeLog.ToList();
         IsSuccess = job.Status == FileJobStatus.Succeeded;
         IsError = job.Status == FileJobStatus.Failed;
         IsWarning = job.Status == FileJobStatus.Skipped;

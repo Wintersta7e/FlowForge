@@ -90,8 +90,10 @@ public partial class ExecutionLogViewModel : ViewModelBase
     [RelayCommand]
     private void SelectTab(string indexStr)
     {
-        if (!int.TryParse(indexStr, out int index))
+        if (!int.TryParse(indexStr, System.Globalization.CultureInfo.InvariantCulture, out int index))
+        {
             return;
+        }
 
         if (SelectedTabIndex == index && IsPanelExpanded)
         {

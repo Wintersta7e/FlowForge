@@ -138,7 +138,9 @@ public class ConfigFieldTemplateSelector : IDataTemplate
             {
                 IStorageProvider? storage = GetStorageProvider();
                 if (storage is null)
+                {
                     return;
+                }
 
                 System.Collections.Generic.IReadOnlyList<IStorageFile> result =
                     await storage.OpenFilePickerAsync(new FilePickerOpenOptions
@@ -190,7 +192,9 @@ public class ConfigFieldTemplateSelector : IDataTemplate
             {
                 IStorageProvider? storage = GetStorageProvider();
                 if (storage is null)
+                {
                     return;
+                }
 
                 System.Collections.Generic.IReadOnlyList<IStorageFolder> result =
                     await storage.OpenFolderPickerAsync(new FolderPickerOpenOptions

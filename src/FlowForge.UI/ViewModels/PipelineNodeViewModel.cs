@@ -26,7 +26,7 @@ public partial class PipelineNodeViewModel : ViewModelBase
     public NodeCategory Category { get; }
     public ObservableCollection<PipelineConnectorViewModel> Input { get; } = new();
     public ObservableCollection<PipelineConnectorViewModel> Output { get; } = new();
-    public Dictionary<string, JsonElement> Config { get; }
+    public IDictionary<string, JsonElement> Config { get; }
 
     [ObservableProperty]
     private IBrush _categoryBrush = null!;
@@ -131,7 +131,7 @@ public partial class PipelineNodeViewModel : ViewModelBase
         };
     }
 
-    private static string BuildConfigPreview(Dictionary<string, JsonElement> config)
+    private static string BuildConfigPreview(IDictionary<string, JsonElement> config)
     {
         // Show the first string config value as a preview (path, pattern, etc.)
         foreach (KeyValuePair<string, JsonElement> kvp in config)

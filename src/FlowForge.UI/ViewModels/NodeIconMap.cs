@@ -1,10 +1,11 @@
+using System;
 using System.Collections.Generic;
 
 namespace FlowForge.UI.ViewModels;
 
 internal static class NodeIconMap
 {
-    public static readonly Dictionary<string, string> Icons = new()
+    public static readonly Dictionary<string, string> Icons = new(StringComparer.Ordinal)
     {
         ["FolderInput"] = "\U0001F4C1",
         ["RenamePattern"] = "\u270E",

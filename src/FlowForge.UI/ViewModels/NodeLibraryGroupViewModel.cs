@@ -46,7 +46,7 @@ public class NodeLibraryGroupViewModel : ViewModelBase
             return true;
         }
 
-        List<NodeLibraryItemViewModel> matching = _allItems
+        var matching = _allItems
             .Where(item => item.DisplayName.Contains(search, StringComparison.OrdinalIgnoreCase))
             .ToList();
 

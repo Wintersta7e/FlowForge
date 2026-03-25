@@ -1,3 +1,4 @@
+using System;
 using System.ComponentModel;
 using Avalonia;
 using Avalonia.Media;
@@ -32,7 +33,7 @@ public partial class PipelineConnectorViewModel : ViewModelBase
         Node = node;
         _nodePropertyChangedHandler = (_, args) =>
         {
-            if (args.PropertyName == nameof(PipelineNodeViewModel.CategoryBrush))
+            if (string.Equals(args.PropertyName, nameof(PipelineNodeViewModel.CategoryBrush), StringComparison.Ordinal))
             {
                 OnPropertyChanged(nameof(ConnectorBrush));
             }
