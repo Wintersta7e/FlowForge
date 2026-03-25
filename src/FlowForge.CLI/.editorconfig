@@ -1,0 +1,3 @@
+# FlowForge.CLI — top-level statements use types outside namespaces
+[Program.cs]
+dotnet_diagnostic.MA0047.severity = none

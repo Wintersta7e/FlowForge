@@ -1,0 +1,14 @@
+# FlowForge.Tests — relax rules that add noise to test code
+[*.cs]
+
+# MA0002: StringComparer on test dictionaries is noise — test data uses known literals
+dotnet_diagnostic.MA0002.severity = suggestion
+
+# MA0005: Array.Empty / string.Empty — false positives on xUnit MemberData attributes
+dotnet_diagnostic.MA0005.severity = suggestion
+
+# MA0004: ConfigureAwait not needed in test context
+dotnet_diagnostic.MA0004.severity = none
+
+# CA2007: ConfigureAwait not needed in tests
+dotnet_diagnostic.CA2007.severity = none

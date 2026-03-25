@@ -1,0 +1,4 @@
+# FlowForge.UI — UI code needs SynchronizationContext for UI thread marshaling
+[*.cs]
+dotnet_diagnostic.MA0004.severity = none
+dotnet_diagnostic.CA2007.severity = none
