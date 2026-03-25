@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.0] - 2026-03-26
+
+### Added
+
+- **Meziantou.Analyzer** — added as a second analyzer alongside StyleCop for string correctness, regex safety, collection abstraction, and method complexity checks
+
+### Changed
+
+- **Stricter editorconfig** — re-enabled SA1503 (braces required), SA1402 (one type per file), SA1649 (filename matches type), SA1518 (trailing newline); upgraded `var` and accessibility modifier rules from suggestion to warning; added IDE0005 (unused usings) and CA1001 (IDisposable) enforcement
+- **CA2007 enforcement in Core** — ConfigureAwait(false) now enforced by analyzer for all Core async methods
+- **Per-project editorconfigs** — Core enforces CA2007, UI suppresses MA0004/CA2007 (needs sync context), CLI suppresses MA0047 (top-level statements), Tests relax MA0002/MA0005
+- **One type per file** — split 12 types into separate files across Core (NodeCategory, ExecutionPhase, PhaseChanged, FilesDiscovered, FileProcessed, FileJobStatus, ConfigFieldType, NodeDefinition, Connection, CanvasPosition, PipelineTemplate) and UI (RecentPipelineItem)
+- **Collection abstractions** — interface and model return types changed from `List<T>`/`Dictionary<K,V>` to `IReadOnlyList<T>`/`IList<T>`/`IDictionary<K,V>` throughout Core and consuming projects
+- **String correctness** — added `StringComparer.Ordinal` to all dictionary/hashset constructors, `string.Equals` with `StringComparison` for all string comparisons, `CultureInfo.InvariantCulture` for all `TryParse` calls
+- **Regex safety** — added `RegexOptions.ExplicitCapture` to FilterNode and RenamePatternNode regexes; added timeout to RenamePatternNode
+- **Method complexity** — extracted helpers from PipelineRunner (6 methods) and CLI Program (7 methods) to stay under 80-line threshold
+- **CLI structure** — refactored monolithic 228-line handler into focused methods: ConfigureLogging, LoadAndConfigurePipelineAsync, ApplyNodeOverride, CreateProgressReporter, PrintFileResult, PrintSummary, ToExitCode
+- MetadataExtractor 2.9.0 → 2.9.2, FluentAssertions 8.8.0 → 8.9.0, coverlet.collector 8.0.0 → 8.0.1, CommunityToolkit.Mvvm 8.4.0 → 8.4.1
+
 ## [1.4.1] - 2026-03-14
 
 ### Fixed

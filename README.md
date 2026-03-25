@@ -133,7 +133,7 @@ FlowForge/
 │   │   └── Services/             # DialogService
 │   └── FlowForge.CLI/            # CLI runner (System.CommandLine)
 └── tests/
-    └── FlowForge.Tests/          # 309 xUnit tests
+    └── FlowForge.Tests/          # 322 xUnit tests
         ├── DependencyInjection/  # DI registration tests
         ├── Nodes/                # 11 node test files
         ├── Execution/            # Runner + progress tests
@@ -171,7 +171,7 @@ dotnet run --project src/FlowForge.CLI -- run pipeline.ffpipe --dry-run
 ### Run Tests
 
 ```bash
-# Run all 309 tests
+# Run all 322 tests
 dotnet test --logger "console;verbosity=normal"
 
 # Run specific test class
