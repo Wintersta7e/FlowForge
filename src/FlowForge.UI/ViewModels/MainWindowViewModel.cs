@@ -18,7 +18,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FlowForge.UI.ViewModels;
 
-[System.Diagnostics.CodeAnalysis.SuppressMessage("IDisposable", "CA1001", Justification = "CTS lifetime managed by MVVM lifecycle, not IDisposable")]
+[System.Diagnostics.CodeAnalysis.SuppressMessage("IDisposable", "CA1001", Justification = "CTS and event subscriptions are singleton-scoped; disposed on app shutdown via DI container")]
 public partial class MainWindowViewModel : ViewModelBase
 {
     private readonly NodeRegistry _registry;

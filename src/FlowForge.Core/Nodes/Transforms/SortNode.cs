@@ -112,13 +112,29 @@ public class SortNode : ITransformNode, IBufferedTransformNode
         bool descending,
         IComparer<TKey> comparer)
     {
-        var keyed = jobs.Select(j => (job: j, key: keySelector(j))).ToList();
-        keyed.Sort((a, b) =>
+        // Pre-compute sort keys once, then sort in-place using an index array
+        // to avoid intermediate list/projection allocations (PERF-09)
+        var keys = new TKey[jobs.Count];
+        int[] indices = new int[jobs.Count];
+        for (int i = 0; i < jobs.Count; i++)
         {
-            int cmp = comparer.Compare(a.key, b.key);
+            keys[i] = keySelector(jobs[i]);
+            indices[i] = i;
+        }
+
+        Array.Sort(indices, (a, b) =>
+        {
+            int cmp = comparer.Compare(keys[a], keys[b]);
             return descending ? -cmp : cmp;
         });
-        return keyed.Select(x => x.job).ToList();
+
+        var result = new List<FileJob>(jobs.Count);
+        for (int i = 0; i < indices.Length; i++)
+        {
+            result.Add(jobs[indices[i]]);
+        }
+
+        return result;
     }
 
     private long GetFileSize(string path, bool dryRun)

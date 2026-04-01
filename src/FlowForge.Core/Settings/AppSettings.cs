@@ -52,5 +52,23 @@ public sealed class AppSettings
         {
             MaxConcurrency = Environment.ProcessorCount;
         }
+
+        // Filter out invalid recent pipeline entries (corrupted settings, null bytes, extreme length)
+        for (int i = RecentPipelines.Count - 1; i >= 0; i--)
+        {
+            string entry = RecentPipelines[i];
+            if (string.IsNullOrWhiteSpace(entry) ||
+                entry.Length > 4096 ||
+                entry.Contains('\0', StringComparison.Ordinal) ||
+                !Path.IsPathFullyQualified(entry))
+            {
+                RecentPipelines.RemoveAt(i);
+            }
+        }
+
+        while (RecentPipelines.Count > MaxRecentPipelines)
+        {
+            RecentPipelines.RemoveAt(RecentPipelines.Count - 1);
+        }
     }
 }
