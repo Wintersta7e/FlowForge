@@ -127,4 +127,12 @@ public class RenameAddAffixNodeTests
         Action act = () => node.Configure(MakeConfig(new { prefix = "../../" }));
         act.Should().Throw<NodeConfigurationException>();
     }
+
+    [Fact]
+    public void Configure_suffix_with_path_separator_throws()
+    {
+        var node = new RenameAddAffixNode(NullLogger<RenameAddAffixNode>.Instance);
+        Action act = () => node.Configure(MakeConfig(new { suffix = "../../evil" }));
+        act.Should().Throw<NodeConfigurationException>();
+    }
 }
