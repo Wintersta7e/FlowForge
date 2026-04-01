@@ -192,14 +192,32 @@ static async Task<PipelineGraph?> LoadAndConfigurePipelineAsync(
     PipelineGraph graph = await PipelineSerializer.LoadAsync(fullPath, cancellationToken).ConfigureAwait(false);
     statusWriter.WriteLine($"Pipeline '{graph.Name}' loaded ({graph.Nodes.Count} nodes, {graph.Connections.Count} connections)");
 
-    if (inputDir is not null && !ApplyNodeOverride(graph, "FolderInput", "path", inputDir.FullName, "Input", statusWriter))
+    if (inputDir is not null)
     {
-        return null;
+        if (!inputDir.Exists)
+        {
+            Console.Error.WriteLine($"Input directory not found: '{inputDir.FullName}'");
+            return null;
+        }
+
+        if (!ApplyNodeOverride(graph, "FolderInput", "path", inputDir.FullName, "Input", statusWriter))
+        {
+            return null;
+        }
     }
 
-    if (outputDir is not null && !ApplyNodeOverride(graph, "FolderOutput", "path", outputDir.FullName, "Output", statusWriter))
+    if (outputDir is not null)
     {
-        return null;
+        if (!outputDir.Exists)
+        {
+            Console.Error.WriteLine($"Output directory not found: '{outputDir.FullName}'");
+            return null;
+        }
+
+        if (!ApplyNodeOverride(graph, "FolderOutput", "path", outputDir.FullName, "Output", statusWriter))
+        {
+            return null;
+        }
     }
 
     if (dryRun)

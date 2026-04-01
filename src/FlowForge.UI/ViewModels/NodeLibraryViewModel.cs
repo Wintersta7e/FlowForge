@@ -28,8 +28,11 @@ public partial class NodeLibraryViewModel : ViewModelBase
         FilterItems();
     }
 
+    private NodeRegistry? _registry;
+
     public void Initialize(NodeRegistry registry)
     {
+        _registry = registry;
         _allGroups.Clear();
         Groups.Clear();
 
@@ -87,6 +90,14 @@ public partial class NodeLibraryViewModel : ViewModelBase
             NodeCategory.Output => ThemeHelper.GetBrush("ForgeOutput", "#e8932f"),
             _ => ThemeHelper.GetBrush("ForgeTextMuted", "#564a62")
         };
+    }
+
+    public void RefreshBrushes()
+    {
+        if (_registry != null)
+        {
+            Initialize(_registry);
+        }
     }
 
     private void FilterItems()

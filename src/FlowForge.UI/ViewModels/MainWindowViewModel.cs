@@ -411,6 +411,7 @@ public partial class MainWindowViewModel : ViewModelBase
         IsDarkTheme = !IsDarkTheme;
         Application.Current.RequestedThemeVariant = IsDarkTheme ? ThemeVariant.Dark : ThemeVariant.Light;
         ThemeIcon = IsDarkTheme ? "\u263E" : "\u2600";
+        NodeLibrary.RefreshBrushes();
     }
 
     [RelayCommand]
