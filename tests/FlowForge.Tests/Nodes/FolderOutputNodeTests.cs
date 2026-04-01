@@ -89,7 +89,7 @@ public class FolderOutputNodeTests
     {
         var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
 
-        Action act = () => node.Configure(MakeConfig(new { path = "/tmp/out", mode = "link" }));
+        Action act = () => node.Configure(MakeConfig(new { path = Path.Combine(Path.GetTempPath(), "out"), mode = "link" }));
 
         act.Should().Throw<NodeConfigurationException>()
             .WithMessage("*link*");
@@ -368,7 +368,7 @@ public class FolderOutputNodeTests
         var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         Action act = () => node.Configure(MakeConfig(new
         {
-            path = "/tmp/out",
+            path = Path.Combine(Path.GetTempPath(), "out"),
             mode = "copy",
             enableBackup = true,
             backupSuffix = "/../evil"
@@ -384,7 +384,7 @@ public class FolderOutputNodeTests
         var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         Action act = () => node.Configure(MakeConfig(new
         {
-            path = "/tmp/out",
+            path = Path.Combine(Path.GetTempPath(), "out"),
             mode = "copy",
             enableBackup = true,
             backupSuffix = "."
@@ -400,7 +400,7 @@ public class FolderOutputNodeTests
         var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         Action act = () => node.Configure(MakeConfig(new
         {
-            path = "/tmp/out",
+            path = Path.Combine(Path.GetTempPath(), "out"),
             mode = "copy",
             enableBackup = true,
             backupSuffix = "bak"

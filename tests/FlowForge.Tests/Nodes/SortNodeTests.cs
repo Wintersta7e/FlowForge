@@ -28,7 +28,7 @@ public class SortNodeTests
         var node = new SortNode(NullLogger<SortNode>.Instance);
         node.Configure(MakeConfig(new { field = "filename", direction = "asc" }));
 
-        FileJob job = MakeJob(Path.Combine("/tmp", "test.txt"));
+        FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "test.txt"));
 
         IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
 
@@ -41,9 +41,9 @@ public class SortNodeTests
         var node = new SortNode(NullLogger<SortNode>.Instance);
         node.Configure(MakeConfig(new { field = "filename", direction = "asc" }));
 
-        FileJob job1 = MakeJob(Path.Combine("/tmp", "b.txt"));
-        FileJob job2 = MakeJob(Path.Combine("/tmp", "a.txt"));
-        FileJob job3 = MakeJob(Path.Combine("/tmp", "c.txt"));
+        FileJob job1 = MakeJob(Path.Combine(Path.GetTempPath(), "b.txt"));
+        FileJob job2 = MakeJob(Path.Combine(Path.GetTempPath(), "a.txt"));
+        FileJob job3 = MakeJob(Path.Combine(Path.GetTempPath(), "c.txt"));
 
         await node.TransformAsync(job1, dryRun: false);
         await node.TransformAsync(job2, dryRun: false);
@@ -60,9 +60,9 @@ public class SortNodeTests
         var node = new SortNode(NullLogger<SortNode>.Instance);
         node.Configure(MakeConfig(new { field = "filename", direction = "asc" }));
 
-        FileJob jobB = MakeJob(Path.Combine("/tmp", "b.txt"));
-        FileJob jobA = MakeJob(Path.Combine("/tmp", "a.txt"));
-        FileJob jobC = MakeJob(Path.Combine("/tmp", "c.txt"));
+        FileJob jobB = MakeJob(Path.Combine(Path.GetTempPath(), "b.txt"));
+        FileJob jobA = MakeJob(Path.Combine(Path.GetTempPath(), "a.txt"));
+        FileJob jobC = MakeJob(Path.Combine(Path.GetTempPath(), "c.txt"));
 
         await node.TransformAsync(jobB, dryRun: false);
         await node.TransformAsync(jobA, dryRun: false);
@@ -82,9 +82,9 @@ public class SortNodeTests
         var node = new SortNode(NullLogger<SortNode>.Instance);
         node.Configure(MakeConfig(new { field = "filename", direction = "desc" }));
 
-        FileJob jobB = MakeJob(Path.Combine("/tmp", "b.txt"));
-        FileJob jobA = MakeJob(Path.Combine("/tmp", "a.txt"));
-        FileJob jobC = MakeJob(Path.Combine("/tmp", "c.txt"));
+        FileJob jobB = MakeJob(Path.Combine(Path.GetTempPath(), "b.txt"));
+        FileJob jobA = MakeJob(Path.Combine(Path.GetTempPath(), "a.txt"));
+        FileJob jobC = MakeJob(Path.Combine(Path.GetTempPath(), "c.txt"));
 
         await node.TransformAsync(jobB, dryRun: false);
         await node.TransformAsync(jobA, dryRun: false);
@@ -104,9 +104,9 @@ public class SortNodeTests
         var node = new SortNode(NullLogger<SortNode>.Instance);
         node.Configure(MakeConfig(new { field = "extension", direction = "asc" }));
 
-        FileJob jobPng = MakeJob(Path.Combine("/tmp", "file.png"));
-        FileJob jobJpg = MakeJob(Path.Combine("/tmp", "file.jpg"));
-        FileJob jobTxt = MakeJob(Path.Combine("/tmp", "file.txt"));
+        FileJob jobPng = MakeJob(Path.Combine(Path.GetTempPath(), "file.png"));
+        FileJob jobJpg = MakeJob(Path.Combine(Path.GetTempPath(), "file.jpg"));
+        FileJob jobTxt = MakeJob(Path.Combine(Path.GetTempPath(), "file.txt"));
 
         await node.TransformAsync(jobPng, dryRun: false);
         await node.TransformAsync(jobJpg, dryRun: false);
@@ -154,8 +154,8 @@ public class SortNodeTests
         var node = new SortNode(NullLogger<SortNode>.Instance);
         node.Configure(MakeConfig(new { field = "filename", direction = "asc" }));
 
-        await node.TransformAsync(MakeJob(Path.Combine("/tmp", "a.txt")), dryRun: false);
-        await node.TransformAsync(MakeJob(Path.Combine("/tmp", "b.txt")), dryRun: false);
+        await node.TransformAsync(MakeJob(Path.Combine(Path.GetTempPath(), "a.txt")), dryRun: false);
+        await node.TransformAsync(MakeJob(Path.Combine(Path.GetTempPath(), "b.txt")), dryRun: false);
 
         IEnumerable<FileJob> firstFlush = await node.FlushAsync();
         firstFlush.Should().HaveCount(2);
@@ -170,7 +170,7 @@ public class SortNodeTests
         var node = new SortNode(NullLogger<SortNode>.Instance);
         node.Configure(MakeConfig(new { field = "filename", direction = "asc" }));
 
-        FileJob job = MakeJob(Path.Combine("/tmp", "only.txt"));
+        FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "only.txt"));
         await node.TransformAsync(job, dryRun: false);
 
         var result = (await node.FlushAsync()).ToList();
@@ -185,7 +185,7 @@ public class SortNodeTests
         var node = new SortNode(NullLogger<SortNode>.Instance);
         node.Configure(MakeConfig(new { field = "filename", direction = "asc" }));
 
-        await node.TransformAsync(MakeJob(Path.Combine("/tmp", "a.txt")), dryRun: false);
+        await node.TransformAsync(MakeJob(Path.Combine(Path.GetTempPath(), "a.txt")), dryRun: false);
 
         using var cts = new CancellationTokenSource();
         cts.Cancel();
@@ -208,8 +208,8 @@ public class SortNodeTests
         var node2 = new SortNode(NullLogger<SortNode>.Instance);
         node2.Configure(MakeConfig(new { field = "INVALID_FIELD", direction = "asc" }));
 
-        FileJob job1 = MakeJob(Path.Combine("/tmp", "a.txt"));
-        FileJob job2 = MakeJob(Path.Combine("/tmp", "b.txt"));
+        FileJob job1 = MakeJob(Path.Combine(Path.GetTempPath(), "a.txt"));
+        FileJob job2 = MakeJob(Path.Combine(Path.GetTempPath(), "b.txt"));
 
         await node2.TransformAsync(job1, dryRun: false);
         await node2.TransformAsync(job2, dryRun: false);

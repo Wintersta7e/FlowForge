@@ -58,7 +58,7 @@ public class NodeRegistryTests
     public void GetSource_returns_ISourceNode_for_FolderInput()
     {
         var registry = NodeRegistry.CreateDefault(NullLoggerFactory.Instance);
-        NodeDefinition def = MakeDef("FolderInput", new { path = "/tmp" });
+        NodeDefinition def = MakeDef("FolderInput", new { path = Path.GetTempPath() });
 
         ISourceNode source = registry.GetSource(def);
 
@@ -82,7 +82,7 @@ public class NodeRegistryTests
     public void GetOutput_returns_IOutputNode_for_FolderOutput()
     {
         var registry = NodeRegistry.CreateDefault(NullLoggerFactory.Instance);
-        NodeDefinition def = MakeDef("FolderOutput", new { path = "/tmp" });
+        NodeDefinition def = MakeDef("FolderOutput", new { path = Path.GetTempPath() });
 
         IOutputNode output = registry.GetOutput(def);
 
@@ -197,7 +197,7 @@ public class NodeRegistryTests
     public void GetTransform_throws_when_node_is_source()
     {
         var registry = NodeRegistry.CreateDefault(NullLoggerFactory.Instance);
-        NodeDefinition def = MakeDef("FolderInput", new { path = "/tmp" });
+        NodeDefinition def = MakeDef("FolderInput", new { path = Path.GetTempPath() });
 
         Action act = () => registry.GetTransform(def);
 
@@ -209,7 +209,7 @@ public class NodeRegistryTests
     public void GetOutput_throws_when_node_is_source()
     {
         var registry = NodeRegistry.CreateDefault(NullLoggerFactory.Instance);
-        NodeDefinition def = MakeDef("FolderInput", new { path = "/tmp" });
+        NodeDefinition def = MakeDef("FolderInput", new { path = Path.GetTempPath() });
 
         Action act = () => registry.GetOutput(def);
 

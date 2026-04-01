@@ -33,7 +33,7 @@ public class RenameRegexNodeTests
         var node = new RenameRegexNode(NullLogger<RenameRegexNode>.Instance);
         node.Configure(MakeConfig(new { pattern = @"\d+", replacement = "X" }));
 
-        FileJob job = MakeJob(Path.Combine("/tmp", "photo123.jpg"));
+        FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "photo123.jpg"));
         IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
 
         FileJob output = result.Single();
@@ -46,7 +46,7 @@ public class RenameRegexNodeTests
         var node = new RenameRegexNode(NullLogger<RenameRegexNode>.Instance);
         node.Configure(MakeConfig(new { pattern = @"(\w+)-(\w+)", replacement = "$2_$1" }));
 
-        FileJob job = MakeJob(Path.Combine("/tmp", "hello-world.txt"));
+        FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "hello-world.txt"));
         IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
 
         FileJob output = result.Single();
@@ -59,12 +59,12 @@ public class RenameRegexNodeTests
         var node = new RenameRegexNode(NullLogger<RenameRegexNode>.Instance);
         node.Configure(MakeConfig(new { pattern = "tmp", replacement = "REPLACED", scope = "filename" }));
 
-        FileJob job = MakeJob(Path.Combine("/tmp", "tmp_file.txt"));
+        FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "tmp_file.txt"));
         IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
 
         FileJob output = result.Single();
         output.FileName.Should().Be("REPLACED_file.txt");
-        output.DirectoryName.Should().Be("/tmp");
+        output.DirectoryName.Should().Be(Path.GetTempPath().TrimEnd(Path.DirectorySeparatorChar));
     }
 
     [Fact]
@@ -142,7 +142,7 @@ public class RenameRegexNodeTests
         var node = new RenameRegexNode(NullLogger<RenameRegexNode>.Instance);
         node.Configure(MakeConfig(new { pattern = @"\d+", replacement = "X" }));
 
-        FileJob job = MakeJob(Path.Combine("/tmp", "nodigits.txt"));
+        FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "nodigits.txt"));
         IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
 
         FileJob output = result.Single();
@@ -171,7 +171,7 @@ public class RenameRegexNodeTests
         var node = new RenameRegexNode(NullLogger<RenameRegexNode>.Instance);
         node.Configure(MakeConfig(new { pattern = @"\d+", replacement = "X" }));
 
-        FileJob job = MakeJob(Path.Combine("/tmp", "file1.txt"));
+        FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "file1.txt"));
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
@@ -187,7 +187,7 @@ public class RenameRegexNodeTests
 
         // Pathological input: many 'a's followed by '!' to trigger catastrophic backtracking
         string maliciousName = new string('a', 30) + "!.txt";
-        FileJob job = MakeJob(Path.Combine("/tmp", maliciousName));
+        FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), maliciousName));
 
         IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
 
@@ -222,7 +222,7 @@ public class RenameRegexNodeTests
         var node = new RenameRegexNode(NullLogger<RenameRegexNode>.Instance);
         node.Configure(MakeConfig(new { pattern = "file", replacement = "sub/file", scope = "filename" }));
 
-        FileJob job = MakeJob(Path.Combine("/tmp", "file.txt"));
+        FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "file.txt"));
         IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
 
         result.Should().ContainSingle();

@@ -60,7 +60,7 @@ public class PipelineSerializerTests
     public async Task Save_wrong_extension_throws_ArgumentException()
     {
         var graph = new PipelineGraph();
-        Func<Task> act = () => PipelineSerializer.SaveAsync(graph, "/tmp/test.json");
+        Func<Task> act = () => PipelineSerializer.SaveAsync(graph, Path.Combine(Path.GetTempPath(), "test.json"));
         await act.Should().ThrowAsync<ArgumentException>();
     }
 

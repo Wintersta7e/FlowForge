@@ -32,7 +32,7 @@ public class RenameAddAffixNodeTests
         var node = new RenameAddAffixNode(NullLogger<RenameAddAffixNode>.Instance);
         node.Configure(MakeConfig(new { prefix = "IMG_" }));
 
-        FileJob job = MakeJob(Path.Combine("/tmp", "photo.jpg"));
+        FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "photo.jpg"));
         IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
 
         FileJob output = result.Single();
@@ -45,7 +45,7 @@ public class RenameAddAffixNodeTests
         var node = new RenameAddAffixNode(NullLogger<RenameAddAffixNode>.Instance);
         node.Configure(MakeConfig(new { suffix = "_backup" }));
 
-        FileJob job = MakeJob(Path.Combine("/tmp", "photo.jpg"));
+        FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "photo.jpg"));
         IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
 
         FileJob output = result.Single();
@@ -58,7 +58,7 @@ public class RenameAddAffixNodeTests
         var node = new RenameAddAffixNode(NullLogger<RenameAddAffixNode>.Instance);
         node.Configure(MakeConfig(new { prefix = "PRE_", suffix = "_SUF" }));
 
-        FileJob job = MakeJob(Path.Combine("/tmp", "photo.jpg"));
+        FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "photo.jpg"));
         IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
 
         FileJob output = result.Single();
@@ -81,7 +81,7 @@ public class RenameAddAffixNodeTests
         var node = new RenameAddAffixNode(NullLogger<RenameAddAffixNode>.Instance);
         node.Configure(MakeConfig(new { prefix = "A_", suffix = "_Z" }));
 
-        FileJob job = MakeJob(Path.Combine("/tmp", "document.tar.gz"));
+        FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "document.tar.gz"));
         IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
 
         FileJob output = result.Single();
@@ -111,7 +111,7 @@ public class RenameAddAffixNodeTests
         var node = new RenameAddAffixNode(NullLogger<RenameAddAffixNode>.Instance);
         node.Configure(MakeConfig(new { prefix = "X_" }));
 
-        FileJob job = MakeJob(Path.Combine("/tmp", "file.txt"));
+        FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "file.txt"));
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 

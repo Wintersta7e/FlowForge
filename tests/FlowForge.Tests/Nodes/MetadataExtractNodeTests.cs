@@ -256,8 +256,8 @@ public class MetadataExtractNodeTests
 
         var job = new FileJob
         {
-            OriginalPath = "/tmp/test.txt",
-            CurrentPath = "/tmp/test.txt"
+            OriginalPath = Path.Combine(Path.GetTempPath(), "test.txt"),
+            CurrentPath = Path.Combine(Path.GetTempPath(), "test.txt")
         };
 
         using var cts = new CancellationTokenSource();

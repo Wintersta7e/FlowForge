@@ -10,6 +10,8 @@ namespace FlowForge.Tests.Nodes;
 
 public class FilterNodeTests
 {
+    private static string FakePath(string filename) => Path.Combine(Path.GetTempPath(), filename);
+
     private static Dictionary<string, JsonElement> MakeConfig(object conditions)
     {
         string json = JsonSerializer.Serialize(new { conditions });
@@ -29,8 +31,8 @@ public class FilterNodeTests
 
         var job = new FileJob
         {
-            OriginalPath = Path.Combine("/tmp", "photo.jpg"),
-            CurrentPath = Path.Combine("/tmp", "photo.jpg")
+            OriginalPath = FakePath("photo.jpg"),
+            CurrentPath = FakePath("photo.jpg")
         };
 
         IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
@@ -49,8 +51,8 @@ public class FilterNodeTests
 
         var job = new FileJob
         {
-            OriginalPath = Path.Combine("/tmp", "document.pdf"),
-            CurrentPath = Path.Combine("/tmp", "document.pdf")
+            OriginalPath = FakePath("document.pdf"),
+            CurrentPath = FakePath("document.pdf")
         };
 
         IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
@@ -68,8 +70,8 @@ public class FilterNodeTests
 
         var job = new FileJob
         {
-            OriginalPath = Path.Combine("/tmp", "my_photo_001.jpg"),
-            CurrentPath = Path.Combine("/tmp", "my_photo_001.jpg")
+            OriginalPath = FakePath("my_photo_001.jpg"),
+            CurrentPath = FakePath("my_photo_001.jpg")
         };
 
         IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
@@ -87,13 +89,13 @@ public class FilterNodeTests
 
         var jobMatch = new FileJob
         {
-            OriginalPath = Path.Combine("/tmp", "001.jpg"),
-            CurrentPath = Path.Combine("/tmp", "001.jpg")
+            OriginalPath = FakePath("001.jpg"),
+            CurrentPath = FakePath("001.jpg")
         };
         var jobNoMatch = new FileJob
         {
-            OriginalPath = Path.Combine("/tmp", "abc.jpg"),
-            CurrentPath = Path.Combine("/tmp", "abc.jpg")
+            OriginalPath = FakePath("abc.jpg"),
+            CurrentPath = FakePath("abc.jpg")
         };
 
         IEnumerable<FileJob> resultMatch = await node.TransformAsync(jobMatch, dryRun: true);
@@ -138,13 +140,13 @@ public class FilterNodeTests
 
         var jobBoth = new FileJob
         {
-            OriginalPath = Path.Combine("/tmp", "photo_001.jpg"),
-            CurrentPath = Path.Combine("/tmp", "photo_001.jpg")
+            OriginalPath = FakePath("photo_001.jpg"),
+            CurrentPath = FakePath("photo_001.jpg")
         };
         var jobExtOnly = new FileJob
         {
-            OriginalPath = Path.Combine("/tmp", "document.jpg"),
-            CurrentPath = Path.Combine("/tmp", "document.jpg")
+            OriginalPath = FakePath("document.jpg"),
+            CurrentPath = FakePath("document.jpg")
         };
 
         IEnumerable<FileJob> resultBoth = await node.TransformAsync(jobBoth, dryRun: true);
@@ -165,8 +167,8 @@ public class FilterNodeTests
 
         var job = new FileJob
         {
-            OriginalPath = Path.Combine("/tmp", "document.pdf"),
-            CurrentPath = Path.Combine("/tmp", "document.pdf")
+            OriginalPath = FakePath("document.pdf"),
+            CurrentPath = FakePath("document.pdf")
         };
 
         IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
@@ -186,8 +188,8 @@ public class FilterNodeTests
 
         var job = new FileJob
         {
-            OriginalPath = Path.Combine("/tmp", new string('a', 50) + "!.txt"),
-            CurrentPath = Path.Combine("/tmp", new string('a', 50) + "!.txt")
+            OriginalPath = Path.Combine(Path.GetTempPath(), new string('a', 50) + "!.txt"),
+            CurrentPath = Path.Combine(Path.GetTempPath(), new string('a', 50) + "!.txt")
         };
 
         IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
@@ -217,8 +219,8 @@ public class FilterNodeTests
 
         var job = new FileJob
         {
-            OriginalPath = Path.Combine("/tmp", "test.jpg"),
-            CurrentPath = Path.Combine("/tmp", "test.jpg")
+            OriginalPath = FakePath("test.jpg"),
+            CurrentPath = FakePath("test.jpg")
         };
 
         using var cts = new CancellationTokenSource();
@@ -237,8 +239,8 @@ public class FilterNodeTests
             new { field = "extension", @operator = "notequals", value = ".tmp" }
         }));
 
-        var jobTmp = new FileJob { OriginalPath = "/tmp/a.tmp", CurrentPath = "/tmp/a.tmp" };
-        var jobJpg = new FileJob { OriginalPath = "/tmp/b.jpg", CurrentPath = "/tmp/b.jpg" };
+        var jobTmp = new FileJob { OriginalPath = FakePath("a.tmp"), CurrentPath = FakePath("a.tmp") };
+        var jobJpg = new FileJob { OriginalPath = FakePath("b.jpg"), CurrentPath = FakePath("b.jpg") };
 
         IEnumerable<FileJob> resultTmp = await node.TransformAsync(jobTmp, dryRun: true);
         IEnumerable<FileJob> resultJpg = await node.TransformAsync(jobJpg, dryRun: true);
@@ -256,8 +258,8 @@ public class FilterNodeTests
             new { field = "filename", @operator = "startswith", value = "IMG_" }
         }));
 
-        var jobMatch = new FileJob { OriginalPath = "/tmp/IMG_001.jpg", CurrentPath = "/tmp/IMG_001.jpg" };
-        var jobMiss = new FileJob { OriginalPath = "/tmp/DSC_001.jpg", CurrentPath = "/tmp/DSC_001.jpg" };
+        var jobMatch = new FileJob { OriginalPath = FakePath("IMG_001.jpg"), CurrentPath = FakePath("IMG_001.jpg") };
+        var jobMiss = new FileJob { OriginalPath = FakePath("DSC_001.jpg"), CurrentPath = FakePath("DSC_001.jpg") };
 
         (await node.TransformAsync(jobMatch, dryRun: true)).Should().HaveCount(1);
         (await node.TransformAsync(jobMiss, dryRun: true)).Should().BeEmpty();
@@ -272,8 +274,8 @@ public class FilterNodeTests
             new { field = "filename", @operator = "endswith", value = "_final.jpg" }
         }));
 
-        var jobMatch = new FileJob { OriginalPath = "/tmp/photo_final.jpg", CurrentPath = "/tmp/photo_final.jpg" };
-        var jobMiss = new FileJob { OriginalPath = "/tmp/photo_draft.jpg", CurrentPath = "/tmp/photo_draft.jpg" };
+        var jobMatch = new FileJob { OriginalPath = FakePath("photo_final.jpg"), CurrentPath = FakePath("photo_final.jpg") };
+        var jobMiss = new FileJob { OriginalPath = FakePath("photo_draft.jpg"), CurrentPath = FakePath("photo_draft.jpg") };
 
         (await node.TransformAsync(jobMatch, dryRun: true)).Should().HaveCount(1);
         (await node.TransformAsync(jobMiss, dryRun: true)).Should().BeEmpty();
@@ -305,7 +307,7 @@ public class FilterNodeTests
             new { field = "extension", @operator = "bogus", value = ".jpg" }
         }));
 
-        var job = new FileJob { OriginalPath = "/tmp/a.jpg", CurrentPath = "/tmp/a.jpg" };
+        var job = new FileJob { OriginalPath = FakePath("a.jpg"), CurrentPath = FakePath("a.jpg") };
         Func<Task> act = () => node.TransformAsync(job, dryRun: true);
         act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Unknown filter operator*");
     }
@@ -319,7 +321,7 @@ public class FilterNodeTests
             new { field = "createdAt", @operator = "greaterthan", value = "0001-01-01T00:00:00.0000000" }
         }));
 
-        var job = new FileJob { OriginalPath = "/tmp/a.txt", CurrentPath = "/tmp/a.txt" };
+        var job = new FileJob { OriginalPath = FakePath("a.txt"), CurrentPath = FakePath("a.txt") };
         // In dry-run, createdAt returns DateTime.MinValue, so it should NOT be greater than MinValue
         (await node.TransformAsync(job, dryRun: true)).Should().BeEmpty();
     }
