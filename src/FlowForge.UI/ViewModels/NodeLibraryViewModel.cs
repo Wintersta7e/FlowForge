@@ -97,6 +97,7 @@ public partial class NodeLibraryViewModel : ViewModelBase
         if (_registry != null)
         {
             Initialize(_registry);
+            FilterItems();
         }
     }
 

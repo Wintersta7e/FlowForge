@@ -220,7 +220,12 @@ public class PipelineRunner
 
                 if (transformedList.Count == 0)
                 {
-                    HandleEmptyTransformResult(transform, job, result);
+                    // Buffered nodes intentionally return empty from TransformAsync;
+                    // their jobs will be counted after FlushAsync.
+                    if (transform is not IBufferedTransformNode)
+                    {
+                        HandleEmptyTransformResult(transform, job, result);
+                    }
                 }
                 else
                 {
@@ -252,7 +257,7 @@ public class PipelineRunner
     {
         if (job.Status == FileJobStatus.Failed)
         {
-            _logger.LogError("Transform {NodeType} set Failed for {File}", transform.TypeKey, job.OriginalPath);
+            _logger.LogError("Transform {NodeType} set Failed for {File}: {ErrorMessage}", transform.TypeKey, job.OriginalPath, job.ErrorMessage);
             lock (result)
             {
                 result.Failed++;
@@ -319,7 +324,7 @@ public class PipelineRunner
         {
             if (fj.Status == FileJobStatus.Failed)
             {
-                _logger.LogError("Transform {NodeType} flush set Failed for {File}", typeKey, fj.OriginalPath);
+                _logger.LogError("Transform {NodeType} flush set Failed for {File}: {ErrorMessage}", typeKey, fj.OriginalPath, fj.ErrorMessage);
                 lock (result)
                 {
                     result.Failed++;
