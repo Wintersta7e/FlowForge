@@ -19,6 +19,11 @@ public class ImageConvertNode : ITransformNode
         MaxFrames = 1
     };
 
+    private static readonly HashSet<string> ValidFormats = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "jpg", "jpeg", "png", "webp", "bmp", "tiff"
+    };
+
     private const long MaxFileSizeBytes = 500 * 1024 * 1024; // 500 MB
 
     private readonly ILogger<ImageConvertNode> _logger;
@@ -52,10 +57,9 @@ public class ImageConvertNode : ITransformNode
             ?? throw new NodeConfigurationException("ImageConvert: 'format' must be a non-null string."))
             .ToLowerInvariant();
 
-        string[] validFormats = { "jpg", "jpeg", "png", "webp", "bmp", "tiff" };
-        if (!validFormats.Contains(_format))
+        if (!ValidFormats.Contains(_format))
         {
-            throw new NodeConfigurationException($"ImageConvert: Unsupported format '{_format}'. Supported: {string.Join(", ", validFormats)}");
+            throw new NodeConfigurationException($"ImageConvert: Unsupported format '{_format}'. Supported: {string.Join(", ", ValidFormats)}");
         }
 
         _encoder = CreateEncoder(_format);

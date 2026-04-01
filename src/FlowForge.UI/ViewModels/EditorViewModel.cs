@@ -171,6 +171,7 @@ public partial class EditorViewModel : ViewModelBase
     public int LoadGraph(PipelineGraph graph, NodeRegistry registry)
     {
         UnsubscribeAllNodes();
+        DetachAllNodesAndConnectors();
         Nodes.Clear();
         Connections.Clear();
 

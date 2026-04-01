@@ -72,16 +72,23 @@ public class MetadataExtractNode : ITransformNode
             return Task.FromResult(dryRunResult);
         }
 
+        // Read EXIF metadata at most once per file (PERF-05)
+        IReadOnlyList<MetadataExtractor.Directory>? exifDirectories = null;
+        bool hasExifKeys = _keys.Any(k => k.StartsWith("EXIF:", StringComparison.OrdinalIgnoreCase));
+        if (hasExifKeys)
+        {
+            exifDirectories = ReadExifDirectories(job.CurrentPath);
+        }
+
         foreach (string key in _keys)
         {
-            string? value = ExtractValue(key, job.CurrentPath);
+            string? value = ExtractValue(key, job.CurrentPath, exifDirectories);
             if (value != null)
             {
                 job.Metadata[key] = value;
             }
             else
             {
-                // If metadata extraction returned null/empty for a requested EXIF key, log it
                 job.NodeLog.Add($"MetadataExtract: WARNING — no value found for key '{key}' in '{Path.GetFileName(job.CurrentPath)}'");
             }
         }
@@ -91,21 +98,38 @@ public class MetadataExtractNode : ITransformNode
         return Task.FromResult(result);
     }
 
-    private string? ExtractValue(string key, string filePath)
+    private static string? ExtractValue(string key, string filePath, IReadOnlyList<MetadataExtractor.Directory>? exifDirectories)
     {
-        // File-level metadata (doesn't need MetadataExtractor)
         if (key.StartsWith("File:", StringComparison.OrdinalIgnoreCase))
         {
             return ExtractFileMetadata(key, filePath);
         }
 
-        // EXIF metadata
-        if (key.StartsWith("EXIF:", StringComparison.OrdinalIgnoreCase))
+        if (key.StartsWith("EXIF:", StringComparison.OrdinalIgnoreCase) && exifDirectories != null)
         {
-            return ExtractExifMetadata(key, filePath);
+            return ExtractExifFromDirectories(key, exifDirectories);
         }
 
         return null;
+    }
+
+    private IReadOnlyList<MetadataExtractor.Directory>? ReadExifDirectories(string filePath)
+    {
+        if (!File.Exists(filePath))
+        {
+            return null;
+        }
+
+        try
+        {
+            return ImageMetadataReader.ReadMetadata(filePath);
+        }
+        catch (ImageProcessingException ex)
+        {
+            _logger.LogWarning("MetadataExtract: failed to read EXIF from '{FileName}': {ErrorMessage}",
+                Path.GetFileName(filePath), ex.Message);
+            return null;
+        }
     }
 
     private static string? ExtractFileMetadata(string key, string filePath)
@@ -127,36 +151,21 @@ public class MetadataExtractNode : ITransformNode
         };
     }
 
-    private string? ExtractExifMetadata(string key, string filePath)
+    private static string? ExtractExifFromDirectories(string key, IReadOnlyList<MetadataExtractor.Directory> directories)
     {
-        if (!File.Exists(filePath))
-        {
-            return null;
-        }
+        string fieldName = key["EXIF:".Length..].ToLowerInvariant();
 
-        try
+        return fieldName switch
         {
-            IReadOnlyList<MetadataExtractor.Directory> directories = ImageMetadataReader.ReadMetadata(filePath);
-            string fieldName = key["EXIF:".Length..].ToLowerInvariant();
-
-            return fieldName switch
-            {
-                "datetaken" => ExtractExifTag(directories, ExifDirectoryBase.TagDateTimeOriginal)
-                    ?? ExtractExifTag(directories, ExifDirectoryBase.TagDateTime),
-                "cameramodel" => ExtractExifTag(directories, ExifDirectoryBase.TagModel),
-                "cameramake" => ExtractExifTag(directories, ExifDirectoryBase.TagMake),
-                "gps" => ExtractGps(directories),
-                "focallength" => ExtractExifTag(directories, ExifDirectoryBase.TagFocalLength),
-                "iso" => ExtractExifTag(directories, ExifDirectoryBase.TagIsoEquivalent),
-                _ => ExtractAnyTag(directories, key["EXIF:".Length..])
-            };
-        }
-        catch (ImageProcessingException ex)
-        {
-            _logger.LogWarning("MetadataExtract: failed to read EXIF from '{FileName}': {ErrorMessage}",
-                Path.GetFileName(filePath), ex.Message);
-            return null;
-        }
+            "datetaken" => ExtractExifTag(directories, ExifDirectoryBase.TagDateTimeOriginal)
+                ?? ExtractExifTag(directories, ExifDirectoryBase.TagDateTime),
+            "cameramodel" => ExtractExifTag(directories, ExifDirectoryBase.TagModel),
+            "cameramake" => ExtractExifTag(directories, ExifDirectoryBase.TagMake),
+            "gps" => ExtractGps(directories),
+            "focallength" => ExtractExifTag(directories, ExifDirectoryBase.TagFocalLength),
+            "iso" => ExtractExifTag(directories, ExifDirectoryBase.TagIsoEquivalent),
+            _ => ExtractAnyTag(directories, key["EXIF:".Length..])
+        };
     }
 
     private static string? ExtractExifTag(IReadOnlyList<MetadataExtractor.Directory> directories, int tagType)
@@ -202,14 +211,14 @@ public class MetadataExtractNode : ITransformNode
         return null;
     }
 
-    private static readonly char[] InvalidFileNameChars = Path.GetInvalidFileNameChars();
+    private static readonly HashSet<char> InvalidFileNameCharsSet = new(Path.GetInvalidFileNameChars());
 
     private static string SanitizeForFilename(string value)
     {
         var sb = new System.Text.StringBuilder(value.Length);
         foreach (char c in value)
         {
-            sb.Append(InvalidFileNameChars.Contains(c) ? '_' : c);
+            sb.Append(InvalidFileNameCharsSet.Contains(c) ? '_' : c);
         }
         return sb.ToString().Trim();
     }

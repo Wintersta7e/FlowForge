@@ -75,7 +75,20 @@ public class FilterNode : ITransformNode
         bool matches;
         try
         {
-            matches = _conditions.Select((c, idx) => EvaluateCondition(c, idx, job, dryRun)).All(b => b);
+            // Cache FileInfo once per file for size/date fields (PERF-02)
+            bool needsFileInfo = _conditions.Any(c =>
+                c.Field is "size" or "createdat" or "modifiedat");
+            FileInfo? fileInfo = needsFileInfo ? GetCachedFileInfo(job.CurrentPath, dryRun) : null;
+
+            matches = true;
+            for (int idx = 0; idx < _conditions.Count; idx++)
+            {
+                if (!EvaluateCondition(_conditions[idx], idx, job, dryRun, fileInfo))
+                {
+                    matches = false;
+                    break;
+                }
+            }
         }
         catch (RegexMatchTimeoutException)
         {
@@ -97,9 +110,9 @@ public class FilterNode : ITransformNode
         return Task.FromResult(Enumerable.Empty<FileJob>());
     }
 
-    private bool EvaluateCondition(FilterCondition condition, int index, FileJob job, bool dryRun)
+    private bool EvaluateCondition(FilterCondition condition, int index, FileJob job, bool dryRun, FileInfo? fileInfo)
     {
-        string fieldValue = GetFieldValue(condition.Field, job, dryRun);
+        string fieldValue = GetFieldValue(condition.Field, job, fileInfo);
 
         // Operator is already lowercased at configure time (M5)
         return condition.Operator switch
@@ -119,66 +132,53 @@ public class FilterNode : ITransformNode
     }
 
     // Field is already lowercased at configure time (M5)
-    private string GetFieldValue(string field, FileJob job, bool dryRun)
+    private static string GetFieldValue(string field, FileJob job, FileInfo? fileInfo)
     {
         return field switch
         {
             "extension" => job.Extension,
             "filename" => job.FileName,
-            "size" => GetFileSize(job.CurrentPath, dryRun),
-            "createdat" => GetFileCreatedAt(job.CurrentPath, dryRun),
-            "modifiedat" => GetFileModifiedAt(job.CurrentPath, dryRun),
+            "size" => GetFileSize(fileInfo),
+            "createdat" => GetFileCreatedAt(fileInfo),
+            "modifiedat" => GetFileModifiedAt(fileInfo),
             _ => throw new InvalidOperationException($"Unknown filter field: '{field}'")
         };
     }
 
-    private string GetFileSize(string path, bool dryRun)
+    private FileInfo? GetCachedFileInfo(string path, bool dryRun)
     {
         if (dryRun)
         {
-            return "0";
-        }
-
-        if (!File.Exists(path))
-        {
-            _logger.LogWarning("Filter: file not found at '{FilePath}', using default size 0", path);
-            return "0";
+            return null;
         }
 
         var info = new FileInfo(path);
-        return info.Length.ToString(CultureInfo.InvariantCulture);
+        if (!info.Exists)
+        {
+            _logger.LogWarning("Filter: file not found at '{FilePath}', using defaults", path);
+            return null;
+        }
+
+        return info;
     }
 
-    private string GetFileCreatedAt(string path, bool dryRun)
+    private static string GetFileSize(FileInfo? info)
     {
-        if (dryRun)
-        {
-            return DateTime.MinValue.ToString("o", CultureInfo.InvariantCulture);
-        }
-
-        if (!File.Exists(path))
-        {
-            _logger.LogWarning("Filter: file not found at '{FilePath}', using default date", path);
-            return DateTime.MinValue.ToString("o", CultureInfo.InvariantCulture);
-        }
-
-        return File.GetCreationTimeUtc(path).ToString("o", CultureInfo.InvariantCulture);
+        return info?.Length.ToString(CultureInfo.InvariantCulture) ?? "0";
     }
 
-    private string GetFileModifiedAt(string path, bool dryRun)
+    private static string GetFileCreatedAt(FileInfo? info)
     {
-        if (dryRun)
-        {
-            return DateTime.MinValue.ToString("o", CultureInfo.InvariantCulture);
-        }
+        return info != null
+            ? info.CreationTimeUtc.ToString("o", CultureInfo.InvariantCulture)
+            : DateTime.MinValue.ToString("o", CultureInfo.InvariantCulture);
+    }
 
-        if (!File.Exists(path))
-        {
-            _logger.LogWarning("Filter: file not found at '{FilePath}', using default date", path);
-            return DateTime.MinValue.ToString("o", CultureInfo.InvariantCulture);
-        }
-
-        return File.GetLastWriteTimeUtc(path).ToString("o", CultureInfo.InvariantCulture);
+    private static string GetFileModifiedAt(FileInfo? info)
+    {
+        return info != null
+            ? info.LastWriteTimeUtc.ToString("o", CultureInfo.InvariantCulture)
+            : DateTime.MinValue.ToString("o", CultureInfo.InvariantCulture);
     }
 
     private static int CompareNumeric(string a, string b)

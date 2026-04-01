@@ -36,6 +36,8 @@ public class SortNode : ITransformNode, IBufferedTransformNode
 
     public void Configure(IDictionary<string, JsonElement> config)
     {
+        _buffer.Clear();
+
         if (config.TryGetValue("field", out JsonElement fieldElement) &&
             fieldElement.ValueKind == JsonValueKind.String)
         {
