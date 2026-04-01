@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.0] - 2026-04-02
+
+### Fixed
+
+- **Node connections broken since v1.4.0** — dragging a connection wire from any connector was offset and unusable; caused by `RotateTransform(45°)` applied directly to the Nodify Connector control, which rotated Nodify's internal coordinate calculations; moved rotation into a custom ControlTemplate Border so the diamond shape is preserved without affecting drag math
+- **Atomic writes for image nodes** — ImageConvertNode and ImageResizeNode now use temp-file-then-rename pattern, preventing data loss on I/O errors or cancellation (previously wrote directly to target/original path)
+- **Path traversal hardening** — PathGuard now validates backup paths in FolderOutputNode; RenameRegexNode fullpath scope uses PathGuard instead of hand-rolled check; FolderInputNode filters out symlinked files outside source root; CLI validates --input/--output directories exist
+- **FilterNode thread safety** — removed mutable `_dryRun` instance field; parameter is now passed directly to helper methods
+- **Semaphore disposal race** — PipelineRunner now fully drains in-flight tasks before disposing the semaphore
+- **Buffered transform double-counting** — SortNode jobs were counted as both Skipped and Failed when flush failed; runner now skips early disposition for IBufferedTransformNode
+- **ImageResizeNode missing ErrorMessage** — file-too-large failure now sets `job.ErrorMessage` (was null in UI)
+- **FilterNode inconsistent date defaults** — missing-file paths now return `DateTime.MinValue` consistently (was `string.Empty` for live runs)
+- **SortNode stale buffer** — buffer is cleared in Configure to prevent cancelled-run jobs bleeding into next run
+- **NodeLibrary theme refresh** — brushes now update on theme toggle; search filter reapplied after refresh
+- **Runner log diagnostics** — failure log messages now include `job.ErrorMessage`
+
+### Changed
+
+- **Full codebase audit** — 2-round review across 6 dimensions (security, leaks, performance, architecture, bugs, coverage) with 45+ issues resolved
+- **Performance** — MetadataExtractNode reads EXIF once per file (was once per key); FilterNode uses single FileInfo per file; SortByKey uses index-based sorting; HashSet for SupportedFormats and InvalidFileNameChars lookups; static ValidFormats in ImageConvertNode
+- **RecentPipelines validation** — AppSettings.Validate() now filters entries with null bytes, excessive length, relative paths, or whitespace
+- **342 tests** — 20 new tests for FilterNode operators, date fields, RenamePattern conflict resolution, SortNode date sorting, RenameRegex fullpath I/O, null deserialization, RecentPipelines validation; cross-platform temp paths replacing hardcoded `/tmp/`; removed 2 redundant tests; strengthened assertions on FolderOutput content and SortNode ordering
+- CommunityToolkit.Mvvm 8.4.1 → 8.4.2
+
 ## [1.5.0] - 2026-03-26
 
 ### Added
