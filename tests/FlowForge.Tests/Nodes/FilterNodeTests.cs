@@ -227,4 +227,142 @@ public class FilterNodeTests
         Func<Task> act = () => node.TransformAsync(job, dryRun: true, ct: cts.Token);
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
+
+    [Fact]
+    public async Task NotEquals_operator_drops_matching_file()
+    {
+        var node = new FilterNode(NullLogger<FilterNode>.Instance);
+        node.Configure(MakeConfig(new[]
+        {
+            new { field = "extension", @operator = "notequals", value = ".tmp" }
+        }));
+
+        var jobTmp = new FileJob { OriginalPath = "/tmp/a.tmp", CurrentPath = "/tmp/a.tmp" };
+        var jobJpg = new FileJob { OriginalPath = "/tmp/b.jpg", CurrentPath = "/tmp/b.jpg" };
+
+        IEnumerable<FileJob> resultTmp = await node.TransformAsync(jobTmp, dryRun: true);
+        IEnumerable<FileJob> resultJpg = await node.TransformAsync(jobJpg, dryRun: true);
+
+        resultTmp.Should().BeEmpty();
+        resultJpg.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task StartsWith_operator_filters_by_prefix()
+    {
+        var node = new FilterNode(NullLogger<FilterNode>.Instance);
+        node.Configure(MakeConfig(new[]
+        {
+            new { field = "filename", @operator = "startswith", value = "IMG_" }
+        }));
+
+        var jobMatch = new FileJob { OriginalPath = "/tmp/IMG_001.jpg", CurrentPath = "/tmp/IMG_001.jpg" };
+        var jobMiss = new FileJob { OriginalPath = "/tmp/DSC_001.jpg", CurrentPath = "/tmp/DSC_001.jpg" };
+
+        (await node.TransformAsync(jobMatch, dryRun: true)).Should().HaveCount(1);
+        (await node.TransformAsync(jobMiss, dryRun: true)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task EndsWith_operator_filters_by_suffix()
+    {
+        var node = new FilterNode(NullLogger<FilterNode>.Instance);
+        node.Configure(MakeConfig(new[]
+        {
+            new { field = "filename", @operator = "endswith", value = "_final.jpg" }
+        }));
+
+        var jobMatch = new FileJob { OriginalPath = "/tmp/photo_final.jpg", CurrentPath = "/tmp/photo_final.jpg" };
+        var jobMiss = new FileJob { OriginalPath = "/tmp/photo_draft.jpg", CurrentPath = "/tmp/photo_draft.jpg" };
+
+        (await node.TransformAsync(jobMatch, dryRun: true)).Should().HaveCount(1);
+        (await node.TransformAsync(jobMiss, dryRun: true)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GreaterThan_operator_compares_size()
+    {
+        using var dir = new TempDirectory();
+        string filePath = Path.Combine(dir.Path, "large.txt");
+        File.WriteAllText(filePath, new string('x', 500));
+
+        var node = new FilterNode(NullLogger<FilterNode>.Instance);
+        node.Configure(MakeConfig(new[]
+        {
+            new { field = "size", @operator = "greaterthan", value = "100" }
+        }));
+
+        var job = new FileJob { OriginalPath = filePath, CurrentPath = filePath };
+        (await node.TransformAsync(job, dryRun: false)).Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void Unknown_operator_throws_InvalidOperationException()
+    {
+        var node = new FilterNode(NullLogger<FilterNode>.Instance);
+        node.Configure(MakeConfig(new[]
+        {
+            new { field = "extension", @operator = "bogus", value = ".jpg" }
+        }));
+
+        var job = new FileJob { OriginalPath = "/tmp/a.jpg", CurrentPath = "/tmp/a.jpg" };
+        Func<Task> act = () => node.TransformAsync(job, dryRun: true);
+        act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Unknown filter operator*");
+    }
+
+    [Fact]
+    public async Task CreatedAt_field_with_dry_run_returns_min_date()
+    {
+        var node = new FilterNode(NullLogger<FilterNode>.Instance);
+        node.Configure(MakeConfig(new[]
+        {
+            new { field = "createdAt", @operator = "greaterthan", value = "0001-01-01T00:00:00.0000000" }
+        }));
+
+        var job = new FileJob { OriginalPath = "/tmp/a.txt", CurrentPath = "/tmp/a.txt" };
+        // In dry-run, createdAt returns DateTime.MinValue, so it should NOT be greater than MinValue
+        (await node.TransformAsync(job, dryRun: true)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ModifiedAt_field_with_real_file_passes()
+    {
+        using var dir = new TempDirectory();
+        string filePath = Path.Combine(dir.Path, "recent.txt");
+        File.WriteAllText(filePath, "data");
+
+        var node = new FilterNode(NullLogger<FilterNode>.Instance);
+        node.Configure(MakeConfig(new[]
+        {
+            new { field = "modifiedAt", @operator = "greaterthan", value = "2000-01-01T00:00:00.0000000" }
+        }));
+
+        var job = new FileJob { OriginalPath = filePath, CurrentPath = filePath };
+        (await node.TransformAsync(job, dryRun: false)).Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void Conditions_wrong_type_throws()
+    {
+        var node = new FilterNode(NullLogger<FilterNode>.Instance);
+        string json = JsonSerializer.Serialize(new { conditions = "not an array" });
+        var doc = JsonDocument.Parse(json);
+        var config = doc.RootElement.EnumerateObject()
+            .ToDictionary(p => p.Name, p => p.Value.Clone());
+
+        Action act = () => node.Configure(config);
+        act.Should().Throw<NodeConfigurationException>();
+    }
+
+    [Fact]
+    public void Invalid_regex_at_configure_throws()
+    {
+        var node = new FilterNode(NullLogger<FilterNode>.Instance);
+        Action act = () => node.Configure(MakeConfig(new[]
+        {
+            new { field = "filename", @operator = "matches", value = "[invalid" }
+        }));
+
+        act.Should().Throw<NodeConfigurationException>().WithMessage("*Invalid regex*");
+    }
 }

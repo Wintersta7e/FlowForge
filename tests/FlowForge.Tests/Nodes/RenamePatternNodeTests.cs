@@ -196,4 +196,46 @@ public class RenamePatternNodeTests
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Path traversal blocked*");
     }
+
+    [Fact]
+    public async Task ResolveConflict_appends_suffix_when_file_exists()
+    {
+        using var dir = new TempDirectory();
+        string existing = Path.Combine(dir.Path, "photo_1.jpg");
+        File.WriteAllText(existing, "original");
+
+        string source = Path.Combine(dir.Path, "input.jpg");
+        File.WriteAllText(source, "new");
+
+        var node = new RenamePatternNode(NullLogger<RenamePatternNode>.Instance);
+        node.Configure(MakeConfig("photo_{counter}{ext}"));
+
+        FileJob job = MakeJob(source);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+
+        FileJob output = result.Single();
+        output.FileName.Should().Be("photo_1_1.jpg");
+        File.Exists(output.CurrentPath).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ResolveConflict_increments_until_free_slot()
+    {
+        using var dir = new TempDirectory();
+        // Create conflicting files: photo_1.jpg and photo_1_1.jpg
+        File.WriteAllText(Path.Combine(dir.Path, "photo_1.jpg"), "a");
+        File.WriteAllText(Path.Combine(dir.Path, "photo_1_1.jpg"), "b");
+
+        string source = Path.Combine(dir.Path, "input.jpg");
+        File.WriteAllText(source, "new");
+
+        var node = new RenamePatternNode(NullLogger<RenamePatternNode>.Instance);
+        node.Configure(MakeConfig("photo_{counter}{ext}"));
+
+        FileJob job = MakeJob(source);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+
+        FileJob output = result.Single();
+        output.FileName.Should().Be("photo_1_2.jpg");
+    }
 }
