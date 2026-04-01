@@ -52,6 +52,7 @@ public class SortNodeTests
         IEnumerable<FileJob> result = await node.FlushAsync();
 
         result.Should().HaveCount(3);
+        result.Select(j => j.FileName).Should().ContainInOrder("a.txt", "b.txt", "c.txt");
     }
 
     [Fact]
@@ -198,13 +199,6 @@ public class SortNodeTests
     [Fact]
     public async Task FlushAsync_exception_marks_all_jobs_failed()
     {
-        var node = new SortNode(NullLogger<SortNode>.Instance);
-        // "size" field requires files to exist on disk — non-existent paths will cause an exception
-        // during OrderBy when it tries to read file sizes
-        node.Configure(MakeConfig(new { field = "size", direction = "asc" }));
-
-        // Buffer jobs with non-existent paths — GetFileSize returns 0 for missing files,
-        // so we use an invalid sort field instead
         var node2 = new SortNode(NullLogger<SortNode>.Instance);
         node2.Configure(MakeConfig(new { field = "INVALID_FIELD", direction = "asc" }));
 

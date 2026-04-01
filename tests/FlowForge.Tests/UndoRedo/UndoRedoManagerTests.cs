@@ -246,7 +246,7 @@ public class UndoRedoManagerTests
     }
 
     [Fact]
-    public void Redo_CapsCombinedStackAt25()
+    public void Redo_ReAddsToUndoStack_RespectingCap()
     {
         var manager = new UndoRedoManager();
 

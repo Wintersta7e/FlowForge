@@ -57,6 +57,7 @@ public class FilterNodeTests
 
         IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
         result.Should().BeEmpty();
+        job.Status.Should().Be(FileJobStatus.Skipped);
     }
 
     [Fact]
@@ -154,26 +155,6 @@ public class FilterNodeTests
 
         resultBoth.Should().HaveCount(1);
         resultExtOnly.Should().BeEmpty();
-    }
-
-    [Fact]
-    public async Task File_not_matching_extension_is_marked_skipped()
-    {
-        var node = new FilterNode(NullLogger<FilterNode>.Instance);
-        node.Configure(MakeConfig(new[]
-        {
-            new { field = "extension", @operator = "equals", value = ".jpg" }
-        }));
-
-        var job = new FileJob
-        {
-            OriginalPath = FakePath("document.pdf"),
-            CurrentPath = FakePath("document.pdf")
-        };
-
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
-        result.Should().BeEmpty();
-        job.Status.Should().Be(FileJobStatus.Skipped);
     }
 
     [Fact]

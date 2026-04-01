@@ -33,7 +33,9 @@ public class FolderOutputNodeTests
         await node.ConsumeAsync(job, dryRun: false);
 
         File.Exists(sourcePath).Should().BeTrue("copy mode should preserve the source file");
-        File.Exists(Path.Combine(dir.OutputPath, "photo.jpg")).Should().BeTrue();
+        string destPath = Path.Combine(dir.OutputPath, "photo.jpg");
+        File.Exists(destPath).Should().BeTrue();
+        File.ReadAllText(destPath).Should().Be("test content: photo.jpg");
     }
 
     [Fact]
@@ -51,7 +53,9 @@ public class FolderOutputNodeTests
         await node.ConsumeAsync(job, dryRun: false);
 
         File.Exists(sourcePath).Should().BeFalse("move mode should remove the source file");
-        File.Exists(Path.Combine(dir.OutputPath, "photo.jpg")).Should().BeTrue();
+        string destPath = Path.Combine(dir.OutputPath, "photo.jpg");
+        File.Exists(destPath).Should().BeTrue();
+        File.ReadAllText(destPath).Should().Be("test content: photo.jpg");
     }
 
     [Fact]

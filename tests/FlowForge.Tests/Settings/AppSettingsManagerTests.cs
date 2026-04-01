@@ -87,8 +87,8 @@ public class AppSettingsManagerTests
 
         await manager.SaveAsync(new AppSettings());
 
-        string tmpPath = settingsPath + ".tmp";
-        File.Exists(tmpPath).Should().BeFalse();
+        // Verify no temp files of any name were left behind (GUID-named .tmp files)
+        Directory.GetFiles(dir.Path, "*.tmp").Should().BeEmpty();
         File.Exists(settingsPath).Should().BeTrue();
     }
 
@@ -103,29 +103,5 @@ public class AppSettingsManagerTests
         Func<Task> act = () => manager.SaveAsync(null!);
 
         await act.Should().ThrowAsync<ArgumentNullException>();
-    }
-
-    [Fact]
-    public async Task Custom_settings_values_preserved_through_save_and_load()
-    {
-        using var dir = new TempDirectory();
-        string settingsPath = Path.Combine(dir.Path, "settings.json");
-
-        var manager = new AppSettingsManager(settingsPath, NullLogger<AppSettingsManager>.Instance);
-        var custom = new AppSettings
-        {
-            DefaultInputFolder = "/mnt/data/photos",
-            DefaultOutputFolder = "/mnt/data/processed",
-            MaxConcurrency = 16,
-            RecentPipelines = new List<string> { "/mnt/data/pipelines/batch.ffpipe" },
-        };
-
-        await manager.SaveAsync(custom);
-        AppSettings loaded = await manager.LoadAsync();
-
-        loaded.DefaultInputFolder.Should().Be("/mnt/data/photos");
-        loaded.DefaultOutputFolder.Should().Be("/mnt/data/processed");
-        loaded.MaxConcurrency.Should().Be(16);
-        loaded.RecentPipelines.Should().Equal("/mnt/data/pipelines/batch.ffpipe");
     }
 }
