@@ -28,7 +28,6 @@ public class FilterNode : ITransformNode
 
     private List<FilterCondition> _conditions = new();
     private readonly Dictionary<int, Regex> _compiledRegexes = new();
-    private bool _dryRun;
 
     public void Configure(IDictionary<string, JsonElement> config)
     {
@@ -72,12 +71,11 @@ public class FilterNode : ITransformNode
     public Task<IEnumerable<FileJob>> TransformAsync(FileJob job, bool dryRun, CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
-        _dryRun = dryRun;
 
         bool matches;
         try
         {
-            matches = _conditions.Select((c, idx) => EvaluateCondition(c, idx, job)).All(b => b);
+            matches = _conditions.Select((c, idx) => EvaluateCondition(c, idx, job, dryRun)).All(b => b);
         }
         catch (RegexMatchTimeoutException)
         {
@@ -99,9 +97,9 @@ public class FilterNode : ITransformNode
         return Task.FromResult(Enumerable.Empty<FileJob>());
     }
 
-    private bool EvaluateCondition(FilterCondition condition, int index, FileJob job)
+    private bool EvaluateCondition(FilterCondition condition, int index, FileJob job, bool dryRun)
     {
-        string fieldValue = GetFieldValue(condition.Field, job);
+        string fieldValue = GetFieldValue(condition.Field, job, dryRun);
 
         // Operator is already lowercased at configure time (M5)
         return condition.Operator switch
@@ -121,22 +119,22 @@ public class FilterNode : ITransformNode
     }
 
     // Field is already lowercased at configure time (M5)
-    private string GetFieldValue(string field, FileJob job)
+    private string GetFieldValue(string field, FileJob job, bool dryRun)
     {
         return field switch
         {
             "extension" => job.Extension,
             "filename" => job.FileName,
-            "size" => GetFileSize(job.CurrentPath),
-            "createdat" => GetFileCreatedAt(job.CurrentPath),
-            "modifiedat" => GetFileModifiedAt(job.CurrentPath),
+            "size" => GetFileSize(job.CurrentPath, dryRun),
+            "createdat" => GetFileCreatedAt(job.CurrentPath, dryRun),
+            "modifiedat" => GetFileModifiedAt(job.CurrentPath, dryRun),
             _ => throw new InvalidOperationException($"Unknown filter field: '{field}'")
         };
     }
 
-    private string GetFileSize(string path)
+    private string GetFileSize(string path, bool dryRun)
     {
-        if (_dryRun)
+        if (dryRun)
         {
             return "0";
         }
@@ -151,9 +149,9 @@ public class FilterNode : ITransformNode
         return info.Length.ToString(CultureInfo.InvariantCulture);
     }
 
-    private string GetFileCreatedAt(string path)
+    private string GetFileCreatedAt(string path, bool dryRun)
     {
-        if (_dryRun)
+        if (dryRun)
         {
             return DateTime.MinValue.ToString("o", CultureInfo.InvariantCulture);
         }
@@ -161,15 +159,15 @@ public class FilterNode : ITransformNode
         if (!File.Exists(path))
         {
             _logger.LogWarning("Filter: file not found at '{FilePath}', using default date", path);
-            return string.Empty;
+            return DateTime.MinValue.ToString("o", CultureInfo.InvariantCulture);
         }
 
         return File.GetCreationTimeUtc(path).ToString("o", CultureInfo.InvariantCulture);
     }
 
-    private string GetFileModifiedAt(string path)
+    private string GetFileModifiedAt(string path, bool dryRun)
     {
-        if (_dryRun)
+        if (dryRun)
         {
             return DateTime.MinValue.ToString("o", CultureInfo.InvariantCulture);
         }
@@ -177,7 +175,7 @@ public class FilterNode : ITransformNode
         if (!File.Exists(path))
         {
             _logger.LogWarning("Filter: file not found at '{FilePath}', using default date", path);
-            return string.Empty;
+            return DateTime.MinValue.ToString("o", CultureInfo.InvariantCulture);
         }
 
         return File.GetLastWriteTimeUtc(path).ToString("o", CultureInfo.InvariantCulture);

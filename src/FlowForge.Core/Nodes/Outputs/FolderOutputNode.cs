@@ -171,6 +171,8 @@ public class FolderOutputNode : IOutputNode
     private async Task BackupFileAsync(FileJob job, string destinationPath, CancellationToken ct)
     {
         string backupPath = destinationPath + _backupSuffix;
+        PathGuard.EnsureWithinDirectory(backupPath, _path);
+
         if (File.Exists(backupPath))
         {
             job.NodeLog.Add($"FolderOutput: Replacing previous backup at '{backupPath}'");

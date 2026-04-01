@@ -67,19 +67,7 @@ public class ImageConvertNode : ITransformNode
     {
         ct.ThrowIfCancellationRequested();
 
-        string newExtension = _format switch
-        {
-            "jpg" or "jpeg" => ".jpg",
-            "png" => ".png",
-            "webp" => ".webp",
-            "bmp" => ".bmp",
-            "tiff" => ".tiff",
-            _ => $".{_format}"
-        };
-
-        string directory = job.DirectoryName;
-        string nameWithoutExt = Path.GetFileNameWithoutExtension(job.CurrentPath);
-        string newPath = Path.Combine(directory, nameWithoutExt + newExtension);
+        string newPath = BuildTargetPath(job);
 
         if (dryRun)
         {
@@ -96,39 +84,90 @@ public class ImageConvertNode : ITransformNode
             return new[] { job };
         }
 
-        using Image image = await Image.LoadAsync(SafeDecoderOptions, job.CurrentPath, ct).ConfigureAwait(false);
+        return new[] { await ConvertImageAsync(job, newPath, ct).ConfigureAwait(false) };
+    }
 
-        await image.SaveAsync(newPath, _encoder, ct).ConfigureAwait(false);
-
-        // Verify output before deleting original
-        FileInfo outputInfo = new(newPath);
-        if (!outputInfo.Exists || outputInfo.Length == 0)
+    private async Task<FileJob> ConvertImageAsync(FileJob job, string newPath, CancellationToken ct)
+    {
+        string tmpPath = newPath + $".{Guid.NewGuid():N}.tmp";
+        try
         {
-            _logger.LogWarning("ImageConvert: output file {OutputPath} is missing or empty after save", newPath);
-            job.Status = FileJobStatus.Failed;
-            job.ErrorMessage = $"ImageConvert: output file '{newPath}' is missing or empty after save. Original preserved.";
-            return new[] { job };
+            using Image image = await Image.LoadAsync(SafeDecoderOptions, job.CurrentPath, ct).ConfigureAwait(false);
+            await image.SaveAsync(tmpPath, _encoder, ct).ConfigureAwait(false);
+
+            FileInfo outputInfo = new(tmpPath);
+            if (!outputInfo.Exists || outputInfo.Length == 0)
+            {
+                _logger.LogWarning("ImageConvert: output file {OutputPath} is missing or empty after save", tmpPath);
+                job.Status = FileJobStatus.Failed;
+                job.ErrorMessage = "ImageConvert: output file is missing or empty after save. Original preserved.";
+                return job;
+            }
+
+            File.Move(tmpPath, newPath, overwrite: true);
+            DeleteOriginalIfExtensionChanged(job, newPath);
+
+            string oldName = job.FileName;
+            job.CurrentPath = newPath;
+            job.NodeLog.Add($"ImageConvert: '{oldName}' → '{job.FileName}'");
+            return job;
+        }
+        finally
+        {
+            CleanupTempFile(tmpPath);
+        }
+    }
+
+    private string BuildTargetPath(FileJob job)
+    {
+        string newExtension = _format switch
+        {
+            "jpg" or "jpeg" => ".jpg",
+            "png" => ".png",
+            "webp" => ".webp",
+            "bmp" => ".bmp",
+            "tiff" => ".tiff",
+            _ => $".{_format}"
+        };
+
+        string nameWithoutExt = Path.GetFileNameWithoutExtension(job.CurrentPath);
+        return Path.Combine(job.DirectoryName, nameWithoutExt + newExtension);
+    }
+
+    private void DeleteOriginalIfExtensionChanged(FileJob job, string newPath)
+    {
+        if (string.Equals(job.CurrentPath, newPath, StringComparison.OrdinalIgnoreCase) ||
+            !File.Exists(job.CurrentPath))
+        {
+            return;
         }
 
-        // Remove old file if extension changed
-        if (!string.Equals(job.CurrentPath, newPath, StringComparison.OrdinalIgnoreCase) &&
-            File.Exists(job.CurrentPath))
+        try
         {
-            try
-            {
-                File.Delete(job.CurrentPath);
-            }
-            catch (IOException ex)
-            {
-                _logger.LogWarning(ex, "ImageConvert: failed to delete original file {OriginalPath}", job.CurrentPath);
-                job.NodeLog.Add($"ImageConvert: Could not delete original '{Path.GetFileName(job.CurrentPath)}': {ex.Message}");
-            }
+            File.Delete(job.CurrentPath);
+        }
+        catch (IOException ex)
+        {
+            _logger.LogWarning(ex, "ImageConvert: failed to delete original file {OriginalPath}", job.CurrentPath);
+            job.NodeLog.Add($"ImageConvert: Could not delete original '{Path.GetFileName(job.CurrentPath)}': {ex.Message}");
+        }
+    }
+
+    private void CleanupTempFile(string tmpPath)
+    {
+        if (!File.Exists(tmpPath))
+        {
+            return;
         }
 
-        string oldName = job.FileName;
-        job.CurrentPath = newPath;
-        job.NodeLog.Add($"ImageConvert: '{oldName}' → '{job.FileName}'");
-        return new[] { job };
+        try
+        {
+            File.Delete(tmpPath);
+        }
+        catch (IOException ex)
+        {
+            _logger.LogWarning(ex, "ImageConvert: failed to clean up temp file {TmpPath}", tmpPath);
+        }
     }
 
     private static IImageEncoder CreateEncoder(string format)

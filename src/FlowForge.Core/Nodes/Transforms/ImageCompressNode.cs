@@ -12,7 +12,7 @@ namespace FlowForge.Core.Nodes.Transforms;
 
 public class ImageCompressNode : ITransformNode
 {
-    private static readonly string[] SupportedFormats = { "jpg", "jpeg", "png", "webp" };
+    private static readonly HashSet<string> SupportedFormats = new(StringComparer.OrdinalIgnoreCase) { "jpg", "jpeg", "png", "webp" };
 
     private static readonly DecoderOptions SafeDecoderOptions = new()
     {

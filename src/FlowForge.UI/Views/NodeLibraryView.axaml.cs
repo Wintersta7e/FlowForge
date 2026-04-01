@@ -3,8 +3,6 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using FlowForge.UI.ViewModels;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 namespace FlowForge.UI.Views;
 
@@ -14,10 +12,6 @@ public partial class NodeLibraryView : UserControl
     private NodeLibraryItemViewModel? _dragItem;
     private bool _isDragging;
     private const double DragThreshold = 6.0;
-
-    private ILogger<NodeLibraryView>? _logger;
-    private ILogger<NodeLibraryView> Logger =>
-        _logger ??= App.Services.GetRequiredService<ILogger<NodeLibraryView>>();
 
     public NodeLibraryView()
     {
@@ -32,10 +26,6 @@ public partial class NodeLibraryView : UserControl
             if (topLevel?.DataContext is MainWindowViewModel mainVm)
             {
                 mainVm.Editor.AddNode(item.TypeKey, new Point(300, 200), mainVm.Registry);
-            }
-            else
-            {
-                Logger.LogWarning("NodeLibraryView: could not find MainWindowViewModel via visual tree");
             }
         }
         e.Handled = true;

@@ -177,6 +177,8 @@ public class PipelineRunner
         }
         catch
         {
+            // Drain all in-flight tasks before disposing the semaphore
+            // so that Release() calls in ConsumeJobAsync don't hit a disposed object
             if (outputTasks.Count > 0)
             {
                 try
@@ -185,7 +187,7 @@ public class PipelineRunner
                 }
                 catch
                 {
-                    // tasks handle their own errors
+                    // tasks handle their own errors via per-job exception handling
                 }
             }
 
@@ -193,6 +195,7 @@ public class PipelineRunner
         }
         finally
         {
+            // Safe to dispose: all tasks are awaited in both normal and error paths above
             semaphore.Dispose();
         }
     }
