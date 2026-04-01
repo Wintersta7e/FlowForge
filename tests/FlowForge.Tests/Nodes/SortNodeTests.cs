@@ -250,4 +250,55 @@ public class SortNodeTests
             j.Status.Should().NotBe(FileJobStatus.Failed);
         });
     }
+
+    [Fact]
+    public async Task Sort_by_modifiedAt_ascending()
+    {
+        using var dir = new TempDirectory();
+        string fileA = Path.Combine(dir.Path, "old.txt");
+        string fileB = Path.Combine(dir.Path, "new.txt");
+        File.WriteAllText(fileA, "a");
+        File.WriteAllText(fileB, "b");
+        File.SetLastWriteTimeUtc(fileA, new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+        File.SetLastWriteTimeUtc(fileB, new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        var node = new SortNode(NullLogger<SortNode>.Instance);
+        node.Configure(MakeConfig(new { field = "modifiedAt", direction = "asc" }));
+
+        // Add in reverse order
+        await node.TransformAsync(MakeJob(fileB), dryRun: false);
+        await node.TransformAsync(MakeJob(fileA), dryRun: false);
+
+        IEnumerable<FileJob> result = await node.FlushAsync(dryRun: false);
+        var resultList = result.ToList();
+
+        resultList.Should().HaveCount(2);
+        resultList[0].FileName.Should().Be("old.txt");
+        resultList[1].FileName.Should().Be("new.txt");
+    }
+
+    [Fact]
+    public async Task Sort_by_createdAt_descending()
+    {
+        using var dir = new TempDirectory();
+        string fileA = Path.Combine(dir.Path, "older.txt");
+        string fileB = Path.Combine(dir.Path, "newer.txt");
+        File.WriteAllText(fileA, "a");
+        File.WriteAllText(fileB, "b");
+        File.SetCreationTimeUtc(fileA, new DateTime(2020, 6, 1, 0, 0, 0, DateTimeKind.Utc));
+        File.SetCreationTimeUtc(fileB, new DateTime(2025, 6, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        var node = new SortNode(NullLogger<SortNode>.Instance);
+        node.Configure(MakeConfig(new { field = "createdAt", direction = "desc" }));
+
+        await node.TransformAsync(MakeJob(fileA), dryRun: false);
+        await node.TransformAsync(MakeJob(fileB), dryRun: false);
+
+        IEnumerable<FileJob> result = await node.FlushAsync(dryRun: false);
+        var resultList = result.ToList();
+
+        resultList.Should().HaveCount(2);
+        resultList[0].FileName.Should().Be("newer.txt");
+        resultList[1].FileName.Should().Be("older.txt");
+    }
 }

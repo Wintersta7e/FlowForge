@@ -88,4 +88,16 @@ public class PipelineSerializerTests
         Func<Task> act = () => PipelineSerializer.LoadAsync(filePath);
         await act.Should().ThrowAsync<ArgumentException>();
     }
+
+    [Fact]
+    public async Task Load_null_json_throws_PipelineLoadException()
+    {
+        using var dir = new TempDirectory();
+        string filePath = Path.Combine(dir.Path, "null.ffpipe");
+        await File.WriteAllTextAsync(filePath, "null");
+
+        Func<Task> act = () => PipelineSerializer.LoadAsync(filePath);
+        await act.Should().ThrowAsync<PipelineLoadException>()
+            .WithMessage("*null*");
+    }
 }

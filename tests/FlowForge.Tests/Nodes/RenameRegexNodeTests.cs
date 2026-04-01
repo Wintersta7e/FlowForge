@@ -195,4 +195,38 @@ public class RenameRegexNodeTests
         job.Status.Should().Be(FileJobStatus.Failed);
         job.ErrorMessage.Should().Contain("regex match timed out");
     }
+
+    [Fact]
+    public async Task Fullpath_scope_happy_path_with_real_file()
+    {
+        using var dir = new TempDirectory();
+        string filePath = Path.Combine(dir.Path, "old_name.txt");
+        File.WriteAllText(filePath, "test");
+
+        var node = new RenameRegexNode(NullLogger<RenameRegexNode>.Instance);
+        node.Configure(MakeConfig(new { pattern = "old_name", replacement = "new_name", scope = "fullpath" }));
+
+        FileJob job = MakeJob(filePath);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+
+        result.Should().ContainSingle();
+        string expectedPath = Path.Combine(dir.Path, "new_name.txt");
+        result.First().CurrentPath.Should().Be(expectedPath);
+        File.Exists(expectedPath).Should().BeTrue();
+        File.Exists(filePath).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Filename_scope_rejects_path_separator_in_replacement()
+    {
+        var node = new RenameRegexNode(NullLogger<RenameRegexNode>.Instance);
+        node.Configure(MakeConfig(new { pattern = "file", replacement = "sub/file", scope = "filename" }));
+
+        FileJob job = MakeJob(Path.Combine("/tmp", "file.txt"));
+        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+
+        result.Should().ContainSingle();
+        job.Status.Should().Be(FileJobStatus.Failed);
+        job.ErrorMessage.Should().Contain("path-like filename");
+    }
 }

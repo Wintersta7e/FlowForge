@@ -152,4 +152,22 @@ public class ImageResizeNodeTests
         Action act = () => node.Configure(MakeConfig(new { width = 50000 }));
         act.Should().Throw<NodeConfigurationException>();
     }
+
+    [Fact]
+    public async Task MaintainAspect_false_forces_stretch()
+    {
+        using var dir = new TempDirectory();
+        string filePath = Path.Combine(dir.Path, "stretch_test.png");
+        TestFileFactory.CreateTestImage(filePath, 200, 100);
+
+        var node = new ImageResizeNode(NullLogger<ImageResizeNode>.Instance);
+        node.Configure(MakeConfig(new { width = 50, height = 50, mode = "max", maintainAspect = false }));
+
+        var job = new FileJob { OriginalPath = filePath, CurrentPath = filePath };
+        await node.TransformAsync(job, dryRun: false);
+
+        using var image = Image.Load(filePath);
+        image.Width.Should().Be(50);
+        image.Height.Should().Be(50);
+    }
 }
