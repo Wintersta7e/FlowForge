@@ -16,7 +16,7 @@ public sealed class AppSettings
     public int MaxConcurrency { get; set; } = Environment.ProcessorCount;
 
     /// <summary>Most recently opened pipeline files, newest first. Max 10.</summary>
-    public List<string> RecentPipelines { get; set; } = new();
+    public IList<string> RecentPipelines { get; set; } = new List<string>();
 
     private const int MaxRecentPipelines = 10;
     private const int MaxAllowedConcurrency = 64;
@@ -27,11 +27,18 @@ public sealed class AppSettings
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
 
         // Case-insensitive dedup for Windows path compatibility
-        RecentPipelines.RemoveAll(p => string.Equals(p, path, StringComparison.OrdinalIgnoreCase));
-        RecentPipelines.Insert(0, path);
-        if (RecentPipelines.Count > MaxRecentPipelines)
+        for (int i = RecentPipelines.Count - 1; i >= 0; i--)
         {
-            RecentPipelines.RemoveRange(MaxRecentPipelines, RecentPipelines.Count - MaxRecentPipelines);
+            if (string.Equals(RecentPipelines[i], path, StringComparison.OrdinalIgnoreCase))
+            {
+                RecentPipelines.RemoveAt(i);
+            }
+        }
+
+        RecentPipelines.Insert(0, path);
+        while (RecentPipelines.Count > MaxRecentPipelines)
+        {
+            RecentPipelines.RemoveAt(RecentPipelines.Count - 1);
         }
     }
 
@@ -44,6 +51,24 @@ public sealed class AppSettings
         if (MaxConcurrency <= 0 || MaxConcurrency > MaxAllowedConcurrency)
         {
             MaxConcurrency = Environment.ProcessorCount;
+        }
+
+        // Filter out invalid recent pipeline entries (corrupted settings, null bytes, extreme length)
+        for (int i = RecentPipelines.Count - 1; i >= 0; i--)
+        {
+            string entry = RecentPipelines[i];
+            if (string.IsNullOrWhiteSpace(entry) ||
+                entry.Length > 4096 ||
+                entry.Contains('\0', StringComparison.Ordinal) ||
+                !Path.IsPathFullyQualified(entry))
+            {
+                RecentPipelines.RemoveAt(i);
+            }
+        }
+
+        while (RecentPipelines.Count > MaxRecentPipelines)
+        {
+            RecentPipelines.RemoveAt(RecentPipelines.Count - 1);
         }
     }
 }

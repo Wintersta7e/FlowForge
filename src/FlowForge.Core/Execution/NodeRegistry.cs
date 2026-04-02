@@ -1,4 +1,3 @@
-using System.Text.Json;
 using FlowForge.Core.Nodes.Base;
 using FlowForge.Core.Nodes.Outputs;
 using FlowForge.Core.Nodes.Sources;
@@ -10,8 +9,8 @@ namespace FlowForge.Core.Execution;
 
 public class NodeRegistry
 {
-    private readonly Dictionary<string, Func<object>> _factories = new();
-    private readonly Dictionary<string, NodeRegistration> _registrations = new();
+    private readonly Dictionary<string, Func<object>> _factories = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, NodeRegistration> _registrations = new(StringComparer.Ordinal);
 
     /// <summary>
     /// Registers a node factory with full metadata (display name, category, config schema).
@@ -120,11 +119,17 @@ public class NodeRegistry
         if (configure)
         {
             if (instance is ISourceNode source)
+            {
                 source.Configure(def.Config);
+            }
             else if (instance is ITransformNode transform)
+            {
                 transform.Configure(def.Config);
+            }
             else if (instance is IOutputNode output)
+            {
                 output.Configure(def.Config);
+            }
         }
 
         return instance;
@@ -177,5 +182,3 @@ public class NodeRegistry
         NodeCategory Category,
         Func<IReadOnlyList<ConfigField>> ConfigSchemaGetter);
 }
-
-public enum NodeCategory { Source, Transform, Output }

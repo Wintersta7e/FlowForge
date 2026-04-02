@@ -24,11 +24,11 @@ public class SamplePipelineTests
         // Set portable placeholder paths
         foreach (NodeDefinition node in graph.Nodes)
         {
-            if (node.TypeKey == "FolderInput")
+            if (string.Equals(node.TypeKey, "FolderInput", StringComparison.Ordinal))
             {
                 node.Config["path"] = JsonSerializer.SerializeToElement("./input");
             }
-            else if (node.TypeKey == "FolderOutput")
+            else if (string.Equals(node.TypeKey, "FolderOutput", StringComparison.Ordinal))
             {
                 node.Config["path"] = JsonSerializer.SerializeToElement("./output");
             }

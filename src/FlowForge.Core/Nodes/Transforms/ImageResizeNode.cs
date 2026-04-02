@@ -3,12 +3,21 @@ using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
 using Microsoft.Extensions.Logging;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Advanced;
+using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.Processing;
 
 namespace FlowForge.Core.Nodes.Transforms;
 
 public class ImageResizeNode : ITransformNode
 {
+    private static readonly DecoderOptions SafeDecoderOptions = new()
+    {
+        MaxFrames = 1
+    };
+
+    private const long MaxFileSizeBytes = 500 * 1024 * 1024; // 500 MB
+
     private readonly ILogger<ImageResizeNode> _logger;
 
     public ImageResizeNode(ILogger<ImageResizeNode> logger)
@@ -31,11 +40,11 @@ public class ImageResizeNode : ITransformNode
 
     private int? _width;
     private int? _height;
-    private string _mode = "max";
+    private ResizeMode _resizeMode = ResizeMode.Max;
     private bool _maintainAspect = true;
     private int? _dpi;
 
-    public void Configure(Dictionary<string, JsonElement> config)
+    public void Configure(IDictionary<string, JsonElement> config)
     {
         if (config.TryGetValue("width", out JsonElement widthEl) && widthEl.ValueKind == JsonValueKind.Number)
         {
@@ -52,10 +61,31 @@ public class ImageResizeNode : ITransformNode
             throw new NodeConfigurationException("ImageResize: At least one of 'width' or 'height' is required.");
         }
 
+        if (_width.HasValue && (_width.Value < 1 || _width.Value > 32768))
+        {
+            throw new NodeConfigurationException("ImageResize: 'width' must be between 1 and 32768.");
+        }
+
+        if (_height.HasValue && (_height.Value < 1 || _height.Value > 32768))
+        {
+            throw new NodeConfigurationException("ImageResize: 'height' must be between 1 and 32768.");
+        }
+
+        string mode = "max";
         if (config.TryGetValue("mode", out JsonElement modeEl) && modeEl.ValueKind == JsonValueKind.String)
         {
-            _mode = modeEl.GetString() ?? "max";
+            mode = (modeEl.GetString() ?? "max").ToLowerInvariant();
         }
+
+        _resizeMode = mode switch
+        {
+            "max" => ResizeMode.Max,
+            "min" => ResizeMode.Min,
+            "crop" => ResizeMode.Crop,
+            "pad" => ResizeMode.Pad,
+            "stretch" => ResizeMode.Stretch,
+            _ => ResizeMode.Max
+        };
 
         if (config.TryGetValue("maintainAspect", out JsonElement aspectEl))
         {
@@ -68,7 +98,7 @@ public class ImageResizeNode : ITransformNode
         }
 
         _logger.LogDebug("ImageResize: configured with Width={Width}, Height={Height}, Mode={Mode}, MaintainAspect={MaintainAspect}, DPI={DPI}",
-            _width, _height, _mode, _maintainAspect, _dpi);
+            _width, _height, _resizeMode, _maintainAspect, _dpi);
     }
 
     public async Task<IEnumerable<FileJob>> TransformAsync(FileJob job, bool dryRun, CancellationToken ct = default)
@@ -80,45 +110,62 @@ public class ImageResizeNode : ITransformNode
 
         if (dryRun)
         {
-            job.NodeLog.Add($"ImageResize: would resize to {targetWidth}x{targetHeight} ({_mode})");
+            job.NodeLog.Add($"ImageResize: would resize to {targetWidth}x{targetHeight} ({_resizeMode})");
             return new[] { job };
         }
 
-        using Image image = await Image.LoadAsync(job.CurrentPath, ct);
-
-        ResizeMode resizeMode = _mode.ToLowerInvariant() switch
+        var fileInfo = new FileInfo(job.CurrentPath);
+        if (fileInfo.Length > MaxFileSizeBytes)
         {
-            "max" => ResizeMode.Max,
-            "min" => ResizeMode.Min,
-            "crop" => ResizeMode.Crop,
-            "pad" => ResizeMode.Pad,
-            "stretch" => ResizeMode.Stretch,
-            _ => ResizeMode.Max
-        };
-
-        if (!_maintainAspect)
-        {
-            resizeMode = ResizeMode.Stretch;
+            job.Status = FileJobStatus.Failed;
+            job.ErrorMessage = $"ImageResize: File too large ({fileInfo.Length / (1024 * 1024)} MB, max 500 MB).";
+            job.NodeLog.Add(job.ErrorMessage);
+            return new[] { job };
         }
 
-        // If only one dimension specified, set the other to 0 so ImageSharp auto-calculates
-        var resizeOptions = new ResizeOptions
+        string tmpPath = job.CurrentPath + $".{Guid.NewGuid():N}.tmp";
+        try
         {
-            Size = new Size(targetWidth, targetHeight),
-            Mode = resizeMode
-        };
+            using Image image = await Image.LoadAsync(SafeDecoderOptions, job.CurrentPath, ct).ConfigureAwait(false);
 
-        image.Mutate(x => x.Resize(resizeOptions));
+            ResizeMode effectiveMode = _maintainAspect ? _resizeMode : ResizeMode.Stretch;
 
-        if (_dpi.HasValue)
-        {
-            image.Metadata.HorizontalResolution = _dpi.Value;
-            image.Metadata.VerticalResolution = _dpi.Value;
+            // If only one dimension specified, set the other to 0 so ImageSharp auto-calculates
+            var resizeOptions = new ResizeOptions
+            {
+                Size = new Size(targetWidth, targetHeight),
+                Mode = effectiveMode
+            };
+
+            image.Mutate(x => x.Resize(resizeOptions));
+
+            if (_dpi.HasValue)
+            {
+                image.Metadata.HorizontalResolution = _dpi.Value;
+                image.Metadata.VerticalResolution = _dpi.Value;
+            }
+
+            IImageEncoder encoder = image.DetectEncoder(job.CurrentPath);
+            await image.SaveAsync(tmpPath, encoder, ct).ConfigureAwait(false);
+
+            File.Move(tmpPath, job.CurrentPath, overwrite: true);
+
+            job.NodeLog.Add($"ImageResize: resized to {image.Width}x{image.Height} ({_resizeMode})");
+            return new[] { job };
         }
-
-        await image.SaveAsync(job.CurrentPath, ct);
-
-        job.NodeLog.Add($"ImageResize: resized to {image.Width}x{image.Height} ({_mode})");
-        return new[] { job };
+        finally
+        {
+            if (File.Exists(tmpPath))
+            {
+                try
+                {
+                    File.Delete(tmpPath);
+                }
+                catch (IOException ex)
+                {
+                    _logger.LogWarning(ex, "ImageResize: failed to clean up temp file {TmpPath}", tmpPath);
+                }
+            }
+        }
     }
 }

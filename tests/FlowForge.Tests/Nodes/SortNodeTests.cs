@@ -2,7 +2,6 @@ using System.Text.Json;
 using FluentAssertions;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Transforms;
-using FlowForge.Core.Nodes.Base;
 using FlowForge.Tests.Helpers;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -13,7 +12,7 @@ public class SortNodeTests
     private static Dictionary<string, JsonElement> MakeConfig(object config)
     {
         string json = JsonSerializer.Serialize(config);
-        JsonDocument doc = JsonDocument.Parse(json);
+        var doc = JsonDocument.Parse(json);
         return doc.RootElement.EnumerateObject()
             .ToDictionary(p => p.Name, p => p.Value.Clone());
     }
@@ -29,7 +28,7 @@ public class SortNodeTests
         var node = new SortNode(NullLogger<SortNode>.Instance);
         node.Configure(MakeConfig(new { field = "filename", direction = "asc" }));
 
-        FileJob job = MakeJob(Path.Combine("/tmp", "test.txt"));
+        FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "test.txt"));
 
         IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
 
@@ -42,9 +41,9 @@ public class SortNodeTests
         var node = new SortNode(NullLogger<SortNode>.Instance);
         node.Configure(MakeConfig(new { field = "filename", direction = "asc" }));
 
-        FileJob job1 = MakeJob(Path.Combine("/tmp", "b.txt"));
-        FileJob job2 = MakeJob(Path.Combine("/tmp", "a.txt"));
-        FileJob job3 = MakeJob(Path.Combine("/tmp", "c.txt"));
+        FileJob job1 = MakeJob(Path.Combine(Path.GetTempPath(), "b.txt"));
+        FileJob job2 = MakeJob(Path.Combine(Path.GetTempPath(), "a.txt"));
+        FileJob job3 = MakeJob(Path.Combine(Path.GetTempPath(), "c.txt"));
 
         await node.TransformAsync(job1, dryRun: false);
         await node.TransformAsync(job2, dryRun: false);
@@ -53,6 +52,7 @@ public class SortNodeTests
         IEnumerable<FileJob> result = await node.FlushAsync();
 
         result.Should().HaveCount(3);
+        result.Select(j => j.FileName).Should().ContainInOrder("a.txt", "b.txt", "c.txt");
     }
 
     [Fact]
@@ -61,15 +61,15 @@ public class SortNodeTests
         var node = new SortNode(NullLogger<SortNode>.Instance);
         node.Configure(MakeConfig(new { field = "filename", direction = "asc" }));
 
-        FileJob jobB = MakeJob(Path.Combine("/tmp", "b.txt"));
-        FileJob jobA = MakeJob(Path.Combine("/tmp", "a.txt"));
-        FileJob jobC = MakeJob(Path.Combine("/tmp", "c.txt"));
+        FileJob jobB = MakeJob(Path.Combine(Path.GetTempPath(), "b.txt"));
+        FileJob jobA = MakeJob(Path.Combine(Path.GetTempPath(), "a.txt"));
+        FileJob jobC = MakeJob(Path.Combine(Path.GetTempPath(), "c.txt"));
 
         await node.TransformAsync(jobB, dryRun: false);
         await node.TransformAsync(jobA, dryRun: false);
         await node.TransformAsync(jobC, dryRun: false);
 
-        List<FileJob> result = (await node.FlushAsync()).ToList();
+        var result = (await node.FlushAsync()).ToList();
 
         result.Should().HaveCount(3);
         result[0].FileName.Should().Be("a.txt");
@@ -83,15 +83,15 @@ public class SortNodeTests
         var node = new SortNode(NullLogger<SortNode>.Instance);
         node.Configure(MakeConfig(new { field = "filename", direction = "desc" }));
 
-        FileJob jobB = MakeJob(Path.Combine("/tmp", "b.txt"));
-        FileJob jobA = MakeJob(Path.Combine("/tmp", "a.txt"));
-        FileJob jobC = MakeJob(Path.Combine("/tmp", "c.txt"));
+        FileJob jobB = MakeJob(Path.Combine(Path.GetTempPath(), "b.txt"));
+        FileJob jobA = MakeJob(Path.Combine(Path.GetTempPath(), "a.txt"));
+        FileJob jobC = MakeJob(Path.Combine(Path.GetTempPath(), "c.txt"));
 
         await node.TransformAsync(jobB, dryRun: false);
         await node.TransformAsync(jobA, dryRun: false);
         await node.TransformAsync(jobC, dryRun: false);
 
-        List<FileJob> result = (await node.FlushAsync()).ToList();
+        var result = (await node.FlushAsync()).ToList();
 
         result.Should().HaveCount(3);
         result[0].FileName.Should().Be("c.txt");
@@ -105,15 +105,15 @@ public class SortNodeTests
         var node = new SortNode(NullLogger<SortNode>.Instance);
         node.Configure(MakeConfig(new { field = "extension", direction = "asc" }));
 
-        FileJob jobPng = MakeJob(Path.Combine("/tmp", "file.png"));
-        FileJob jobJpg = MakeJob(Path.Combine("/tmp", "file.jpg"));
-        FileJob jobTxt = MakeJob(Path.Combine("/tmp", "file.txt"));
+        FileJob jobPng = MakeJob(Path.Combine(Path.GetTempPath(), "file.png"));
+        FileJob jobJpg = MakeJob(Path.Combine(Path.GetTempPath(), "file.jpg"));
+        FileJob jobTxt = MakeJob(Path.Combine(Path.GetTempPath(), "file.txt"));
 
         await node.TransformAsync(jobPng, dryRun: false);
         await node.TransformAsync(jobJpg, dryRun: false);
         await node.TransformAsync(jobTxt, dryRun: false);
 
-        List<FileJob> result = (await node.FlushAsync()).ToList();
+        var result = (await node.FlushAsync()).ToList();
 
         result.Should().HaveCount(3);
         result[0].FileName.Should().Be("file.jpg");
@@ -141,7 +141,7 @@ public class SortNodeTests
         await node.TransformAsync(MakeJob(smallPath), dryRun: false);
         await node.TransformAsync(MakeJob(mediumPath), dryRun: false);
 
-        List<FileJob> result = (await node.FlushAsync()).ToList();
+        var result = (await node.FlushAsync()).ToList();
 
         result.Should().HaveCount(3);
         result[0].FileName.Should().Be("small.txt");
@@ -155,8 +155,8 @@ public class SortNodeTests
         var node = new SortNode(NullLogger<SortNode>.Instance);
         node.Configure(MakeConfig(new { field = "filename", direction = "asc" }));
 
-        await node.TransformAsync(MakeJob(Path.Combine("/tmp", "a.txt")), dryRun: false);
-        await node.TransformAsync(MakeJob(Path.Combine("/tmp", "b.txt")), dryRun: false);
+        await node.TransformAsync(MakeJob(Path.Combine(Path.GetTempPath(), "a.txt")), dryRun: false);
+        await node.TransformAsync(MakeJob(Path.Combine(Path.GetTempPath(), "b.txt")), dryRun: false);
 
         IEnumerable<FileJob> firstFlush = await node.FlushAsync();
         firstFlush.Should().HaveCount(2);
@@ -171,10 +171,10 @@ public class SortNodeTests
         var node = new SortNode(NullLogger<SortNode>.Instance);
         node.Configure(MakeConfig(new { field = "filename", direction = "asc" }));
 
-        FileJob job = MakeJob(Path.Combine("/tmp", "only.txt"));
+        FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "only.txt"));
         await node.TransformAsync(job, dryRun: false);
 
-        List<FileJob> result = (await node.FlushAsync()).ToList();
+        var result = (await node.FlushAsync()).ToList();
 
         result.Should().HaveCount(1);
         result[0].FileName.Should().Be("only.txt");
@@ -186,12 +186,12 @@ public class SortNodeTests
         var node = new SortNode(NullLogger<SortNode>.Instance);
         node.Configure(MakeConfig(new { field = "filename", direction = "asc" }));
 
-        await node.TransformAsync(MakeJob(Path.Combine("/tmp", "a.txt")), dryRun: false);
+        await node.TransformAsync(MakeJob(Path.Combine(Path.GetTempPath(), "a.txt")), dryRun: false);
 
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        Func<Task> act = () => node.FlushAsync(cts.Token);
+        Func<Task> act = () => node.FlushAsync(ct: cts.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
@@ -199,24 +199,17 @@ public class SortNodeTests
     [Fact]
     public async Task FlushAsync_exception_marks_all_jobs_failed()
     {
-        var node = new SortNode(NullLogger<SortNode>.Instance);
-        // "size" field requires files to exist on disk — non-existent paths will cause an exception
-        // during OrderBy when it tries to read file sizes
-        node.Configure(MakeConfig(new { field = "size", direction = "asc" }));
-
-        // Buffer jobs with non-existent paths — GetFileSize returns 0 for missing files,
-        // so we use an invalid sort field instead
         var node2 = new SortNode(NullLogger<SortNode>.Instance);
         node2.Configure(MakeConfig(new { field = "INVALID_FIELD", direction = "asc" }));
 
-        FileJob job1 = MakeJob(Path.Combine("/tmp", "a.txt"));
-        FileJob job2 = MakeJob(Path.Combine("/tmp", "b.txt"));
+        FileJob job1 = MakeJob(Path.Combine(Path.GetTempPath(), "a.txt"));
+        FileJob job2 = MakeJob(Path.Combine(Path.GetTempPath(), "b.txt"));
 
         await node2.TransformAsync(job1, dryRun: false);
         await node2.TransformAsync(job2, dryRun: false);
 
         IEnumerable<FileJob> result = await node2.FlushAsync();
-        List<FileJob> resultList = result.ToList();
+        var resultList = result.ToList();
 
         resultList.Should().HaveCount(2);
         resultList.Should().AllSatisfy(j =>
@@ -224,5 +217,82 @@ public class SortNodeTests
             j.Status.Should().Be(FileJobStatus.Failed);
             j.ErrorMessage.Should().Contain("Sort: failed during flush");
         });
+    }
+
+    [Fact]
+    public async Task FlushAsync_dryRun_sorts_without_file_IO()
+    {
+        var node = new SortNode(NullLogger<SortNode>.Instance);
+        node.Configure(MakeConfig(new { field = "size", direction = "asc" }));
+
+        // Non-existent files — dry-run should not try to read file sizes from disk
+        FileJob job1 = MakeJob(Path.Combine("/nonexistent", "large.txt"));
+        FileJob job2 = MakeJob(Path.Combine("/nonexistent", "small.txt"));
+        FileJob job3 = MakeJob(Path.Combine("/nonexistent", "medium.txt"));
+
+        await node.TransformAsync(job1, dryRun: true);
+        await node.TransformAsync(job2, dryRun: true);
+        await node.TransformAsync(job3, dryRun: true);
+
+        // Should not throw even though files don't exist (dry-run returns default size 0)
+        IEnumerable<FileJob> result = await node.FlushAsync(dryRun: true);
+        var resultList = result.ToList();
+
+        resultList.Should().HaveCount(3);
+        resultList.Should().AllSatisfy(j =>
+        {
+            j.Status.Should().NotBe(FileJobStatus.Failed);
+        });
+    }
+
+    [Fact]
+    public async Task Sort_by_modifiedAt_ascending()
+    {
+        using var dir = new TempDirectory();
+        string fileA = Path.Combine(dir.Path, "old.txt");
+        string fileB = Path.Combine(dir.Path, "new.txt");
+        File.WriteAllText(fileA, "a");
+        File.WriteAllText(fileB, "b");
+        File.SetLastWriteTimeUtc(fileA, new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+        File.SetLastWriteTimeUtc(fileB, new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        var node = new SortNode(NullLogger<SortNode>.Instance);
+        node.Configure(MakeConfig(new { field = "modifiedAt", direction = "asc" }));
+
+        // Add in reverse order
+        await node.TransformAsync(MakeJob(fileB), dryRun: false);
+        await node.TransformAsync(MakeJob(fileA), dryRun: false);
+
+        IEnumerable<FileJob> result = await node.FlushAsync(dryRun: false);
+        var resultList = result.ToList();
+
+        resultList.Should().HaveCount(2);
+        resultList[0].FileName.Should().Be("old.txt");
+        resultList[1].FileName.Should().Be("new.txt");
+    }
+
+    [Fact]
+    public async Task Sort_by_createdAt_descending()
+    {
+        using var dir = new TempDirectory();
+        string fileA = Path.Combine(dir.Path, "older.txt");
+        string fileB = Path.Combine(dir.Path, "newer.txt");
+        File.WriteAllText(fileA, "a");
+        File.WriteAllText(fileB, "b");
+        File.SetCreationTimeUtc(fileA, new DateTime(2020, 6, 1, 0, 0, 0, DateTimeKind.Utc));
+        File.SetCreationTimeUtc(fileB, new DateTime(2025, 6, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        var node = new SortNode(NullLogger<SortNode>.Instance);
+        node.Configure(MakeConfig(new { field = "createdAt", direction = "desc" }));
+
+        await node.TransformAsync(MakeJob(fileA), dryRun: false);
+        await node.TransformAsync(MakeJob(fileB), dryRun: false);
+
+        IEnumerable<FileJob> result = await node.FlushAsync(dryRun: false);
+        var resultList = result.ToList();
+
+        resultList.Should().HaveCount(2);
+        resultList[0].FileName.Should().Be("newer.txt");
+        resultList[1].FileName.Should().Be("older.txt");
     }
 }

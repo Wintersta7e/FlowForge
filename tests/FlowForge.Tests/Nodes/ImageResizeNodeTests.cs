@@ -14,7 +14,7 @@ public class ImageResizeNodeTests
     private static Dictionary<string, JsonElement> MakeConfig(object config)
     {
         string json = JsonSerializer.Serialize(config);
-        JsonDocument doc = JsonDocument.Parse(json);
+        var doc = JsonDocument.Parse(json);
         return doc.RootElement.EnumerateObject()
             .ToDictionary(p => p.Name, p => p.Value.Clone());
     }
@@ -120,5 +120,54 @@ public class ImageResizeNodeTests
         var node = new ImageResizeNode(NullLogger<ImageResizeNode>.Instance);
         Action act = () => node.Configure(MakeConfig(new { mode = "max" }));
         act.Should().Throw<NodeConfigurationException>();
+    }
+
+    [Fact]
+    public async Task CancellationToken_cancelled_throws_OperationCanceledException()
+    {
+        using var dir = new TempDirectory();
+        string filePath = Path.Combine(dir.Path, "cancel.png");
+        TestFileFactory.CreateTestPng(filePath, width: 100, height: 100);
+
+        var node = new ImageResizeNode(NullLogger<ImageResizeNode>.Instance);
+        node.Configure(MakeConfig(new { width = 50 }));
+
+        var job = new FileJob
+        {
+            OriginalPath = filePath,
+            CurrentPath = filePath
+        };
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        Func<Task> act = () => node.TransformAsync(job, dryRun: false, ct: cts.Token);
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
+    public void Configure_width_exceeds_max_throws()
+    {
+        var node = new ImageResizeNode(NullLogger<ImageResizeNode>.Instance);
+        Action act = () => node.Configure(MakeConfig(new { width = 50000 }));
+        act.Should().Throw<NodeConfigurationException>();
+    }
+
+    [Fact]
+    public async Task MaintainAspect_false_forces_stretch()
+    {
+        using var dir = new TempDirectory();
+        string filePath = Path.Combine(dir.Path, "stretch_test.png");
+        TestFileFactory.CreateTestImage(filePath, 200, 100);
+
+        var node = new ImageResizeNode(NullLogger<ImageResizeNode>.Instance);
+        node.Configure(MakeConfig(new { width = 50, height = 50, mode = "max", maintainAspect = false }));
+
+        var job = new FileJob { OriginalPath = filePath, CurrentPath = filePath };
+        await node.TransformAsync(job, dryRun: false);
+
+        using var image = Image.Load(filePath);
+        image.Width.Should().Be(50);
+        image.Height.Should().Be(50);
     }
 }

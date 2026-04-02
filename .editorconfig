@@ -43,9 +43,9 @@ csharp_new_line_before_catch = true
 csharp_new_line_before_finally = true
 
 # var preferences — use var when type is apparent
-csharp_style_var_for_built_in_types = false:suggestion
-csharp_style_var_when_type_is_apparent = true:suggestion
-csharp_style_var_elsewhere = false:suggestion
+csharp_style_var_for_built_in_types = false:warning
+csharp_style_var_when_type_is_apparent = true:warning
+csharp_style_var_elsewhere = false:warning
 
 # Expression-bodied members
 csharp_style_expression_bodied_methods = when_on_single_line:suggestion
@@ -122,8 +122,8 @@ dotnet_style_qualification_for_event = false:warning
 dotnet_style_predefined_type_for_locals_parameters_members = true:warning
 dotnet_style_predefined_type_for_member_access = true:warning
 
-# Require accessibility modifiers (suggestion — can't add modifiers to top-level statements)
-dotnet_style_require_accessibility_modifiers = for_non_interface_members:suggestion
+# Require accessibility modifiers
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:warning
 
 # Parentheses preferences
 dotnet_style_parentheses_in_arithmetic_binary_operators = always_for_clarity:suggestion
@@ -207,6 +207,11 @@ dotnet_naming_symbols.type_parameter_symbols.applicable_kinds = type_parameter
 dotnet_naming_style.t_prefix_style.required_prefix = T
 dotnet_naming_style.t_prefix_style.capitalization = pascal_case
 
+# ---- Meziantou overrides -------------------------------------------------
+
+# MA0051: Method too long — raise threshold from 60 to 80 lines
+MA0051.maximum_lines_per_method = 80
+
 # ---- Roslyn analyzer severity overrides ----------------------------------
 
 # CA1720: Identifier contains type name (e.g., enum member named "String")
@@ -218,8 +223,11 @@ dotnet_diagnostic.CA1852.severity = none
 # CA1859: Use concrete type — suppressed, interface usage is intentional for DI/MVVM
 dotnet_diagnostic.CA1859.severity = suggestion
 
-# CA1001: Type owns disposable fields — suppressed for ViewModels (MVVM lifecycle)
-dotnet_diagnostic.CA1001.severity = none
+# CA1001: Type owns disposable fields — enforce globally, suppress per-type where needed
+dotnet_diagnostic.CA1001.severity = warning
+
+# IDE0005: Remove unnecessary using directives
+dotnet_diagnostic.IDE0005.severity = warning
 
 # ---- StyleCop suppressions (rules that conflict with our conventions) ----
 
@@ -287,7 +295,7 @@ dotnet_diagnostic.SA1214.severity = none
 dotnet_diagnostic.SA1400.severity = none
 
 # SA1402: File may only contain a single type
-dotnet_diagnostic.SA1402.severity = none
+dotnet_diagnostic.SA1402.severity = warning
 
 # SA1500: Braces for multi-line statements should not share line
 dotnet_diagnostic.SA1500.severity = none
@@ -299,7 +307,7 @@ dotnet_diagnostic.SA1501.severity = none
 dotnet_diagnostic.SA1502.severity = none
 
 # SA1503: Braces should not be omitted
-dotnet_diagnostic.SA1503.severity = none
+dotnet_diagnostic.SA1503.severity = warning
 
 # SA1512: Single-line comments should not be followed by blank line
 dotnet_diagnostic.SA1512.severity = none
@@ -314,7 +322,7 @@ dotnet_diagnostic.SA1515.severity = none
 dotnet_diagnostic.SA1516.severity = none
 
 # SA1518: File is required to end with a single newline character
-dotnet_diagnostic.SA1518.severity = none
+dotnet_diagnostic.SA1518.severity = warning
 
 # SA1600-SA1651: Documentation rules — we don't enforce XML docs on everything
 dotnet_diagnostic.SA1600.severity = none
@@ -362,5 +370,8 @@ dotnet_diagnostic.SA1645.severity = none
 dotnet_diagnostic.SA1646.severity = none
 dotnet_diagnostic.SA1647.severity = none
 dotnet_diagnostic.SA1648.severity = none
-dotnet_diagnostic.SA1649.severity = none
+
+# SA1649: File name should match first type name — re-enabled
+dotnet_diagnostic.SA1649.severity = warning
+
 dotnet_diagnostic.SA1651.severity = none

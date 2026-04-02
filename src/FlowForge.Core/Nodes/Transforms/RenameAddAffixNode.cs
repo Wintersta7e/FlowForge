@@ -26,7 +26,7 @@ public class RenameAddAffixNode : ITransformNode
     private string _prefix = string.Empty;
     private string _suffix = string.Empty;
 
-    public void Configure(Dictionary<string, JsonElement> config)
+    public void Configure(IDictionary<string, JsonElement> config)
     {
         if (config.TryGetValue("prefix", out JsonElement prefixElement) &&
             prefixElement.ValueKind == JsonValueKind.String)
@@ -38,6 +38,16 @@ public class RenameAddAffixNode : ITransformNode
             suffixElement.ValueKind == JsonValueKind.String)
         {
             _suffix = suffixElement.GetString() ?? string.Empty;
+        }
+
+        if (_prefix.Contains(Path.DirectorySeparatorChar) || _prefix.Contains(Path.AltDirectorySeparatorChar) || _prefix.Contains(".."))
+        {
+            throw new NodeConfigurationException("RenameAddAffix: 'prefix' must not contain path separators or '..' sequences.");
+        }
+
+        if (_suffix.Contains(Path.DirectorySeparatorChar) || _suffix.Contains(Path.AltDirectorySeparatorChar) || _suffix.Contains(".."))
+        {
+            throw new NodeConfigurationException("RenameAddAffix: 'suffix' must not contain path separators or '..' sequences.");
         }
 
         if (string.IsNullOrEmpty(_prefix) && string.IsNullOrEmpty(_suffix))
@@ -60,6 +70,8 @@ public class RenameAddAffixNode : ITransformNode
         string newFileName = $"{_prefix}{nameWithoutExt}{_suffix}{extension}";
         string oldPath = job.CurrentPath;
         string newPath = Path.Combine(directory, newFileName);
+
+        PathGuard.EnsureWithinDirectory(newPath, directory);
 
         if (!dryRun && !string.Equals(oldPath, newPath, StringComparison.OrdinalIgnoreCase))
         {

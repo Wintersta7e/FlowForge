@@ -10,7 +10,7 @@ public class PipelineRunnerTests
 {
     private static PipelineRunner CreateRunner()
     {
-        NodeRegistry registry = NodeRegistry.CreateDefault(NullLoggerFactory.Instance);
+        var registry = NodeRegistry.CreateDefault(NullLoggerFactory.Instance);
         return new PipelineRunner(registry, NullLogger<PipelineRunner>.Instance, maxConcurrency: 2);
     }
 

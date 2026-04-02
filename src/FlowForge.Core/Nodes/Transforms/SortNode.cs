@@ -34,8 +34,10 @@ public class SortNode : ITransformNode, IBufferedTransformNode
     private string _direction = "asc";
     private readonly List<FileJob> _buffer = new();
 
-    public void Configure(Dictionary<string, JsonElement> config)
+    public void Configure(IDictionary<string, JsonElement> config)
     {
+        _buffer.Clear();
+
         if (config.TryGetValue("field", out JsonElement fieldElement) &&
             fieldElement.ValueKind == JsonValueKind.String)
         {
@@ -58,7 +60,7 @@ public class SortNode : ITransformNode, IBufferedTransformNode
         return Task.FromResult(Enumerable.Empty<FileJob>());
     }
 
-    public Task<IEnumerable<FileJob>> FlushAsync(CancellationToken ct = default)
+    public Task<IEnumerable<FileJob>> FlushAsync(bool dryRun = false, CancellationToken ct = default)
     {
         try
         {
@@ -66,27 +68,16 @@ public class SortNode : ITransformNode, IBufferedTransformNode
 
             bool descending = _direction.Equals("desc", StringComparison.OrdinalIgnoreCase);
 
-            IEnumerable<FileJob> sorted = _field.ToLowerInvariant() switch
+            // Pre-compute sort keys once per job (H3 fix: avoids O(n log n) key-selector calls)
+            List<FileJob> result = _field.ToLowerInvariant() switch
             {
-                "filename" => descending
-                    ? _buffer.OrderByDescending(j => j.FileName, StringComparer.OrdinalIgnoreCase)
-                    : _buffer.OrderBy(j => j.FileName, StringComparer.OrdinalIgnoreCase),
-                "extension" => descending
-                    ? _buffer.OrderByDescending(j => j.Extension, StringComparer.OrdinalIgnoreCase)
-                    : _buffer.OrderBy(j => j.Extension, StringComparer.OrdinalIgnoreCase),
-                "size" => descending
-                    ? _buffer.OrderByDescending(j => GetFileSize(j.CurrentPath))
-                    : _buffer.OrderBy(j => GetFileSize(j.CurrentPath)),
-                "createdat" => descending
-                    ? _buffer.OrderByDescending(j => GetFileCreatedAt(j.CurrentPath))
-                    : _buffer.OrderBy(j => GetFileCreatedAt(j.CurrentPath)),
-                "modifiedat" => descending
-                    ? _buffer.OrderByDescending(j => GetFileModifiedAt(j.CurrentPath))
-                    : _buffer.OrderBy(j => GetFileModifiedAt(j.CurrentPath)),
+                "filename" => SortByKey(_buffer, j => j.FileName, descending, StringComparer.OrdinalIgnoreCase),
+                "extension" => SortByKey(_buffer, j => j.Extension, descending, StringComparer.OrdinalIgnoreCase),
+                "size" => SortByKey(_buffer, j => GetFileSize(j.CurrentPath, dryRun), descending, Comparer<long>.Default),
+                "createdat" => SortByKey(_buffer, j => GetFileCreatedAt(j.CurrentPath, dryRun), descending, Comparer<DateTime>.Default),
+                "modifiedat" => SortByKey(_buffer, j => GetFileModifiedAt(j.CurrentPath, dryRun), descending, Comparer<DateTime>.Default),
                 _ => throw new InvalidOperationException($"Unknown sort field: '{_field}'")
             };
-
-            List<FileJob> result = sorted.ToList();
 
             foreach (FileJob job in result)
             {
@@ -111,33 +102,86 @@ public class SortNode : ITransformNode, IBufferedTransformNode
         }
     }
 
-    private long GetFileSize(string path)
+    /// <summary>
+    /// Pre-computes sort keys once per job, then sorts by the pre-computed key.
+    /// This avoids O(n log n) key-selector calls during LINQ's sort (H3).
+    /// </summary>
+    private static List<FileJob> SortByKey<TKey>(
+        List<FileJob> jobs,
+        Func<FileJob, TKey> keySelector,
+        bool descending,
+        IComparer<TKey> comparer)
     {
+        // Pre-compute sort keys once, then sort in-place using an index array
+        // to avoid intermediate list/projection allocations (PERF-09)
+        var keys = new TKey[jobs.Count];
+        int[] indices = new int[jobs.Count];
+        for (int i = 0; i < jobs.Count; i++)
+        {
+            keys[i] = keySelector(jobs[i]);
+            indices[i] = i;
+        }
+
+        Array.Sort(indices, (a, b) =>
+        {
+            int cmp = comparer.Compare(keys[a], keys[b]);
+            return descending ? -cmp : cmp;
+        });
+
+        var result = new List<FileJob>(jobs.Count);
+        for (int i = 0; i < indices.Length; i++)
+        {
+            result.Add(jobs[indices[i]]);
+        }
+
+        return result;
+    }
+
+    private long GetFileSize(string path, bool dryRun)
+    {
+        if (dryRun)
+        {
+            return 0;
+        }
+
         if (!File.Exists(path))
         {
             _logger.LogWarning("Sort: file not found at '{FilePath}', using default size 0", path);
             return 0;
         }
+
         return new FileInfo(path).Length;
     }
 
-    private DateTime GetFileCreatedAt(string path)
+    private DateTime GetFileCreatedAt(string path, bool dryRun)
     {
+        if (dryRun)
+        {
+            return DateTime.MinValue;
+        }
+
         if (!File.Exists(path))
         {
             _logger.LogWarning("Sort: file not found at '{FilePath}', using default date", path);
             return DateTime.MinValue;
         }
+
         return File.GetCreationTimeUtc(path);
     }
 
-    private DateTime GetFileModifiedAt(string path)
+    private DateTime GetFileModifiedAt(string path, bool dryRun)
     {
+        if (dryRun)
+        {
+            return DateTime.MinValue;
+        }
+
         if (!File.Exists(path))
         {
             _logger.LogWarning("Sort: file not found at '{FilePath}', using default date", path);
             return DateTime.MinValue;
         }
+
         return File.GetLastWriteTimeUtc(path);
     }
 }

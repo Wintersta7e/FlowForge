@@ -10,7 +10,7 @@ namespace FlowForge.UI.ViewModels;
 
 public partial class ConfigFieldViewModel : ViewModelBase
 {
-    private readonly Dictionary<string, JsonElement> _configDictionary;
+    private readonly IDictionary<string, JsonElement> _configDictionary;
     private readonly Action<IUndoableCommand>? _onConfigChanged;
 
     [ObservableProperty]
@@ -27,7 +27,7 @@ public partial class ConfigFieldViewModel : ViewModelBase
 
     public ConfigFieldViewModel(
         ConfigField field,
-        Dictionary<string, JsonElement> configDictionary,
+        IDictionary<string, JsonElement> configDictionary,
         Action<IUndoableCommand>? onConfigChanged = null)
     {
         _configDictionary = configDictionary;
@@ -58,7 +58,7 @@ public partial class ConfigFieldViewModel : ViewModelBase
     {
         if (value is not null)
         {
-            if (FieldType == ConfigFieldType.Int && !int.TryParse(value, out _))
+            if (FieldType == ConfigFieldType.Int && !int.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, out _))
             {
                 return;
             }
@@ -70,7 +70,7 @@ public partial class ConfigFieldViewModel : ViewModelBase
             {
                 ConfigFieldType.Bool when bool.TryParse(value, out bool b) =>
                     JsonSerializer.SerializeToElement(b),
-                ConfigFieldType.Int when int.TryParse(value, out int i) =>
+                ConfigFieldType.Int when int.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, out int i) =>
                     JsonSerializer.SerializeToElement(i),
                 _ => JsonSerializer.SerializeToElement(value)
             };

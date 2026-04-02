@@ -13,7 +13,7 @@ public class MetadataExtractNodeTests
     private static Dictionary<string, JsonElement> MakeConfig(object config)
     {
         string json = JsonSerializer.Serialize(config);
-        JsonDocument doc = JsonDocument.Parse(json);
+        var doc = JsonDocument.Parse(json);
         return doc.RootElement.EnumerateObject()
             .ToDictionary(p => p.Name, p => p.Value.Clone());
     }
@@ -40,7 +40,7 @@ public class MetadataExtractNodeTests
         FileJob resultJob = result.First();
         resultJob.Metadata.Should().ContainKey("File:SizeBytes");
         resultJob.Metadata["File:SizeBytes"].Should().NotBeNullOrWhiteSpace();
-        long.TryParse(resultJob.Metadata["File:SizeBytes"], out long size).Should().BeTrue();
+        long.TryParse(resultJob.Metadata["File:SizeBytes"], System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out long size).Should().BeTrue();
         size.Should().BeGreaterThan(0);
     }
 
@@ -159,8 +159,8 @@ public class MetadataExtractNodeTests
         var node = new MetadataExtractNode(NullLogger<MetadataExtractNode>.Instance);
 
         string json = JsonSerializer.Serialize(new { keys = "File:SizeBytes, EXIF:DateTaken" });
-        JsonDocument doc = JsonDocument.Parse(json);
-        Dictionary<string, JsonElement> config = doc.RootElement.EnumerateObject()
+        var doc = JsonDocument.Parse(json);
+        var config = doc.RootElement.EnumerateObject()
             .ToDictionary(p => p.Name, p => p.Value.Clone());
 
         Action act = () => node.Configure(config);
@@ -174,8 +174,8 @@ public class MetadataExtractNodeTests
         var node = new MetadataExtractNode(NullLogger<MetadataExtractNode>.Instance);
 
         string json = JsonSerializer.Serialize(new { keys = 42 });
-        JsonDocument doc = JsonDocument.Parse(json);
-        Dictionary<string, JsonElement> config = doc.RootElement.EnumerateObject()
+        var doc = JsonDocument.Parse(json);
+        var config = doc.RootElement.EnumerateObject()
             .ToDictionary(p => p.Name, p => p.Value.Clone());
 
         Action act = () => node.Configure(config);
@@ -189,8 +189,8 @@ public class MetadataExtractNodeTests
         var node = new MetadataExtractNode(NullLogger<MetadataExtractNode>.Instance);
 
         string json = """{"keys": null}""";
-        JsonDocument doc = JsonDocument.Parse(json);
-        Dictionary<string, JsonElement> config = doc.RootElement.EnumerateObject()
+        var doc = JsonDocument.Parse(json);
+        var config = doc.RootElement.EnumerateObject()
             .ToDictionary(p => p.Name, p => p.Value.Clone());
 
         Action act = () => node.Configure(config);
@@ -246,5 +246,46 @@ public class MetadataExtractNodeTests
         resultJob.Metadata.Should().ContainKey("File:CreatedAt");
         resultJob.Metadata.Should().ContainKey("File:ModifiedAt");
         resultJob.NodeLog.Should().Contain(l => l.Contains("extracted 3 keys"));
+    }
+
+    [Fact]
+    public async Task CancellationToken_cancelled_throws_OperationCanceledException()
+    {
+        var node = new MetadataExtractNode(NullLogger<MetadataExtractNode>.Instance);
+        node.Configure(MakeConfig(new { keys = new[] { "File:SizeBytes" } }));
+
+        var job = new FileJob
+        {
+            OriginalPath = Path.Combine(Path.GetTempPath(), "test.txt"),
+            CurrentPath = Path.Combine(Path.GetTempPath(), "test.txt")
+        };
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        Func<Task> act = () => node.TransformAsync(job, dryRun: false, ct: cts.Token);
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
+    public async Task TransformAsync_dryRun_skips_extraction()
+    {
+        string fakePath = Path.Combine(Path.GetTempPath(), "does_not_exist_dryrun_" + Guid.NewGuid().ToString("N") + ".txt");
+
+        var node = new MetadataExtractNode(NullLogger<MetadataExtractNode>.Instance);
+        node.Configure(MakeConfig(new { keys = new[] { "File:SizeBytes", "EXIF:DateTaken" } }));
+
+        var job = new FileJob
+        {
+            OriginalPath = fakePath,
+            CurrentPath = fakePath
+        };
+
+        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+
+        result.Should().ContainSingle();
+        FileJob resultJob = result.First();
+        resultJob.Metadata.Should().BeEmpty("dry-run should not extract metadata");
+        resultJob.NodeLog.Should().Contain(l => l.Contains("Dry-run"));
     }
 }

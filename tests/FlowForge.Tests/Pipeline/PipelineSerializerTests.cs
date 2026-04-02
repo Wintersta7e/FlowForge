@@ -39,7 +39,9 @@ public class PipelineSerializerTests
     [Fact]
     public async Task Load_missing_file_throws_FileNotFoundException()
     {
-        Func<Task> act = () => PipelineSerializer.LoadAsync("/nonexistent/path/test.ffpipe");
+        using var dir = new TempDirectory();
+        string missingFile = Path.Combine(dir.Path, "does_not_exist.ffpipe");
+        Func<Task> act = () => PipelineSerializer.LoadAsync(missingFile);
         await act.Should().ThrowAsync<FileNotFoundException>();
     }
 
@@ -58,7 +60,7 @@ public class PipelineSerializerTests
     public async Task Save_wrong_extension_throws_ArgumentException()
     {
         var graph = new PipelineGraph();
-        Func<Task> act = () => PipelineSerializer.SaveAsync(graph, "/tmp/test.json");
+        Func<Task> act = () => PipelineSerializer.SaveAsync(graph, Path.Combine(Path.GetTempPath(), "test.json"));
         await act.Should().ThrowAsync<ArgumentException>();
     }
 
@@ -74,5 +76,28 @@ public class PipelineSerializerTests
         string content = await File.ReadAllTextAsync(filePath);
         content.Should().Contain("\"name\":");
         content.Should().Contain("JSON Test");
+    }
+
+    [Fact]
+    public async Task Load_wrong_extension_throws_ArgumentException()
+    {
+        using var dir = new TempDirectory();
+        string filePath = Path.Combine(dir.Path, "test.json");
+        await File.WriteAllTextAsync(filePath, "{}");
+
+        Func<Task> act = () => PipelineSerializer.LoadAsync(filePath);
+        await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task Load_null_json_throws_PipelineLoadException()
+    {
+        using var dir = new TempDirectory();
+        string filePath = Path.Combine(dir.Path, "null.ffpipe");
+        await File.WriteAllTextAsync(filePath, "null");
+
+        Func<Task> act = () => PipelineSerializer.LoadAsync(filePath);
+        await act.Should().ThrowAsync<PipelineLoadException>()
+            .WithMessage("*null*");
     }
 }

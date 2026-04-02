@@ -7,6 +7,6 @@ namespace FlowForge.Core.Nodes.Base;
 public interface IOutputNode
 {
     string TypeKey { get; }
-    void Configure(Dictionary<string, JsonElement> config);
+    void Configure(IDictionary<string, JsonElement> config);
     Task ConsumeAsync(FileJob job, bool dryRun, CancellationToken ct = default);
 }

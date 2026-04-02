@@ -18,7 +18,7 @@ public class FileJobTests
     {
         var job = new FileJob
         {
-            CurrentPath = Path.Combine("/tmp", "photo.jpg")
+            CurrentPath = Path.Combine(Path.GetTempPath(), "photo.jpg")
         };
 
         job.FileName.Should().Be("photo.jpg");
@@ -29,7 +29,7 @@ public class FileJobTests
     {
         var job = new FileJob
         {
-            CurrentPath = Path.Combine("/tmp", "photo.JPG")
+            CurrentPath = Path.Combine(Path.GetTempPath(), "photo.JPG")
         };
 
         job.Extension.Should().Be(".jpg");

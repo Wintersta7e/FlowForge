@@ -67,7 +67,7 @@ public partial class App : Application
                 Log.CloseAndFlush();
             };
 
-            var viewModel = Services.GetRequiredService<MainWindowViewModel>();
+            MainWindowViewModel viewModel = Services.GetRequiredService<MainWindowViewModel>();
             desktop.MainWindow = new MainWindow
             {
                 DataContext = viewModel,

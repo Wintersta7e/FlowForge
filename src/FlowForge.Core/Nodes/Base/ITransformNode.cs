@@ -10,6 +10,6 @@ namespace FlowForge.Core.Nodes.Base;
 public interface ITransformNode
 {
     string TypeKey { get; }
-    void Configure(Dictionary<string, JsonElement> config);
+    void Configure(IDictionary<string, JsonElement> config);
     Task<IEnumerable<FileJob>> TransformAsync(FileJob job, bool dryRun, CancellationToken ct = default);
 }

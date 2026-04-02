@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Text.Json;
 using Avalonia;
@@ -16,7 +15,7 @@ public class CommandTests
 {
     private static PipelineNodeViewModel CreateTransformNode()
     {
-        NodeRegistry registry = NodeRegistry.CreateDefault(NullLoggerFactory.Instance);
+        var registry = NodeRegistry.CreateDefault(NullLoggerFactory.Instance);
         var def = new NodeDefinition
         {
             TypeKey = "RenamePattern",

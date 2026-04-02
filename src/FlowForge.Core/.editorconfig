@@ -1,0 +1,3 @@
+# FlowForge.Core — library code must use ConfigureAwait(false)
+[*.cs]
+dotnet_diagnostic.CA2007.severity = warning

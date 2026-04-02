@@ -1,3 +1,5 @@
+using System;
+using System.ComponentModel;
 using Avalonia;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -15,6 +17,8 @@ public partial class PipelineConnectorViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isConnected;
 
+    private readonly PropertyChangedEventHandler _nodePropertyChangedHandler;
+
     public bool IsInput { get; }
 
     public PipelineNodeViewModel Node { get; }
@@ -27,12 +31,18 @@ public partial class PipelineConnectorViewModel : ViewModelBase
         _title = title;
         IsInput = isInput;
         Node = node;
-        node.PropertyChanged += (_, args) =>
+        _nodePropertyChangedHandler = (_, args) =>
         {
-            if (args.PropertyName == nameof(PipelineNodeViewModel.CategoryBrush))
+            if (string.Equals(args.PropertyName, nameof(PipelineNodeViewModel.CategoryBrush), StringComparison.Ordinal))
             {
                 OnPropertyChanged(nameof(ConnectorBrush));
             }
         };
+        node.PropertyChanged += _nodePropertyChangedHandler;
+    }
+
+    public void Detach()
+    {
+        Node.PropertyChanged -= _nodePropertyChangedHandler;
     }
 }

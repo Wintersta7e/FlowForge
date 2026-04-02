@@ -14,6 +14,18 @@ namespace FlowForge.Core.Nodes.Transforms;
 
 public class ImageConvertNode : ITransformNode
 {
+    private static readonly DecoderOptions SafeDecoderOptions = new()
+    {
+        MaxFrames = 1
+    };
+
+    private static readonly HashSet<string> ValidFormats = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "jpg", "jpeg", "png", "webp", "bmp", "tiff"
+    };
+
+    private const long MaxFileSizeBytes = 500 * 1024 * 1024; // 500 MB
+
     private readonly ILogger<ImageConvertNode> _logger;
 
     public ImageConvertNode(ILogger<ImageConvertNode> logger)
@@ -31,8 +43,9 @@ public class ImageConvertNode : ITransformNode
     };
 
     private string _format = string.Empty;
+    private IImageEncoder _encoder = null!;
 
-    public void Configure(Dictionary<string, JsonElement> config)
+    public void Configure(IDictionary<string, JsonElement> config)
     {
         if (!config.TryGetValue("format", out JsonElement formatEl) ||
             formatEl.ValueKind == JsonValueKind.Null)
@@ -44,11 +57,12 @@ public class ImageConvertNode : ITransformNode
             ?? throw new NodeConfigurationException("ImageConvert: 'format' must be a non-null string."))
             .ToLowerInvariant();
 
-        string[] validFormats = { "jpg", "jpeg", "png", "webp", "bmp", "tiff" };
-        if (!validFormats.Contains(_format))
+        if (!ValidFormats.Contains(_format))
         {
-            throw new NodeConfigurationException($"ImageConvert: Unsupported format '{_format}'. Supported: {string.Join(", ", validFormats)}");
+            throw new NodeConfigurationException($"ImageConvert: Unsupported format '{_format}'. Supported: {string.Join(", ", ValidFormats)}");
         }
+
+        _encoder = CreateEncoder(_format);
 
         _logger.LogDebug("ImageConvert: configured with TargetFormat={TargetFormat}", _format);
     }
@@ -57,6 +71,59 @@ public class ImageConvertNode : ITransformNode
     {
         ct.ThrowIfCancellationRequested();
 
+        string newPath = BuildTargetPath(job);
+
+        if (dryRun)
+        {
+            job.CurrentPath = newPath;
+            job.NodeLog.Add($"ImageConvert: would convert to {_format}");
+            return new[] { job };
+        }
+
+        var fileInfo = new FileInfo(job.CurrentPath);
+        if (fileInfo.Length > MaxFileSizeBytes)
+        {
+            job.Status = FileJobStatus.Failed;
+            job.NodeLog.Add($"ImageConvert: File too large ({fileInfo.Length / (1024 * 1024)} MB, max 500 MB).");
+            return new[] { job };
+        }
+
+        return new[] { await ConvertImageAsync(job, newPath, ct).ConfigureAwait(false) };
+    }
+
+    private async Task<FileJob> ConvertImageAsync(FileJob job, string newPath, CancellationToken ct)
+    {
+        string tmpPath = newPath + $".{Guid.NewGuid():N}.tmp";
+        try
+        {
+            using Image image = await Image.LoadAsync(SafeDecoderOptions, job.CurrentPath, ct).ConfigureAwait(false);
+            await image.SaveAsync(tmpPath, _encoder, ct).ConfigureAwait(false);
+
+            FileInfo outputInfo = new(tmpPath);
+            if (!outputInfo.Exists || outputInfo.Length == 0)
+            {
+                _logger.LogWarning("ImageConvert: output file {OutputPath} is missing or empty after save", tmpPath);
+                job.Status = FileJobStatus.Failed;
+                job.ErrorMessage = "ImageConvert: output file is missing or empty after save. Original preserved.";
+                return job;
+            }
+
+            File.Move(tmpPath, newPath, overwrite: true);
+            DeleteOriginalIfExtensionChanged(job, newPath);
+
+            string oldName = job.FileName;
+            job.CurrentPath = newPath;
+            job.NodeLog.Add($"ImageConvert: '{oldName}' → '{job.FileName}'");
+            return job;
+        }
+        finally
+        {
+            CleanupTempFile(tmpPath);
+        }
+    }
+
+    private string BuildTargetPath(FileJob job)
+    {
         string newExtension = _format switch
         {
             "jpg" or "jpeg" => ".jpg",
@@ -67,63 +134,56 @@ public class ImageConvertNode : ITransformNode
             _ => $".{_format}"
         };
 
-        string directory = job.DirectoryName;
         string nameWithoutExt = Path.GetFileNameWithoutExtension(job.CurrentPath);
-        string newPath = Path.Combine(directory, nameWithoutExt + newExtension);
-
-        if (dryRun)
-        {
-            job.CurrentPath = newPath;
-            job.NodeLog.Add($"ImageConvert: would convert to {_format}");
-            return new[] { job };
-        }
-
-        using Image image = await Image.LoadAsync(job.CurrentPath, ct);
-
-        IImageEncoder encoder = GetEncoder();
-        await image.SaveAsync(newPath, encoder, ct);
-
-        // Verify output before deleting original
-        FileInfo outputInfo = new(newPath);
-        if (!outputInfo.Exists || outputInfo.Length == 0)
-        {
-            _logger.LogWarning("ImageConvert: output file {OutputPath} is missing or empty after save", newPath);
-            job.Status = FileJobStatus.Failed;
-            job.ErrorMessage = $"ImageConvert: output file '{newPath}' is missing or empty after save. Original preserved.";
-            return new[] { job };
-        }
-
-        // Remove old file if extension changed
-        if (!string.Equals(job.CurrentPath, newPath, StringComparison.OrdinalIgnoreCase) &&
-            File.Exists(job.CurrentPath))
-        {
-            try
-            {
-                File.Delete(job.CurrentPath);
-            }
-            catch (IOException ex)
-            {
-                _logger.LogWarning(ex, "ImageConvert: failed to delete original file {OriginalPath}", job.CurrentPath);
-                job.NodeLog.Add($"ImageConvert: Could not delete original '{Path.GetFileName(job.CurrentPath)}': {ex.Message}");
-            }
-        }
-
-        string oldName = job.FileName;
-        job.CurrentPath = newPath;
-        job.NodeLog.Add($"ImageConvert: '{oldName}' → '{job.FileName}'");
-        return new[] { job };
+        return Path.Combine(job.DirectoryName, nameWithoutExt + newExtension);
     }
 
-    private IImageEncoder GetEncoder()
+    private void DeleteOriginalIfExtensionChanged(FileJob job, string newPath)
     {
-        return _format switch
+        if (string.Equals(job.CurrentPath, newPath, StringComparison.OrdinalIgnoreCase) ||
+            !File.Exists(job.CurrentPath))
+        {
+            return;
+        }
+
+        try
+        {
+            File.Delete(job.CurrentPath);
+        }
+        catch (IOException ex)
+        {
+            _logger.LogWarning(ex, "ImageConvert: failed to delete original file {OriginalPath}", job.CurrentPath);
+            job.NodeLog.Add($"ImageConvert: Could not delete original '{Path.GetFileName(job.CurrentPath)}': {ex.Message}");
+        }
+    }
+
+    private void CleanupTempFile(string tmpPath)
+    {
+        if (!File.Exists(tmpPath))
+        {
+            return;
+        }
+
+        try
+        {
+            File.Delete(tmpPath);
+        }
+        catch (IOException ex)
+        {
+            _logger.LogWarning(ex, "ImageConvert: failed to clean up temp file {TmpPath}", tmpPath);
+        }
+    }
+
+    private static IImageEncoder CreateEncoder(string format)
+    {
+        return format switch
         {
             "jpg" or "jpeg" => new JpegEncoder(),
             "png" => new PngEncoder(),
             "webp" => new WebpEncoder(),
             "bmp" => new BmpEncoder(),
             "tiff" => new TiffEncoder(),
-            _ => throw new InvalidOperationException($"No encoder for format '{_format}'")
+            _ => throw new InvalidOperationException($"No encoder for format '{format}'")
         };
     }
 }

@@ -3,6 +3,7 @@ using FluentAssertions;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Transforms;
 using FlowForge.Core.Nodes.Base;
+using FlowForge.Tests.Helpers;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlowForge.Tests.Nodes;
@@ -12,7 +13,7 @@ public class RenamePatternNodeTests
     private static Dictionary<string, JsonElement> MakeConfig(string pattern, int startIndex = 1)
     {
         string json = JsonSerializer.Serialize(new { pattern, startIndex });
-        JsonDocument doc = JsonDocument.Parse(json);
+        var doc = JsonDocument.Parse(json);
         return doc.RootElement.EnumerateObject()
             .ToDictionary(p => p.Name, p => p.Value.Clone());
     }
@@ -32,7 +33,7 @@ public class RenamePatternNodeTests
         var node = new RenamePatternNode(NullLogger<RenamePatternNode>.Instance);
         node.Configure(MakeConfig("{name}_copy{ext}"));
 
-        FileJob job = MakeJob(Path.Combine("/tmp", "photo.jpg"));
+        FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "photo.jpg"));
         IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
 
         FileJob output = result.Single();
@@ -45,7 +46,7 @@ public class RenamePatternNodeTests
         var node = new RenamePatternNode(NullLogger<RenamePatternNode>.Instance);
         node.Configure(MakeConfig("renamed{ext}"));
 
-        FileJob job = MakeJob(Path.Combine("/tmp", "document.PDF"));
+        FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "document.PDF"));
         IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
 
         FileJob output = result.Single();
@@ -58,9 +59,9 @@ public class RenamePatternNodeTests
         var node = new RenamePatternNode(NullLogger<RenamePatternNode>.Instance);
         node.Configure(MakeConfig("{counter:000}{ext}"));
 
-        FileJob job1 = MakeJob(Path.Combine("/tmp", "a.jpg"));
-        FileJob job2 = MakeJob(Path.Combine("/tmp", "b.jpg"));
-        FileJob job3 = MakeJob(Path.Combine("/tmp", "c.jpg"));
+        FileJob job1 = MakeJob(Path.Combine(Path.GetTempPath(), "a.jpg"));
+        FileJob job2 = MakeJob(Path.Combine(Path.GetTempPath(), "b.jpg"));
+        FileJob job3 = MakeJob(Path.Combine(Path.GetTempPath(), "c.jpg"));
 
         IEnumerable<FileJob> result1 = await node.TransformAsync(job1, dryRun: true);
         IEnumerable<FileJob> result2 = await node.TransformAsync(job2, dryRun: true);
@@ -77,7 +78,7 @@ public class RenamePatternNodeTests
         var node = new RenamePatternNode(NullLogger<RenamePatternNode>.Instance);
         node.Configure(MakeConfig("{counter:000}{ext}", startIndex: 10));
 
-        FileJob job = MakeJob(Path.Combine("/tmp", "file.png"));
+        FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "file.png"));
         IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
 
         result.Single().FileName.Should().Be("010.png");
@@ -89,7 +90,7 @@ public class RenamePatternNodeTests
         var node = new RenamePatternNode(NullLogger<RenamePatternNode>.Instance);
         node.Configure(MakeConfig("{date}_{name}{ext}"));
 
-        FileJob job = MakeJob(Path.Combine("/tmp", "photo.jpg"));
+        FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "photo.jpg"));
         IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
 
         string expected = $"{DateTime.Today:yyyy-MM-dd}_photo.jpg";
@@ -104,8 +105,8 @@ public class RenamePatternNodeTests
 
         var job = new FileJob
         {
-            OriginalPath = Path.Combine("/tmp", "doc.txt"),
-            CurrentPath = Path.Combine("/tmp", "doc.txt"),
+            OriginalPath = Path.Combine(Path.GetTempPath(), "doc.txt"),
+            CurrentPath = Path.Combine(Path.GetTempPath(), "doc.txt"),
             Metadata = { ["Author"] = "Alice" }
         };
 
@@ -119,7 +120,7 @@ public class RenamePatternNodeTests
         var node = new RenamePatternNode(NullLogger<RenamePatternNode>.Instance);
         node.Configure(MakeConfig("{meta:Missing}_{name}{ext}"));
 
-        FileJob job = MakeJob(Path.Combine("/tmp", "doc.txt"));
+        FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "doc.txt"));
         IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
 
         result.Single().FileName.Should().Be("_doc.txt");
@@ -159,5 +160,82 @@ public class RenamePatternNodeTests
 
         Action act = () => node.Configure(emptyConfig);
         act.Should().Throw<NodeConfigurationException>();
+    }
+
+    [Fact]
+    public async Task CancellationToken_cancelled_throws_OperationCanceledException()
+    {
+        var node = new RenamePatternNode(NullLogger<RenamePatternNode>.Instance);
+        node.Configure(MakeConfig("{name}{ext}"));
+
+        FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "test.txt"));
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        Func<Task> act = () => node.TransformAsync(job, dryRun: true, ct: cts.Token);
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
+    public async Task TransformAsync_path_traversal_blocked()
+    {
+        using var dir = new TempDirectory();
+        dir.CreateFiles("malicious.txt");
+
+        string filePath = Path.Combine(dir.Path, "malicious.txt");
+        var node = new RenamePatternNode(NullLogger<RenamePatternNode>.Instance);
+        node.Configure(MakeConfig("{name}{ext}"));
+
+        var job = new FileJob
+        {
+            OriginalPath = Path.Combine(dir.Path, "..", "..", "malicious.txt"),
+            CurrentPath = Path.Combine(dir.Path, "..", "..", "malicious.txt")
+        };
+
+        Func<Task> act = () => node.TransformAsync(job, dryRun: false);
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Path traversal blocked*");
+    }
+
+    [Fact]
+    public async Task ResolveConflict_appends_suffix_when_file_exists()
+    {
+        using var dir = new TempDirectory();
+        string existing = Path.Combine(dir.Path, "photo_1.jpg");
+        File.WriteAllText(existing, "original");
+
+        string source = Path.Combine(dir.Path, "input.jpg");
+        File.WriteAllText(source, "new");
+
+        var node = new RenamePatternNode(NullLogger<RenamePatternNode>.Instance);
+        node.Configure(MakeConfig("photo_{counter}{ext}"));
+
+        FileJob job = MakeJob(source);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+
+        FileJob output = result.Single();
+        output.FileName.Should().Be("photo_1_1.jpg");
+        File.Exists(output.CurrentPath).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ResolveConflict_increments_until_free_slot()
+    {
+        using var dir = new TempDirectory();
+        // Create conflicting files: photo_1.jpg and photo_1_1.jpg
+        File.WriteAllText(Path.Combine(dir.Path, "photo_1.jpg"), "a");
+        File.WriteAllText(Path.Combine(dir.Path, "photo_1_1.jpg"), "b");
+
+        string source = Path.Combine(dir.Path, "input.jpg");
+        File.WriteAllText(source, "new");
+
+        var node = new RenamePatternNode(NullLogger<RenamePatternNode>.Instance);
+        node.Configure(MakeConfig("photo_{counter}{ext}"));
+
+        FileJob job = MakeJob(source);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+
+        FileJob output = result.Single();
+        output.FileName.Should().Be("photo_1_2.jpg");
     }
 }

@@ -13,7 +13,7 @@ public class FolderOutputNodeTests
     private static Dictionary<string, JsonElement> MakeConfig(object config)
     {
         string json = JsonSerializer.Serialize(config);
-        JsonDocument doc = JsonDocument.Parse(json);
+        var doc = JsonDocument.Parse(json);
         return doc.RootElement.EnumerateObject()
             .ToDictionary(p => p.Name, p => p.Value.Clone());
     }
@@ -33,7 +33,9 @@ public class FolderOutputNodeTests
         await node.ConsumeAsync(job, dryRun: false);
 
         File.Exists(sourcePath).Should().BeTrue("copy mode should preserve the source file");
-        File.Exists(Path.Combine(dir.OutputPath, "photo.jpg")).Should().BeTrue();
+        string destPath = Path.Combine(dir.OutputPath, "photo.jpg");
+        File.Exists(destPath).Should().BeTrue();
+        File.ReadAllText(destPath).Should().Be("test content: photo.jpg");
     }
 
     [Fact]
@@ -51,7 +53,9 @@ public class FolderOutputNodeTests
         await node.ConsumeAsync(job, dryRun: false);
 
         File.Exists(sourcePath).Should().BeFalse("move mode should remove the source file");
-        File.Exists(Path.Combine(dir.OutputPath, "photo.jpg")).Should().BeTrue();
+        string destPath = Path.Combine(dir.OutputPath, "photo.jpg");
+        File.Exists(destPath).Should().BeTrue();
+        File.ReadAllText(destPath).Should().Be("test content: photo.jpg");
     }
 
     [Fact]
@@ -89,7 +93,7 @@ public class FolderOutputNodeTests
     {
         var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
 
-        Action act = () => node.Configure(MakeConfig(new { path = "/tmp/out", mode = "link" }));
+        Action act = () => node.Configure(MakeConfig(new { path = Path.Combine(Path.GetTempPath(), "out"), mode = "link" }));
 
         act.Should().Throw<NodeConfigurationException>()
             .WithMessage("*link*");
@@ -368,7 +372,7 @@ public class FolderOutputNodeTests
         var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         Action act = () => node.Configure(MakeConfig(new
         {
-            path = "/tmp/out",
+            path = Path.Combine(Path.GetTempPath(), "out"),
             mode = "copy",
             enableBackup = true,
             backupSuffix = "/../evil"
@@ -384,7 +388,7 @@ public class FolderOutputNodeTests
         var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         Action act = () => node.Configure(MakeConfig(new
         {
-            path = "/tmp/out",
+            path = Path.Combine(Path.GetTempPath(), "out"),
             mode = "copy",
             enableBackup = true,
             backupSuffix = "."
@@ -400,7 +404,7 @@ public class FolderOutputNodeTests
         var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         Action act = () => node.Configure(MakeConfig(new
         {
-            path = "/tmp/out",
+            path = Path.Combine(Path.GetTempPath(), "out"),
             mode = "copy",
             enableBackup = true,
             backupSuffix = "bak"

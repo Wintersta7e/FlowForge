@@ -5,7 +5,6 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
 using Avalonia;
-using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FlowForge.Core.Execution;
 using FlowForge.Core.Pipeline;
@@ -36,9 +35,9 @@ public partial class EditorViewModel : ViewModelBase
     /// <summary>
     /// Raised to request the view to execute FitToScreen on the NodifyEditor.
     /// </summary>
-    public event Action? FitToScreenRequested;
+    public event EventHandler? FitToScreenRequested;
 
-    public void RequestFitToScreen() => FitToScreenRequested?.Invoke();
+    public void RequestFitToScreen() => FitToScreenRequested?.Invoke(this, EventArgs.Empty);
 
     private PipelineNodeViewModel? _selectedNode;
     public PipelineNodeViewModel? SelectedNode
@@ -52,9 +51,24 @@ public partial class EditorViewModel : ViewModelBase
         _logger = logger;
         PendingConnection = new PipelinePendingConnectionViewModel(this);
         Nodes.CollectionChanged += OnNodesCollectionChanged;
-        Nodes.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasNodes));
-        Nodes.CollectionChanged += (_, _) => GraphChanged?.Invoke(this, EventArgs.Empty);
-        Connections.CollectionChanged += (_, _) => GraphChanged?.Invoke(this, EventArgs.Empty);
+        Nodes.CollectionChanged += OnNodesHasNodesChanged;
+        Nodes.CollectionChanged += OnNodesGraphChanged;
+        Connections.CollectionChanged += OnConnectionsGraphChanged;
+    }
+
+    private void OnNodesHasNodesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        OnPropertyChanged(nameof(HasNodes));
+    }
+
+    private void OnNodesGraphChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        GraphChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OnConnectionsGraphChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        GraphChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public void RaiseGraphChanged() => GraphChanged?.Invoke(this, EventArgs.Empty);
@@ -86,6 +100,18 @@ public partial class EditorViewModel : ViewModelBase
             {
                 node.PropertyChanged -= OnNodePropertyChanged;
                 _subscribedNodes.Remove(node);
+
+                foreach (PipelineConnectorViewModel connector in node.Input)
+                {
+                    connector.Detach();
+                }
+
+                foreach (PipelineConnectorViewModel connector in node.Output)
+                {
+                    connector.Detach();
+                }
+
+                node.Detach();
             }
         }
 
@@ -100,7 +126,7 @@ public partial class EditorViewModel : ViewModelBase
 
     private void OnNodePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(PipelineNodeViewModel.IsSelected) && sender is PipelineNodeViewModel node)
+        if (string.Equals(e.PropertyName, nameof(PipelineNodeViewModel.IsSelected), StringComparison.Ordinal) && sender is PipelineNodeViewModel node)
         {
             if (node.IsSelected)
             {
@@ -116,6 +142,7 @@ public partial class EditorViewModel : ViewModelBase
     public void ClearAll()
     {
         UnsubscribeAllNodes();
+        DetachAllNodesAndConnectors();
         Nodes.Clear();
         Connections.Clear();
         SelectedNode = null;
@@ -123,9 +150,28 @@ public partial class EditorViewModel : ViewModelBase
         UndoRedo.Clear();
     }
 
+    private void DetachAllNodesAndConnectors()
+    {
+        foreach (PipelineNodeViewModel node in Nodes)
+        {
+            foreach (PipelineConnectorViewModel connector in node.Input)
+            {
+                connector.Detach();
+            }
+
+            foreach (PipelineConnectorViewModel connector in node.Output)
+            {
+                connector.Detach();
+            }
+
+            node.Detach();
+        }
+    }
+
     public int LoadGraph(PipelineGraph graph, NodeRegistry registry)
     {
         UnsubscribeAllNodes();
+        DetachAllNodesAndConnectors();
         Nodes.Clear();
         Connections.Clear();
 
@@ -228,13 +274,13 @@ public partial class EditorViewModel : ViewModelBase
 
     public void RemoveSelectedNodes()
     {
-        List<PipelineNodeViewModel> selected = Nodes.Where(n => n.IsSelected).ToList();
+        var selected = Nodes.Where(n => n.IsSelected).ToList();
         if (selected.Count == 0)
         {
             return;
         }
 
-        List<PipelineConnectionViewModel> attachedConnections = Connections
+        var attachedConnections = Connections
             .Where(c => selected.Contains(c.Source.Node) || selected.Contains(c.Target.Node))
             .ToList();
 

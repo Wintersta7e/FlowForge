@@ -2,6 +2,88 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.0] - 2026-04-02
+
+### Fixed
+
+- **Node connections broken since v1.4.0** — dragging a connection wire from any connector was offset and unusable; caused by `RotateTransform(45°)` applied directly to the Nodify Connector control, which rotated Nodify's internal coordinate calculations; moved rotation into a custom ControlTemplate Border so the diamond shape is preserved without affecting drag math
+- **Atomic writes for image nodes** — ImageConvertNode and ImageResizeNode now use temp-file-then-rename pattern, preventing data loss on I/O errors or cancellation (previously wrote directly to target/original path)
+- **Path traversal hardening** — PathGuard now validates backup paths in FolderOutputNode; RenameRegexNode fullpath scope uses PathGuard instead of hand-rolled check; FolderInputNode filters out symlinked files outside source root; CLI validates --input/--output directories exist
+- **FilterNode thread safety** — removed mutable `_dryRun` instance field; parameter is now passed directly to helper methods
+- **Semaphore disposal race** — PipelineRunner now fully drains in-flight tasks before disposing the semaphore
+- **Buffered transform double-counting** — SortNode jobs were counted as both Skipped and Failed when flush failed; runner now skips early disposition for IBufferedTransformNode
+- **ImageResizeNode missing ErrorMessage** — file-too-large failure now sets `job.ErrorMessage` (was null in UI)
+- **FilterNode inconsistent date defaults** — missing-file paths now return `DateTime.MinValue` consistently (was `string.Empty` for live runs)
+- **SortNode stale buffer** — buffer is cleared in Configure to prevent cancelled-run jobs bleeding into next run
+- **NodeLibrary theme refresh** — brushes now update on theme toggle; search filter reapplied after refresh
+- **Runner log diagnostics** — failure log messages now include `job.ErrorMessage`
+
+### Changed
+
+- **Full codebase audit** — 2-round review across 6 dimensions (security, leaks, performance, architecture, bugs, coverage) with 45+ issues resolved
+- **Performance** — MetadataExtractNode reads EXIF once per file (was once per key); FilterNode uses single FileInfo per file; SortByKey uses index-based sorting; HashSet for SupportedFormats and InvalidFileNameChars lookups; static ValidFormats in ImageConvertNode
+- **RecentPipelines validation** — AppSettings.Validate() now filters entries with null bytes, excessive length, relative paths, or whitespace
+- **342 tests** — 20 new tests for FilterNode operators, date fields, RenamePattern conflict resolution, SortNode date sorting, RenameRegex fullpath I/O, null deserialization, RecentPipelines validation; cross-platform temp paths replacing hardcoded `/tmp/`; removed 2 redundant tests; strengthened assertions on FolderOutput content and SortNode ordering
+- CommunityToolkit.Mvvm 8.4.1 → 8.4.2
+
+## [1.5.0] - 2026-03-26
+
+### Added
+
+- **Meziantou.Analyzer** — added as a second analyzer alongside StyleCop for string correctness, regex safety, collection abstraction, and method complexity checks
+
+### Changed
+
+- **Stricter editorconfig** — re-enabled SA1503 (braces required), SA1402 (one type per file), SA1649 (filename matches type), SA1518 (trailing newline); upgraded `var` and accessibility modifier rules from suggestion to warning; added IDE0005 (unused usings) and CA1001 (IDisposable) enforcement
+- **CA2007 enforcement in Core** — ConfigureAwait(false) now enforced by analyzer for all Core async methods
+- **Per-project editorconfigs** — Core enforces CA2007, UI suppresses MA0004/CA2007 (needs sync context), CLI suppresses MA0047 (top-level statements), Tests relax MA0002/MA0005
+- **One type per file** — split 12 types into separate files across Core (NodeCategory, ExecutionPhase, PhaseChanged, FilesDiscovered, FileProcessed, FileJobStatus, ConfigFieldType, NodeDefinition, Connection, CanvasPosition, PipelineTemplate) and UI (RecentPipelineItem)
+- **Collection abstractions** — interface and model return types changed from `List<T>`/`Dictionary<K,V>` to `IReadOnlyList<T>`/`IList<T>`/`IDictionary<K,V>` throughout Core and consuming projects
+- **String correctness** — added `StringComparer.Ordinal` to all dictionary/hashset constructors, `string.Equals` with `StringComparison` for all string comparisons, `CultureInfo.InvariantCulture` for all `TryParse` calls
+- **Regex safety** — added `RegexOptions.ExplicitCapture` to FilterNode and RenamePatternNode regexes; added timeout to RenamePatternNode
+- **Method complexity** — extracted helpers from PipelineRunner (6 methods) and CLI Program (7 methods) to stay under 80-line threshold
+- **CLI structure** — refactored monolithic 228-line handler into focused methods: ConfigureLogging, LoadAndConfigurePipelineAsync, ApplyNodeOverride, CreateProgressReporter, PrintFileResult, PrintSummary, ToExitCode
+- MetadataExtractor 2.9.0 → 2.9.2, FluentAssertions 8.8.0 → 8.9.0, coverlet.collector 8.0.0 → 8.0.1, CommunityToolkit.Mvvm 8.4.0 → 8.4.1
+
+## [1.4.1] - 2026-03-14
+
+### Fixed
+
+- **Critical crash on bool config fields** — ToggleSwitch crashes with `PART_MovingKnobs` KeyNotFoundException when Molten Forge theme is active; replaced with CheckBox
+- **Memory leaks** — PipelineNodeViewModel and PipelineConnectorViewModel event subscriptions to `ActualThemeVariantChanged` and `PropertyChanged` were never unsubscribed, preventing GC; added `Detach()` cleanup on node removal
+- **Path traversal** — crafted filenames could escape output directories via RenamePatternNode, RenameAddAffixNode, RenameRegexNode (filename mode), and FolderOutputNode; added `PathGuard.EnsureWithinDirectory()` checks
+- **ReDoS vulnerability** — RenameRegexNode compiled user-supplied regex with no timeout; added 2-second timeout matching FilterNode
+- **Dry-run file I/O** — MetadataExtractNode, FilterNode, and SortNode performed disk reads during dry-run; now return defaults without file access
+- **ImageCompressNode data loss** — overwrote original file in-place; now saves to temp file and swaps atomically
+- **Output node error isolation** — first output node failure no longer prevents subsequent outputs from running
+- **Silently dropped jobs** — transforms returning empty with Processing status are now counted as skipped
+- **CTS race condition** — `Cancel()` and `Dispose()` on `_cts` could race; fixed with `Interlocked.Exchange`
+- **Predictable temp files** — PipelineSerializer and AppSettingsManager used `.tmp` suffix; now use random GUID suffix
+- **Serializer TOCTOU** — removed redundant `File.Exists` check before `ReadAllTextAsync`
+- **Sync File.Exists on UI thread** — removed blocking call from `OpenRecentAsync`
+
+### Added
+
+- **Path traversal protection** — `PathGuard.EnsureWithinDirectory()` helper used by all rename nodes and FolderOutputNode
+- **Decompression bomb guard** — 500 MB file size check and `MaxFrames = 1` decoder option on all image nodes
+- **ImageResize dimension bounds** — width/height validated to 1-32768 in `Configure()`
+- **Crash log handler** — unhandled exceptions write to `crash.log` in app directory
+- **13 new tests** — cancellation, dry-run, path traversal, ReDoS timeout, bounds validation, serializer edge cases (322 total)
+
+### Changed
+
+- **ConfigureAwait(false)** — added to all Core async methods to avoid unnecessary UI thread marshaling
+- **SortNode performance** — pre-compute sort keys to eliminate O(n log n) filesystem calls
+- **FileJob property caching** — `Extension`, `FileName`, `DirectoryName` cached with lazy invalidation
+- **Streaming serialization** — PipelineSerializer and AppSettingsManager stream to FileStream instead of string buffer
+- **Execution log batching** — buffer FileProcessed events with 50ms DispatcherTimer flush to reduce UI layout thrashing
+- **FilterNode normalization** — operator/field strings lowercased at configure time instead of per-file
+- **ImageConvertNode encoder caching** — encoder created once in `Configure()` instead of per file
+- **DRY refactoring** — extracted `ThemeHelper`, `NodeIconMap`, shared `ConfigHelper` test helper
+- **Named event handlers** — anonymous lambdas replaced with named methods in EditorViewModel and MainWindowViewModel
+- **NodeLibrary filtering** — reuses group VMs with `ApplyFilter()` instead of recreating per keystroke
+- Microsoft.Extensions.* 10.0.3 → 10.0.5, System.CommandLine 2.0.3 → 2.0.5
+
 ## [1.4.0] - 2026-03-07
 
 ### Added

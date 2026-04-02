@@ -29,7 +29,7 @@ public class FolderInputNode : ISourceNode
     private bool _recursive;
     private string _filter = "*";
 
-    public void Configure(Dictionary<string, JsonElement> config)
+    public void Configure(IDictionary<string, JsonElement> config)
     {
         if (!config.TryGetValue("path", out JsonElement pathElement) ||
             pathElement.ValueKind == JsonValueKind.Null)
@@ -66,6 +66,8 @@ public class FolderInputNode : ISourceNode
         SearchOption searchOption = _recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
         string[] patterns = _filter.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
+        string resolvedRoot = Path.GetFullPath(_path);
+        string resolvedRootPrefix = resolvedRoot + Path.DirectorySeparatorChar;
         var files = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (string pattern in patterns)
         {
@@ -73,6 +75,15 @@ public class FolderInputNode : ISourceNode
             {
                 foreach (string file in Directory.EnumerateFiles(_path, pattern, searchOption))
                 {
+                    // Filter out files that resolve outside the source root (e.g. via symlinks)
+                    string resolvedFile = Path.GetFullPath(file);
+                    if (!resolvedFile.StartsWith(resolvedRootPrefix, StringComparison.OrdinalIgnoreCase) &&
+                        !resolvedFile.Equals(resolvedRoot, StringComparison.OrdinalIgnoreCase))
+                    {
+                        _logger.LogWarning("FolderInput: skipping '{FilePath}' — resolves outside source root", file);
+                        continue;
+                    }
+
                     files.Add(file);
                 }
             }
@@ -109,6 +120,6 @@ public class FolderInputNode : ISourceNode
             };
         }
 
-        await Task.CompletedTask; // Satisfy async requirement
+        await Task.CompletedTask.ConfigureAwait(false); // Satisfy async requirement
     }
 }

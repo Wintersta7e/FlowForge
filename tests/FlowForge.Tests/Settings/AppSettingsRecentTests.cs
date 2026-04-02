@@ -101,4 +101,60 @@ public class AppSettingsRecentTests
 
         settings.MaxConcurrency.Should().Be(4);
     }
+
+    [Fact]
+    public void Validate_removes_relative_path_from_RecentPipelines()
+    {
+        var settings = new AppSettings
+        {
+            RecentPipelines = new List<string> { "relative/path.ffpipe", Path.Combine(Path.GetTempPath(), "valid.ffpipe") }
+        };
+        settings.Validate();
+
+        settings.RecentPipelines.Should().ContainSingle()
+            .Which.Should().Contain("valid.ffpipe");
+    }
+
+    [Fact]
+    public void Validate_removes_null_byte_path_from_RecentPipelines()
+    {
+        var settings = new AppSettings
+        {
+            RecentPipelines = new List<string> { Path.Combine(Path.GetTempPath(), "ok.ffpipe"), "/tmp/evil\0.ffpipe" }
+        };
+        settings.Validate();
+
+        settings.RecentPipelines.Should().ContainSingle()
+            .Which.Should().Contain("ok.ffpipe");
+    }
+
+    [Fact]
+    public void Validate_removes_excessively_long_path_from_RecentPipelines()
+    {
+        var settings = new AppSettings
+        {
+            RecentPipelines = new List<string>
+            {
+                Path.Combine(Path.GetTempPath(), "good.ffpipe"),
+                "/" + new string('a', 5000) + ".ffpipe"
+            }
+        };
+        settings.Validate();
+
+        settings.RecentPipelines.Should().ContainSingle()
+            .Which.Should().Contain("good.ffpipe");
+    }
+
+    [Fact]
+    public void Validate_removes_whitespace_only_entries()
+    {
+        var settings = new AppSettings
+        {
+            RecentPipelines = new List<string> { "   ", Path.Combine(Path.GetTempPath(), "real.ffpipe") }
+        };
+        settings.Validate();
+
+        settings.RecentPipelines.Should().ContainSingle()
+            .Which.Should().Contain("real.ffpipe");
+    }
 }

@@ -28,7 +28,7 @@ public class PipelineRunnerProgressTests
 
     private static PipelineRunner CreateRunner()
     {
-        NodeRegistry registry = NodeRegistry.CreateDefault(NullLoggerFactory.Instance);
+        var registry = NodeRegistry.CreateDefault(NullLoggerFactory.Instance);
         return new PipelineRunner(registry, NullLogger<PipelineRunner>.Instance, maxConcurrency: 2);
     }
 
@@ -70,7 +70,7 @@ public class PipelineRunnerProgressTests
 
         await runner.RunAsync(pipeline, dryRun: true, progress);
 
-        List<FilesDiscovered> discovered = progress.Events.OfType<FilesDiscovered>().ToList();
+        var discovered = progress.Events.OfType<FilesDiscovered>().ToList();
         discovered.Should().NotBeEmpty();
         discovered[discovered.Count - 1].TotalCount.Should().Be(3);
     }
@@ -118,7 +118,7 @@ public class PipelineRunnerProgressTests
 
         await runner.RunAsync(pipeline, dryRun: true, progress);
 
-        List<FileProcessed> processed = progress.Events.OfType<FileProcessed>().ToList();
+        var processed = progress.Events.OfType<FileProcessed>().ToList();
         processed.Should().HaveCount(3);
         processed.Should().OnlyContain(fp => fp.Job.Status == FileJobStatus.Succeeded);
     }

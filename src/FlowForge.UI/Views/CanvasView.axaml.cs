@@ -9,7 +9,7 @@ namespace FlowForge.UI.Views;
 
 public partial class CanvasView : UserControl
 {
-    private Action? _fitToScreenHandler;
+    private EventHandler? _fitToScreenHandler;
     private EditorViewModel? _subscribedEditor;
 
     public CanvasView()
@@ -36,7 +36,7 @@ public partial class CanvasView : UserControl
 
         if (DataContext is EditorViewModel editor)
         {
-            _fitToScreenHandler = () =>
+            _fitToScreenHandler = (_, _) =>
                 Nodify.Avalonia.EditorCommands.FitToScreen.Execute(parameter: null!, Editor);
             editor.FitToScreenRequested += _fitToScreenHandler;
             _subscribedEditor = editor;
@@ -60,7 +60,9 @@ public partial class CanvasView : UserControl
     {
         string? typeKey = e.DataTransfer.TryGetText();
         if (typeKey is null)
+        {
             return;
+        }
 
         // Convert screen position to canvas position
         Point screenPos = e.GetPosition(Editor);
@@ -69,7 +71,7 @@ public partial class CanvasView : UserControl
             (screenPos.Y / Editor.ViewportZoom) + Editor.ViewportLocation.Y
         );
 
-        TopLevel? topLevel = TopLevel.GetTopLevel(this);
+        var topLevel = TopLevel.GetTopLevel(this);
         if (topLevel?.DataContext is MainWindowViewModel mainVm)
         {
             mainVm.Editor.AddNode(typeKey, canvasPos, mainVm.Registry);
@@ -80,7 +82,7 @@ public partial class CanvasView : UserControl
     {
         if (sender is Button button && button.Tag is string templateId)
         {
-            TopLevel? topLevel = TopLevel.GetTopLevel(this);
+            var topLevel = TopLevel.GetTopLevel(this);
             if (topLevel?.DataContext is MainWindowViewModel mainVm)
             {
                 mainVm.LoadTemplateCommand.Execute(templateId);

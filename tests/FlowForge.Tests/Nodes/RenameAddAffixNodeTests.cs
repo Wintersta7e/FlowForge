@@ -12,7 +12,7 @@ public class RenameAddAffixNodeTests
     private static Dictionary<string, JsonElement> MakeConfig(object config)
     {
         string json = JsonSerializer.Serialize(config);
-        JsonDocument doc = JsonDocument.Parse(json);
+        var doc = JsonDocument.Parse(json);
         return doc.RootElement.EnumerateObject()
             .ToDictionary(p => p.Name, p => p.Value.Clone());
     }
@@ -32,7 +32,7 @@ public class RenameAddAffixNodeTests
         var node = new RenameAddAffixNode(NullLogger<RenameAddAffixNode>.Instance);
         node.Configure(MakeConfig(new { prefix = "IMG_" }));
 
-        FileJob job = MakeJob(Path.Combine("/tmp", "photo.jpg"));
+        FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "photo.jpg"));
         IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
 
         FileJob output = result.Single();
@@ -45,7 +45,7 @@ public class RenameAddAffixNodeTests
         var node = new RenameAddAffixNode(NullLogger<RenameAddAffixNode>.Instance);
         node.Configure(MakeConfig(new { suffix = "_backup" }));
 
-        FileJob job = MakeJob(Path.Combine("/tmp", "photo.jpg"));
+        FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "photo.jpg"));
         IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
 
         FileJob output = result.Single();
@@ -58,7 +58,7 @@ public class RenameAddAffixNodeTests
         var node = new RenameAddAffixNode(NullLogger<RenameAddAffixNode>.Instance);
         node.Configure(MakeConfig(new { prefix = "PRE_", suffix = "_SUF" }));
 
-        FileJob job = MakeJob(Path.Combine("/tmp", "photo.jpg"));
+        FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "photo.jpg"));
         IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
 
         FileJob output = result.Single();
@@ -81,7 +81,7 @@ public class RenameAddAffixNodeTests
         var node = new RenameAddAffixNode(NullLogger<RenameAddAffixNode>.Instance);
         node.Configure(MakeConfig(new { prefix = "A_", suffix = "_Z" }));
 
-        FileJob job = MakeJob(Path.Combine("/tmp", "document.tar.gz"));
+        FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "document.tar.gz"));
         IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
 
         FileJob output = result.Single();
@@ -111,12 +111,28 @@ public class RenameAddAffixNodeTests
         var node = new RenameAddAffixNode(NullLogger<RenameAddAffixNode>.Instance);
         node.Configure(MakeConfig(new { prefix = "X_" }));
 
-        FileJob job = MakeJob(Path.Combine("/tmp", "file.txt"));
+        FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "file.txt"));
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
         Func<Task> act = () => node.TransformAsync(job, dryRun: true, ct: cts.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
+    public void Configure_prefix_with_path_separator_throws()
+    {
+        var node = new RenameAddAffixNode(NullLogger<RenameAddAffixNode>.Instance);
+        Action act = () => node.Configure(MakeConfig(new { prefix = "../../" }));
+        act.Should().Throw<NodeConfigurationException>();
+    }
+
+    [Fact]
+    public void Configure_suffix_with_path_separator_throws()
+    {
+        var node = new RenameAddAffixNode(NullLogger<RenameAddAffixNode>.Instance);
+        Action act = () => node.Configure(MakeConfig(new { suffix = "../../evil" }));
+        act.Should().Throw<NodeConfigurationException>();
     }
 }

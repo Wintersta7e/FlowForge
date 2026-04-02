@@ -14,7 +14,7 @@ public class ImageConvertNodeTests
     private static Dictionary<string, JsonElement> MakeConfig(object config)
     {
         string json = JsonSerializer.Serialize(config);
-        JsonDocument doc = JsonDocument.Parse(json);
+        var doc = JsonDocument.Parse(json);
         return doc.RootElement.EnumerateObject()
             .ToDictionary(p => p.Name, p => p.Value.Clone());
     }
@@ -188,5 +188,28 @@ public class ImageConvertNodeTests
 
         job.CurrentPath.Should().Be(inputPath);
         File.Exists(inputPath).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task CancellationToken_cancelled_throws_OperationCanceledException()
+    {
+        using var dir = new TempDirectory();
+        string inputPath = Path.Combine(dir.Path, "cancel.png");
+        TestFileFactory.CreateTestPng(inputPath, width: 100, height: 100);
+
+        var node = new ImageConvertNode(NullLogger<ImageConvertNode>.Instance);
+        node.Configure(MakeConfig(new { format = "jpg" }));
+
+        var job = new FileJob
+        {
+            OriginalPath = inputPath,
+            CurrentPath = inputPath
+        };
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        Func<Task> act = () => node.TransformAsync(job, dryRun: false, ct: cts.Token);
+        await act.Should().ThrowAsync<OperationCanceledException>();
     }
 }

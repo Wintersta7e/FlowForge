@@ -50,16 +50,24 @@
                                 <DataTemplate x:DataType="vm:PipelineConnectorViewModel">
                                     <nodifyConn:Connector Anchor="{Binding Anchor, Mode=OneWayToSource}"
                                                           IsConnected="{Binding IsConnected}"
-                                                          Width="12" Height="12"
-                                                          Background="{DynamicResource ForgeSurface}"
-                                                          BorderBrush="{Binding ConnectorBrush}"
-                                                          BorderThickness="2"
-                                                          CornerRadius="2"
-                                                          RenderTransformOrigin="0.5,0.5"
+                                                          Width="14" Height="14"
                                                           Cursor="Hand">
-                                        <nodifyConn:Connector.RenderTransform>
-                                            <RotateTransform Angle="45" />
-                                        </nodifyConn:Connector.RenderTransform>
+                                        <nodifyConn:Connector.Template>
+                                            <ControlTemplate>
+                                                <Border Width="10" Height="10"
+                                                        Background="{DynamicResource ForgeSurface}"
+                                                        BorderBrush="{Binding ConnectorBrush}"
+                                                        BorderThickness="2"
+                                                        CornerRadius="2"
+                                                        RenderTransformOrigin="0.5,0.5"
+                                                        HorizontalAlignment="Center"
+                                                        VerticalAlignment="Center">
+                                                    <Border.RenderTransform>
+                                                        <RotateTransform Angle="45" />
+                                                    </Border.RenderTransform>
+                                                </Border>
+                                            </ControlTemplate>
+                                        </nodifyConn:Connector.Template>
                                     </nodifyConn:Connector>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
@@ -120,16 +128,24 @@
                                 <DataTemplate x:DataType="vm:PipelineConnectorViewModel">
                                     <nodifyConn:Connector Anchor="{Binding Anchor, Mode=OneWayToSource}"
                                                           IsConnected="{Binding IsConnected}"
-                                                          Width="12" Height="12"
-                                                          Background="{DynamicResource ForgeSurface}"
-                                                          BorderBrush="{Binding ConnectorBrush}"
-                                                          BorderThickness="2"
-                                                          CornerRadius="2"
-                                                          RenderTransformOrigin="0.5,0.5"
+                                                          Width="14" Height="14"
                                                           Cursor="Hand">
-                                        <nodifyConn:Connector.RenderTransform>
-                                            <RotateTransform Angle="45" />
-                                        </nodifyConn:Connector.RenderTransform>
+                                        <nodifyConn:Connector.Template>
+                                            <ControlTemplate>
+                                                <Border Width="10" Height="10"
+                                                        Background="{DynamicResource ForgeSurface}"
+                                                        BorderBrush="{Binding ConnectorBrush}"
+                                                        BorderThickness="2"
+                                                        CornerRadius="2"
+                                                        RenderTransformOrigin="0.5,0.5"
+                                                        HorizontalAlignment="Center"
+                                                        VerticalAlignment="Center">
+                                                    <Border.RenderTransform>
+                                                        <RotateTransform Angle="45" />
+                                                    </Border.RenderTransform>
+                                                </Border>
+                                            </ControlTemplate>
+                                        </nodifyConn:Connector.Template>
                                     </nodifyConn:Connector>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
@@ -154,6 +170,7 @@
                                                   CompletedCommand="{Binding FinishCommand}"
                                                   EnablePreview="True"
                                                   EnableSnapping="True"
+                                                  Stroke="{DynamicResource ForgeAccent}"
                                                   PreviewTarget="{Binding PreviewTarget, Mode=OneWayToSource}" />
                 </DataTemplate>
             </nodify:NodifyEditor.PendingConnectionTemplate>
