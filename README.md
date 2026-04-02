@@ -22,6 +22,7 @@ FlowForge lets you visually connect source, transform, and output nodes to build
 - **Real-time Progress** — Live scanning count, per-file processing status, and throughput reporting
 - **Pipeline Templates** — Pre-wired workflows for common tasks (photo import, batch rename, web export, compression)
 - **CLI Runner** — Execute pipelines from the command line for automation and scripting
+- **Light/Dark Theme** — Toggle between Molten Forge dark and light themes at runtime
 - **Cross-platform** — Runs on Windows, macOS, and Linux via Avalonia UI
 
 ## Features
@@ -54,7 +55,8 @@ FlowForge lets you visually connect source, transform, and output nodes to build
 - **Keyboard Shortcuts** — Help dialog showing all available shortcuts
 - **Zoom-to-Fit** — Toolbar button to fit the entire graph into the viewport
 - **Config Tooltips** — Hover descriptions on all node configuration fields
-- **Molten Forge Theme** — Custom dark theme with warm amber accent and category-colored nodes
+- **Molten Forge Theme** — Custom dark/light theme with warm amber accent and category-colored nodes
+- **Light/Dark Toggle** — Switch themes at runtime; nodes, connectors, and panels update dynamically
 
 <p align="center">
   <img src="screenshots/node-pipeline.png" alt="Node Pipeline" width="600">
@@ -106,7 +108,7 @@ Pipelines are saved as `.ffpipe` files (human-readable JSON, UTF-8):
 | [Serilog](https://serilog.net) | Logging provider (console + rolling file) |
 | [Microsoft.Extensions.DependencyInjection](https://learn.microsoft.com/dotnet/core/extensions/dependency-injection) | IoC container |
 | [System.CommandLine](https://learn.microsoft.com/dotnet/standard/commandline) | CLI argument parsing |
-| [xUnit](https://xunit.net) + [FluentAssertions](https://fluentassertions.com) | Testing framework |
+| [xUnit](https://xunit.net) + [FluentAssertions](https://fluentassertions.com) | Testing framework (342 tests) |
 
 ## Project Structure
 
@@ -133,7 +135,7 @@ FlowForge/
 │   │   └── Services/             # DialogService
 │   └── FlowForge.CLI/            # CLI runner (System.CommandLine)
 └── tests/
-    └── FlowForge.Tests/          # 322 xUnit tests
+    └── FlowForge.Tests/          # 342 xUnit tests
         ├── DependencyInjection/  # DI registration tests
         ├── Nodes/                # 11 node test files
         ├── Execution/            # Runner + progress tests
@@ -145,9 +147,13 @@ FlowForge/
         └── Helpers/              # TempDirectory, TestFileFactory, PipelineBuilder
 ```
 
+## Download
+
+Grab the latest release from the [Releases page](https://github.com/Wintersta7e/FlowForge/releases) — self-contained Windows x64 build, no .NET SDK required.
+
 ## Getting Started
 
-### Prerequisites
+### Prerequisites (building from source)
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download) or later
 
@@ -171,7 +177,7 @@ dotnet run --project src/FlowForge.CLI -- run pipeline.ffpipe --dry-run
 ### Run Tests
 
 ```bash
-# Run all 322 tests
+# Run all tests
 dotnet test --logger "console;verbosity=normal"
 
 # Run specific test class
@@ -198,7 +204,8 @@ Contributions are welcome! Please:
 3. Make your changes
 4. Ensure `dotnet build` passes with zero warnings
 5. Ensure `dotnet test` passes
-6. Submit a pull request
+6. Ensure `dotnet format FlowForge.sln --verify-no-changes` passes
+7. Submit a pull request
 
 ## License
 
