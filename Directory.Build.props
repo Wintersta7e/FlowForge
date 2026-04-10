@@ -13,6 +13,11 @@
     <NoWarn>$(NoWarn);CS1591;AD0001</NoWarn>
   </PropertyGroup>
   <ItemGroup>
+    <!-- Tmds.DBus.Protocol 0.21.2 vulnerability — transitive dep from Avalonia.FreeDesktop (Linux D-Bus).
+         Not exploitable: app targets win-x64. Suppress until Avalonia updates their dependency. -->
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-xrw6-gwf8-vvr9" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
