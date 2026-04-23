@@ -144,6 +144,15 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void OnEditorRunningCollectionChanged(object? sender, NotifyCollectionChangedEventArgs args)
     {
+        // Reset fires with NewItems == null; re-sync the whole canvas so a
+        // bulk replace (template swap, Clear+Add sequence) still seeds any
+        // stations/pipes that landed in the new collection.
+        if (args.Action == NotifyCollectionChangedAction.Reset)
+        {
+            UpdateRunningVisual();
+            return;
+        }
+
         if (args.NewItems is null)
         {
             return;
@@ -464,8 +473,10 @@ public partial class MainWindowViewModel : ViewModelBase
             // RunAsync's awaited continuation can resume on a thread-pool
             // thread, so the IsRunning setter (and its PropertyChanged cascade
             // into XAML bindings + our visual handlers) must be marshalled
-            // back to the UI thread.
-            Dispatcher.UIThread.Post(() => ExecutionLog.IsRunning = false);
+            // back to the UI thread. Await InvokeAsync instead of fire-and-forget
+            // Post so the next ExecutePipelineAsync call is guaranteed to see
+            // IsRunning = false at the top-of-method guard.
+            await Dispatcher.UIThread.InvokeAsync(() => ExecutionLog.IsRunning = false);
             Interlocked.Exchange(ref _cts, null)?.Dispose();
         }
     }
