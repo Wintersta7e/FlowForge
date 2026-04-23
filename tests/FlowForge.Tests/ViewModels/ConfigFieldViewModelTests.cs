@@ -73,4 +73,58 @@ public class ConfigFieldViewModelTests
 
         vm.Value.Should().Be("42");
     }
+
+    /// <summary>
+    /// Regression guard for the original infinite-loop scenario: after
+    /// construction the <see cref="ConfigFieldViewModel.Value"/> must already
+    /// match what the CheckBox's BoolStringConverter will write back ("True"
+    /// / "False"), so the first binding write-back is a no-op instead of a
+    /// fresh PropertyChanged that re-fires OnValueChanged in a loop.
+    /// </summary>
+    [Fact]
+    public void Bool_value_setter_is_idempotent_when_writing_the_current_value()
+    {
+        var field = new ConfigField("recursive", ConfigFieldType.Bool, Label: "Include Subfolders");
+        var config = new Dictionary<string, JsonElement>
+        {
+            ["recursive"] = JsonSerializer.SerializeToElement(true),
+        };
+
+        var vm = new ConfigFieldViewModel(field, config);
+        vm.Value.Should().Be("True", "the VM must arrive pre-normalized or the first binding write-back would re-fire");
+
+        int changeCount = 0;
+        vm.PropertyChanged += (_, e) =>
+        {
+            if (string.Equals(e.PropertyName, nameof(vm.Value), StringComparison.Ordinal))
+            {
+                changeCount++;
+            }
+        };
+
+        vm.Value = "True";
+
+        changeCount.Should().Be(0, "setting Value to the current value must be a no-op");
+    }
+
+    /// <summary>
+    /// A non-parseable bool string must not overwrite the JSON element
+    /// with a raw string — GetBoolean on reload would throw.
+    /// </summary>
+    [Fact]
+    public void Bool_field_rejects_unparseable_input_without_mutating_config()
+    {
+        var field = new ConfigField("recursive", ConfigFieldType.Bool, Label: "Include Subfolders");
+        var config = new Dictionary<string, JsonElement>
+        {
+            ["recursive"] = JsonSerializer.SerializeToElement(true),
+        };
+
+        var vm = new ConfigFieldViewModel(field, config);
+
+        vm.Value = "not-a-bool";
+
+        config["recursive"].ValueKind.Should().Be(JsonValueKind.True,
+            "a non-bool string must not overwrite the stored bool — reloads would crash on GetBoolean");
+    }
 }

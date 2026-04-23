@@ -34,6 +34,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="FlowForge.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <AvaloniaResource Include="Assets\icon.png" />
     <AvaloniaResource Include="Assets\Fonts\*.ttf" />
   </ItemGroup>
