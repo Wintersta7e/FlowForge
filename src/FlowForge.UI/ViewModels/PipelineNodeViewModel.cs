@@ -69,6 +69,10 @@ public partial class PipelineNodeViewModel : ViewModelBase
     [ObservableProperty]
     private IBrush _mwHeatPulseBrush = null!;
 
+    /// <summary>Mw outer aura brush — bigger, softer radial cloud tinted by category glow.</summary>
+    [ObservableProperty]
+    private IBrush _mwAuraBrush = null!;
+
     /// <summary>Forge-themed icon geometry (pit/mold/die/chisel/…).</summary>
     [ObservableProperty]
     private Geometry? _mwIconGeometry;
@@ -178,6 +182,7 @@ public partial class PipelineNodeViewModel : ViewModelBase
         Color glowColor = ThemeHelper.GetColor(MwGlowColorKey(MwCategory), "#ffd080");
         CategoryGlowColor = glowColor;
         MwHeatPulseBrush = BuildHeatPulseBrush(glowColor);
+        MwAuraBrush = BuildAuraBrush(glowColor);
         MwIconGeometry = ThemeHelper.GetGeometry(MwOpsMap.IconKey(MwOpsMap.Get(TypeKey).Icon));
     }
 
@@ -194,6 +199,33 @@ public partial class PipelineNodeViewModel : ViewModelBase
                 new GradientStop(Color.FromArgb(0xA6, glowColor.R, glowColor.G, glowColor.B), 0),
                 new GradientStop(Color.FromArgb(0x40, glowColor.R, glowColor.G, glowColor.B), 0.45),
                 new GradientStop(Colors.Transparent, 0.65),
+            },
+        };
+    }
+
+    /// <summary>
+    /// Build the running-aura radial-cloud brush painted BEHIND the station.
+    /// Strong alpha maintained out to 0.65 relative radius so the visible
+    /// cloud extends well past the iron body (which covers the brightest
+    /// centre), then fades to transparent at the border edges. Used on a
+    /// Border whose aspect matches the station (not a big square) so the
+    /// resulting halo is horizontally-elongated like in the concept, not
+    /// a circular bubble.
+    /// </summary>
+    private static IBrush BuildAuraBrush(Color glowColor)
+    {
+        return new RadialGradientBrush
+        {
+            Center = new RelativePoint(0.5, 0.5, RelativeUnit.Relative),
+            GradientOrigin = new RelativePoint(0.5, 0.5, RelativeUnit.Relative),
+            RadiusX = new RelativeScalar(0.5, RelativeUnit.Relative),
+            RadiusY = new RelativeScalar(0.5, RelativeUnit.Relative),
+            GradientStops =
+            {
+                new GradientStop(Color.FromArgb(0xD9, glowColor.R, glowColor.G, glowColor.B), 0),
+                new GradientStop(Color.FromArgb(0x99, glowColor.R, glowColor.G, glowColor.B), 0.35),
+                new GradientStop(Color.FromArgb(0x40, glowColor.R, glowColor.G, glowColor.B), 0.65),
+                new GradientStop(Colors.Transparent, 1.0),
             },
         };
     }

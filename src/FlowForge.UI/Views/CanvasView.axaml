@@ -339,6 +339,10 @@
                     <Setter Property="BorderThickness" Value="0" />
                     <Setter Property="Background" Value="Transparent" />
                     <Setter Property="Padding" Value="0" />
+                    <!-- Don't clip per-item content so the station halo can bloom
+                         outside the container's logical rect. Without this Nodify
+                         clips anything painted beyond the station's 200×130. -->
+                    <Setter Property="ClipToBounds" Value="False" />
                 </Style>
                 <Style Selector="nodify|ItemContainer:selected">
                     <Setter Property="BorderThickness" Value="0" />
@@ -349,11 +353,37 @@
             <nodify:NodifyEditor.ItemTemplate>
                 <DataTemplate x:DataType="vm:PipelineNodeViewModel">
                     <!-- ═══ Molten Works cast-iron station ═══ -->
-                    <Grid Width="200" Height="130">
+                    <Grid Width="200" Height="130" ClipToBounds="False">
+
+                        <!-- ═══ Running aura: soft rectangular-aspect cloud behind iron ═══
+                             Border margin is asymmetric so the aura element is
+                             wider than it is tall, matching the station's 200×130
+                             aspect. Result: radial gradient produces a horizontally-
+                             elongated halo that reads as "cloud around a station"
+                             instead of "perfect circle around a station". -->
+                        <Border IsHitTestVisible="False"
+                                Margin="-70,-50,-70,-50"
+                                Background="{Binding MwAuraBrush}"
+                                IsVisible="{Binding IsRunning}"
+                                Classes="mw-aura"
+                                Classes.running="{Binding IsRunning}">
+                            <Border.Styles>
+                                <Style Selector="Border.mw-aura.running">
+                                    <Style.Animations>
+                                        <Animation Duration="0:0:1.8" IterationCount="INFINITE">
+                                            <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.7" /></KeyFrame>
+                                            <KeyFrame Cue="50%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+                                            <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0.7" /></KeyFrame>
+                                        </Animation>
+                                    </Style.Animations>
+                                </Style>
+                            </Border.Styles>
+                        </Border>
 
                         <!-- Iron body (200x130, rounded 3px, iron gradient).
-                             Idle depth stays in BoxShadow; running category bloom
-                             comes from a bindable DropShadowEffect. -->
+                             Running: DropShadowEffect paints a tight rectangular
+                             edge glow ON TOP of the soft cloud aura — the two
+                             layer to match the concept's drop-shadow look. -->
                         <Border CornerRadius="3"
                                 Background="{DynamicResource MwIronBody}"
                                 BorderBrush="#050303"
@@ -362,28 +392,17 @@
                                 Classes.running="{Binding IsRunning}">
                             <Border.Styles>
                                 <Style Selector="Border.running">
-                                    <Style.Animations>
-                                        <Animation Duration="0:0:1.6" IterationCount="INFINITE">
-                                            <KeyFrame Cue="0%">
-                                                <Setter Property="(DropShadowEffect.Opacity)" Value="0.55" />
-                                            </KeyFrame>
-                                            <KeyFrame Cue="50%">
-                                                <Setter Property="(DropShadowEffect.Opacity)" Value="1" />
-                                            </KeyFrame>
-                                            <KeyFrame Cue="100%">
-                                                <Setter Property="(DropShadowEffect.Opacity)" Value="0.55" />
-                                            </KeyFrame>
-                                        </Animation>
-                                    </Style.Animations>
+                                    <Setter Property="Effect">
+                                        <Setter.Value>
+                                            <DropShadowEffect BlurRadius="28"
+                                                              Color="{Binding CategoryGlowColor}"
+                                                              OffsetX="0"
+                                                              OffsetY="0"
+                                                              Opacity="0.9" />
+                                        </Setter.Value>
+                                    </Setter>
                                 </Style>
                             </Border.Styles>
-                            <Border.Effect>
-                                <DropShadowEffect BlurRadius="24"
-                                                  Color="{Binding CategoryGlowColor}"
-                                                  OffsetX="0"
-                                                  OffsetY="0"
-                                                  Opacity="0" />
-                            </Border.Effect>
                             <!-- Inset highlight on top + subtle bottom shadow -->
                             <Border CornerRadius="3"
                                     BorderThickness="0,1,0,1"
@@ -535,26 +554,29 @@
                             </StackPanel>
                         </Grid>
 
-                        <!-- Main body: icon well + text column -->
-                        <Grid Margin="14,28,32,16"
-                              ColumnDefinitions="48,10,*">
-                            <!-- Icon well (with running glow halo via Effect) -->
-                            <Grid Grid.Column="0" Width="48" Height="48" VerticalAlignment="Top">
+                        <!-- Main body: icon well + text column.
+                             Margins match concept: inset 28/38/28/14 (top/right/bottom/left).
+                             ColumnDefinitions 54 / gap 12 / * matches concept's
+                             54×54 icon well + 12px flex gap. -->
+                        <Grid Margin="14,28,38,28"
+                              ColumnDefinitions="54,12,*">
+                            <!-- Icon well (54×54 per concept, with running glow halo via Effect) -->
+                            <Grid Grid.Column="0" Width="54" Height="54" VerticalAlignment="Top">
                                 <!-- Glow halo: sits behind the iron well, only when running. -->
-                                <Border Width="48" Height="48"
+                                <Border Width="54" Height="54"
                                         CornerRadius="3"
                                         Background="{Binding MwGlowBrush}"
-                                        Opacity="0.3"
+                                        Opacity="0.55"
                                         IsVisible="{Binding IsRunning}"
                                         IsHitTestVisible="False">
                                     <Border.Effect>
-                                        <DropShadowEffect BlurRadius="18"
+                                        <DropShadowEffect BlurRadius="36"
                                                           Color="{Binding CategoryGlowColor}"
                                                           OffsetX="0"
                                                           OffsetY="0" />
                                     </Border.Effect>
                                 </Border>
-                                <Border Width="48" Height="48"
+                                <Border Width="54" Height="54"
                                         CornerRadius="3"
                                         BorderThickness="1"
                                         BorderBrush="#050303">
@@ -565,7 +587,7 @@
                                         </RadialGradientBrush>
                                     </Border.Background>
                                     <!-- Icon: ash/muted when idle, full category neon + brighter stroke when running. -->
-                                    <Viewbox Width="26" Height="26">
+                                    <Viewbox Width="30" Height="30">
                                         <Grid>
                                             <Path Data="{Binding MwIconGeometry}"
                                                   Stroke="{DynamicResource MwAsh}"
@@ -593,8 +615,8 @@
                                         VerticalAlignment="Center">
                                 <TextBlock Text="{Binding Title}"
                                            FontFamily="{DynamicResource MwSerif}"
-                                           FontSize="16"
-                                           LineHeight="17"
+                                           FontSize="18"
+                                           LineHeight="18"
                                            Foreground="{DynamicResource MwBone}"
                                            TextTrimming="CharacterEllipsis" />
                                 <TextBlock Text="{Binding MwSub}"
@@ -620,14 +642,26 @@
                             </StackPanel>
                         </Grid>
 
-                        <!-- Right-side gauge strip: T / p / Δ -->
+                        <!-- Right-side gauge strip: T / p / Δ.
+                             Per concept: opacity 0.5 idle / 1.0 running, value color
+                             swaps from IronLite (dim) to category neon when running. -->
                         <StackPanel Orientation="Vertical"
                                     Spacing="4"
                                     HorizontalAlignment="Right"
                                     VerticalAlignment="Center"
                                     Margin="0,30,4,12"
                                     Width="22">
-                            <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel.Styles>
+                                <Style Selector="Grid.mw-gauge">
+                                    <Setter Property="Opacity" Value="0.5" />
+                                </Style>
+                                <Style Selector="Grid.mw-gauge.running">
+                                    <Setter Property="Opacity" Value="1.0" />
+                                </Style>
+                            </StackPanel.Styles>
+                            <Grid ColumnDefinitions="*,Auto"
+                                  Classes="mw-gauge"
+                                  Classes.running="{Binding IsRunning}">
                                 <TextBlock Grid.Column="0" Text="T"
                                            FontFamily="{DynamicResource MwMono}"
                                            FontSize="7"
@@ -635,9 +669,17 @@
                                 <TextBlock Grid.Column="1" Text="86"
                                            FontFamily="{DynamicResource MwMono}"
                                            FontSize="7"
+                                           IsVisible="{Binding !IsRunning}"
                                            Foreground="{DynamicResource MwIronLite}" />
+                                <TextBlock Grid.Column="1" Text="86"
+                                           FontFamily="{DynamicResource MwMono}"
+                                           FontSize="7"
+                                           IsVisible="{Binding IsRunning}"
+                                           Foreground="{Binding MwNeonBrush}" />
                             </Grid>
-                            <Grid ColumnDefinitions="*,Auto">
+                            <Grid ColumnDefinitions="*,Auto"
+                                  Classes="mw-gauge"
+                                  Classes.running="{Binding IsRunning}">
                                 <TextBlock Grid.Column="0" Text="p"
                                            FontFamily="{DynamicResource MwMono}"
                                            FontSize="7"
@@ -645,9 +687,17 @@
                                 <TextBlock Grid.Column="1" Text="72"
                                            FontFamily="{DynamicResource MwMono}"
                                            FontSize="7"
+                                           IsVisible="{Binding !IsRunning}"
                                            Foreground="{DynamicResource MwIronLite}" />
+                                <TextBlock Grid.Column="1" Text="72"
+                                           FontFamily="{DynamicResource MwMono}"
+                                           FontSize="7"
+                                           IsVisible="{Binding IsRunning}"
+                                           Foreground="{Binding MwNeonBrush}" />
                             </Grid>
-                            <Grid ColumnDefinitions="*,Auto">
+                            <Grid ColumnDefinitions="*,Auto"
+                                  Classes="mw-gauge"
+                                  Classes.running="{Binding IsRunning}">
                                 <TextBlock Grid.Column="0" Text="Δ"
                                            FontFamily="{DynamicResource MwMono}"
                                            FontSize="7"
@@ -655,7 +705,13 @@
                                 <TextBlock Grid.Column="1" Text="43"
                                            FontFamily="{DynamicResource MwMono}"
                                            FontSize="7"
+                                           IsVisible="{Binding !IsRunning}"
                                            Foreground="{DynamicResource MwIronLite}" />
+                                <TextBlock Grid.Column="1" Text="43"
+                                           FontFamily="{DynamicResource MwMono}"
+                                           FontSize="7"
+                                           IsVisible="{Binding IsRunning}"
+                                           Foreground="{Binding MwNeonBrush}" />
                             </Grid>
                         </StackPanel>
 
