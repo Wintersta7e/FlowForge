@@ -90,6 +90,29 @@ public class MainWindowViewModelTests
         connection.IsRunning.Should().BeTrue();
     }
 
+    /// <summary>
+    /// ObservableCollection.Clear() raises the Reset action with no
+    /// NewItems; the handler must still re-seed any nodes added after the
+    /// clear, so a template swap or bulk LoadGraph during a demo leaves
+    /// the fresh canvas lit.
+    /// </summary>
+    [Fact]
+    public void Nodes_added_after_collection_reset_during_demo_are_seeded()
+    {
+        MainWindowViewModel vm = BuildVm(out _, out _);
+        vm.IsDemoMode = true;
+
+        // Clear() fires NotifyCollectionChangedAction.Reset with NewItems == null.
+        vm.Editor.Nodes.Clear();
+        vm.Editor.Connections.Clear();
+
+        PipelineNodeViewModel freshNode = MakeNode("RenamePattern", vm);
+        vm.Editor.Nodes.Add(freshNode);
+
+        freshNode.IsRunning.Should().BeTrue(
+            "nodes added after a Reset must still be seeded while demo mode is on");
+    }
+
     private static MainWindowViewModel BuildVm(
         out PipelineNodeViewModel nodeA,
         out PipelineNodeViewModel nodeB)

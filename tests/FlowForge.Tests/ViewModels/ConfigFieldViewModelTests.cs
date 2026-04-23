@@ -120,4 +120,25 @@ public class ConfigFieldViewModelTests
         config["recursive"].ValueKind.Should().Be(JsonValueKind.True,
             "a non-bool string must not overwrite the stored bool — reloads would crash on GetBoolean");
     }
+
+    /// <summary>
+    /// Symmetric contract with the Bool guard: an unparseable int string must
+    /// not land in a ConfigFieldType.Int slot, or GetInt32 on reload throws.
+    /// </summary>
+    [Fact]
+    public void Int_field_rejects_unparseable_input_without_mutating_config()
+    {
+        var field = new ConfigField("size", ConfigFieldType.Int, Label: "Size");
+        var config = new Dictionary<string, JsonElement>
+        {
+            ["size"] = JsonSerializer.SerializeToElement(42),
+        };
+
+        var vm = new ConfigFieldViewModel(field, config);
+
+        vm.Value = "not-an-int";
+
+        config["size"].GetInt32().Should().Be(42,
+            "an unparseable int must not overwrite the stored number — reloads would crash on GetInt32");
+    }
 }
