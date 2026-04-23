@@ -117,6 +117,21 @@ public class RenameRegexNodeTests
             .WithMessage("*pattern*required*");
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("\t")]
+    public void Empty_or_whitespace_pattern_throws_friendly_configuration_error(string emptyPattern)
+    {
+        var node = new RenameRegexNode(NullLogger<RenameRegexNode>.Instance);
+        Dictionary<string, JsonElement> config = MakeConfig(new { pattern = emptyPattern, replacement = "X" });
+
+        Action act = () => node.Configure(config);
+
+        act.Should().Throw<NodeConfigurationException>()
+            .WithMessage("*regex pattern*");
+    }
+
     [Fact]
     public void Invalid_regex_throws_NodeConfigurationException()
     {

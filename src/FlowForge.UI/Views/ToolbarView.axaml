@@ -4,227 +4,323 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:FlowForge.UI.ViewModels"
              mc:Ignorable="d"
-             d:DesignWidth="800" d:DesignHeight="50"
+             d:DesignWidth="1200" d:DesignHeight="56"
              x:Class="FlowForge.UI.Views.ToolbarView"
              x:DataType="vm:MainWindowViewModel">
 
-    <DockPanel>
-        <!-- Molten gradient accent line at bottom -->
-        <Border DockPanel.Dock="Bottom" Height="2" Opacity="0.5">
-            <Border.Background>
-                <LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%">
-                    <GradientStop Color="Transparent" Offset="0.05" />
-                    <GradientStop Color="#d4612c" Offset="0.3" />
-                    <GradientStop Color="#f5a623" Offset="0.5" />
-                    <GradientStop Color="#f5c842" Offset="0.7" />
-                    <GradientStop Color="Transparent" Offset="0.95" />
-                </LinearGradientBrush>
-            </Border.Background>
-        </Border>
+    <!-- Mw top bar: 56px, panel→deep gradient, iron-dark bottom border, shadow -->
+    <Border Background="{DynamicResource MwTopBarBody}"
+            BorderBrush="{DynamicResource MwIronDark}"
+            BorderThickness="0,0,0,1"
+            Height="56"
+            BoxShadow="0 4 24 0 #80000000"
+            Padding="20,0">
+        <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
 
-        <!-- Main toolbar content -->
-        <Border Background="{DynamicResource ForgePanel}"
-                BorderBrush="{DynamicResource ForgeBorder}"
-                BorderThickness="0,0,0,1"
-                Padding="14,0">
-            <Grid>
-                <!-- Left: file + edit buttons -->
-                <StackPanel Orientation="Horizontal" Spacing="2"
-                            HorizontalAlignment="Left"
-                            VerticalAlignment="Center">
-                    <!-- New -->
-                    <Button Command="{Binding NewCommand}"
-                            ToolTip.Tip="New Pipeline (Ctrl+N)"
-                            Background="Transparent" BorderThickness="0"
-                            CornerRadius="8" Padding="6,6,10,6">
-                        <StackPanel Orientation="Horizontal" Spacing="5">
-                            <PathIcon Data="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"
-                                      Foreground="{DynamicResource ForgeTextSecondary}"
-                                      Width="15" Height="15" />
-                            <TextBlock Text="New" FontSize="12"
-                                       Foreground="{DynamicResource ForgeTextSecondary}"
-                                       VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-                    <!-- Open -->
-                    <Button Command="{Binding OpenCommand}"
-                            ToolTip.Tip="Open Pipeline (Ctrl+O)"
-                            Background="Transparent" BorderThickness="0"
-                            CornerRadius="8" Padding="6,6,10,6">
-                        <StackPanel Orientation="Horizontal" Spacing="5">
-                            <PathIcon Data="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z"
-                                      Foreground="{DynamicResource ForgeTextSecondary}"
-                                      Width="15" Height="15" />
-                            <TextBlock Text="Open" FontSize="12"
-                                       Foreground="{DynamicResource ForgeTextSecondary}"
-                                       VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-                    <!-- Save -->
-                    <Button Command="{Binding SaveCommand}"
-                            ToolTip.Tip="Save (Ctrl+S)"
-                            Background="Transparent" BorderThickness="0"
-                            CornerRadius="8" Padding="6,6,10,6">
-                        <StackPanel Orientation="Horizontal" Spacing="5">
-                            <PathIcon Data="M15,9H5V5H15M12,19A3,3 0 0,1 9,16A3,3 0 0,1 12,13A3,3 0 0,1 15,16A3,3 0 0,1 12,19M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V7L17,3Z"
-                                      Foreground="{DynamicResource ForgeTextSecondary}"
-                                      Width="15" Height="15" />
-                            <TextBlock Text="Save" FontSize="12"
-                                       Foreground="{DynamicResource ForgeTextSecondary}"
-                                       VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
+            <!-- 0. Brand logo: molten triangle + cyan circle -->
+            <Canvas Grid.Column="0"
+                    Width="30" Height="30"
+                    VerticalAlignment="Center">
+                <!-- Molten triangle outer -->
+                <Path Data="M4 24 L16 6 L28 24 Z">
+                    <Path.Fill>
+                        <RadialGradientBrush Center="0.5,1" GradientOrigin="0.5,1" RadiusX="1" RadiusY="1">
+                            <GradientStop Offset="0" Color="{DynamicResource MwMoltenHiColor}" />
+                            <GradientStop Offset="0.5" Color="{DynamicResource MwMoltenColor}" />
+                            <GradientStop Offset="1" Color="{DynamicResource MwMoltenLoColor}" />
+                        </RadialGradientBrush>
+                    </Path.Fill>
+                </Path>
+                <!-- Dark cutout -->
+                <Path Data="M10 24 L16 14 L22 24 Z" Fill="{DynamicResource MwBgDeep}" />
+                <!-- Center dot -->
+                <Ellipse Canvas.Left="14" Canvas.Top="22" Width="4" Height="4" Fill="{DynamicResource MwMoltenHi}" />
+                <!-- Cyan outline circle -->
+                <Ellipse Canvas.Left="6" Canvas.Top="6"
+                         Width="20" Height="20"
+                         Stroke="{DynamicResource MwCyan}"
+                         StrokeThickness="0.8"
+                         Opacity="0.7" />
+            </Canvas>
 
-                    <!-- Separator -->
-                    <Border Width="1" Height="24"
-                            Background="{DynamicResource ForgeBorder}"
-                            VerticalAlignment="Center" Margin="10,0" />
-
-                    <!-- Undo -->
-                    <Button Classes="toolbarIcon"
-                            Command="{Binding UndoCommand}"
-                            ToolTip.Tip="Undo (Ctrl+Z)">
-                        <PathIcon Data="M12.5,8C9.85,8 7.45,9.16 5.86,11L3,8V16H11L7.9,12.9C9.09,11.84 10.73,11.19 12.5,11.19C15.49,11.19 18.04,13.18 18.86,16L21.73,15.14C20.6,11.14 16.86,8 12.5,8Z"
-                                  Foreground="{DynamicResource ForgeTextSecondary}"
-                                  Width="15" Height="15" />
-                    </Button>
-                    <!-- Redo -->
-                    <Button Classes="toolbarIcon"
-                            Command="{Binding RedoCommand}"
-                            ToolTip.Tip="Redo (Ctrl+Y)">
-                        <PathIcon Data="M18.14,11C16.55,9.16 14.15,8 11.5,8C7.14,8 3.4,11.14 2.27,15.14L5.14,16C5.96,13.18 8.5,11.19 11.5,11.19C13.27,11.19 14.91,11.84 16.1,12.9L13,16H21V8L18.14,11Z"
-                                  Foreground="{DynamicResource ForgeTextSecondary}"
-                                  Width="15" Height="15" />
-                    </Button>
-
-                    <!-- Separator -->
-                    <Border Width="1" Height="24"
-                            Background="{DynamicResource ForgeBorder}"
-                            VerticalAlignment="Center" Margin="10,0" />
-
-                    <!-- Fit -->
-                    <Button ToolTip.Tip="Fit to Screen (Ctrl+0)"
-                            Click="OnFitToScreenClick"
-                            Background="Transparent" BorderThickness="0"
-                            CornerRadius="8" Padding="6,6,10,6">
-                        <StackPanel Orientation="Horizontal" Spacing="5">
-                            <PathIcon Data="M3,3H9V5H5V9H3M3,21V15H5V19H9V21M21,3V9H19V5H15V3M21,21H15V19H19V15H21"
-                                      Foreground="{DynamicResource ForgeTextSecondary}"
-                                      Width="15" Height="15" />
-                            <TextBlock Text="Fit" FontSize="12"
-                                       Foreground="{DynamicResource ForgeTextSecondary}"
-                                       VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
+            <!-- 1. Brand text + subtitle -->
+            <StackPanel Grid.Column="1"
+                        Orientation="Vertical"
+                        VerticalAlignment="Center"
+                        Margin="10,0,0,0">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="FLOW"
+                               FontFamily="{DynamicResource MwDisplay}"
+                               FontSize="17" FontWeight="Bold"
+                               LetterSpacing="2.4"
+                               Foreground="{DynamicResource MwBone}"
+                               LineHeight="17" />
+                    <TextBlock Text="·"
+                               FontFamily="{DynamicResource MwDisplay}"
+                               FontSize="17" FontWeight="Bold"
+                               Foreground="{DynamicResource MwCyan}"
+                               LineHeight="17" />
+                    <TextBlock Text="FORGE"
+                               FontFamily="{DynamicResource MwDisplay}"
+                               FontSize="17" FontWeight="Bold"
+                               LetterSpacing="2.4"
+                               Foreground="{DynamicResource MwBone}"
+                               LineHeight="17" />
                 </StackPanel>
+                <TextBlock Text="MOLTEN WORKS · V3"
+                           FontFamily="{DynamicResource MwMono}"
+                           FontSize="8"
+                           LetterSpacing="2"
+                           Foreground="{DynamicResource MwMag}"
+                           Margin="0,2,0,0" />
+            </StackPanel>
 
-                <!-- Center: FLOWFORGE brand + filename -->
-                <StackPanel Orientation="Horizontal" Spacing="0"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center">
-                    <TextBlock Text="FLOWFORGE"
-                               FontWeight="ExtraBold"
+            <!-- 2. Separator -->
+            <Border Grid.Column="2"
+                    Width="1" Height="26"
+                    Background="{DynamicResource MwIronDark}"
+                    VerticalAlignment="Center"
+                    Margin="16,0" />
+
+            <!-- 3. Pipeline path -->
+            <StackPanel Grid.Column="3"
+                        Orientation="Horizontal"
+                        VerticalAlignment="Center"
+                        Spacing="0">
+                <TextBlock Text="/pipelines/"
+                           FontFamily="{DynamicResource MwMono}"
+                           FontSize="11"
+                           Foreground="{DynamicResource MwFaint}" />
+                <TextBlock Text="{Binding Title}"
+                           FontFamily="{DynamicResource MwMono}"
+                           FontSize="11"
+                           Foreground="{DynamicResource MwBone}" />
+            </StackPanel>
+
+            <!-- 4. Flex spacer -->
+            <Border Grid.Column="4" />
+
+            <!-- 5. File ops (compact icons) -->
+            <StackPanel Grid.Column="5"
+                        Orientation="Horizontal"
+                        Spacing="2"
+                        VerticalAlignment="Center">
+                <Button Command="{Binding NewCommand}"
+                        ToolTip.Tip="New Pipeline (Ctrl+N)"
+                        Classes="toolbarIcon">
+                    <PathIcon Data="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"
+                              Foreground="{DynamicResource MwAsh}"
+                              Width="15" Height="15" />
+                </Button>
+                <Button Command="{Binding OpenCommand}"
+                        ToolTip.Tip="Open Pipeline (Ctrl+O)"
+                        Classes="toolbarIcon">
+                    <PathIcon Data="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z"
+                              Foreground="{DynamicResource MwAsh}"
+                              Width="15" Height="15" />
+                </Button>
+                <Button Command="{Binding SaveCommand}"
+                        ToolTip.Tip="Save (Ctrl+S)"
+                        Classes="toolbarIcon">
+                    <PathIcon Data="M15,9H5V5H15M12,19A3,3 0 0,1 9,16A3,3 0 0,1 12,13A3,3 0 0,1 15,16A3,3 0 0,1 12,19M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V7L17,3Z"
+                              Foreground="{DynamicResource MwAsh}"
+                              Width="15" Height="15" />
+                </Button>
+                <Button x:Name="RecentButton"
+                        Classes="toolbarIcon"
+                        ToolTip.Tip="Recent Pipelines">
+                    <Button.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedLeft" />
+                    </Button.Flyout>
+                    <PathIcon Data="M12,6V9L16,5L12,1V4A8,8 0 0,0 4,12C4,13.57 4.46,15.03 5.24,16.26L6.7,14.8C6.25,13.97 6,13 6,12A6,6 0 0,1 12,6M18.76,7.74L17.3,9.2C17.74,10.04 18,11 18,12A6,6 0 0,1 12,18V15L8,19L12,23V20A8,8 0 0,0 20,12C20,10.43 19.54,8.97 18.76,7.74Z"
+                              Foreground="{DynamicResource MwAsh}"
+                              Width="15" Height="15" />
+                </Button>
+            </StackPanel>
+
+            <Border Grid.Column="6"
+                    Width="1" Height="24"
+                    Background="{DynamicResource MwIronDark}"
+                    VerticalAlignment="Center"
+                    Margin="8,0" />
+
+            <!-- 7. Undo/Redo/Fit -->
+            <StackPanel Grid.Column="7"
+                        Orientation="Horizontal"
+                        Spacing="2"
+                        VerticalAlignment="Center">
+                <Button Classes="toolbarIcon"
+                        Command="{Binding UndoCommand}"
+                        ToolTip.Tip="Undo (Ctrl+Z)">
+                    <PathIcon Data="M12.5,8C9.85,8 7.45,9.16 5.86,11L3,8V16H11L7.9,12.9C9.09,11.84 10.73,11.19 12.5,11.19C15.49,11.19 18.04,13.18 18.86,16L21.73,15.14C20.6,11.14 16.86,8 12.5,8Z"
+                              Foreground="{DynamicResource MwAsh}"
+                              Width="15" Height="15" />
+                </Button>
+                <Button Classes="toolbarIcon"
+                        Command="{Binding RedoCommand}"
+                        ToolTip.Tip="Redo (Ctrl+Y)">
+                    <PathIcon Data="M18.14,11C16.55,9.16 14.15,8 11.5,8C7.14,8 3.4,11.14 2.27,15.14L5.14,16C5.96,13.18 8.5,11.19 11.5,11.19C13.27,11.19 14.91,11.84 16.1,12.9L13,16H21V8L18.14,11Z"
+                              Foreground="{DynamicResource MwAsh}"
+                              Width="15" Height="15" />
+                </Button>
+                <Button Classes="toolbarIcon"
+                        Click="OnFitToScreenClick"
+                        ToolTip.Tip="Fit to Screen (Ctrl+0)">
+                    <PathIcon Data="M3,3H9V5H5V9H3M3,21V15H5V19H9V21M21,3V9H19V5H15V3M21,21H15V19H19V15H21"
+                              Foreground="{DynamicResource MwAsh}"
+                              Width="15" Height="15" />
+                </Button>
+            </StackPanel>
+
+            <Border Grid.Column="8"
+                    Width="1" Height="24"
+                    Background="{DynamicResource MwIronDark}"
+                    VerticalAlignment="Center"
+                    Margin="8,0" />
+
+            <!-- 9. Live stats (stn / pipe / src) -->
+            <StackPanel Grid.Column="9"
+                        Orientation="Horizontal"
+                        Spacing="16"
+                        VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                    <TextBlock Text="STN"
+                               FontFamily="{DynamicResource MwMono}"
+                               FontSize="9"
+                               LetterSpacing="1.8"
+                               Foreground="{DynamicResource MwFaint}" />
+                    <TextBlock Text="{Binding Editor.Nodes.Count, FallbackValue=0}"
+                               FontFamily="{DynamicResource MwMono}"
+                               FontSize="10" FontWeight="SemiBold"
+                               Foreground="{DynamicResource MwBone}" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                    <TextBlock Text="PIPE"
+                               FontFamily="{DynamicResource MwMono}"
+                               FontSize="9"
+                               LetterSpacing="1.8"
+                               Foreground="{DynamicResource MwFaint}" />
+                    <TextBlock Text="{Binding Editor.Connections.Count, FallbackValue=0}"
+                               FontFamily="{DynamicResource MwMono}"
+                               FontSize="10" FontWeight="SemiBold"
+                               Foreground="{DynamicResource MwBone}" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                    <TextBlock Text="SRC"
+                               FontFamily="{DynamicResource MwMono}"
+                               FontSize="9"
+                               LetterSpacing="1.8"
+                               Foreground="{DynamicResource MwFaint}" />
+                    <TextBlock Text="—"
+                               FontFamily="{DynamicResource MwMono}"
+                               FontSize="10" FontWeight="SemiBold"
+                               Foreground="{DynamicResource MwBone}" />
+                </StackPanel>
+            </StackPanel>
+
+            <Border Grid.Column="10"
+                    Width="1" Height="24"
+                    Background="{DynamicResource MwIronDark}"
+                    VerticalAlignment="Center"
+                    Margin="12,0,8,0" />
+
+            <!-- 11. Dry run + Ignite/Quench + theme + help -->
+            <StackPanel Grid.Column="11"
+                        Orientation="Horizontal"
+                        Spacing="8"
+                        VerticalAlignment="Center">
+
+                <Button Command="{Binding DryRunCommand}"
+                        Classes="ghost"
+                        ToolTip.Tip="Preview — simulate run without changing files">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="◐" FontSize="13" VerticalAlignment="Center" />
+                        <TextBlock Text="DRY RUN" VerticalAlignment="Center" LetterSpacing="1.3" />
+                    </StackPanel>
+                </Button>
+
+                <!-- DEMO: toggles the running-state visual (heat pulse, mercury
+                     droplets, LIVE pills) without executing any file I/O. Button
+                     disabled while a real pipeline is running so the two states
+                     can't fight for control. -->
+                <Button Command="{Binding ToggleDemoModeCommand}"
+                        IsEnabled="{Binding !ExecutionLog.IsRunning}"
+                        ToolTip.Tip="Demo — toggle the running visuals without executing files">
+                    <Button.Styles>
+                        <Style Selector="Button">
+                            <Setter Property="Background" Value="Transparent" />
+                            <Setter Property="Foreground" Value="{DynamicResource MwAsh}" />
+                            <Setter Property="BorderBrush" Value="{DynamicResource MwIronDark}" />
+                            <Setter Property="BorderThickness" Value="1" />
+                            <Setter Property="FontFamily" Value="{DynamicResource MwDisplay}" />
+                            <Setter Property="FontWeight" Value="SemiBold" />
+                            <Setter Property="FontSize" Value="13" />
+                            <Setter Property="Padding" Value="14,6" />
+                        </Style>
+                        <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                            <Setter Property="Background" Value="{DynamicResource MwPanelHi}" />
+                        </Style>
+                    </Button.Styles>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <!-- Off: circle outline; On: filled cyan dot -->
+                        <Ellipse Width="9" Height="9"
+                                 Stroke="{DynamicResource MwAsh}"
+                                 StrokeThickness="1.4"
+                                 IsVisible="{Binding !IsDemoMode}"
+                                 VerticalAlignment="Center" />
+                        <Ellipse Width="9" Height="9"
+                                 Fill="{DynamicResource MwCyan}"
+                                 IsVisible="{Binding IsDemoMode}"
+                                 VerticalAlignment="Center">
+                            <Ellipse.Effect>
+                                <DropShadowEffect BlurRadius="8" Color="#2EF0FF" OffsetX="0" OffsetY="0" />
+                            </Ellipse.Effect>
+                        </Ellipse>
+                        <TextBlock Text="DEMO"
+                                   IsVisible="{Binding !IsDemoMode}"
+                                   VerticalAlignment="Center"
+                                   LetterSpacing="1.3" />
+                        <TextBlock Text="DEMO ON"
+                                   IsVisible="{Binding IsDemoMode}"
+                                   Foreground="{DynamicResource MwCyan}"
+                                   VerticalAlignment="Center"
+                                   LetterSpacing="1.3" />
+                    </StackPanel>
+                </Button>
+
+                <!-- IGNITE (hidden while running) -->
+                <Button Command="{Binding RunCommand}"
+                        Classes="accent"
+                        IsVisible="{Binding !ExecutionLog.IsRunning}"
+                        ToolTip.Tip="Ignite — run the pipeline">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="▶" FontSize="11" VerticalAlignment="Center" />
+                        <TextBlock Text="IGNITE" VerticalAlignment="Center" LetterSpacing="1.3" />
+                    </StackPanel>
+                </Button>
+
+                <!-- QUENCH (only while running) -->
+                <Button Command="{Binding CancelCommand}"
+                        Classes="quench"
+                        IsVisible="{Binding ExecutionLog.IsRunning}"
+                        ToolTip.Tip="Quench — stop execution">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="■" FontSize="11" VerticalAlignment="Center" />
+                        <TextBlock Text="QUENCH" VerticalAlignment="Center" LetterSpacing="1.3" />
+                    </StackPanel>
+                </Button>
+
+                <Button Classes="toolbarIcon"
+                        ToolTip.Tip="Keyboard Shortcuts (F1)"
+                        Click="OnShowShortcutsClick">
+                    <TextBlock Text="?"
+                               FontWeight="Bold"
                                FontSize="14"
-                               LetterSpacing="0.8"
-                               Foreground="{DynamicResource ForgeAccent}" />
-                    <TextBlock Text=" — "
-                               FontSize="12"
-                               Foreground="{DynamicResource ForgeTextMuted}"
+                               Foreground="{DynamicResource MwAsh}"
+                               HorizontalAlignment="Center"
                                VerticalAlignment="Center" />
-                    <TextBlock Text="{Binding Title}"
-                               Foreground="{DynamicResource ForgeTextSecondary}"
-                               VerticalAlignment="Center"
-                               FontSize="12"
-                               FontWeight="Normal" />
-                </StackPanel>
-
-                <!-- Right: Preview + Run + shortcuts -->
-                <StackPanel Orientation="Horizontal" Spacing="8"
-                            HorizontalAlignment="Right"
-                            VerticalAlignment="Center">
-                    <!-- Recent -->
-                    <Button x:Name="RecentButton"
-                            Classes="toolbarIcon"
-                            ToolTip.Tip="Recent Pipelines">
-                        <Button.Flyout>
-                            <MenuFlyout Placement="BottomEdgeAlignedLeft" />
-                        </Button.Flyout>
-                        <PathIcon Data="M12,6V9L16,5L12,1V4A8,8 0 0,0 4,12C4,13.57 4.46,15.03 5.24,16.26L6.7,14.8C6.25,13.97 6,13 6,12A6,6 0 0,1 12,6M18.76,7.74L17.3,9.2C17.74,10.04 18,11 18,12A6,6 0 0,1 12,18V15L8,19L12,23V20A8,8 0 0,0 20,12C20,10.43 19.54,8.97 18.76,7.74Z"
-                                  Foreground="{DynamicResource ForgeTextSecondary}"
-                                  Width="15" Height="15" />
-                    </Button>
-
-                    <!-- Separator -->
-                    <Border Width="1" Height="24"
-                            Background="{DynamicResource ForgeBorder}"
-                            VerticalAlignment="Center" />
-
-                    <!-- Preview -->
-                    <Button Command="{Binding DryRunCommand}"
-                            Classes="preview"
-                            ToolTip.Tip="Preview — simulate run without changing any files"
-                            Padding="12,6"
-                            CornerRadius="12">
-                        <StackPanel Orientation="Horizontal" Spacing="5">
-                            <PathIcon Data="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z"
-                                      Foreground="{DynamicResource ForgeAccent}"
-                                      Width="14" Height="14" />
-                            <TextBlock Text="Preview" VerticalAlignment="Center" FontSize="12" />
-                        </StackPanel>
-                    </Button>
-                    <!-- Run -->
-                    <Button Command="{Binding RunCommand}"
-                            Classes="accent"
-                            ToolTip.Tip="Run Pipeline"
-                            Padding="14,6"
-                            CornerRadius="12"
-                            FontWeight="Bold">
-                        <StackPanel Orientation="Horizontal" Spacing="5">
-                            <PathIcon Data="M8,5.14V19.14L19,12.14L8,5.14Z"
-                                      Foreground="#08070a"
-                                      Width="14" Height="14" />
-                            <TextBlock Text="Run" VerticalAlignment="Center" FontSize="12" />
-                        </StackPanel>
-                    </Button>
-                    <!-- Stop (only when running) -->
-                    <Button Command="{Binding CancelCommand}"
-                            IsVisible="{Binding ExecutionLog.IsRunning}"
-                            ToolTip.Tip="Stop Execution"
-                            Padding="12,6">
-                        <StackPanel Orientation="Horizontal" Spacing="5">
-                            <PathIcon Data="M18,18H6V6H18V18Z"
-                                      Foreground="{DynamicResource ForgeError}"
-                                      Width="12" Height="12" />
-                            <TextBlock Text="Stop"
-                                       Foreground="{DynamicResource ForgeError}"
-                                       VerticalAlignment="Center" FontSize="12" />
-                        </StackPanel>
-                    </Button>
-
-                    <!-- Theme toggle -->
-                    <Button Classes="toolbarIcon"
-                            Command="{Binding ToggleThemeCommand}"
-                            ToolTip.Tip="Toggle Light/Dark Theme">
-                        <TextBlock Text="{Binding ThemeIcon}"
-                                   FontSize="16"
-                                   Foreground="{DynamicResource ForgeTextSecondary}"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center" />
-                    </Button>
-
-                    <!-- Shortcuts -->
-                    <Button Classes="toolbarIcon"
-                            ToolTip.Tip="Keyboard Shortcuts (F1)"
-                            Click="OnShowShortcutsClick">
-                        <TextBlock Text="?"
-                                   FontWeight="Bold"
-                                   FontSize="14"
-                                   Foreground="{DynamicResource ForgeTextSecondary}"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center" />
-                    </Button>
-                </StackPanel>
-            </Grid>
-        </Border>
-    </DockPanel>
+                </Button>
+            </StackPanel>
+        </Grid>
+    </Border>
 </UserControl>

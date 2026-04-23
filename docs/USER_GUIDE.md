@@ -193,17 +193,23 @@ Copies or moves processed files to a destination.
 
 ## Running Pipelines
 
-### Preview (Dry Run)
+The top-right toolbar carries three run-related buttons — **Dry Run**, **Ignite**, and (while a run is in flight) **Quench** — plus a **Demo** toggle.
 
-Click **Preview** to simulate the pipeline without touching any files. The execution log shows what *would* happen — useful for verifying your pipeline before committing to changes.
+### Dry Run (Preview)
 
-### Run
+Click **Dry Run** to simulate the pipeline without touching any files. The execution log shows what *would* happen — useful for verifying your pipeline before committing to changes.
 
-Click **Run** to execute the pipeline for real. Files are processed according to the node configuration. Progress is shown live in the execution log.
+### Ignite (Run)
 
-### Cancel
+Click **Ignite** to execute the pipeline for real. Files are processed according to the node configuration. Progress is shown live in the execution log, and each running station glows in its category colour while mercury beads travel the chrome pipes.
 
-Click **Cancel** during execution to stop processing. Files already processed are not rolled back.
+### Quench (Cancel)
+
+While a pipeline is running, the Ignite button is replaced by **Quench**. Click it to stop processing. Files already processed are not rolled back.
+
+### Demo
+
+The **Demo** button on the toolbar toggles the "forge lit" running visuals (station aura, pipe liquid, traveling mercury beads) on every station and pipe without actually executing a real pipeline. It is disabled while a real run is in flight, and is useful for previewing how a graph will look during execution.
 
 ## Saving and Loading
 

@@ -132,6 +132,21 @@ public class FolderInputNodeTests
         act.Should().Throw<NodeConfigurationException>();
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("\t")]
+    public void Empty_or_whitespace_path_throws_friendly_configuration_error(string emptyPath)
+    {
+        var node = new FolderInputNode(NullLogger<FolderInputNode>.Instance);
+        Dictionary<string, JsonElement> config = MakeConfig(new { path = emptyPath });
+
+        Action act = () => node.Configure(config);
+
+        act.Should().Throw<NodeConfigurationException>()
+            .WithMessage("*source folder*");
+    }
+
     [Fact]
     public async Task Overlapping_patterns_do_not_produce_duplicates()
     {
@@ -188,5 +203,41 @@ public class FolderInputNodeTests
         var fileNames = jobs.Select(j => Path.GetFileName(j.OriginalPath)).ToList();
         fileNames.Should().BeInAscendingOrder(StringComparer.OrdinalIgnoreCase);
         fileNames.Should().HaveCount(4);
+    }
+
+    [Fact]
+    public async Task Path_with_trailing_separator_still_enumerates_files()
+    {
+        // A user-typed trailing separator must not double the prefix in
+        // the containment check; otherwise every enumerated file resolves
+        // "outside source root" and the node yields nothing.
+        using var dir = new TempDirectory();
+        dir.CreateFiles("a.txt", "b.txt", "c.txt");
+
+        string pathWithTrailingSeparator = dir.Path + Path.DirectorySeparatorChar;
+
+        var node = new FolderInputNode(NullLogger<FolderInputNode>.Instance);
+        node.Configure(MakeConfig(new { path = pathWithTrailingSeparator }));
+
+        List<FileJob> jobs = await CollectJobsAsync(node);
+        jobs.Should().HaveCount(3);
+    }
+
+    [Fact]
+    public async Task Recursive_with_trailing_separator_enumerates_subdirectory_files()
+    {
+        using var dir = new TempDirectory();
+        dir.CreateFiles("top.txt");
+        Directory.CreateDirectory(Path.Combine(dir.Path, "sub"));
+        File.WriteAllText(Path.Combine(dir.Path, "sub", "nested.txt"), string.Empty);
+
+        string pathWithTrailingSeparator = dir.Path + Path.DirectorySeparatorChar;
+
+        var node = new FolderInputNode(NullLogger<FolderInputNode>.Instance);
+        node.Configure(MakeConfig(new { path = pathWithTrailingSeparator, recursive = true }));
+
+        List<FileJob> jobs = await CollectJobsAsync(node);
+        jobs.Select(j => Path.GetFileName(j.OriginalPath))
+            .Should().BeEquivalentTo(new[] { "top.txt", "nested.txt" });
     }
 }

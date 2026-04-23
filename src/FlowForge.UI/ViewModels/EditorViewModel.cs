@@ -110,8 +110,6 @@ public partial class EditorViewModel : ViewModelBase
                 {
                     connector.Detach();
                 }
-
-                node.Detach();
             }
         }
 
@@ -163,8 +161,6 @@ public partial class EditorViewModel : ViewModelBase
             {
                 connector.Detach();
             }
-
-            node.Detach();
         }
     }
 

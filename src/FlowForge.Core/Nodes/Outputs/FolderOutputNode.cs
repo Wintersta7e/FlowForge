@@ -50,6 +50,11 @@ public class FolderOutputNode : IOutputNode
         _path = pathElement.GetString()
             ?? throw new NodeConfigurationException("FolderOutput: 'path' must be a non-null string.");
 
+        if (string.IsNullOrWhiteSpace(_path))
+        {
+            throw new NodeConfigurationException("FolderOutput: 'path' is empty — set a destination folder on the Destination station.");
+        }
+
         if (config.TryGetValue("mode", out JsonElement modeElement))
         {
             _mode = modeElement.GetString() ?? "copy";
