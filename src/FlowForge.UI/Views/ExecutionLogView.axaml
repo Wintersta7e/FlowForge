@@ -107,7 +107,7 @@
                         <Grid>
                             <!-- Molten fill -->
                             <ProgressBar Value="{Binding Progress}"
-                                         Minimum="0" Maximum="1"
+                                         Minimum="0" Maximum="100"
                                          IsIndeterminate="{Binding IsIndeterminate}"
                                          Height="5"
                                          Background="Transparent"
