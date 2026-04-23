@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -96,6 +97,12 @@ public partial class MainWindowViewModel : ViewModelBase
         // canvas can switch into its "forge lit" running visual (heat pulse,
         // pipe liquid, port glow).
         ExecutionLog.PropertyChanged += OnExecutionLogPropertyChanged;
+
+        // Seed running-state on any station/pipe added after the initial
+        // toggle (loading a template, undoing a removal, finishing a drag) so
+        // new elements match the surrounding canvas rather than staying idle.
+        Editor.Nodes.CollectionChanged += OnEditorRunningCollectionChanged;
+        Editor.Connections.CollectionChanged += OnEditorRunningCollectionChanged;
     }
 
     private void OnExecutionLogPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
@@ -119,6 +126,16 @@ public partial class MainWindowViewModel : ViewModelBase
     /// </summary>
     private void UpdateRunningVisual()
     {
+        // May be invoked off the UI thread (e.g. ExecutionLog.IsRunning flips
+        // in the finally of an async pipeline whose continuation resumes on a
+        // thread-pool thread). Bounce to the dispatcher before touching
+        // ObservableCollection-backed VMs.
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(UpdateRunningVisual);
+            return;
+        }
+
         bool running = ExecutionLog.IsRunning || IsDemoMode;
         foreach (PipelineNodeViewModel node in Editor.Nodes)
         {
@@ -128,6 +145,33 @@ public partial class MainWindowViewModel : ViewModelBase
         foreach (PipelineConnectionViewModel connection in Editor.Connections)
         {
             connection.IsRunning = running;
+        }
+    }
+
+    private void OnEditorRunningCollectionChanged(object? sender, NotifyCollectionChangedEventArgs args)
+    {
+        if (args.NewItems is null)
+        {
+            return;
+        }
+
+        bool running = ExecutionLog.IsRunning || IsDemoMode;
+        if (!running)
+        {
+            return;
+        }
+
+        foreach (object? item in args.NewItems)
+        {
+            switch (item)
+            {
+                case PipelineNodeViewModel node:
+                    node.IsRunning = true;
+                    break;
+                case PipelineConnectionViewModel connection:
+                    connection.IsRunning = true;
+                    break;
+            }
         }
     }
 
@@ -423,7 +467,11 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         finally
         {
-            ExecutionLog.IsRunning = false;
+            // RunAsync's awaited continuation can resume on a thread-pool
+            // thread, so the IsRunning setter (and its PropertyChanged cascade
+            // into XAML bindings + our visual handlers) must be marshalled
+            // back to the UI thread.
+            Dispatcher.UIThread.Post(() => ExecutionLog.IsRunning = false);
             Interlocked.Exchange(ref _cts, null)?.Dispose();
         }
     }
