@@ -5,52 +5,114 @@
              xmlns:vm="using:FlowForge.UI.ViewModels"
              xmlns:views="using:FlowForge.UI.Views"
              mc:Ignorable="d"
-             d:DesignWidth="290" d:DesignHeight="600"
+             d:DesignWidth="300" d:DesignHeight="720"
              x:Class="FlowForge.UI.Views.PropertiesView"
              x:DataType="vm:PropertiesViewModel">
 
-    <DockPanel>
-        <Border DockPanel.Dock="Top"
-                Padding="14,14,14,10"
-                BorderBrush="{DynamicResource ForgeBorder}"
-                BorderThickness="0,0,0,1">
-            <StackPanel Spacing="8">
-                <TextBlock Text="PROPERTIES"
-                           FontSize="10"
-                           FontWeight="Bold"
-                           Foreground="{DynamicResource ForgeTextMuted}" />
+    <Border Background="{DynamicResource MwPanelBody}"
+            BorderBrush="{DynamicResource MwIronDark}"
+            BorderThickness="1,0,0,0">
+        <DockPanel>
+
+            <!-- Header: // inspector eyebrow + selected node title -->
+            <StackPanel DockPanel.Dock="Top"
+                        Margin="22,18,22,0"
+                        Spacing="10">
+                <TextBlock Text="// INSPECTOR"
+                           FontFamily="{DynamicResource MwMono}"
+                           FontSize="9"
+                           LetterSpacing="3"
+                           Foreground="{DynamicResource MwCyan}" />
+
+                <!-- Selected node header row (icon well + title + code · sub) -->
                 <Border IsVisible="{Binding HasSelection}"
-                        Background="{Binding BadgeBackground}"
-                        CornerRadius="8"
-                        Padding="10,6">
-                    <TextBlock Text="{Binding SelectedNodeTitle}"
-                               FontSize="12"
-                               FontWeight="SemiBold"
-                               Foreground="{Binding BadgeForeground}" />
+                        BorderBrush="{DynamicResource MwIronDark}"
+                        BorderThickness="0,0,0,1"
+                        Padding="0,4,0,14">
+                    <Grid ColumnDefinitions="44,12,*">
+                        <Border Grid.Column="0"
+                                Width="44" Height="44"
+                                CornerRadius="3"
+                                BorderThickness="1"
+                                BorderBrush="{Binding MwNeonBrush}"
+                                BoxShadow="0 0 20 0 #66FFD080">
+                            <Border.Background>
+                                <RadialGradientBrush Center="0.3,0.2" GradientOrigin="0.3,0.2" RadiusX="0.9" RadiusY="0.9">
+                                    <GradientStop Offset="0" Color="#3a1808" />
+                                    <GradientStop Offset="1" Color="#0a0503" />
+                                </RadialGradientBrush>
+                            </Border.Background>
+                            <Viewbox Width="26" Height="26">
+                                <Path Data="{Binding MwIconGeometry}"
+                                      Stroke="{Binding MwNeonBrush}"
+                                      StrokeThickness="1.7"
+                                      StrokeLineCap="Round"
+                                      StrokeJoin="Round"
+                                      Width="40" Height="40" />
+                            </Viewbox>
+                        </Border>
+                        <StackPanel Grid.Column="2"
+                                    Orientation="Vertical"
+                                    Spacing="2"
+                                    VerticalAlignment="Center">
+                            <TextBlock Text="{Binding SelectedNodeTitle}"
+                                       FontFamily="{DynamicResource MwSerif}"
+                                       FontSize="26"
+                                       LineHeight="26"
+                                       Foreground="{DynamicResource MwBone}"
+                                       TextTrimming="CharacterEllipsis" />
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <TextBlock Text="{Binding MwCode}"
+                                           FontFamily="{DynamicResource MwMono}"
+                                           FontSize="9"
+                                           LetterSpacing="1.5"
+                                           Foreground="{Binding MwNeonBrush}" />
+                                <TextBlock Text="·"
+                                           FontFamily="{DynamicResource MwMono}"
+                                           FontSize="9"
+                                           Foreground="{Binding MwNeonBrush}" />
+                                <TextBlock Text="{Binding MwSub}"
+                                           FontFamily="{DynamicResource MwMono}"
+                                           FontSize="9"
+                                           LetterSpacing="1.5"
+                                           Foreground="{Binding MwNeonBrush}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
                 </Border>
             </StackPanel>
-        </Border>
 
-        <StackPanel IsVisible="{Binding !HasSelection}"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    Spacing="4"
-                    Margin="16">
-            <TextBlock Text="Select a node to edit its settings"
-                       FontSize="13"
-                       Foreground="{DynamicResource ForgeTextMuted}"
-                       HorizontalAlignment="Center"
-                       TextWrapping="Wrap"
-                       TextAlignment="Center" />
-        </StackPanel>
+            <!-- Empty state: centered serif italic prompt -->
+            <StackPanel IsVisible="{Binding !HasSelection}"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Spacing="4"
+                        Margin="24">
+                <TextBlock Text="Select a station to"
+                           FontFamily="{DynamicResource MwSerif}"
+                           FontSize="16"
+                           FontStyle="Italic"
+                           LineHeight="24"
+                           Foreground="{DynamicResource MwFaint}"
+                           HorizontalAlignment="Center" />
+                <TextBlock Text="tune its settings."
+                           FontFamily="{DynamicResource MwSerif}"
+                           FontSize="16"
+                           FontStyle="Italic"
+                           LineHeight="24"
+                           Foreground="{DynamicResource MwFaint}"
+                           HorizontalAlignment="Center" />
+            </StackPanel>
 
-        <ScrollViewer IsVisible="{Binding HasSelection}"
-                      Padding="10">
-            <ItemsControl ItemsSource="{Binding Fields}">
-                <ItemsControl.ItemTemplate>
-                    <views:ConfigFieldTemplateSelector />
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </ScrollViewer>
-    </DockPanel>
+            <!-- Fields list (unchanged — uses existing ConfigFieldTemplateSelector) -->
+            <ScrollViewer IsVisible="{Binding HasSelection}"
+                          Padding="16,8,16,18">
+                <ItemsControl ItemsSource="{Binding Fields}">
+                    <ItemsControl.ItemTemplate>
+                        <views:ConfigFieldTemplateSelector />
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </DockPanel>
+    </Border>
 </UserControl>

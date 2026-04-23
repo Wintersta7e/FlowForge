@@ -6,19 +6,56 @@
              xmlns:nodify="using:Nodify.Avalonia"
              xmlns:nodifyConn="using:Nodify.Avalonia.Connections"
              mc:Ignorable="d"
-             d:DesignWidth="600" d:DesignHeight="400"
+             d:DesignWidth="1000" d:DesignHeight="600"
              x:Class="FlowForge.UI.Views.CanvasView"
              x:DataType="vm:EditorViewModel">
 
     <Grid>
+        <!-- ═══ Canvas backdrop: forge ambience + cyberpunk grid ═══ -->
+        <!-- Base gradient wash (ember-orange at bottom, cyan/mag accents) -->
+        <Border>
+            <Border.Background>
+                <RadialGradientBrush Center="0.5,1.1" GradientOrigin="0.5,1.1" RadiusX="0.9" RadiusY="0.5">
+                    <GradientStop Offset="0" Color="#38FF5014" />
+                    <GradientStop Offset="0.6" Color="Transparent" />
+                </RadialGradientBrush>
+            </Border.Background>
+        </Border>
+        <Border>
+            <Border.Background>
+                <RadialGradientBrush Center="0.15,0.3" GradientOrigin="0.15,0.3" RadiusX="0.5" RadiusY="0.4">
+                    <GradientStop Offset="0" Color="#152EF0FF" />
+                    <GradientStop Offset="0.7" Color="Transparent" />
+                </RadialGradientBrush>
+            </Border.Background>
+        </Border>
+        <Border>
+            <Border.Background>
+                <RadialGradientBrush Center="0.85,0.7" GradientOrigin="0.85,0.7" RadiusX="0.5" RadiusY="0.4">
+                    <GradientStop Offset="0" Color="#10FF2E88" />
+                    <GradientStop Offset="0.7" Color="Transparent" />
+                </RadialGradientBrush>
+            </Border.Background>
+        </Border>
+        <!-- Linear base tint behind it all -->
+        <Border IsHitTestVisible="False">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                    <GradientStop Offset="0" Color="#04020a" />
+                    <GradientStop Offset="0.5" Color="#08060a" />
+                    <GradientStop Offset="1" Color="#0f0a08" />
+                </LinearGradientBrush>
+            </Border.Background>
+        </Border>
+
         <nodify:NodifyEditor x:Name="Editor"
                              ItemsSource="{Binding Nodes}"
                              Connections="{Binding Connections}"
                              PendingConnection="{Binding PendingConnection}"
                              ItemsDragStartedCommand="{Binding ItemsDragStartedCommand}"
                              ItemsDragCompletedCommand="{Binding ItemsDragCompletedCommand}"
-                             Background="{DynamicResource ForgeBg}"
-                             GridCellSize="20"
+                             Background="Transparent"
+                             GridCellSize="40"
                              DragDrop.AllowDrop="True">
 
             <nodify:NodifyEditor.Styles>
@@ -29,7 +66,6 @@
                     <Setter Property="Background" Value="Transparent" />
                     <Setter Property="Padding" Value="0" />
                 </Style>
-                <!-- Hide the selection highlight border from ItemContainer -->
                 <Style Selector="nodify|ItemContainer:selected">
                     <Setter Property="BorderThickness" Value="0" />
                     <Setter Property="Background" Value="Transparent" />
@@ -38,33 +74,243 @@
 
             <nodify:NodifyEditor.ItemTemplate>
                 <DataTemplate x:DataType="vm:PipelineNodeViewModel">
-                    <Grid>
+                    <!-- ═══ Molten Works cast-iron station ═══ -->
+                    <Grid Width="200" Height="130">
+
+                        <!-- Iron body (200x130, rounded 3px, iron gradient) -->
+                        <Border CornerRadius="3"
+                                Background="{DynamicResource MwIronBody}"
+                                BorderBrush="#050303"
+                                BorderThickness="1"
+                                BoxShadow="0 6 16 0 #B3000000">
+                            <!-- Inset highlight on top + subtle bottom shadow -->
+                            <Border CornerRadius="3"
+                                    BorderThickness="0,1,0,1"
+                                    ClipToBounds="True">
+                                <Border.BorderBrush>
+                                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                                        <GradientStop Offset="0" Color="#1EFFC896" />
+                                        <GradientStop Offset="0.02" Color="Transparent" />
+                                        <GradientStop Offset="0.98" Color="Transparent" />
+                                        <GradientStop Offset="1" Color="#B3000000" />
+                                    </LinearGradientBrush>
+                                </Border.BorderBrush>
+                            </Border>
+                        </Border>
+
+                        <!-- Rivets at 4 corners (6px, inset 7px) -->
+                        <Ellipse Width="6" Height="6"
+                                 HorizontalAlignment="Left" VerticalAlignment="Top"
+                                 Margin="7,7,0,0">
+                            <Ellipse.Fill>
+                                <RadialGradientBrush Center="0.3,0.3" GradientOrigin="0.3,0.3" RadiusX="0.7" RadiusY="0.7">
+                                    <GradientStop Offset="0" Color="#8a7868" />
+                                    <GradientStop Offset="0.75" Color="#2a1a12" />
+                                </RadialGradientBrush>
+                            </Ellipse.Fill>
+                        </Ellipse>
+                        <Ellipse Width="6" Height="6"
+                                 HorizontalAlignment="Right" VerticalAlignment="Top"
+                                 Margin="0,7,7,0">
+                            <Ellipse.Fill>
+                                <RadialGradientBrush Center="0.3,0.3" GradientOrigin="0.3,0.3" RadiusX="0.7" RadiusY="0.7">
+                                    <GradientStop Offset="0" Color="#8a7868" />
+                                    <GradientStop Offset="0.75" Color="#2a1a12" />
+                                </RadialGradientBrush>
+                            </Ellipse.Fill>
+                        </Ellipse>
+                        <Ellipse Width="6" Height="6"
+                                 HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                                 Margin="7,0,0,7">
+                            <Ellipse.Fill>
+                                <RadialGradientBrush Center="0.3,0.3" GradientOrigin="0.3,0.3" RadiusX="0.7" RadiusY="0.7">
+                                    <GradientStop Offset="0" Color="#8a7868" />
+                                    <GradientStop Offset="0.75" Color="#2a1a12" />
+                                </RadialGradientBrush>
+                            </Ellipse.Fill>
+                        </Ellipse>
+                        <Ellipse Width="6" Height="6"
+                                 HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                 Margin="0,0,7,7">
+                            <Ellipse.Fill>
+                                <RadialGradientBrush Center="0.3,0.3" GradientOrigin="0.3,0.3" RadiusX="0.7" RadiusY="0.7">
+                                    <GradientStop Offset="0" Color="#8a7868" />
+                                    <GradientStop Offset="0.75" Color="#2a1a12" />
+                                </RadialGradientBrush>
+                            </Ellipse.Fill>
+                        </Ellipse>
+
+                        <!-- Top code strip: code (left) + LIVE/IDLE pill (right) -->
+                        <Grid Margin="12,6,12,0"
+                              VerticalAlignment="Top"
+                              Height="18"
+                              ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0"
+                                       Text="{Binding MwCode}"
+                                       FontFamily="{DynamicResource MwMono}"
+                                       FontSize="8" FontWeight="SemiBold"
+                                       LetterSpacing="1.6"
+                                       Foreground="{Binding MwNeonBrush}"
+                                       VerticalAlignment="Center" />
+                            <StackPanel Grid.Column="1"
+                                        Orientation="Horizontal"
+                                        Spacing="4"
+                                        VerticalAlignment="Center">
+                                <Ellipse Width="5" Height="5"
+                                         VerticalAlignment="Center"
+                                         IsVisible="{Binding IsRunning}"
+                                         Fill="{Binding MwNeonBrush}" />
+                                <Ellipse Width="5" Height="5"
+                                         VerticalAlignment="Center"
+                                         IsVisible="{Binding !IsRunning}"
+                                         Fill="{DynamicResource MwFaint}" />
+                                <TextBlock Text="LIVE"
+                                           IsVisible="{Binding IsRunning}"
+                                           FontFamily="{DynamicResource MwMono}"
+                                           FontSize="8"
+                                           LetterSpacing="1.6"
+                                           Foreground="{Binding MwNeonBrush}"
+                                           VerticalAlignment="Center" />
+                                <TextBlock Text="IDLE"
+                                           IsVisible="{Binding !IsRunning}"
+                                           FontFamily="{DynamicResource MwMono}"
+                                           FontSize="8"
+                                           LetterSpacing="1.6"
+                                           Foreground="{DynamicResource MwFaint}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Main body: icon well + text column -->
+                        <Grid Margin="14,28,38,16"
+                              ColumnDefinitions="54,12,*">
+                            <!-- Icon well -->
+                            <Border Grid.Column="0"
+                                    Width="54" Height="54"
+                                    CornerRadius="3"
+                                    BorderThickness="1"
+                                    BorderBrush="#050303"
+                                    VerticalAlignment="Top">
+                                <Border.Background>
+                                    <RadialGradientBrush Center="0.3,0.2" GradientOrigin="0.3,0.2" RadiusX="0.9" RadiusY="0.9">
+                                        <GradientStop Offset="0" Color="#3a1808" />
+                                        <GradientStop Offset="1" Color="#0a0503" />
+                                    </RadialGradientBrush>
+                                </Border.Background>
+                                <Viewbox Width="30" Height="30">
+                                    <Path Data="{Binding MwIconGeometry}"
+                                          Stroke="{Binding MwNeonBrush}"
+                                          StrokeThickness="1.7"
+                                          StrokeLineCap="Round"
+                                          StrokeJoin="Round"
+                                          Width="40" Height="40" />
+                                </Viewbox>
+                            </Border>
+
+                            <!-- Text column -->
+                            <StackPanel Grid.Column="2"
+                                        Orientation="Vertical"
+                                        Spacing="3"
+                                        VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Title}"
+                                           FontFamily="{DynamicResource MwSerif}"
+                                           FontSize="18"
+                                           FontStyle="Italic"
+                                           LineHeight="18"
+                                           Foreground="{DynamicResource MwBone}"
+                                           TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding MwSub}"
+                                           FontFamily="{DynamicResource MwMono}"
+                                           FontSize="9"
+                                           LetterSpacing="1"
+                                           Foreground="{DynamicResource MwIronLite}"
+                                           TextTrimming="CharacterEllipsis" />
+                                <!-- Config preview -->
+                                <Border Padding="6,3"
+                                        Background="{DynamicResource MwInkA45}"
+                                        BorderThickness="2,0,0,0"
+                                        BorderBrush="{Binding MwNeonBrush}"
+                                        IsVisible="{Binding ConfigPreview, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                        Margin="0,2,0,0">
+                                    <TextBlock Text="{Binding ConfigPreview}"
+                                               FontFamily="{DynamicResource MwMono}"
+                                               FontSize="9.5"
+                                               Foreground="{DynamicResource MwBone}"
+                                               TextTrimming="CharacterEllipsis"
+                                               MaxWidth="95" />
+                                </Border>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Right-side gauge strip: T / p / Δ -->
+                        <StackPanel Orientation="Vertical"
+                                    Spacing="4"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center"
+                                    Margin="0,30,4,12"
+                                    Width="26">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="T"
+                                           FontFamily="{DynamicResource MwMono}"
+                                           FontSize="7"
+                                           Foreground="{DynamicResource MwFaint}" />
+                                <TextBlock Grid.Column="1" Text="86"
+                                           FontFamily="{DynamicResource MwMono}"
+                                           FontSize="7"
+                                           Foreground="{DynamicResource MwIronLite}" />
+                            </Grid>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="p"
+                                           FontFamily="{DynamicResource MwMono}"
+                                           FontSize="7"
+                                           Foreground="{DynamicResource MwFaint}" />
+                                <TextBlock Grid.Column="1" Text="72"
+                                           FontFamily="{DynamicResource MwMono}"
+                                           FontSize="7"
+                                           Foreground="{DynamicResource MwIronLite}" />
+                            </Grid>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="Δ"
+                                           FontFamily="{DynamicResource MwMono}"
+                                           FontSize="7"
+                                           Foreground="{DynamicResource MwFaint}" />
+                                <TextBlock Grid.Column="1" Text="43"
+                                           FontFamily="{DynamicResource MwMono}"
+                                           FontSize="7"
+                                           Foreground="{DynamicResource MwIronLite}" />
+                            </Grid>
+                        </StackPanel>
+
                         <!-- Input connectors (left edge) -->
                         <ItemsControl ItemsSource="{Binding Input}"
                                       HorizontalAlignment="Left"
                                       VerticalAlignment="Center"
-                                      Margin="-7,0,0,0"
+                                      Margin="-8,0,0,0"
                                       IsHitTestVisible="True"
                                       ZIndex="5">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:PipelineConnectorViewModel">
                                     <nodifyConn:Connector Anchor="{Binding Anchor, Mode=OneWayToSource}"
                                                           IsConnected="{Binding IsConnected}"
-                                                          Width="14" Height="14"
+                                                          Width="12" Height="18"
                                                           Cursor="Hand">
                                         <nodifyConn:Connector.Template>
                                             <ControlTemplate>
-                                                <Border Width="10" Height="10"
-                                                        Background="{DynamicResource ForgeSurface}"
-                                                        BorderBrush="{Binding ConnectorBrush}"
-                                                        BorderThickness="2"
-                                                        CornerRadius="2"
-                                                        RenderTransformOrigin="0.5,0.5"
-                                                        HorizontalAlignment="Center"
-                                                        VerticalAlignment="Center">
-                                                    <Border.RenderTransform>
-                                                        <RotateTransform Angle="45" />
-                                                    </Border.RenderTransform>
+                                                <Border Width="12" Height="18"
+                                                        CornerRadius="3,0,0,3"
+                                                        BorderBrush="#050303"
+                                                        BorderThickness="1">
+                                                    <Border.Background>
+                                                        <LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%">
+                                                            <GradientStop Offset="0" Color="#050303" />
+                                                            <GradientStop Offset="1" Color="#4a4a58" />
+                                                        </LinearGradientBrush>
+                                                    </Border.Background>
+                                                    <Ellipse Width="6" Height="6"
+                                                             HorizontalAlignment="Left"
+                                                             VerticalAlignment="Center"
+                                                             Margin="3,0,0,0"
+                                                             Fill="{DynamicResource MwChromeDk}" />
                                                 </Border>
                                             </ControlTemplate>
                                         </nodifyConn:Connector.Template>
@@ -72,77 +318,37 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-
-                        <!-- Node body -->
-                        <Border CornerRadius="16"
-                                Background="{Binding NodeBackground}"
-                                BorderBrush="{Binding NodeBorderBrush}"
-                                BorderThickness="1"
-                                Margin="6,0"
-                                ClipToBounds="True"
-                                MinWidth="160"
-                                MaxWidth="240">
-                            <StackPanel>
-                                <!-- Header -->
-                                <Border Padding="10,8"
-                                        Background="{Binding HeaderBrush}">
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <Border Width="26" Height="26" CornerRadius="8"
-                                                Background="{Binding NodeBorderBrush}">
-                                            <TextBlock Text="{Binding IconEmoji}"
-                                                       FontFamily="Segoe UI Emoji"
-                                                       FontSize="13"
-                                                       HorizontalAlignment="Center"
-                                                       VerticalAlignment="Center" />
-                                        </Border>
-                                        <TextBlock Text="{Binding Title}"
-                                                   FontSize="13"
-                                                   FontWeight="SemiBold"
-                                                   Foreground="{Binding CategoryBrush}"
-                                                   VerticalAlignment="Center" />
-                                    </StackPanel>
-                                </Border>
-                                <!-- Subtle separator -->
-                                <Border Height="1" Opacity="0.05" Background="White" />
-                                <!-- Body: config preview -->
-                                <Border Padding="10,6,10,8"
-                                        IsVisible="{Binding ConfigPreview, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                                    <TextBlock Text="{Binding ConfigPreview}"
-                                               FontFamily="Cascadia Mono,Consolas,monospace"
-                                               FontSize="11"
-                                               Foreground="{DynamicResource ForgeTextMuted}"
-                                               TextTrimming="CharacterEllipsis"
-                                               MaxWidth="200" />
-                                </Border>
-                            </StackPanel>
-                        </Border>
 
                         <!-- Output connectors (right edge) -->
                         <ItemsControl ItemsSource="{Binding Output}"
                                       HorizontalAlignment="Right"
                                       VerticalAlignment="Center"
-                                      Margin="0,0,-7,0"
+                                      Margin="0,0,-8,0"
                                       IsHitTestVisible="True"
                                       ZIndex="5">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:PipelineConnectorViewModel">
                                     <nodifyConn:Connector Anchor="{Binding Anchor, Mode=OneWayToSource}"
                                                           IsConnected="{Binding IsConnected}"
-                                                          Width="14" Height="14"
+                                                          Width="12" Height="18"
                                                           Cursor="Hand">
                                         <nodifyConn:Connector.Template>
                                             <ControlTemplate>
-                                                <Border Width="10" Height="10"
-                                                        Background="{DynamicResource ForgeSurface}"
-                                                        BorderBrush="{Binding ConnectorBrush}"
-                                                        BorderThickness="2"
-                                                        CornerRadius="2"
-                                                        RenderTransformOrigin="0.5,0.5"
-                                                        HorizontalAlignment="Center"
-                                                        VerticalAlignment="Center">
-                                                    <Border.RenderTransform>
-                                                        <RotateTransform Angle="45" />
-                                                    </Border.RenderTransform>
+                                                <Border Width="12" Height="18"
+                                                        CornerRadius="0,3,3,0"
+                                                        BorderBrush="#050303"
+                                                        BorderThickness="1">
+                                                    <Border.Background>
+                                                        <LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%">
+                                                            <GradientStop Offset="0" Color="#4a4a58" />
+                                                            <GradientStop Offset="1" Color="#050303" />
+                                                        </LinearGradientBrush>
+                                                    </Border.Background>
+                                                    <Ellipse Width="6" Height="6"
+                                                             HorizontalAlignment="Right"
+                                                             VerticalAlignment="Center"
+                                                             Margin="0,0,3,0"
+                                                             Fill="{DynamicResource MwChromeDk}" />
                                                 </Border>
                                             </ControlTemplate>
                                         </nodifyConn:Connector.Template>
@@ -150,16 +356,42 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
+
+                        <!-- Selection glow: outer cyan drop-shadow when selected -->
+                        <Border IsHitTestVisible="False"
+                                CornerRadius="3"
+                                IsVisible="{Binding IsSelected}"
+                                BoxShadow="0 0 16 0 #992EF0FF" />
                     </Grid>
                 </DataTemplate>
             </nodify:NodifyEditor.ItemTemplate>
 
             <nodify:NodifyEditor.ConnectionTemplate>
                 <DataTemplate x:DataType="vm:PipelineConnectionViewModel">
-                    <nodifyConn:Connection Source="{Binding Source.Anchor}"
-                                           Target="{Binding Target.Anchor}"
-                                           Stroke="{DynamicResource ForgeAccent}"
-                                           StrokeThickness="2" />
+                    <!-- Chrome pipe: 4-layer stroke (shadow → chrome outer → core → inner channel) -->
+                    <Grid>
+                        <nodifyConn:Connection Source="{Binding Source.Anchor}"
+                                               Target="{Binding Target.Anchor}"
+                                               Stroke="#D9000000"
+                                               StrokeThickness="14" />
+                        <nodifyConn:Connection Source="{Binding Source.Anchor}"
+                                               Target="{Binding Target.Anchor}"
+                                               Stroke="{DynamicResource MwChromeDk}"
+                                               StrokeThickness="11" />
+                        <nodifyConn:Connection Source="{Binding Source.Anchor}"
+                                               Target="{Binding Target.Anchor}"
+                                               Stroke="{DynamicResource MwChrome}"
+                                               StrokeThickness="8" />
+                        <nodifyConn:Connection Source="{Binding Source.Anchor}"
+                                               Target="{Binding Target.Anchor}"
+                                               Stroke="#050303"
+                                               StrokeThickness="5" />
+                        <nodifyConn:Connection Source="{Binding Source.Anchor}"
+                                               Target="{Binding Target.Anchor}"
+                                               Stroke="{DynamicResource MwChromeHi}"
+                                               StrokeThickness="0.8"
+                                               Opacity="0.7" />
+                    </Grid>
                 </DataTemplate>
             </nodify:NodifyEditor.ConnectionTemplate>
 
@@ -170,91 +402,291 @@
                                                   CompletedCommand="{Binding FinishCommand}"
                                                   EnablePreview="True"
                                                   EnableSnapping="True"
-                                                  Stroke="{DynamicResource ForgeAccent}"
+                                                  Stroke="{DynamicResource MwMolten}"
+                                                  StrokeThickness="3"
                                                   PreviewTarget="{Binding PreviewTarget, Mode=OneWayToSource}" />
                 </DataTemplate>
             </nodify:NodifyEditor.PendingConnectionTemplate>
 
         </nodify:NodifyEditor>
 
-        <!-- Empty state overlay -->
+        <!-- HUD corner brackets (magenta, 18x18, .5 opacity) -->
+        <Border IsHitTestVisible="False"
+                Width="18" Height="18"
+                HorizontalAlignment="Left" VerticalAlignment="Top"
+                Margin="12,12,0,0"
+                BorderBrush="{DynamicResource MwMag}"
+                BorderThickness="1,1,0,0"
+                Opacity="0.5" />
+        <Border IsHitTestVisible="False"
+                Width="18" Height="18"
+                HorizontalAlignment="Right" VerticalAlignment="Top"
+                Margin="0,12,12,0"
+                BorderBrush="{DynamicResource MwMag}"
+                BorderThickness="0,1,1,0"
+                Opacity="0.5" />
+        <Border IsHitTestVisible="False"
+                Width="18" Height="18"
+                HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                Margin="12,0,0,12"
+                BorderBrush="{DynamicResource MwMag}"
+                BorderThickness="1,0,0,1"
+                Opacity="0.5" />
+        <Border IsHitTestVisible="False"
+                Width="18" Height="18"
+                HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                Margin="0,0,12,12"
+                BorderBrush="{DynamicResource MwMag}"
+                BorderThickness="0,0,1,1"
+                Opacity="0.5" />
+
+        <!-- Hint caption top-left -->
+        <TextBlock IsHitTestVisible="False"
+                   Text="drag stations · click to select · ▶ ignite to run"
+                   FontFamily="{DynamicResource MwMono}"
+                   FontSize="10"
+                   LetterSpacing="1"
+                   Foreground="{DynamicResource MwFaint}"
+                   HorizontalAlignment="Left" VerticalAlignment="Top"
+                   Margin="40,14,0,0" />
+
+        <!-- System HUD bottom-right -->
+        <Border IsHitTestVisible="False"
+                HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                Margin="0,0,38,14"
+                Padding="10,8"
+                Background="{DynamicResource MwInkA85}"
+                BorderBrush="{DynamicResource MwIronDark}"
+                BorderThickness="1">
+            <StackPanel Orientation="Vertical" Spacing="4">
+                <TextBlock Text="// SYSTEM"
+                           FontFamily="{DynamicResource MwMono}"
+                           FontSize="8"
+                           LetterSpacing="1.6"
+                           Foreground="{DynamicResource MwFaint}" />
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <StackPanel Orientation="Horizontal" Spacing="3">
+                        <TextBlock Text="lat:" FontFamily="{DynamicResource MwMono}" FontSize="10" Foreground="{DynamicResource MwFaint}" />
+                        <TextBlock Text="6.2ms" FontFamily="{DynamicResource MwMono}" FontSize="10" Foreground="{DynamicResource MwCyan}" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="3">
+                        <TextBlock Text="mem:" FontFamily="{DynamicResource MwMono}" FontSize="10" Foreground="{DynamicResource MwFaint}" />
+                        <TextBlock Text="142MB" FontFamily="{DynamicResource MwMono}" FontSize="10" Foreground="{DynamicResource MwLime}" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="3">
+                        <TextBlock Text="err:" FontFamily="{DynamicResource MwMono}" FontSize="10" Foreground="{DynamicResource MwFaint}" />
+                        <TextBlock Text="0" FontFamily="{DynamicResource MwMono}" FontSize="10" Foreground="{DynamicResource MwLime}" />
+                    </StackPanel>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- ═══ Empty state: Mw "Build your pipeline from raw ore" ═══ -->
         <Border IsVisible="{Binding !HasNodes}"
                 IsHitTestVisible="True"
                 DragDrop.AllowDrop="True">
             <Border.Background>
-                <SolidColorBrush Color="{DynamicResource ForgeBgColor}" Opacity="0.7" />
+                <SolidColorBrush Color="#08060a" Opacity="0.7" />
             </Border.Background>
             <StackPanel HorizontalAlignment="Center"
                         VerticalAlignment="Center"
-                        Spacing="20"
-                        MaxWidth="400">
+                        Spacing="18"
+                        MaxWidth="920">
 
-                <!-- Large gear icon with glow ring -->
-                <Border Width="84" Height="84"
-                        CornerRadius="24"
-                        HorizontalAlignment="Center"
-                        BorderThickness="2"
-                        BorderBrush="{DynamicResource ForgeAccent}">
-                    <Border.Background>
-                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
-                            <GradientStop Color="{DynamicResource ForgeSurfaceColor}" Offset="0" />
-                            <GradientStop Color="{DynamicResource ForgeElevatedColor}" Offset="1" />
-                        </LinearGradientBrush>
-                    </Border.Background>
-                    <PathIcon Data="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.04 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.04 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"
-                              Foreground="{DynamicResource ForgeAccent}"
-                              Width="36" Height="36"
-                              HorizontalAlignment="Center"
-                              VerticalAlignment="Center" />
-                </Border>
-
-                <TextBlock Text="Forge your pipeline"
-                           FontSize="20"
-                           FontWeight="Bold"
-                           Foreground="{DynamicResource ForgeAccent}"
+                <!-- Eyebrow -->
+                <TextBlock Text="// BOOT.SEQ · READY"
+                           FontFamily="{DynamicResource MwMono}"
+                           FontSize="10"
+                           LetterSpacing="4"
+                           Foreground="{DynamicResource MwCyan}"
                            HorizontalAlignment="Center" />
 
-                <TextBlock Text="Drag nodes from the sidebar or start with a template"
-                           FontSize="13"
-                           Foreground="{DynamicResource ForgeTextSecondary}"
-                           HorizontalAlignment="Center"
-                           TextAlignment="Center" />
+                <!-- Hero headline -->
+                <StackPanel HorizontalAlignment="Center" Spacing="2">
+                    <TextBlock Text="Build your pipeline"
+                               FontFamily="{DynamicResource MwSerifRegular}"
+                               FontSize="62"
+                               FontWeight="Normal"
+                               LineHeight="62"
+                               Foreground="{DynamicResource MwBone}"
+                               HorizontalAlignment="Center" />
+                    <TextBlock Text="from raw ore."
+                               FontFamily="{DynamicResource MwSerif}"
+                               FontSize="62"
+                               FontStyle="Italic"
+                               FontWeight="Light"
+                               LineHeight="62"
+                               Foreground="{DynamicResource MwMolten}"
+                               HorizontalAlignment="Center" />
+                </StackPanel>
 
-                <UniformGrid Columns="2" HorizontalAlignment="Center"
-                             Rows="2" MaxWidth="320">
-                    <Button Classes="templateButton" Margin="4"
+                <!-- Subhead mono -->
+                <TextBlock Text="> start from a template below, or drag operations from the library onto the canvas."
+                           FontFamily="{DynamicResource MwMono}"
+                           FontSize="12"
+                           LineHeight="18"
+                           Foreground="{DynamicResource MwAsh}"
+                           HorizontalAlignment="Center" />
+
+                <!-- Template cards: 4 cast-iron buttons -->
+                <UniformGrid Columns="4" HorizontalAlignment="Center" Margin="0,14,0,0">
+                    <Button Classes="templateButton" Margin="8"
                             Tag="photo-import-by-date"
-                            Click="OnTemplateButtonClick">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="&#x1F4F7;" FontFamily="Segoe UI Emoji" FontSize="16" VerticalAlignment="Center" />
-                            <TextBlock Text="Photo Import" VerticalAlignment="Center" />
+                            Click="OnTemplateButtonClick"
+                            Width="220">
+                        <StackPanel Orientation="Vertical" Spacing="6" HorizontalAlignment="Left">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0"
+                                           Text="TPL.01"
+                                           FontFamily="{DynamicResource MwMono}"
+                                           FontSize="9"
+                                           LetterSpacing="2.5"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource MwMoltenHi}" />
+                                <Rectangle Grid.Column="1" Width="6" Height="6" Fill="{DynamicResource MwCyan}" />
+                            </Grid>
+                            <TextBlock Text="Photo Import"
+                                       FontFamily="{DynamicResource MwSerif}"
+                                       FontSize="22"
+                                       FontStyle="Italic"
+                                       Foreground="{DynamicResource MwBone}" />
+                            <TextBlock Text="camera SD → dated folders → web sizes"
+                                       FontFamily="{DynamicResource MwMono}"
+                                       FontSize="10"
+                                       Foreground="{DynamicResource MwAsh}"
+                                       TextWrapping="Wrap" />
+                            <Border Height="1"
+                                    Background="{DynamicResource MwIronDark}"
+                                    Margin="0,8,0,0" />
+                            <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
+                                <TextBlock Grid.Column="0"
+                                           Text="5 stations"
+                                           FontFamily="{DynamicResource MwMono}"
+                                           FontSize="9"
+                                           LetterSpacing="1.2"
+                                           Foreground="{DynamicResource MwIronLite}" />
+                                <TextBlock Grid.Column="1"
+                                           Text="ignite ▸"
+                                           FontFamily="{DynamicResource MwMono}"
+                                           FontSize="9"
+                                           LetterSpacing="1.2"
+                                           Foreground="{DynamicResource MwMolten}" />
+                            </Grid>
                         </StackPanel>
                     </Button>
-                    <Button Classes="templateButton" Margin="4"
+                    <Button Classes="templateButton" Margin="8"
                             Tag="batch-sequential-rename"
-                            Click="OnTemplateButtonClick">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="&#x270E;" FontFamily="Segoe UI Emoji" FontSize="16" VerticalAlignment="Center" />
-                            <TextBlock Text="Batch Rename" VerticalAlignment="Center" />
+                            Click="OnTemplateButtonClick"
+                            Width="220">
+                        <StackPanel Orientation="Vertical" Spacing="6" HorizontalAlignment="Left">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="TPL.02"
+                                           FontFamily="{DynamicResource MwMono}" FontSize="9"
+                                           LetterSpacing="2.5" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource MwMoltenHi}" />
+                                <Rectangle Grid.Column="1" Width="6" Height="6" Fill="{DynamicResource MwCyan}" />
+                            </Grid>
+                            <TextBlock Text="Batch Rename"
+                                       FontFamily="{DynamicResource MwSerif}" FontSize="22" FontStyle="Italic"
+                                       Foreground="{DynamicResource MwBone}" />
+                            <TextBlock Text="sequential counter with date prefix"
+                                       FontFamily="{DynamicResource MwMono}" FontSize="10"
+                                       Foreground="{DynamicResource MwAsh}" TextWrapping="Wrap" />
+                            <Border Height="1" Background="{DynamicResource MwIronDark}" Margin="0,8,0,0" />
+                            <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
+                                <TextBlock Grid.Column="0" Text="3 stations"
+                                           FontFamily="{DynamicResource MwMono}" FontSize="9"
+                                           LetterSpacing="1.2" Foreground="{DynamicResource MwIronLite}" />
+                                <TextBlock Grid.Column="1" Text="ignite ▸"
+                                           FontFamily="{DynamicResource MwMono}" FontSize="9"
+                                           LetterSpacing="1.2" Foreground="{DynamicResource MwMolten}" />
+                            </Grid>
                         </StackPanel>
                     </Button>
-                    <Button Classes="templateButton" Margin="4"
+                    <Button Classes="templateButton" Margin="8"
                             Tag="image-web-export"
-                            Click="OnTemplateButtonClick">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="&#x1F310;" FontFamily="Segoe UI Emoji" FontSize="16" VerticalAlignment="Center" />
-                            <TextBlock Text="Web Export" VerticalAlignment="Center" />
+                            Click="OnTemplateButtonClick"
+                            Width="220">
+                        <StackPanel Orientation="Vertical" Spacing="6" HorizontalAlignment="Left">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="TPL.03"
+                                           FontFamily="{DynamicResource MwMono}" FontSize="9"
+                                           LetterSpacing="2.5" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource MwMoltenHi}" />
+                                <Rectangle Grid.Column="1" Width="6" Height="6" Fill="{DynamicResource MwCyan}" />
+                            </Grid>
+                            <TextBlock Text="Web Export"
+                                       FontFamily="{DynamicResource MwSerif}" FontSize="22" FontStyle="Italic"
+                                       Foreground="{DynamicResource MwBone}" />
+                            <TextBlock Text="resize + convert + compress for hosting"
+                                       FontFamily="{DynamicResource MwMono}" FontSize="10"
+                                       Foreground="{DynamicResource MwAsh}" TextWrapping="Wrap" />
+                            <Border Height="1" Background="{DynamicResource MwIronDark}" Margin="0,8,0,0" />
+                            <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
+                                <TextBlock Grid.Column="0" Text="6 stations"
+                                           FontFamily="{DynamicResource MwMono}" FontSize="9"
+                                           LetterSpacing="1.2" Foreground="{DynamicResource MwIronLite}" />
+                                <TextBlock Grid.Column="1" Text="ignite ▸"
+                                           FontFamily="{DynamicResource MwMono}" FontSize="9"
+                                           LetterSpacing="1.2" Foreground="{DynamicResource MwMolten}" />
+                            </Grid>
                         </StackPanel>
                     </Button>
-                    <Button Classes="templateButton" Margin="4"
+                    <Button Classes="templateButton" Margin="8"
                             Tag="bulk-image-compress"
-                            Click="OnTemplateButtonClick">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="&#x1F4E6;" FontFamily="Segoe UI Emoji" FontSize="16" VerticalAlignment="Center" />
-                            <TextBlock Text="Compress" VerticalAlignment="Center" />
+                            Click="OnTemplateButtonClick"
+                            Width="220">
+                        <StackPanel Orientation="Vertical" Spacing="6" HorizontalAlignment="Left">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="TPL.04"
+                                           FontFamily="{DynamicResource MwMono}" FontSize="9"
+                                           LetterSpacing="2.5" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource MwMoltenHi}" />
+                                <Rectangle Grid.Column="1" Width="6" Height="6" Fill="{DynamicResource MwCyan}" />
+                            </Grid>
+                            <TextBlock Text="Compress"
+                                       FontFamily="{DynamicResource MwSerif}" FontSize="22" FontStyle="Italic"
+                                       Foreground="{DynamicResource MwBone}" />
+                            <TextBlock Text="reduce quality to target file-size budget"
+                                       FontFamily="{DynamicResource MwMono}" FontSize="10"
+                                       Foreground="{DynamicResource MwAsh}" TextWrapping="Wrap" />
+                            <Border Height="1" Background="{DynamicResource MwIronDark}" Margin="0,8,0,0" />
+                            <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
+                                <TextBlock Grid.Column="0" Text="3 stations"
+                                           FontFamily="{DynamicResource MwMono}" FontSize="9"
+                                           LetterSpacing="1.2" Foreground="{DynamicResource MwIronLite}" />
+                                <TextBlock Grid.Column="1" Text="ignite ▸"
+                                           FontFamily="{DynamicResource MwMono}" FontSize="9"
+                                           LetterSpacing="1.2" Foreground="{DynamicResource MwMolten}" />
+                            </Grid>
                         </StackPanel>
                     </Button>
                 </UniformGrid>
+
+                <!-- Keyboard hints -->
+                <StackPanel Orientation="Horizontal" Spacing="22" HorizontalAlignment="Center" Margin="0,14,0,0">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Border Background="#14FFFFFF" BorderBrush="{DynamicResource MwIronDark}" BorderThickness="1" Padding="5,2">
+                            <TextBlock Text="Ctrl+N" FontFamily="{DynamicResource MwMono}" FontSize="9" Foreground="{DynamicResource MwCyan}" />
+                        </Border>
+                        <TextBlock Text="new" FontFamily="{DynamicResource MwMono}" FontSize="9" LetterSpacing="1.4"
+                                   Foreground="{DynamicResource MwFaint}" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Border Background="#14FFFFFF" BorderBrush="{DynamicResource MwIronDark}" BorderThickness="1" Padding="5,2">
+                            <TextBlock Text="Ctrl+O" FontFamily="{DynamicResource MwMono}" FontSize="9" Foreground="{DynamicResource MwCyan}" />
+                        </Border>
+                        <TextBlock Text="open" FontFamily="{DynamicResource MwMono}" FontSize="9" LetterSpacing="1.4"
+                                   Foreground="{DynamicResource MwFaint}" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Border Background="#14FFFFFF" BorderBrush="{DynamicResource MwIronDark}" BorderThickness="1" Padding="5,2">
+                            <TextBlock Text="F1" FontFamily="{DynamicResource MwMono}" FontSize="9" Foreground="{DynamicResource MwCyan}" />
+                        </Border>
+                        <TextBlock Text="keys" FontFamily="{DynamicResource MwMono}" FontSize="9" LetterSpacing="1.4"
+                                   Foreground="{DynamicResource MwFaint}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </StackPanel>
             </StackPanel>
         </Border>
     </Grid>

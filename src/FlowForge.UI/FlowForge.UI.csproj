@@ -35,5 +35,6 @@
 
   <ItemGroup>
     <AvaloniaResource Include="Assets\icon.png" />
+    <AvaloniaResource Include="Assets\Fonts\*.ttf" />
   </ItemGroup>
 </Project>

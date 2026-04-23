@@ -8,8 +8,162 @@
              x:Class="FlowForge.UI.Views.ExecutionLogView"
              x:DataType="vm:ExecutionLogViewModel">
 
-    <DockPanel Background="{DynamicResource ForgePanel}">
-        <!-- Molten accent line -->
+    <DockPanel Background="{DynamicResource MwPanel}">
+
+        <!-- ═══ Mw Console strip (52px) — status / PID / progress / throughput ═══ -->
+        <Border DockPanel.Dock="Top"
+                Height="52"
+                Background="{DynamicResource MwConsoleBody}"
+                BorderBrush="{DynamicResource MwIronDark}"
+                BorderThickness="0,1,0,1"
+                Padding="20,0">
+            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto">
+
+                <!-- Status pill: dot + Cold / Forge Lit -->
+                <StackPanel Grid.Column="0"
+                            Orientation="Horizontal"
+                            Spacing="8"
+                            VerticalAlignment="Center">
+                    <Ellipse Width="7" Height="7"
+                             VerticalAlignment="Center"
+                             IsVisible="{Binding IsRunning}"
+                             Fill="{DynamicResource MwMolten}">
+                        <Ellipse.Effect>
+                            <DropShadowEffect BlurRadius="10" Color="#FF7A1A" Opacity="1" />
+                        </Ellipse.Effect>
+                    </Ellipse>
+                    <Ellipse Width="7" Height="7"
+                             VerticalAlignment="Center"
+                             IsVisible="{Binding !IsRunning}"
+                             Fill="{DynamicResource MwIron}" />
+                    <TextBlock Text="FORGE LIT"
+                               IsVisible="{Binding IsRunning}"
+                               FontFamily="{DynamicResource MwDisplay}"
+                               FontSize="11" FontWeight="SemiBold"
+                               LetterSpacing="2.2"
+                               Foreground="{DynamicResource MwMoltenHi}"
+                               VerticalAlignment="Center" />
+                    <TextBlock Text="COLD"
+                               IsVisible="{Binding !IsRunning}"
+                               FontFamily="{DynamicResource MwDisplay}"
+                               FontSize="11" FontWeight="SemiBold"
+                               LetterSpacing="2.2"
+                               Foreground="{DynamicResource MwIronLite}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <Border Grid.Column="1"
+                        Width="1" Height="20"
+                        Background="{DynamicResource MwIronDark}"
+                        VerticalAlignment="Center"
+                        Margin="16,0" />
+
+                <!-- PID -->
+                <StackPanel Grid.Column="2"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center">
+                    <TextBlock Text="pid/"
+                               FontFamily="{DynamicResource MwMono}"
+                               FontSize="10"
+                               LetterSpacing="0.9"
+                               Foreground="{DynamicResource MwFaint}" />
+                    <TextBlock Text="0x4f7a2c"
+                               IsVisible="{Binding IsRunning}"
+                               FontFamily="{DynamicResource MwMono}"
+                               FontSize="10"
+                               LetterSpacing="0.9"
+                               Foreground="{DynamicResource MwCyan}" />
+                    <TextBlock Text="—"
+                               IsVisible="{Binding !IsRunning}"
+                               FontFamily="{DynamicResource MwMono}"
+                               FontSize="10"
+                               Foreground="{DynamicResource MwFaint}" />
+                </StackPanel>
+
+                <Border Grid.Column="3"
+                        Width="1" Height="20"
+                        Background="{DynamicResource MwIronDark}"
+                        VerticalAlignment="Center"
+                        Margin="16,0"
+                        IsVisible="{Binding IsRunning}" />
+
+                <!-- Running: count + progress bar + throughput -->
+                <Grid Grid.Column="4"
+                      IsVisible="{Binding IsRunning}"
+                      ColumnDefinitions="Auto,*,Auto"
+                      VerticalAlignment="Center">
+                    <TextBlock Grid.Column="0"
+                               Text="{Binding ProgressText}"
+                               FontFamily="{DynamicResource MwMono}"
+                               FontSize="11"
+                               Foreground="{DynamicResource MwBone}"
+                               MinWidth="100"
+                               VerticalAlignment="Center"
+                               Margin="0,0,12,0" />
+                    <Border Grid.Column="1"
+                            Height="5"
+                            Background="{DynamicResource MwIronDark}"
+                            VerticalAlignment="Center">
+                        <Grid>
+                            <!-- Molten fill -->
+                            <ProgressBar Value="{Binding Progress}"
+                                         Minimum="0" Maximum="1"
+                                         IsIndeterminate="{Binding IsIndeterminate}"
+                                         Height="5"
+                                         Background="Transparent"
+                                         Foreground="{DynamicResource MwProgressFill}"
+                                         BorderThickness="0"
+                                         CornerRadius="0" />
+                            <!-- Diagonal stripe overlay -->
+                            <Border IsHitTestVisible="False" Opacity="0.4">
+                                <Border.Background>
+                                    <DrawingBrush TileMode="Tile"
+                                                  DestinationRect="0,0,9,5"
+                                                  SourceRect="0,0,9,5">
+                                        <DrawingBrush.Drawing>
+                                            <GeometryDrawing Brush="#4D000000"
+                                                             Geometry="M 0,0 L 1,0 L 1,5 L 0,5 Z" />
+                                        </DrawingBrush.Drawing>
+                                    </DrawingBrush>
+                                </Border.Background>
+                            </Border>
+                        </Grid>
+                    </Border>
+                    <TextBlock Grid.Column="2"
+                               Text="{Binding ThroughputRate}"
+                               FontFamily="{DynamicResource MwMono}"
+                               FontSize="11"
+                               Foreground="{DynamicResource MwMoltenHi}"
+                               MinWidth="76"
+                               TextAlignment="Right"
+                               VerticalAlignment="Center"
+                               Margin="12,0,0,0" />
+                </Grid>
+
+                <!-- Idle caption -->
+                <TextBlock Grid.Column="4"
+                           IsVisible="{Binding !IsRunning}"
+                           Text="// awaiting ignition signal"
+                           FontFamily="{DynamicResource MwMono}"
+                           FontSize="10"
+                           LetterSpacing="0.5"
+                           Foreground="{DynamicResource MwFaint}"
+                           VerticalAlignment="Center" />
+
+                <!-- Right: flavor quote when running -->
+                <TextBlock Grid.Column="5"
+                           IsVisible="{Binding IsRunning}"
+                           Text="&quot;The iron sings.&quot;"
+                           FontFamily="{DynamicResource MwSerif}"
+                           FontStyle="Italic"
+                           FontSize="13"
+                           Foreground="{DynamicResource MwAsh}"
+                           VerticalAlignment="Center"
+                           Margin="14,0,0,0" />
+            </Grid>
+        </Border>
+
+        <!-- Molten accent line (kept) -->
         <Border DockPanel.Dock="Top" Height="2" Opacity="0.5">
             <Border.Background>
                 <LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%">

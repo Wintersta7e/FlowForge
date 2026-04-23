@@ -28,6 +28,15 @@ public partial class PipelineNodeViewModel : ViewModelBase
     public ObservableCollection<PipelineConnectorViewModel> Output { get; } = new();
     public IDictionary<string, JsonElement> Config { get; }
 
+    /// <summary>Molten Works short code, e.g. "SHP.01".</summary>
+    public string MwCode { get; private set; } = string.Empty;
+
+    /// <summary>Molten Works subtitle, e.g. "folder · input".</summary>
+    public string MwSub { get; private set; } = string.Empty;
+
+    /// <summary>Molten Works category bucket (src/snk/shp/flt/hea/met).</summary>
+    public string MwCategory { get; private set; } = "hea";
+
     [ObservableProperty]
     private IBrush _categoryBrush = null!;
 
@@ -39,6 +48,26 @@ public partial class PipelineNodeViewModel : ViewModelBase
 
     [ObservableProperty]
     private IBrush _nodeBackground = null!;
+
+    /// <summary>Mw icon-well base fill brush.</summary>
+    [ObservableProperty]
+    private IBrush _mwBaseBrush = null!;
+
+    /// <summary>Mw category accent / neon brush.</summary>
+    [ObservableProperty]
+    private IBrush _mwNeonBrush = null!;
+
+    /// <summary>Mw outer glow brush (drop-shadow when running).</summary>
+    [ObservableProperty]
+    private IBrush _mwGlowBrush = null!;
+
+    /// <summary>Forge-themed icon geometry (pit/mold/die/chisel/…).</summary>
+    [ObservableProperty]
+    private Geometry? _mwIconGeometry;
+
+    /// <summary>Whether the station should render in "running" state.</summary>
+    [ObservableProperty]
+    private bool _isRunning;
 
     private readonly EventHandler? _themeChangedHandler;
 
@@ -52,6 +81,11 @@ public partial class PipelineNodeViewModel : ViewModelBase
         IconEmoji = NodeIconMap.Icons.GetValueOrDefault(definition.TypeKey, "\u2699");
         ConfigPreview = BuildConfigPreview(definition.Config);
         _location = new Point(definition.Position.X, definition.Position.Y);
+
+        MwOpsMap.OpMeta meta = MwOpsMap.Get(definition.TypeKey);
+        MwCode = meta.Code;
+        MwSub = meta.Sub;
+        MwCategory = meta.Category;
 
         RebuildBrushes();
 
@@ -129,6 +163,11 @@ public partial class PipelineNodeViewModel : ViewModelBase
                 new GradientStop(surfaceColor, 0.5)
             }
         };
+
+        MwBaseBrush = ThemeHelper.GetBrush(MwOpsMap.BaseKey(MwCategory), "#3a1808");
+        MwNeonBrush = ThemeHelper.GetBrush(MwOpsMap.NeonKey(MwCategory), "#ff7a1a");
+        MwGlowBrush = ThemeHelper.GetBrush(MwOpsMap.GlowKey(MwCategory), "#ffd080");
+        MwIconGeometry = ThemeHelper.GetGeometry(MwOpsMap.IconKey(MwOpsMap.Get(TypeKey).Icon));
     }
 
     private static string BuildConfigPreview(IDictionary<string, JsonElement> config)

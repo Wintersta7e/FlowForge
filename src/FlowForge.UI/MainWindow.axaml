@@ -5,41 +5,34 @@
         xmlns:vm="using:FlowForge.UI.ViewModels"
         xmlns:views="using:FlowForge.UI.Views"
         mc:Ignorable="d"
-        d:DesignWidth="1200" d:DesignHeight="700"
+        d:DesignWidth="1400" d:DesignHeight="820"
         x:Class="FlowForge.UI.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="{Binding Title}"
-        Width="1200" Height="700"
-        MinWidth="800" MinHeight="500"
+        Width="1400" Height="820"
+        MinWidth="900" MinHeight="560"
         Icon="avares://FlowForge.UI/Assets/icon.png"
+        FontFamily="{DynamicResource MwBody}"
         FontSize="13"
-        Background="{DynamicResource ForgeBg}"
+        Background="{DynamicResource MwInk}"
         KeyDown="OnKeyDown">
 
-    <Grid RowDefinitions="Auto,*,Auto,185">
+    <Grid RowDefinitions="Auto,*,Auto,160">
         <!-- Toolbar (row 0) -->
         <views:ToolbarView Grid.Row="0"
                            DataContext="{Binding}" />
 
         <!-- Main content area (row 1) -->
         <DockPanel Grid.Row="1">
-            <!-- Node library (left) -->
-            <Border DockPanel.Dock="Left"
-                    Width="250"
-                    Background="{DynamicResource ForgePanel}"
-                    BorderBrush="{DynamicResource ForgeBorder}"
-                    BorderThickness="0,0,1,0">
-                <views:NodeLibraryView DataContext="{Binding NodeLibrary}" />
-            </Border>
+            <!-- Operations library (left) -->
+            <views:NodeLibraryView DockPanel.Dock="Left"
+                                   Width="240"
+                                   DataContext="{Binding NodeLibrary}" />
 
-            <!-- Properties panel (right) -->
-            <Border DockPanel.Dock="Right"
-                    Width="290"
-                    Background="{DynamicResource ForgePanel}"
-                    BorderBrush="{DynamicResource ForgeBorder}"
-                    BorderThickness="1,0,0,0">
-                <views:PropertiesView DataContext="{Binding Properties}" />
-            </Border>
+            <!-- Inspector (right) -->
+            <views:PropertiesView DockPanel.Dock="Right"
+                                  Width="300"
+                                  DataContext="{Binding Properties}" />
 
             <!-- Canvas (center fill) -->
             <views:CanvasView DataContext="{Binding Editor}" />
@@ -49,7 +42,7 @@
         <GridSplitter Grid.Row="2"
                       Height="4"
                       HorizontalAlignment="Stretch"
-                      Background="{DynamicResource ForgeBorder}"
+                      Background="{DynamicResource MwIronDark}"
                       ResizeDirection="Rows" />
 
         <!-- Output panel (row 3) -->

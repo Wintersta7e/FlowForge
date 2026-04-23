@@ -3,176 +3,392 @@
 
     <Styles.Resources>
         <ResourceDictionary>
+
+            <!-- ═══ Typography tokens (theme-invariant) ═══ -->
+            <!-- Embedded fonts: Instrument Serif, Oswald, JetBrains Mono -->
+            <!-- MwSerif defaults to Italic because every serif use in this design is italic -->
+            <FontFamily x:Key="MwSerif">avares://FlowForge.UI/Assets/Fonts/InstrumentSerif-Italic.ttf#Instrument Serif</FontFamily>
+            <FontFamily x:Key="MwSerifRegular">avares://FlowForge.UI/Assets/Fonts/InstrumentSerif-Regular.ttf#Instrument Serif</FontFamily>
+            <FontFamily x:Key="MwDisplay">avares://FlowForge.UI/Assets/Fonts/Oswald-VariableFont_wght.ttf#Oswald</FontFamily>
+            <FontFamily x:Key="MwMono">avares://FlowForge.UI/Assets/Fonts/JetBrainsMono-VariableFont_wght.ttf#JetBrains Mono</FontFamily>
+            <FontFamily x:Key="MwBody">Inter, Segoe UI, system-ui, sans-serif</FontFamily>
+
             <ResourceDictionary.ThemeDictionaries>
 
                 <!-- ═══════════════════════════════════════════ -->
-                <!-- ═══ DARK VARIANT ═══════════════════════════ -->
+                <!-- ═══ DARK VARIANT (Molten Works) ═══════════ -->
                 <!-- ═══════════════════════════════════════════ -->
                 <ResourceDictionary x:Key="Dark">
 
-                    <!-- Background layers (darkest to lightest) -->
-                    <Color x:Key="ForgeBgColor">#08070a</Color>
-                    <Color x:Key="ForgeDeepColor">#0e0c11</Color>
-                    <Color x:Key="ForgePanelColor">#141218</Color>
-                    <Color x:Key="ForgeSurfaceColor">#1c1820</Color>
-                    <Color x:Key="ForgeElevatedColor">#252029</Color>
-                    <Color x:Key="ForgeHoverColor">#2e2735</Color>
+                    <!-- ═══ Molten Works palette (mwT) ═══ -->
+                    <Color x:Key="MwInkColor">#08060a</Color>
+                    <Color x:Key="MwBgColor">#0f0a08</Color>
+                    <Color x:Key="MwBgDeepColor">#05030a</Color>
+                    <Color x:Key="MwPanelColor">#14100c</Color>
+                    <Color x:Key="MwPanelHiColor">#1c1510</Color>
+                    <Color x:Key="MwIronColor">#4a3d35</Color>
+                    <Color x:Key="MwIronDarkColor">#2a2018</Color>
+                    <Color x:Key="MwIronLiteColor">#7a6a5c</Color>
 
-                    <!-- Borders -->
-                    <Color x:Key="ForgeBorderColor">#2a2230</Color>
-                    <Color x:Key="ForgeBorderFocusColor">#3d2f48</Color>
+                    <Color x:Key="MwChromeColor">#b8b8c4</Color>
+                    <Color x:Key="MwChromeDkColor">#4a4a58</Color>
+                    <Color x:Key="MwChromeHiColor">#e4e4ec</Color>
 
-                    <!-- Text -->
-                    <Color x:Key="ForgeTextColor">#ede6f0</Color>
-                    <Color x:Key="ForgeTextSecondaryColor">#9a8da8</Color>
-                    <Color x:Key="ForgeTextMutedColor">#564a62</Color>
+                    <Color x:Key="MwBoneColor">#ecdfc8</Color>
+                    <Color x:Key="MwAshColor">#9a8c7a</Color>
+                    <Color x:Key="MwFaintColor">#5a4e42</Color>
 
-                    <!-- Accent -->
-                    <Color x:Key="ForgeAccentColor">#e8932f</Color>
-                    <Color x:Key="ForgeAccentBrightColor">#f5a623</Color>
+                    <Color x:Key="MwMoltenColor">#ff7a1a</Color>
+                    <Color x:Key="MwMoltenHiColor">#ffd080</Color>
+                    <Color x:Key="MwMoltenLoColor">#c44010</Color>
 
-                    <!-- Categories -->
-                    <Color x:Key="ForgeSourceColor">#5bb8f5</Color>
-                    <Color x:Key="ForgeTransformColor">#5ce0a0</Color>
-                    <Color x:Key="ForgeOutputColor">#e8932f</Color>
+                    <Color x:Key="MwMercuryColor">#d8dde8</Color>
+                    <Color x:Key="MwCyanColor">#2ef0ff</Color>
+                    <Color x:Key="MwMagColor">#ff2e88</Color>
+                    <Color x:Key="MwLimeColor">#c3ff3e</Color>
+                    <Color x:Key="MwPurpleColor">#b23eff</Color>
 
-                    <!-- Status -->
-                    <Color x:Key="ForgeSuccessColor">#5ce0a0</Color>
-                    <Color x:Key="ForgeErrorColor">#f2716a</Color>
-                    <Color x:Key="ForgeWarningColor">#f5c842</Color>
+                    <!-- Category glows (for drop-shadow under stations) -->
+                    <Color x:Key="MwSrcGlowColor">#ffd080</Color>
+                    <Color x:Key="MwSnkGlowColor">#b5f0ff</Color>
+                    <Color x:Key="MwShpGlowColor">#ff2e88</Color>
+                    <Color x:Key="MwFltGlowColor">#c3ff3e</Color>
+                    <Color x:Key="MwHeaGlowColor">#ff7a1a</Color>
+                    <Color x:Key="MwMetGlowColor">#b23eff</Color>
 
-                    <!-- Molten gradient stops -->
-                    <Color x:Key="ForgeMoltenFromColor">#d4612c</Color>
-                    <Color x:Key="ForgeMoltenToColor">#f5c842</Color>
+                    <!-- Category icon-well base colors (inside the station) -->
+                    <Color x:Key="MwSrcBaseColor">#3a2515</Color>
+                    <Color x:Key="MwSnkBaseColor">#102630</Color>
+                    <Color x:Key="MwShpBaseColor">#2a0818</Color>
+                    <Color x:Key="MwFltBaseColor">#1a2608</Color>
+                    <Color x:Key="MwHeaBaseColor">#3a1808</Color>
+                    <Color x:Key="MwMetBaseColor">#200838</Color>
 
-                    <!-- ═══ Brush Resources ═══ -->
+                    <!-- ═══ Back-compat: remap Forge* to Molten Works values ═══ -->
+                    <Color x:Key="ForgeBgColor">#08060a</Color>
+                    <Color x:Key="ForgeDeepColor">#05030a</Color>
+                    <Color x:Key="ForgePanelColor">#14100c</Color>
+                    <Color x:Key="ForgeSurfaceColor">#14100c</Color>
+                    <Color x:Key="ForgeElevatedColor">#1c1510</Color>
+                    <Color x:Key="ForgeHoverColor">#2a2018</Color>
+                    <Color x:Key="ForgeBorderColor">#2a2018</Color>
+                    <Color x:Key="ForgeBorderFocusColor">#4a3d35</Color>
+                    <Color x:Key="ForgeTextColor">#ecdfc8</Color>
+                    <Color x:Key="ForgeTextSecondaryColor">#9a8c7a</Color>
+                    <Color x:Key="ForgeTextMutedColor">#5a4e42</Color>
+                    <Color x:Key="ForgeAccentColor">#ff7a1a</Color>
+                    <Color x:Key="ForgeAccentBrightColor">#ffd080</Color>
+                    <!-- Category remap: Source=molten, Transform=lime (generic), Output=cyan -->
+                    <Color x:Key="ForgeSourceColor">#ff7a1a</Color>
+                    <Color x:Key="ForgeTransformColor">#c3ff3e</Color>
+                    <Color x:Key="ForgeOutputColor">#2ef0ff</Color>
+                    <Color x:Key="ForgeSuccessColor">#c3ff3e</Color>
+                    <Color x:Key="ForgeErrorColor">#ff2e88</Color>
+                    <Color x:Key="ForgeWarningColor">#ffd080</Color>
+                    <Color x:Key="ForgeMoltenFromColor">#c44010</Color>
+                    <Color x:Key="ForgeMoltenToColor">#ffd080</Color>
 
-                    <!-- Background brushes -->
+                    <!-- ═══ Brush Resources — Molten Works ═══ -->
+                    <SolidColorBrush x:Key="MwInk" Color="{StaticResource MwInkColor}" />
+                    <SolidColorBrush x:Key="MwBg" Color="{StaticResource MwBgColor}" />
+                    <SolidColorBrush x:Key="MwBgDeep" Color="{StaticResource MwBgDeepColor}" />
+                    <SolidColorBrush x:Key="MwPanel" Color="{StaticResource MwPanelColor}" />
+                    <SolidColorBrush x:Key="MwPanelHi" Color="{StaticResource MwPanelHiColor}" />
+                    <SolidColorBrush x:Key="MwIron" Color="{StaticResource MwIronColor}" />
+                    <SolidColorBrush x:Key="MwIronDark" Color="{StaticResource MwIronDarkColor}" />
+                    <SolidColorBrush x:Key="MwIronLite" Color="{StaticResource MwIronLiteColor}" />
+                    <SolidColorBrush x:Key="MwChrome" Color="{StaticResource MwChromeColor}" />
+                    <SolidColorBrush x:Key="MwChromeDk" Color="{StaticResource MwChromeDkColor}" />
+                    <SolidColorBrush x:Key="MwChromeHi" Color="{StaticResource MwChromeHiColor}" />
+                    <SolidColorBrush x:Key="MwBone" Color="{StaticResource MwBoneColor}" />
+                    <SolidColorBrush x:Key="MwAsh" Color="{StaticResource MwAshColor}" />
+                    <SolidColorBrush x:Key="MwFaint" Color="{StaticResource MwFaintColor}" />
+                    <SolidColorBrush x:Key="MwMolten" Color="{StaticResource MwMoltenColor}" />
+                    <SolidColorBrush x:Key="MwMoltenHi" Color="{StaticResource MwMoltenHiColor}" />
+                    <SolidColorBrush x:Key="MwMoltenLo" Color="{StaticResource MwMoltenLoColor}" />
+                    <SolidColorBrush x:Key="MwMercury" Color="{StaticResource MwMercuryColor}" />
+                    <SolidColorBrush x:Key="MwCyan" Color="{StaticResource MwCyanColor}" />
+                    <SolidColorBrush x:Key="MwMag" Color="{StaticResource MwMagColor}" />
+                    <SolidColorBrush x:Key="MwLime" Color="{StaticResource MwLimeColor}" />
+                    <SolidColorBrush x:Key="MwPurple" Color="{StaticResource MwPurpleColor}" />
+
+                    <!-- Semi-transparent utilities -->
+                    <SolidColorBrush x:Key="MwInkA45" Color="#73000000" />
+                    <SolidColorBrush x:Key="MwInkA30" Color="#4D000000" />
+                    <SolidColorBrush x:Key="MwInkA85" Color="#D9000000" />
+
+                    <!-- Station iron vertical gradient -->
+                    <LinearGradientBrush x:Key="MwIronBody" StartPoint="0%,0%" EndPoint="0%,100%">
+                        <GradientStop Offset="0" Color="{StaticResource MwIronColor}" />
+                        <GradientStop Offset="0.45" Color="{StaticResource MwIronDarkColor}" />
+                        <GradientStop Offset="1" Color="#0d0805" />
+                    </LinearGradientBrush>
+
+                    <!-- Panel vertical gradient (library + inspector) -->
+                    <LinearGradientBrush x:Key="MwPanelBody" StartPoint="0%,0%" EndPoint="0%,100%">
+                        <GradientStop Offset="0" Color="{StaticResource MwPanelColor}" />
+                        <GradientStop Offset="1" Color="{StaticResource MwBgDeepColor}" />
+                    </LinearGradientBrush>
+
+                    <!-- Top bar gradient -->
+                    <LinearGradientBrush x:Key="MwTopBarBody" StartPoint="0%,0%" EndPoint="0%,100%">
+                        <GradientStop Offset="0" Color="{StaticResource MwPanelColor}" />
+                        <GradientStop Offset="1" Color="{StaticResource MwBgDeepColor}" />
+                    </LinearGradientBrush>
+
+                    <!-- Bottom console gradient -->
+                    <LinearGradientBrush x:Key="MwConsoleBody" StartPoint="0%,0%" EndPoint="0%,100%">
+                        <GradientStop Offset="0" Color="{StaticResource MwBgDeepColor}" />
+                        <GradientStop Offset="1" Color="#020106" />
+                    </LinearGradientBrush>
+
+                    <!-- Molten IGNITE button gradient -->
+                    <LinearGradientBrush x:Key="MwMoltenButton" StartPoint="0%,0%" EndPoint="0%,100%">
+                        <GradientStop Offset="0" Color="{StaticResource MwMoltenHiColor}" />
+                        <GradientStop Offset="0.5" Color="{StaticResource MwMoltenColor}" />
+                        <GradientStop Offset="1" Color="{StaticResource MwMoltenLoColor}" />
+                    </LinearGradientBrush>
+
+                    <!-- Progress bar molten fill (horizontal) -->
+                    <LinearGradientBrush x:Key="MwProgressFill" StartPoint="0%,0%" EndPoint="100%,0%">
+                        <GradientStop Offset="0" Color="{StaticResource MwMoltenLoColor}" />
+                        <GradientStop Offset="0.5" Color="{StaticResource MwMoltenColor}" />
+                        <GradientStop Offset="1" Color="{StaticResource MwMoltenHiColor}" />
+                    </LinearGradientBrush>
+
+                    <!-- Pipe liquid horizontal gradient (for running pipes) -->
+                    <LinearGradientBrush x:Key="MwPipeLiquid" StartPoint="0%,50%" EndPoint="100%,50%">
+                        <GradientStop Offset="0" Color="{StaticResource MwMoltenLoColor}" />
+                        <GradientStop Offset="0.5" Color="{StaticResource MwMoltenColor}" />
+                        <GradientStop Offset="1" Color="{StaticResource MwMoltenHiColor}" />
+                    </LinearGradientBrush>
+
+                    <!-- Category brushes (Mw) -->
+                    <SolidColorBrush x:Key="MwSrc" Color="{StaticResource MwMoltenColor}" />
+                    <SolidColorBrush x:Key="MwSnk" Color="{StaticResource MwCyanColor}" />
+                    <SolidColorBrush x:Key="MwShp" Color="{StaticResource MwMagColor}" />
+                    <SolidColorBrush x:Key="MwFlt" Color="{StaticResource MwLimeColor}" />
+                    <SolidColorBrush x:Key="MwHea" Color="{StaticResource MwMoltenColor}" />
+                    <SolidColorBrush x:Key="MwMet" Color="{StaticResource MwPurpleColor}" />
+
+                    <SolidColorBrush x:Key="MwSrcGlow" Color="{StaticResource MwSrcGlowColor}" />
+                    <SolidColorBrush x:Key="MwSnkGlow" Color="{StaticResource MwSnkGlowColor}" />
+                    <SolidColorBrush x:Key="MwShpGlow" Color="{StaticResource MwShpGlowColor}" />
+                    <SolidColorBrush x:Key="MwFltGlow" Color="{StaticResource MwFltGlowColor}" />
+                    <SolidColorBrush x:Key="MwHeaGlow" Color="{StaticResource MwHeaGlowColor}" />
+                    <SolidColorBrush x:Key="MwMetGlow" Color="{StaticResource MwMetGlowColor}" />
+
+                    <SolidColorBrush x:Key="MwSrcBase" Color="{StaticResource MwSrcBaseColor}" />
+                    <SolidColorBrush x:Key="MwSnkBase" Color="{StaticResource MwSnkBaseColor}" />
+                    <SolidColorBrush x:Key="MwShpBase" Color="{StaticResource MwShpBaseColor}" />
+                    <SolidColorBrush x:Key="MwFltBase" Color="{StaticResource MwFltBaseColor}" />
+                    <SolidColorBrush x:Key="MwHeaBase" Color="{StaticResource MwHeaBaseColor}" />
+                    <SolidColorBrush x:Key="MwMetBase" Color="{StaticResource MwMetBaseColor}" />
+
+                    <!-- ═══ Back-compat Forge* brush aliases ═══ -->
                     <SolidColorBrush x:Key="ForgeBg" Color="{StaticResource ForgeBgColor}" />
                     <SolidColorBrush x:Key="ForgeDeep" Color="{StaticResource ForgeDeepColor}" />
                     <SolidColorBrush x:Key="ForgePanel" Color="{StaticResource ForgePanelColor}" />
                     <SolidColorBrush x:Key="ForgeSurface" Color="{StaticResource ForgeSurfaceColor}" />
                     <SolidColorBrush x:Key="ForgeElevated" Color="{StaticResource ForgeElevatedColor}" />
                     <SolidColorBrush x:Key="ForgeHover" Color="{StaticResource ForgeHoverColor}" />
-
-                    <!-- Border brushes -->
                     <SolidColorBrush x:Key="ForgeBorder" Color="{StaticResource ForgeBorderColor}" />
                     <SolidColorBrush x:Key="ForgeBorderFocus" Color="{StaticResource ForgeBorderFocusColor}" />
-
-                    <!-- Text brushes -->
                     <SolidColorBrush x:Key="ForgeText" Color="{StaticResource ForgeTextColor}" />
                     <SolidColorBrush x:Key="ForgeTextSecondary" Color="{StaticResource ForgeTextSecondaryColor}" />
                     <SolidColorBrush x:Key="ForgeTextMuted" Color="{StaticResource ForgeTextMutedColor}" />
-
-                    <!-- Accent brushes -->
                     <SolidColorBrush x:Key="ForgeAccent" Color="{StaticResource ForgeAccentColor}" />
                     <SolidColorBrush x:Key="ForgeAccentBright" Color="{StaticResource ForgeAccentBrightColor}" />
-
-                    <!-- Category brushes -->
                     <SolidColorBrush x:Key="ForgeSource" Color="{StaticResource ForgeSourceColor}" />
                     <SolidColorBrush x:Key="ForgeTransform" Color="{StaticResource ForgeTransformColor}" />
                     <SolidColorBrush x:Key="ForgeOutput" Color="{StaticResource ForgeOutputColor}" />
-
-                    <!-- Status brushes -->
                     <SolidColorBrush x:Key="ForgeSuccess" Color="{StaticResource ForgeSuccessColor}" />
                     <SolidColorBrush x:Key="ForgeError" Color="{StaticResource ForgeErrorColor}" />
                     <SolidColorBrush x:Key="ForgeWarning" Color="{StaticResource ForgeWarningColor}" />
-
-                    <!-- Molten gradient brushes -->
                     <SolidColorBrush x:Key="ForgeMoltenFrom" Color="{StaticResource ForgeMoltenFromColor}" />
                     <SolidColorBrush x:Key="ForgeMoltenTo" Color="{StaticResource ForgeMoltenToColor}" />
-
-                    <!-- Dim variants (~15% opacity) for badges -->
-                    <SolidColorBrush x:Key="ForgeSourceDim" Color="#265bb8f5" />
-                    <SolidColorBrush x:Key="ForgeTransformDim" Color="#265ce0a0" />
-                    <SolidColorBrush x:Key="ForgeOutputDim" Color="#26e8932f" />
-                    <SolidColorBrush x:Key="ForgeSuccessDim" Color="#265ce0a0" />
-                    <SolidColorBrush x:Key="ForgeErrorDim" Color="#26f2716a" />
-                    <SolidColorBrush x:Key="ForgeWarningDim" Color="#26f5c842" />
+                    <SolidColorBrush x:Key="ForgeSourceDim" Color="#26ff7a1a" />
+                    <SolidColorBrush x:Key="ForgeTransformDim" Color="#26c3ff3e" />
+                    <SolidColorBrush x:Key="ForgeOutputDim" Color="#262ef0ff" />
+                    <SolidColorBrush x:Key="ForgeSuccessDim" Color="#26c3ff3e" />
+                    <SolidColorBrush x:Key="ForgeErrorDim" Color="#26ff2e88" />
+                    <SolidColorBrush x:Key="ForgeWarningDim" Color="#26ffd080" />
 
                 </ResourceDictionary>
 
                 <!-- ═══════════════════════════════════════════ -->
-                <!-- ═══ LIGHT VARIANT ═════════════════════════ -->
+                <!-- ═══ LIGHT VARIANT (kept; faithful conversion deferred) ═══ -->
                 <!-- ═══════════════════════════════════════════ -->
                 <ResourceDictionary x:Key="Light">
 
-                    <!-- Background layers (lightest to darkest) -->
+                    <!-- Mw palette — light approximations (deferred full pass) -->
+                    <Color x:Key="MwInkColor">#f5f2ee</Color>
+                    <Color x:Key="MwBgColor">#eee9e3</Color>
+                    <Color x:Key="MwBgDeepColor">#ddd5ca</Color>
+                    <Color x:Key="MwPanelColor">#faf8f5</Color>
+                    <Color x:Key="MwPanelHiColor">#f0ece6</Color>
+                    <Color x:Key="MwIronColor">#c9bfb2</Color>
+                    <Color x:Key="MwIronDarkColor">#a89c8e</Color>
+                    <Color x:Key="MwIronLiteColor">#6b5e52</Color>
+                    <Color x:Key="MwChromeColor">#6b5e52</Color>
+                    <Color x:Key="MwChromeDkColor">#3a332b</Color>
+                    <Color x:Key="MwChromeHiColor">#ffffff</Color>
+                    <Color x:Key="MwBoneColor">#1c1714</Color>
+                    <Color x:Key="MwAshColor">#6b5e52</Color>
+                    <Color x:Key="MwFaintColor">#a89c8e</Color>
+                    <Color x:Key="MwMoltenColor">#d07a18</Color>
+                    <Color x:Key="MwMoltenHiColor">#e8b530</Color>
+                    <Color x:Key="MwMoltenLoColor">#a84e0a</Color>
+                    <Color x:Key="MwMercuryColor">#3a332b</Color>
+                    <Color x:Key="MwCyanColor">#1a7fa0</Color>
+                    <Color x:Key="MwMagColor">#b0246c</Color>
+                    <Color x:Key="MwLimeColor">#5c9a10</Color>
+                    <Color x:Key="MwPurpleColor">#7a28b0</Color>
+
+                    <Color x:Key="MwSrcGlowColor">#e8b530</Color>
+                    <Color x:Key="MwSnkGlowColor">#1a7fa0</Color>
+                    <Color x:Key="MwShpGlowColor">#b0246c</Color>
+                    <Color x:Key="MwFltGlowColor">#5c9a10</Color>
+                    <Color x:Key="MwHeaGlowColor">#d07a18</Color>
+                    <Color x:Key="MwMetGlowColor">#7a28b0</Color>
+
+                    <Color x:Key="MwSrcBaseColor">#f0d8b8</Color>
+                    <Color x:Key="MwSnkBaseColor">#c8dde8</Color>
+                    <Color x:Key="MwShpBaseColor">#ecc8d8</Color>
+                    <Color x:Key="MwFltBaseColor">#dde8b8</Color>
+                    <Color x:Key="MwHeaBaseColor">#f0d0b0</Color>
+                    <Color x:Key="MwMetBaseColor">#d8c8ec</Color>
+
+                    <!-- Forge back-compat (light theme retained at previous values) -->
                     <Color x:Key="ForgeBgColor">#f5f2ee</Color>
                     <Color x:Key="ForgeDeepColor">#eee9e3</Color>
                     <Color x:Key="ForgePanelColor">#faf8f5</Color>
                     <Color x:Key="ForgeSurfaceColor">#ffffff</Color>
                     <Color x:Key="ForgeElevatedColor">#f0ece6</Color>
                     <Color x:Key="ForgeHoverColor">#e8e3db</Color>
-
-                    <!-- Borders -->
                     <Color x:Key="ForgeBorderColor">#ddd5ca</Color>
                     <Color x:Key="ForgeBorderFocusColor">#c9bfb2</Color>
-
-                    <!-- Text -->
                     <Color x:Key="ForgeTextColor">#1c1714</Color>
                     <Color x:Key="ForgeTextSecondaryColor">#6b5e52</Color>
                     <Color x:Key="ForgeTextMutedColor">#a89c8e</Color>
-
-                    <!-- Accent -->
                     <Color x:Key="ForgeAccentColor">#d07a18</Color>
                     <Color x:Key="ForgeAccentBrightColor">#e8932f</Color>
-
-                    <!-- Categories -->
-                    <Color x:Key="ForgeSourceColor">#2680c2</Color>
-                    <Color x:Key="ForgeTransformColor">#1a9a6c</Color>
-                    <Color x:Key="ForgeOutputColor">#d07a18</Color>
-
-                    <!-- Status -->
+                    <Color x:Key="ForgeSourceColor">#d07a18</Color>
+                    <Color x:Key="ForgeTransformColor">#5c9a10</Color>
+                    <Color x:Key="ForgeOutputColor">#1a7fa0</Color>
                     <Color x:Key="ForgeSuccessColor">#1a9a6c</Color>
                     <Color x:Key="ForgeErrorColor">#d44040</Color>
                     <Color x:Key="ForgeWarningColor">#c88a15</Color>
-
-                    <!-- Molten gradient stops -->
                     <Color x:Key="ForgeMoltenFromColor">#c05820</Color>
                     <Color x:Key="ForgeMoltenToColor">#e8b530</Color>
 
-                    <!-- ═══ Brush Resources ═══ -->
+                    <!-- Mw brushes (mirrors dark block) -->
+                    <SolidColorBrush x:Key="MwInk" Color="{StaticResource MwInkColor}" />
+                    <SolidColorBrush x:Key="MwBg" Color="{StaticResource MwBgColor}" />
+                    <SolidColorBrush x:Key="MwBgDeep" Color="{StaticResource MwBgDeepColor}" />
+                    <SolidColorBrush x:Key="MwPanel" Color="{StaticResource MwPanelColor}" />
+                    <SolidColorBrush x:Key="MwPanelHi" Color="{StaticResource MwPanelHiColor}" />
+                    <SolidColorBrush x:Key="MwIron" Color="{StaticResource MwIronColor}" />
+                    <SolidColorBrush x:Key="MwIronDark" Color="{StaticResource MwIronDarkColor}" />
+                    <SolidColorBrush x:Key="MwIronLite" Color="{StaticResource MwIronLiteColor}" />
+                    <SolidColorBrush x:Key="MwChrome" Color="{StaticResource MwChromeColor}" />
+                    <SolidColorBrush x:Key="MwChromeDk" Color="{StaticResource MwChromeDkColor}" />
+                    <SolidColorBrush x:Key="MwChromeHi" Color="{StaticResource MwChromeHiColor}" />
+                    <SolidColorBrush x:Key="MwBone" Color="{StaticResource MwBoneColor}" />
+                    <SolidColorBrush x:Key="MwAsh" Color="{StaticResource MwAshColor}" />
+                    <SolidColorBrush x:Key="MwFaint" Color="{StaticResource MwFaintColor}" />
+                    <SolidColorBrush x:Key="MwMolten" Color="{StaticResource MwMoltenColor}" />
+                    <SolidColorBrush x:Key="MwMoltenHi" Color="{StaticResource MwMoltenHiColor}" />
+                    <SolidColorBrush x:Key="MwMoltenLo" Color="{StaticResource MwMoltenLoColor}" />
+                    <SolidColorBrush x:Key="MwMercury" Color="{StaticResource MwMercuryColor}" />
+                    <SolidColorBrush x:Key="MwCyan" Color="{StaticResource MwCyanColor}" />
+                    <SolidColorBrush x:Key="MwMag" Color="{StaticResource MwMagColor}" />
+                    <SolidColorBrush x:Key="MwLime" Color="{StaticResource MwLimeColor}" />
+                    <SolidColorBrush x:Key="MwPurple" Color="{StaticResource MwPurpleColor}" />
 
-                    <!-- Background brushes -->
+                    <SolidColorBrush x:Key="MwInkA45" Color="#73000000" />
+                    <SolidColorBrush x:Key="MwInkA30" Color="#4D000000" />
+                    <SolidColorBrush x:Key="MwInkA85" Color="#D9000000" />
+
+                    <LinearGradientBrush x:Key="MwIronBody" StartPoint="0%,0%" EndPoint="0%,100%">
+                        <GradientStop Offset="0" Color="{StaticResource MwIronColor}" />
+                        <GradientStop Offset="0.45" Color="{StaticResource MwIronDarkColor}" />
+                        <GradientStop Offset="1" Color="#7a6a5c" />
+                    </LinearGradientBrush>
+                    <LinearGradientBrush x:Key="MwPanelBody" StartPoint="0%,0%" EndPoint="0%,100%">
+                        <GradientStop Offset="0" Color="{StaticResource MwPanelColor}" />
+                        <GradientStop Offset="1" Color="{StaticResource MwBgDeepColor}" />
+                    </LinearGradientBrush>
+                    <LinearGradientBrush x:Key="MwTopBarBody" StartPoint="0%,0%" EndPoint="0%,100%">
+                        <GradientStop Offset="0" Color="{StaticResource MwPanelColor}" />
+                        <GradientStop Offset="1" Color="{StaticResource MwBgDeepColor}" />
+                    </LinearGradientBrush>
+                    <LinearGradientBrush x:Key="MwConsoleBody" StartPoint="0%,0%" EndPoint="0%,100%">
+                        <GradientStop Offset="0" Color="{StaticResource MwBgDeepColor}" />
+                        <GradientStop Offset="1" Color="#c9bfb2" />
+                    </LinearGradientBrush>
+                    <LinearGradientBrush x:Key="MwMoltenButton" StartPoint="0%,0%" EndPoint="0%,100%">
+                        <GradientStop Offset="0" Color="{StaticResource MwMoltenHiColor}" />
+                        <GradientStop Offset="0.5" Color="{StaticResource MwMoltenColor}" />
+                        <GradientStop Offset="1" Color="{StaticResource MwMoltenLoColor}" />
+                    </LinearGradientBrush>
+                    <LinearGradientBrush x:Key="MwProgressFill" StartPoint="0%,0%" EndPoint="100%,0%">
+                        <GradientStop Offset="0" Color="{StaticResource MwMoltenLoColor}" />
+                        <GradientStop Offset="0.5" Color="{StaticResource MwMoltenColor}" />
+                        <GradientStop Offset="1" Color="{StaticResource MwMoltenHiColor}" />
+                    </LinearGradientBrush>
+                    <LinearGradientBrush x:Key="MwPipeLiquid" StartPoint="0%,50%" EndPoint="100%,50%">
+                        <GradientStop Offset="0" Color="{StaticResource MwMoltenLoColor}" />
+                        <GradientStop Offset="0.5" Color="{StaticResource MwMoltenColor}" />
+                        <GradientStop Offset="1" Color="{StaticResource MwMoltenHiColor}" />
+                    </LinearGradientBrush>
+
+                    <SolidColorBrush x:Key="MwSrc" Color="{StaticResource MwMoltenColor}" />
+                    <SolidColorBrush x:Key="MwSnk" Color="{StaticResource MwCyanColor}" />
+                    <SolidColorBrush x:Key="MwShp" Color="{StaticResource MwMagColor}" />
+                    <SolidColorBrush x:Key="MwFlt" Color="{StaticResource MwLimeColor}" />
+                    <SolidColorBrush x:Key="MwHea" Color="{StaticResource MwMoltenColor}" />
+                    <SolidColorBrush x:Key="MwMet" Color="{StaticResource MwPurpleColor}" />
+
+                    <SolidColorBrush x:Key="MwSrcGlow" Color="{StaticResource MwSrcGlowColor}" />
+                    <SolidColorBrush x:Key="MwSnkGlow" Color="{StaticResource MwSnkGlowColor}" />
+                    <SolidColorBrush x:Key="MwShpGlow" Color="{StaticResource MwShpGlowColor}" />
+                    <SolidColorBrush x:Key="MwFltGlow" Color="{StaticResource MwFltGlowColor}" />
+                    <SolidColorBrush x:Key="MwHeaGlow" Color="{StaticResource MwHeaGlowColor}" />
+                    <SolidColorBrush x:Key="MwMetGlow" Color="{StaticResource MwMetGlowColor}" />
+
+                    <SolidColorBrush x:Key="MwSrcBase" Color="{StaticResource MwSrcBaseColor}" />
+                    <SolidColorBrush x:Key="MwSnkBase" Color="{StaticResource MwSnkBaseColor}" />
+                    <SolidColorBrush x:Key="MwShpBase" Color="{StaticResource MwShpBaseColor}" />
+                    <SolidColorBrush x:Key="MwFltBase" Color="{StaticResource MwFltBaseColor}" />
+                    <SolidColorBrush x:Key="MwHeaBase" Color="{StaticResource MwHeaBaseColor}" />
+                    <SolidColorBrush x:Key="MwMetBase" Color="{StaticResource MwMetBaseColor}" />
+
+                    <!-- Forge brushes -->
                     <SolidColorBrush x:Key="ForgeBg" Color="{StaticResource ForgeBgColor}" />
                     <SolidColorBrush x:Key="ForgeDeep" Color="{StaticResource ForgeDeepColor}" />
                     <SolidColorBrush x:Key="ForgePanel" Color="{StaticResource ForgePanelColor}" />
                     <SolidColorBrush x:Key="ForgeSurface" Color="{StaticResource ForgeSurfaceColor}" />
                     <SolidColorBrush x:Key="ForgeElevated" Color="{StaticResource ForgeElevatedColor}" />
                     <SolidColorBrush x:Key="ForgeHover" Color="{StaticResource ForgeHoverColor}" />
-
-                    <!-- Border brushes -->
                     <SolidColorBrush x:Key="ForgeBorder" Color="{StaticResource ForgeBorderColor}" />
                     <SolidColorBrush x:Key="ForgeBorderFocus" Color="{StaticResource ForgeBorderFocusColor}" />
-
-                    <!-- Text brushes -->
                     <SolidColorBrush x:Key="ForgeText" Color="{StaticResource ForgeTextColor}" />
                     <SolidColorBrush x:Key="ForgeTextSecondary" Color="{StaticResource ForgeTextSecondaryColor}" />
                     <SolidColorBrush x:Key="ForgeTextMuted" Color="{StaticResource ForgeTextMutedColor}" />
-
-                    <!-- Accent brushes -->
                     <SolidColorBrush x:Key="ForgeAccent" Color="{StaticResource ForgeAccentColor}" />
                     <SolidColorBrush x:Key="ForgeAccentBright" Color="{StaticResource ForgeAccentBrightColor}" />
-
-                    <!-- Category brushes -->
                     <SolidColorBrush x:Key="ForgeSource" Color="{StaticResource ForgeSourceColor}" />
                     <SolidColorBrush x:Key="ForgeTransform" Color="{StaticResource ForgeTransformColor}" />
                     <SolidColorBrush x:Key="ForgeOutput" Color="{StaticResource ForgeOutputColor}" />
-
-                    <!-- Status brushes -->
                     <SolidColorBrush x:Key="ForgeSuccess" Color="{StaticResource ForgeSuccessColor}" />
                     <SolidColorBrush x:Key="ForgeError" Color="{StaticResource ForgeErrorColor}" />
                     <SolidColorBrush x:Key="ForgeWarning" Color="{StaticResource ForgeWarningColor}" />
-
-                    <!-- Molten gradient brushes -->
                     <SolidColorBrush x:Key="ForgeMoltenFrom" Color="{StaticResource ForgeMoltenFromColor}" />
                     <SolidColorBrush x:Key="ForgeMoltenTo" Color="{StaticResource ForgeMoltenToColor}" />
-
-                    <!-- Dim variants (~15% opacity) for badges -->
-                    <SolidColorBrush x:Key="ForgeSourceDim" Color="#262680c2" />
-                    <SolidColorBrush x:Key="ForgeTransformDim" Color="#261a9a6c" />
-                    <SolidColorBrush x:Key="ForgeOutputDim" Color="#26d07a18" />
+                    <SolidColorBrush x:Key="ForgeSourceDim" Color="#26d07a18" />
+                    <SolidColorBrush x:Key="ForgeTransformDim" Color="#265c9a10" />
+                    <SolidColorBrush x:Key="ForgeOutputDim" Color="#261a7fa0" />
                     <SolidColorBrush x:Key="ForgeSuccessDim" Color="#261a9a6c" />
                     <SolidColorBrush x:Key="ForgeErrorDim" Color="#26d44040" />
                     <SolidColorBrush x:Key="ForgeWarningDim" Color="#26c88a15" />
@@ -185,141 +401,174 @@
 
     <!-- ═══ Global Style Overrides ═══ -->
 
-    <!-- Button: forge surface bg, border, rounded 8px -->
+    <!-- Button: forge surface bg, border, rounded 2px (squared cast-iron feel) -->
     <Style Selector="Button">
-        <Setter Property="Background" Value="{DynamicResource ForgeSurface}" />
-        <Setter Property="Foreground" Value="{DynamicResource ForgeText}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource ForgeBorder}" />
+        <Setter Property="Background" Value="{DynamicResource MwPanel}" />
+        <Setter Property="Foreground" Value="{DynamicResource MwBone}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource MwIronDark}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="CornerRadius" Value="2" />
         <Setter Property="Padding" Value="10,5" />
     </Style>
     <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource ForgeElevated}" />
+        <Setter Property="Background" Value="{DynamicResource MwPanelHi}" />
     </Style>
     <Style Selector="Button:pressed /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource ForgeHover}" />
+        <Setter Property="Background" Value="{DynamicResource MwIronDark}" />
     </Style>
 
-    <!-- Button.accent: forge accent run button -->
+    <!-- Button.accent == IGNITE: molten gradient, dark text, glow -->
     <Style Selector="Button.accent">
-        <Setter Property="Background" Value="{DynamicResource ForgeAccent}" />
-        <Setter Property="Foreground" Value="#08070a" />
+        <Setter Property="Background" Value="{DynamicResource MwMoltenButton}" />
+        <Setter Property="Foreground" Value="#1a0a04" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="FontFamily" Value="{DynamicResource MwDisplay}" />
         <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Padding" Value="14,6" />
     </Style>
     <Style Selector="Button.accent:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource ForgeAccentBright}" />
+        <Setter Property="Background" Value="{DynamicResource MwMoltenHi}" />
     </Style>
 
-    <!-- Button.preview: transparent outline with accent -->
+    <!-- Button.quench: active-running state, cyan outline, dark fill -->
+    <Style Selector="Button.quench">
+        <Setter Property="Background" Value="{DynamicResource MwBgDeep}" />
+        <Setter Property="Foreground" Value="{DynamicResource MwCyan}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource MwCyan}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="FontFamily" Value="{DynamicResource MwDisplay}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Padding" Value="14,6" />
+    </Style>
+
+    <!-- Button.ghost: transparent ash outline (DRY RUN, etc) -->
+    <Style Selector="Button.ghost">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource MwAsh}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource MwIronDark}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="FontFamily" Value="{DynamicResource MwDisplay}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Padding" Value="14,6" />
+    </Style>
+    <Style Selector="Button.ghost:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource MwPanelHi}" />
+    </Style>
+
+    <!-- Button.preview: back-compat alias of ghost -->
     <Style Selector="Button.preview">
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderBrush" Value="{DynamicResource ForgeAccent}" />
-        <Setter Property="Foreground" Value="{DynamicResource ForgeAccent}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource MwMolten}" />
+        <Setter Property="Foreground" Value="{DynamicResource MwMolten}" />
         <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
-    <Style Selector="Button.preview:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="#26e8932f" />
-    </Style>
 
-    <!-- Button.toolbarIcon: icon-only toolbar buttons -->
+    <!-- Button.toolbarIcon -->
     <Style Selector="Button.toolbarIcon">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Width" Value="34" />
         <Setter Property="Height" Value="34" />
         <Setter Property="Padding" Value="7" />
-        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="CornerRadius" Value="2" />
     </Style>
     <Style Selector="Button.toolbarIcon:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource ForgeElevated}" />
-        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Background" Value="{DynamicResource MwPanelHi}" />
+        <Setter Property="CornerRadius" Value="2" />
     </Style>
 
-    <!-- Button.templateButton: template quick-start buttons -->
+    <!-- Button.templateButton: quick-start template cards (cast iron) -->
     <Style Selector="Button.templateButton">
-        <Setter Property="Background" Value="{DynamicResource ForgeSurface}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource ForgeBorder}" />
+        <Setter Property="Background" Value="{DynamicResource MwIronBody}" />
+        <Setter Property="Foreground" Value="{DynamicResource MwBone}" />
+        <Setter Property="BorderBrush" Value="#050303" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="12" />
-        <Setter Property="Padding" Value="14,10" />
-        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="CornerRadius" Value="3" />
+        <Setter Property="Padding" Value="18,14" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
     </Style>
     <Style Selector="Button.templateButton:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource ForgeElevated}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource ForgeAccent}" />
+        <Setter Property="Background" Value="{DynamicResource MwPanelHi}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource MwMolten}" />
     </Style>
 
-    <!-- TextBox: forge surface bg, rounded 6px -->
+    <!-- TextBox: forge ink bg with category neon left border (Mw aesthetic) -->
     <Style Selector="TextBox">
-        <Setter Property="Background" Value="{DynamicResource ForgeSurface}" />
-        <Setter Property="Foreground" Value="{DynamicResource ForgeText}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource ForgeBorder}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Background" Value="{DynamicResource MwInkA45}" />
+        <Setter Property="Foreground" Value="{DynamicResource MwBone}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource MwIronDark}" />
+        <Setter Property="BorderThickness" Value="2,1,1,1" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="FontFamily" Value="{DynamicResource MwMono}" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="Padding" Value="10,8" />
+        <Setter Property="CaretBrush" Value="{DynamicResource MwMolten}" />
     </Style>
     <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
-        <Setter Property="BorderBrush" Value="{DynamicResource ForgeAccent}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource MwMolten}" />
     </Style>
 
-    <!-- ComboBox -->
     <Style Selector="ComboBox">
-        <Setter Property="Background" Value="{DynamicResource ForgeSurface}" />
-        <Setter Property="Foreground" Value="{DynamicResource ForgeText}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource ForgeBorder}" />
-        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Background" Value="{DynamicResource MwInkA45}" />
+        <Setter Property="Foreground" Value="{DynamicResource MwBone}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource MwIronDark}" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="FontFamily" Value="{DynamicResource MwMono}" />
     </Style>
 
-    <!-- ToggleSwitch -->
     <Style Selector="ToggleSwitch">
-        <Setter Property="Foreground" Value="{DynamicResource ForgeText}" />
+        <Setter Property="Foreground" Value="{DynamicResource MwBone}" />
     </Style>
 
-    <!-- TreeView -->
+    <Style Selector="CheckBox">
+        <Setter Property="Foreground" Value="{DynamicResource MwBone}" />
+    </Style>
+
     <Style Selector="TreeView">
         <Setter Property="Background" Value="Transparent" />
     </Style>
     <Style Selector="TreeViewItem">
-        <Setter Property="Foreground" Value="{DynamicResource ForgeText}" />
+        <Setter Property="Foreground" Value="{DynamicResource MwBone}" />
     </Style>
 
-    <!-- ScrollViewer -->
     <Style Selector="ScrollViewer">
         <Setter Property="Background" Value="Transparent" />
     </Style>
 
-    <!-- ProgressBar -->
     <Style Selector="ProgressBar">
-        <Setter Property="Background" Value="{DynamicResource ForgeSurface}" />
-        <Setter Property="Foreground" Value="{DynamicResource ForgeAccent}" />
-        <Setter Property="CornerRadius" Value="4" />
+        <Setter Property="Background" Value="{DynamicResource MwIronDark}" />
+        <Setter Property="Foreground" Value="{DynamicResource MwProgressFill}" />
+        <Setter Property="CornerRadius" Value="0" />
     </Style>
 
-    <!-- Expander -->
     <Style Selector="Expander">
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="Foreground" Value="{DynamicResource ForgeText}" />
+        <Setter Property="Foreground" Value="{DynamicResource MwBone}" />
     </Style>
 
     <!-- ToggleButton.outputTab: flat tab button for output panel -->
     <Style Selector="ToggleButton.outputTab">
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="Foreground" Value="{DynamicResource ForgeTextSecondary}" />
+        <Setter Property="Foreground" Value="{DynamicResource MwAsh}" />
         <Setter Property="BorderThickness" Value="0,0,0,2" />
         <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="CornerRadius" Value="0" />
         <Setter Property="Padding" Value="12,6" />
         <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FontFamily" Value="{DynamicResource MwMono}" />
     </Style>
     <Style Selector="ToggleButton.outputTab:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource ForgeSurface}" />
+        <Setter Property="Background" Value="{DynamicResource MwPanel}" />
     </Style>
     <Style Selector="ToggleButton.outputTab:checked /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource ForgePanel}" />
+        <Setter Property="Background" Value="{DynamicResource MwBgDeep}" />
     </Style>
     <Style Selector="ToggleButton.outputTab:checked">
-        <Setter Property="Foreground" Value="{DynamicResource ForgeText}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource ForgeAccent}" />
+        <Setter Property="Foreground" Value="{DynamicResource MwBone}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource MwMolten}" />
     </Style>
 
 </Styles>
