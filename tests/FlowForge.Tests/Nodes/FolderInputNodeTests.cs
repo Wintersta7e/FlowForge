@@ -208,9 +208,9 @@ public class FolderInputNodeTests
     [Fact]
     public async Task Path_with_trailing_separator_still_enumerates_files()
     {
-        // Reproduces the bug where Path.GetFullPath preserves a user-typed
-        // trailing slash, making resolvedRootPrefix end in "\\\\" (doubled)
-        // and every enumerated file being rejected as "outside source root".
+        // A user-typed trailing separator must not double the prefix in
+        // the containment check; otherwise every enumerated file resolves
+        // "outside source root" and the node yields nothing.
         using var dir = new TempDirectory();
         dir.CreateFiles("a.txt", "b.txt", "c.txt");
 

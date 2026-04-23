@@ -8,12 +8,11 @@ namespace FlowForge.Tests.ViewModels;
 public class ConfigFieldViewModelTests
 {
     /// <summary>
-    /// Regression: a bool stored in the config dict via JsonSerializer.SerializeToElement
-    /// round-trips through JsonElement.GetRawText() as lowercase "true"/"false". The
-    /// BoolStringConverter used by the Bool editor emits capitalized "True"/"False". If
-    /// the initial _value is lowercase, the first binding write-back sees a different
-    /// string and re-fires OnValueChanged — which previously caused an infinite
-    /// refresh loop that froze the UI thread after toggling a CheckBox.
+    /// A bool stored in the config dict via JsonSerializer.SerializeToElement
+    /// round-trips through JsonElement.GetRawText() as lowercase "true"/"false",
+    /// but BoolStringConverter on the CheckBox emits capitalized "True"/"False".
+    /// The initial _value must arrive pre-normalized, or the first binding
+    /// write-back fires a fresh OnValueChanged and loops.
     /// </summary>
     [Theory]
     [InlineData(true, "True")]

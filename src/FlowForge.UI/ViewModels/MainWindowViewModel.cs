@@ -84,23 +84,17 @@ public partial class MainWindowViewModel : ViewModelBase
 
         NodeLibrary.Initialize(_registry);
 
-        // Wire selection changes to properties panel
         Editor.PropertyChanged += OnEditorPropertyChanged;
-
-        // Refresh properties panel on undo/redo so fields read fresh config values
         Editor.UndoRedo.StateChanged += OnUndoRedoStateChanged;
-
-        // Track all graph changes (structural + config edits) for IsDirty
         Editor.GraphChanged += OnEditorGraphChanged;
 
-        // Propagate ExecutionLog.IsRunning to every station + connection so the
-        // canvas can switch into its "forge lit" running visual (heat pulse,
-        // pipe liquid, port glow).
+        // Drives the "forge lit" canvas state (heat pulse, pipe liquid,
+        // port glow) whenever a real run or demo toggle flips IsRunning.
         ExecutionLog.PropertyChanged += OnExecutionLogPropertyChanged;
 
         // Seed running-state on any station/pipe added after the initial
-        // toggle (loading a template, undoing a removal, finishing a drag) so
-        // new elements match the surrounding canvas rather than staying idle.
+        // toggle (template load, undo of a delete, drag completion) so
+        // new elements match the surrounding canvas instead of staying idle.
         Editor.Nodes.CollectionChanged += OnEditorRunningCollectionChanged;
         Editor.Connections.CollectionChanged += OnEditorRunningCollectionChanged;
     }

@@ -106,11 +106,9 @@ public class FolderOutputNodeTests
     [Fact]
     public async Task Output_path_with_trailing_separator_writes_files_successfully()
     {
-        // Reproduces the PathGuard trailing-separator bug: Path.GetFullPath
-        // preserves a user-typed trailing slash, so the "inside allowed root"
-        // check compared against "C:\\foo\\\\" (doubled) and every file was
-        // rejected with "Path traversal blocked". Users hit this when picking
-        // their output folder from a path they typed with a trailing slash.
+        // Picking an output folder with a trailing separator must still
+        // let files through — the containment check must not see a doubled
+        // separator and reject every file as "Path traversal blocked".
         using var dir = new TempDirectory();
         dir.CreateFiles("photo.jpg");
 
