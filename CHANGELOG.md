@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-04-23
+
 ### Added
 
 - **Molten Works redesign** — cast-iron stations with chrome pipes, forge-amber / cyan / magenta / lime / purple palette, and embedded Instrument Serif / Oswald / JetBrains Mono typography. 11 hand-drawn forge-themed SVG icons (pit, mold, die, chisel, brand, sieve, rack, mill, crucible, press, loupe). Rebuilt top bar (FLOW·FORGE logo, pipeline path, STN/PIPE stats, IGNITE / QUENCH / DRY RUN buttons), operations library, inspector, and bottom console to match the concept.
@@ -12,20 +14,26 @@ All notable changes to this project will be documented in this file.
 - **Running-state visuals** — category-colored aura behind each station, pulsing heat glow inside the iron body, pulsing LIVE dot, animated gauge strip (opacity + color change), and mercury inner-dot + glow on active ports.
 - **Canvas backdrop** — radial forge glow, cyan HUD wash, magenta corner brackets, 40×40 / 200×200 grid overlay, animated cyan scanline, 14 staggered ember particles rising from the bottom, system HUD with lat/mem/err stats.
 - **DEMO button** — toggles the running-state visuals on every station and pipe without executing a real pipeline. Disabled while an actual run is in flight.
+- **Shared pipe / bead geometry helper** — new `MwGeometry.IsFinite` validators are wired into the `StyledProperty` registrations on both `MwPipeConnection` and `MwMercuryDroplet`, so the two ends of the shared cubic reject the same class of non-finite input at the property boundary.
 
 ### Changed
 
-- **Dark-only theme** — light theme support removed. Placeholder `Light` `ResourceDictionary` and runtime toggle dropped; `App.axaml` locks `RequestedThemeVariant="Dark"`. Toolbar theme-toggle button, `ToggleTheme` command, `IsDarkTheme` / `ThemeIcon` properties, and the `ActualThemeVariantChanged` subscription removed.
+- **Dark-only theme** — light theme support removed. Placeholder `Light` `ResourceDictionary` and runtime toggle dropped; `App.axaml` locks `RequestedThemeVariant="Dark"`. Toolbar theme-toggle button, `ToggleTheme` command, `IsDarkTheme` / `ThemeIcon` properties, and the `ActualThemeVariantChanged` subscription removed. **Breaking change for anyone who was using the light theme.**
 - **Screenshots refreshed** — three new shots matching the redesigned UI (empty state hero, populated editor, running stations). Old pre-redesign screenshots deleted.
 
 ### Fixed
 
-- **`PathGuard.EnsureWithinDirectory` trailing-separator bug** — a user-typed trailing backslash on the output folder made the path-containment check compare against a doubled separator and reject every valid child as "resolves outside". `Path.TrimEndingDirectorySeparator` normalization applied. Same fix in `FolderInputNode` enumeration.
+- **`PathGuard.EnsureWithinDirectory` trailing-separator bug** — a user-typed trailing backslash on the output folder, or a drive-root / UNC-share selected as the allowed root (`C:\`, `\\server\share\`), doubled the separator in the prefix check and rejected every valid child as "resolves outside". `Path.TrimEndingDirectorySeparator` normalization plus a new `PathGuard.NormalizedRootPrefix` helper that preserves a root-anchored trailing separator rather than doubling it. Same fix routed through `FolderInputNode` enumeration.
 - **Empty-value validation** — `FolderInput`, `FolderOutput`, `RenamePattern`, `RenameRegex`, and `ImageConvert` now throw a friendly `NodeConfigurationException` naming the station when a required field is empty or whitespace, instead of letting raw `ArgumentException` / IO failures fan out per file.
-- **Bool config infinite refresh loop** — `JsonElement.GetRawText()` returned lowercase `"true"` / `"false"` but `BoolStringConverter.ConvertBack` emits `"True"` / `"False"`. Case mismatch on the first CheckBox round-trip re-fired `OnValueChanged`, pushed another UndoRedo entry, rebuilt Fields, produced another mismatched VM, and so on until the UI thread starved. `ConfigFieldViewModel` now normalizes bool values in its constructor.
+- **Bool / int config silent corruption** — `JsonElement.GetRawText()` returned lowercase `"true"` / `"false"` but `BoolStringConverter.ConvertBack` emits `"True"` / `"False"`. Case mismatch on the first CheckBox round-trip re-fired `OnValueChanged`, pushed another UndoRedo entry, rebuilt Fields, produced another mismatched VM, and looped until the UI thread starved. `ConfigFieldViewModel` now normalizes bool values in its constructor, and an unparseable bool or int string no longer lands in a typed slot where `GetBoolean` / `GetInt32` would throw on next load.
 - **Inspector blanking after CheckBox toggle** — `OnUndoRedoStateChanged` called `RefreshPropertiesPanel` synchronously inside a binding setter's event dispatch, detaching the very CheckBox whose event was still on the stack. Refresh now deferred via `Dispatcher.UIThread.Post`.
 - **PropertiesView empty-state layout** — DockPanel default-Left docking made the empty-state prompt a narrow strip while the Fields `ScrollViewer` took `LastChildFill`. Wrapped both in a `Grid` so `IsVisible` alone controls which shows.
-- **20 regression tests** — covering each of the above (trailing-separator enumeration, empty-value configs, bool round-trip normalization).
+- **Execution progress bar scale** — `ProgressBar.Maximum` was `1` while the VM's `Progress` property scales to `0..100`, so the bar clamped to full at roughly 1 % on every real run. Maximum is now `100`.
+- **Mercury droplet layout side effects** — positioning via `Canvas.SetLeft` / `SetTop` happened inside `MeasureOverride`, which writes layout-affecting attached properties during the measure pass. Moved to `ArrangeOverride` with `AffectsArrange` only; render output is position-independent.
+- **Mercury droplet progress overshoot** — beads briefly flew off the pipe at animation keyframe boundaries. `ComputeBezierPoint` clamps `Progress` to `[0, 1]`, and the `StyledProperty` validators on Source, Target, Progress, and the pipe's offsets reject NaN / ±Infinity so the cubic geometry cannot be silently poisoned.
+- **Running-state thread safety** — `ExecutePipelineAsync`'s `finally` flipped `ExecutionLog.IsRunning` on whatever thread `RunAsync` resumed on (typically a thread-pool thread), then mutated the node / connection `ObservableCollection` from off-thread. `UpdateRunningVisual` now guards with `Dispatcher.UIThread.CheckAccess` and re-posts when off-thread; the `finally` awaits `Dispatcher.UIThread.InvokeAsync(...)` so the next execute call sees the flipped flag at its guard.
+- **Running-state on graph mutations** — stations and pipes added after the canvas was already in the "forge lit" state (template load, undo of a delete, bulk `Clear + Add`) stayed visually idle. `OnEditorRunningCollectionChanged` now seeds `IsRunning` on `NewItems` and re-syncs the whole canvas on `Reset`.
+- **30+ regression tests** — trailing-separator enumeration across drive-root / UNC / user-typed paths, empty-value configs, bool / int unparseable-input rejection, bool round-trip idempotency, running-state + demo propagation, every registered TypeKey has a bespoke MwOpsMap entry whose category bucket matches its `NodeRegistry.GetCategoryForTypeKey`.
 
 ## [1.6.0] - 2026-04-02
 
