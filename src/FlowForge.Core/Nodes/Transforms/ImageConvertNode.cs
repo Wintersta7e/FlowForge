@@ -57,6 +57,11 @@ public class ImageConvertNode : ITransformNode
             ?? throw new NodeConfigurationException("ImageConvert: 'format' must be a non-null string."))
             .ToLowerInvariant();
 
+        if (string.IsNullOrWhiteSpace(_format))
+        {
+            throw new NodeConfigurationException($"ImageConvert: 'format' is empty — pick one of {string.Join(", ", ValidFormats)} on the Convert Format station.");
+        }
+
         if (!ValidFormats.Contains(_format))
         {
             throw new NodeConfigurationException($"ImageConvert: Unsupported format '{_format}'. Supported: {string.Join(", ", ValidFormats)}");

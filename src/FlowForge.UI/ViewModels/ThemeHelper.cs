@@ -25,4 +25,14 @@ internal static class ThemeHelper
 
         return Color.Parse(fallback);
     }
+
+    public static Geometry? GetGeometry(string key)
+    {
+        if (Application.Current?.TryFindResource(key, Application.Current.ActualThemeVariant, out object? resource) == true && resource is Geometry geometry)
+        {
+            return geometry;
+        }
+
+        return null;
+    }
 }

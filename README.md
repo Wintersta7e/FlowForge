@@ -9,7 +9,7 @@ A visual node-based file processing pipeline tool. Build reusable workflows for 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
 
 <p align="center">
-  <img src="screenshots/editor-overview.png" alt="FlowForge Editor" width="800">
+  <img src="screenshots/empty-state.png" alt="FlowForge empty state — Build your pipeline from raw ore, with one-click templates" width="820">
 </p>
 
 ## Overview
@@ -22,7 +22,7 @@ FlowForge lets you visually connect source, transform, and output nodes to build
 - **Real-time Progress** — Live scanning count, per-file processing status, and throughput reporting
 - **Pipeline Templates** — Pre-wired workflows for common tasks (photo import, batch rename, web export, compression)
 - **CLI Runner** — Execute pipelines from the command line for automation and scripting
-- **Light/Dark Theme** — Toggle between Molten Forge dark and light themes at runtime
+- **Molten Works theme** — Cast-iron stations with chrome pipes and live mercury flow when a pipeline runs
 - **Cross-platform** — Runs on Windows, macOS, and Linux via Avalonia UI
 
 ## Features
@@ -45,6 +45,10 @@ FlowForge lets you visually connect source, transform, and output nodes to build
 
 ### Pipeline Editor
 
+<p align="center">
+  <img src="screenshots/editor-overview.png" alt="FlowForge editor — three-panel layout with library, canvas, and inspector over the pipeline console" width="900">
+</p>
+
 - **Canvas** — Nodify-powered node graph with pan, zoom, drag, and rubber-band selection
 - **Node Library** — Categorized sidebar with search and drag-to-canvas support
 - **Properties Panel** — Auto-generated config forms from node schemas (text, number, boolean, file/folder picker, dropdown)
@@ -55,15 +59,10 @@ FlowForge lets you visually connect source, transform, and output nodes to build
 - **Keyboard Shortcuts** — Help dialog showing all available shortcuts
 - **Zoom-to-Fit** — Toolbar button to fit the entire graph into the viewport
 - **Config Tooltips** — Hover descriptions on all node configuration fields
-- **Molten Forge Theme** — Custom dark/light theme with warm amber accent and category-colored nodes
-- **Light/Dark Toggle** — Switch themes at runtime; nodes, connectors, and panels update dynamically
+- **Molten Works theme** — Cast-iron stations, chrome pipes, glowing mercury beads that travel along the pipes while a pipeline is running, and category-colored heat halos on active stations
 
 <p align="center">
-  <img src="screenshots/node-pipeline.png" alt="Node Pipeline" width="600">
-</p>
-<p align="center">
-  <img src="screenshots/node-library.png" alt="Node Library" width="300">
-  <img src="screenshots/properties-panel.png" alt="Properties Panel" width="300">
+  <img src="screenshots/stations-running.png" alt="Cast-iron stations with category-colored halos and flowing mercury beads while a pipeline runs" width="680">
 </p>
 
 ### CLI Runner
@@ -210,6 +209,10 @@ Contributions are welcome! Please:
 ## License
 
 MIT License — see [LICENSE](./LICENSE) for details.
+
+### Fonts and third-party components
+
+The desktop app embeds three open-source font families (Instrument Serif, Oswald, JetBrains Mono), each under the SIL Open Font License 1.1. See [THIRD-PARTY-NOTICES.md](./THIRD-PARTY-NOTICES.md) for the full list; the OFL text ships next to the font files in every release zip.
 
 ## Support
 

@@ -1,0 +1,45 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!--
+        Molten Works forge-themed icon geometries.
+        All paths are designed on a 40x40 viewport with 1.7 stroke weight
+        and round line joins/caps, matching the reference MwIcon component.
+    -->
+
+    <!-- pit: source / input (hilled ground) -->
+    <StreamGeometry x:Key="MwIcon.Pit">M6,28 Q20,18 34,28 L34,34 L6,34 Z M12,26 L16,20 M22,24 L26,18 M28,26 L32,22</StreamGeometry>
+
+    <!-- mold: destination / output (grid mold) -->
+    <StreamGeometry x:Key="MwIcon.Mold">M6,14 L34,14 L34,32 L6,32 Z M10,20 L14,20 M18,20 L22,20 M26,20 L30,20 M10,26 L14,26 M18,26 L22,26 M26,26 L30,26</StreamGeometry>
+
+    <!-- die: rename pattern (stamping die) -->
+    <StreamGeometry x:Key="MwIcon.Die">M8,10 L32,10 L32,18 L8,18 Z M20,18 L20,28 M14,28 L26,28 M10,32 L30,32</StreamGeometry>
+
+    <!-- chisel: rename regex (angled chisel) -->
+    <StreamGeometry x:Key="MwIcon.Chisel">M8,26 L22,12 L28,18 L14,32 M28,12 L34,6</StreamGeometry>
+
+    <!-- brand: rename affix (branding iron) -->
+    <StreamGeometry x:Key="MwIcon.Brand">M14,16 A6,6 0 1 1 26,16 A6,6 0 1 1 14,16 M20,22 L20,34 M16,18 L24,14 M16,14 L24,18</StreamGeometry>
+
+    <!-- sieve: filter (triangular sieve with dots) -->
+    <StreamGeometry x:Key="MwIcon.Sieve">M8,14 L32,14 L28,24 L12,24 Z M18,26 L18,32 M22,26 L22,30</StreamGeometry>
+
+    <!-- rack: sort (horizontal rack with beads) -->
+    <StreamGeometry x:Key="MwIcon.Rack">M8,12 L32,12 M8,20 L32,20 M8,28 L32,28</StreamGeometry>
+
+    <!-- mill: image resize (two rollers) -->
+    <StreamGeometry x:Key="MwIcon.Mill">M7,20 A6,6 0 1 1 19,20 A6,6 0 1 1 7,20 M21,20 A6,6 0 1 1 33,20 A6,6 0 1 1 21,20 M6,26 L34,26</StreamGeometry>
+
+    <!-- crucible: image convert (melting pot with ripple) -->
+    <StreamGeometry x:Key="MwIcon.Crucible">M10,14 Q20,34 30,14 M8,14 L32,14 M16,20 Q20,24 24,20</StreamGeometry>
+
+    <!-- press: image compress (press jaws) -->
+    <StreamGeometry x:Key="MwIcon.Press">M8,10 L32,10 M20,10 L20,22 M10,22 L30,22 L30,26 L10,26 Z M8,30 L32,30</StreamGeometry>
+
+    <!-- loupe: metadata (magnifier) -->
+    <StreamGeometry x:Key="MwIcon.Loupe">M9,17 A8,8 0 1 1 25,17 A8,8 0 1 1 9,17 M23,23 L32,32 M13,17 L21,17 M17,13 L17,21</StreamGeometry>
+
+    <!-- cog: fallback for unknown types -->
+    <StreamGeometry x:Key="MwIcon.Cog">M20,14 A6,6 0 1 1 20,26 A6,6 0 1 1 20,14 M20,6 L20,11 M20,29 L20,34 M6,20 L11,20 M29,20 L34,20 M10,10 L14,14 M26,26 L30,30 M30,10 L26,14 M14,26 L10,30</StreamGeometry>
+
+</ResourceDictionary>

@@ -28,6 +28,15 @@ public partial class PipelineNodeViewModel : ViewModelBase
     public ObservableCollection<PipelineConnectorViewModel> Output { get; } = new();
     public IDictionary<string, JsonElement> Config { get; }
 
+    /// <summary>Molten Works short code, e.g. "SHP.01".</summary>
+    public string MwCode { get; private set; } = string.Empty;
+
+    /// <summary>Molten Works subtitle, e.g. "folder · input".</summary>
+    public string MwSub { get; private set; } = string.Empty;
+
+    /// <summary>Molten Works category bucket (src/snk/shp/flt/hea/met).</summary>
+    public string MwCategory { get; private set; } = "hea";
+
     [ObservableProperty]
     private IBrush _categoryBrush = null!;
 
@@ -40,7 +49,37 @@ public partial class PipelineNodeViewModel : ViewModelBase
     [ObservableProperty]
     private IBrush _nodeBackground = null!;
 
-    private readonly EventHandler? _themeChangedHandler;
+    /// <summary>Mw icon-well base fill brush.</summary>
+    [ObservableProperty]
+    private IBrush _mwBaseBrush = null!;
+
+    /// <summary>Mw category accent / neon brush.</summary>
+    [ObservableProperty]
+    private IBrush _mwNeonBrush = null!;
+
+    /// <summary>Mw outer glow brush (drop-shadow when running).</summary>
+    [ObservableProperty]
+    private IBrush _mwGlowBrush = null!;
+
+    /// <summary>Mw category glow color for bindable drop-shadow effects.</summary>
+    [ObservableProperty]
+    private Color _categoryGlowColor;
+
+    /// <summary>Mw running heat-pulse brush, tinted by category glow.</summary>
+    [ObservableProperty]
+    private IBrush _mwHeatPulseBrush = null!;
+
+    /// <summary>Mw outer aura brush — bigger, softer radial cloud tinted by category glow.</summary>
+    [ObservableProperty]
+    private IBrush _mwAuraBrush = null!;
+
+    /// <summary>Forge-themed icon geometry (pit/mold/die/chisel/…).</summary>
+    [ObservableProperty]
+    private Geometry? _mwIconGeometry;
+
+    /// <summary>Whether the station should render in "running" state.</summary>
+    [ObservableProperty]
+    private bool _isRunning;
 
     public PipelineNodeViewModel(NodeDefinition definition, NodeRegistry registry)
     {
@@ -53,13 +92,12 @@ public partial class PipelineNodeViewModel : ViewModelBase
         ConfigPreview = BuildConfigPreview(definition.Config);
         _location = new Point(definition.Position.X, definition.Position.Y);
 
-        RebuildBrushes();
+        MwOpsMap.OpMeta meta = MwOpsMap.Get(definition.TypeKey);
+        MwCode = meta.Code;
+        MwSub = meta.Sub;
+        MwCategory = meta.Category;
 
-        if (Application.Current is { } app)
-        {
-            _themeChangedHandler = new EventHandler((_, _) => RebuildBrushes());
-            app.ActualThemeVariantChanged += _themeChangedHandler;
-        }
+        RebuildBrushes();
 
         // Source nodes have no input; output nodes have no output
         if (Category != NodeCategory.Source)
@@ -70,14 +108,6 @@ public partial class PipelineNodeViewModel : ViewModelBase
         if (Category != NodeCategory.Output)
         {
             Output.Add(new PipelineConnectorViewModel("Out", isInput: false, this));
-        }
-    }
-
-    public void Detach()
-    {
-        if (Application.Current is { } app)
-        {
-            app.ActualThemeVariantChanged -= _themeChangedHandler;
         }
     }
 
@@ -129,11 +159,74 @@ public partial class PipelineNodeViewModel : ViewModelBase
                 new GradientStop(surfaceColor, 0.5)
             }
         };
+
+        MwBaseBrush = ThemeHelper.GetBrush(MwOpsMap.BaseKey(MwCategory), "#3a1808");
+        MwNeonBrush = ThemeHelper.GetBrush(MwOpsMap.NeonKey(MwCategory), "#ff7a1a");
+        MwGlowBrush = ThemeHelper.GetBrush(MwOpsMap.GlowKey(MwCategory), "#ffd080");
+        Color glowColor = ThemeHelper.GetColor(MwGlowColorKey(MwCategory), "#ffd080");
+        CategoryGlowColor = glowColor;
+        MwHeatPulseBrush = BuildHeatPulseBrush(glowColor);
+        MwAuraBrush = BuildAuraBrush(glowColor);
+        MwIconGeometry = ThemeHelper.GetGeometry(MwOpsMap.IconKey(MwOpsMap.Get(TypeKey).Icon));
     }
+
+    private static IBrush BuildHeatPulseBrush(Color glowColor)
+    {
+        return new RadialGradientBrush
+        {
+            Center = new RelativePoint(0.5, 0.5, RelativeUnit.Relative),
+            GradientOrigin = new RelativePoint(0.5, 0.5, RelativeUnit.Relative),
+            RadiusX = new RelativeScalar(0.7, RelativeUnit.Relative),
+            RadiusY = new RelativeScalar(0.7, RelativeUnit.Relative),
+            GradientStops =
+            {
+                new GradientStop(Color.FromArgb(0xA6, glowColor.R, glowColor.G, glowColor.B), 0),
+                new GradientStop(Color.FromArgb(0x40, glowColor.R, glowColor.G, glowColor.B), 0.45),
+                new GradientStop(Colors.Transparent, 0.65),
+            },
+        };
+    }
+
+    /// <summary>
+    /// Build the running-aura radial-cloud brush painted BEHIND the station.
+    /// Strong alpha maintained out to 0.65 relative radius so the visible
+    /// cloud extends well past the iron body (which covers the brightest
+    /// centre), then fades to transparent at the border edges. Used on a
+    /// Border whose aspect matches the station (not a big square) so the
+    /// resulting halo is horizontally-elongated like in the concept, not
+    /// a circular bubble.
+    /// </summary>
+    private static IBrush BuildAuraBrush(Color glowColor)
+    {
+        return new RadialGradientBrush
+        {
+            Center = new RelativePoint(0.5, 0.5, RelativeUnit.Relative),
+            GradientOrigin = new RelativePoint(0.5, 0.5, RelativeUnit.Relative),
+            RadiusX = new RelativeScalar(0.5, RelativeUnit.Relative),
+            RadiusY = new RelativeScalar(0.5, RelativeUnit.Relative),
+            GradientStops =
+            {
+                new GradientStop(Color.FromArgb(0xD9, glowColor.R, glowColor.G, glowColor.B), 0),
+                new GradientStop(Color.FromArgb(0x99, glowColor.R, glowColor.G, glowColor.B), 0.35),
+                new GradientStop(Color.FromArgb(0x40, glowColor.R, glowColor.G, glowColor.B), 0.65),
+                new GradientStop(Colors.Transparent, 1.0),
+            },
+        };
+    }
+
+    private static string MwGlowColorKey(string category) => category switch
+    {
+        "src" => "MwSrcGlowColor",
+        "snk" => "MwSnkGlowColor",
+        "shp" => "MwShpGlowColor",
+        "flt" => "MwFltGlowColor",
+        "hea" => "MwHeaGlowColor",
+        "met" => "MwMetGlowColor",
+        _ => "MwMoltenHiColor",
+    };
 
     private static string BuildConfigPreview(IDictionary<string, JsonElement> config)
     {
-        // Show the first string config value as a preview (path, pattern, etc.)
         foreach (KeyValuePair<string, JsonElement> kvp in config)
         {
             if (kvp.Value.ValueKind == JsonValueKind.String)

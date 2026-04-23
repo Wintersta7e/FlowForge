@@ -41,6 +41,11 @@ public class RenameRegexNode : ITransformNode
         string pattern = patternElement.GetString()
             ?? throw new NodeConfigurationException("RenameRegex: 'pattern' must be a non-null string.");
 
+        if (string.IsNullOrWhiteSpace(pattern))
+        {
+            throw new NodeConfigurationException("RenameRegex: 'pattern' is empty — set a regex pattern on the Rename Regex station.");
+        }
+
         try
         {
 #pragma warning disable MA0023 // ExplicitCapture would break $1/$2 backreferences in replacement strings

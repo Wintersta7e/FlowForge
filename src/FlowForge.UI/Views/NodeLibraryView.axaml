@@ -4,17 +4,19 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:FlowForge.UI.ViewModels"
              mc:Ignorable="d"
-             d:DesignWidth="250" d:DesignHeight="600"
+             d:DesignWidth="240" d:DesignHeight="720"
              x:Class="FlowForge.UI.Views.NodeLibraryView"
              x:DataType="vm:NodeLibraryViewModel">
 
     <UserControl.DataTemplates>
+        <!-- Operation row -->
         <DataTemplate x:DataType="vm:NodeLibraryItemViewModel">
-            <Border Padding="8,6"
-                    CornerRadius="8"
+            <Border Margin="10,0,10,3"
+                    Padding="7,7"
+                    CornerRadius="2"
                     Cursor="Hand"
                     Background="Transparent"
-                    BorderThickness="2,0,0,0"
+                    BorderThickness="1"
                     BorderBrush="Transparent"
                     DoubleTapped="OnLibraryItemDoubleTapped"
                     PointerPressed="OnLibraryItemPointerPressed"
@@ -22,68 +24,143 @@
                     PointerReleased="OnLibraryItemPointerReleased">
                 <Border.Styles>
                     <Style Selector="Border:pointerover">
-                        <Setter Property="Background" Value="{DynamicResource ForgeElevated}" />
-                        <Setter Property="BorderBrush" Value="{DynamicResource ForgeAccent}" />
+                        <Setter Property="Background" Value="#0AFFFFFF" />
+                        <Setter Property="BorderBrush" Value="{DynamicResource MwIronDark}" />
                     </Style>
                 </Border.Styles>
-                <StackPanel Orientation="Horizontal" Spacing="10">
-                    <Border Width="32" Height="32" CornerRadius="8"
-                            Background="{Binding IconBackground}">
-                        <TextBlock Text="{Binding Icon}"
-                                   FontFamily="Segoe UI Emoji"
-                                   FontSize="15"
-                                   Foreground="{Binding IconForeground}"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center" />
+                <Grid ColumnDefinitions="30,*">
+                    <!-- Icon well -->
+                    <Border Grid.Column="0"
+                            Width="30" Height="30"
+                            CornerRadius="3"
+                            BorderThickness="1"
+                            BorderBrush="#050303">
+                        <Border.Background>
+                            <RadialGradientBrush Center="0.3,0.2" GradientOrigin="0.3,0.2" RadiusX="0.9" RadiusY="0.9">
+                                <GradientStop Offset="0" Color="#3a1808" />
+                                <GradientStop Offset="1" Color="#0a0503" />
+                            </RadialGradientBrush>
+                        </Border.Background>
+                        <Viewbox Width="18" Height="18">
+                            <Path Data="{Binding MwIconGeometry}"
+                                  Stroke="{Binding MwNeonBrush}"
+                                  StrokeThickness="1.8"
+                                  StrokeLineCap="Round"
+                                  StrokeJoin="Round"
+                                  Width="40" Height="40" />
+                        </Viewbox>
                     </Border>
-                    <TextBlock Text="{Binding DisplayName}"
-                               Foreground="{DynamicResource ForgeTextSecondary}"
-                               FontSize="12.5"
-                               FontWeight="Medium"
-                               VerticalAlignment="Center" />
-                </StackPanel>
+
+                    <!-- Title row + sub -->
+                    <StackPanel Grid.Column="1"
+                                Orientation="Vertical"
+                                VerticalAlignment="Center"
+                                Margin="10,0,0,0">
+                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Bottom">
+                            <TextBlock Text="{Binding DisplayName}"
+                                       FontFamily="{DynamicResource MwSerif}"
+                                       FontSize="14" FontStyle="Italic"
+                                       Foreground="{DynamicResource MwBone}"
+                                       VerticalAlignment="Bottom" />
+                            <TextBlock Text="{Binding Code}"
+                                       FontFamily="{DynamicResource MwMono}"
+                                       FontSize="8"
+                                       LetterSpacing="1"
+                                       Foreground="{Binding MwNeonBrush}"
+                                       VerticalAlignment="Bottom"
+                                       Margin="0,0,0,2" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding Sub}"
+                                   FontFamily="{DynamicResource MwMono}"
+                                   FontSize="9"
+                                   Foreground="{DynamicResource MwFaint}"
+                                   Margin="0,1,0,0" />
+                    </StackPanel>
+                </Grid>
             </Border>
         </DataTemplate>
     </UserControl.DataTemplates>
 
-    <DockPanel>
-        <StackPanel DockPanel.Dock="Top" Margin="14,14,14,4">
-            <TextBlock Text="NODE LIBRARY"
-                       FontSize="11"
-                       FontWeight="Bold"
-                       LetterSpacing="1.2"
-                       Foreground="{DynamicResource ForgeTextMuted}"
-                       Margin="0,0,0,2" />
-        </StackPanel>
+    <Border Background="{DynamicResource MwPanelBody}"
+            BorderBrush="{DynamicResource MwIronDark}"
+            BorderThickness="0,0,1,0">
+        <DockPanel LastChildFill="True">
 
-        <TextBox DockPanel.Dock="Top"
-                 Text="{Binding SearchText}"
-                 Watermark="Search nodes..."
-                 Background="{DynamicResource ForgeDeep}"
-                 CornerRadius="12"
-                 Margin="10,10,10,4" />
+            <!-- Header: // library eyebrow + Operations title -->
+            <StackPanel DockPanel.Dock="Top" Margin="18,18,18,12" Spacing="3">
+                <TextBlock Text="// LIBRARY"
+                           FontFamily="{DynamicResource MwMono}"
+                           FontSize="9"
+                           LetterSpacing="3"
+                           Foreground="{DynamicResource MwCyan}" />
+                <TextBlock Text="Operations"
+                           FontFamily="{DynamicResource MwSerif}"
+                           FontSize="22"
+                           FontStyle="Italic"
+                           Foreground="{DynamicResource MwBone}" />
+            </StackPanel>
 
-        <TreeView ItemsSource="{Binding Groups}"
-                  Margin="6,4,6,4"
-                  Background="Transparent">
-            <TreeView.ItemTemplate>
-                <TreeDataTemplate x:DataType="vm:NodeLibraryGroupViewModel"
-                                  ItemsSource="{Binding Items}">
-                    <DockPanel Margin="0,10,0,4">
-                        <TextBlock DockPanel.Dock="Left"
-                                   Text="{Binding Category}"
-                                   FontWeight="ExtraBold"
-                                   FontSize="10"
-                                   LetterSpacing="1"
-                                   Foreground="{Binding CategoryBrush}" />
-                        <Border Height="1"
-                                VerticalAlignment="Center"
-                                Margin="8,0,0,0"
-                                Background="{Binding CategoryBrush}"
-                                Opacity="0.25" />
-                    </DockPanel>
-                </TreeDataTemplate>
-            </TreeView.ItemTemplate>
-        </TreeView>
-    </DockPanel>
+            <!-- Search row (Mw-styled with magenta >) -->
+            <Border DockPanel.Dock="Top"
+                    Margin="16,0,16,14"
+                    Padding="10,8"
+                    Background="{DynamicResource MwInkA45}"
+                    BorderBrush="{DynamicResource MwIronDark}"
+                    BorderThickness="1">
+                <Grid ColumnDefinitions="Auto,*">
+                    <TextBlock Grid.Column="0"
+                               Text=">"
+                               FontFamily="{DynamicResource MwMono}"
+                               FontSize="10"
+                               Foreground="{DynamicResource MwMag}"
+                               Margin="0,0,8,0"
+                               VerticalAlignment="Center" />
+                    <TextBox Grid.Column="1"
+                             Text="{Binding SearchText}"
+                             Watermark="search…"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             Padding="0"
+                             MinHeight="16"
+                             FontFamily="{DynamicResource MwMono}"
+                             FontSize="10"
+                             Foreground="{DynamicResource MwBone}" />
+                </Grid>
+            </Border>
+
+            <!-- Groups -->
+            <TreeView ItemsSource="{Binding Groups}"
+                      Padding="0,0,0,16"
+                      Background="Transparent"
+                      BorderThickness="0">
+                <TreeView.ItemTemplate>
+                    <TreeDataTemplate x:DataType="vm:NodeLibraryGroupViewModel"
+                                      ItemsSource="{Binding Items}">
+                        <Grid Margin="8,6,18,6" ColumnDefinitions="Auto,*">
+                            <TextBlock Grid.Column="0"
+                                       Text="{Binding Category}"
+                                       FontFamily="{DynamicResource MwMono}"
+                                       FontWeight="SemiBold"
+                                       FontSize="9"
+                                       LetterSpacing="2.5"
+                                       Foreground="{DynamicResource MwMolten}" />
+                            <!-- Fading gradient rule: molten → transparent -->
+                            <Border Grid.Column="1"
+                                    Height="1"
+                                    VerticalAlignment="Center"
+                                    Margin="8,0,0,0"
+                                    Opacity="0.5">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%">
+                                        <GradientStop Offset="0" Color="{DynamicResource MwMoltenColor}" />
+                                        <GradientStop Offset="1" Color="Transparent" />
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                            </Border>
+                        </Grid>
+                    </TreeDataTemplate>
+                </TreeView.ItemTemplate>
+            </TreeView>
+        </DockPanel>
+    </Border>
 </UserControl>

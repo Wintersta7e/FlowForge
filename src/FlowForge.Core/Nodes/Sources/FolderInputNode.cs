@@ -40,6 +40,11 @@ public class FolderInputNode : ISourceNode
         _path = pathElement.GetString()
             ?? throw new NodeConfigurationException("FolderInput: 'path' must be a non-null string.");
 
+        if (string.IsNullOrWhiteSpace(_path))
+        {
+            throw new NodeConfigurationException("FolderInput: 'path' is empty — set a source folder on the Source station.");
+        }
+
         if (config.TryGetValue("recursive", out JsonElement recursiveElement))
         {
             _recursive = recursiveElement.GetBoolean();
@@ -66,8 +71,12 @@ public class FolderInputNode : ISourceNode
         SearchOption searchOption = _recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
         string[] patterns = _filter.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-        string resolvedRoot = Path.GetFullPath(_path);
-        string resolvedRootPrefix = resolvedRoot + Path.DirectorySeparatorChar;
+        // Trim trailing separator so the prefix check below never sees a
+        // doubled slash. PathGuard.NormalizedRootPrefix keeps drive roots
+        // ("C:\") and UNC shares single-separated (TrimEndingDirectorySeparator
+        // preserves the root separator) so children still match StartsWith.
+        string resolvedRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(_path));
+        string resolvedRootPrefix = PathGuard.NormalizedRootPrefix(resolvedRoot);
         var files = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (string pattern in patterns)
         {
@@ -80,7 +89,10 @@ public class FolderInputNode : ISourceNode
                     if (!resolvedFile.StartsWith(resolvedRootPrefix, StringComparison.OrdinalIgnoreCase) &&
                         !resolvedFile.Equals(resolvedRoot, StringComparison.OrdinalIgnoreCase))
                     {
-                        _logger.LogWarning("FolderInput: skipping '{FilePath}' — resolves outside source root", file);
+                        _logger.LogWarning(
+                            "FolderInput: skipping '{FilePath}' — resolves outside source root '{Root}'",
+                            file,
+                            resolvedRoot);
                         continue;
                     }
 

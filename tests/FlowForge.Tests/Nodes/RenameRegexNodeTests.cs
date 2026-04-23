@@ -70,14 +70,16 @@ public class RenameRegexNodeTests
     [Fact]
     public async Task Scope_fullpath_matches_entire_path_within_directory()
     {
+        // Use non-hex characters (klm) so the pattern can't accidentally match
+        // inside the hex GUID portion of the temp directory path.
         using var tempDir = new TempDirectory();
-        tempDir.CreateFiles("abc_test.txt");
+        tempDir.CreateFiles("klm_test.txt");
 
-        string filePath = Path.Combine(tempDir.Path, "abc_test.txt");
+        string filePath = Path.Combine(tempDir.Path, "klm_test.txt");
         FileJob job = MakeJob(filePath);
 
         var node = new RenameRegexNode(NullLogger<RenameRegexNode>.Instance);
-        node.Configure(MakeConfig(new { pattern = "abc", replacement = "xyz", scope = "fullpath" }));
+        node.Configure(MakeConfig(new { pattern = "klm", replacement = "xyz", scope = "fullpath" }));
 
         IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
 
@@ -113,6 +115,21 @@ public class RenameRegexNodeTests
         Action act = () => node.Configure(config);
         act.Should().Throw<NodeConfigurationException>()
             .WithMessage("*pattern*required*");
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("\t")]
+    public void Empty_or_whitespace_pattern_throws_friendly_configuration_error(string emptyPattern)
+    {
+        var node = new RenameRegexNode(NullLogger<RenameRegexNode>.Instance);
+        Dictionary<string, JsonElement> config = MakeConfig(new { pattern = emptyPattern, replacement = "X" });
+
+        Action act = () => node.Configure(config);
+
+        act.Should().Throw<NodeConfigurationException>()
+            .WithMessage("*regex pattern*");
     }
 
     [Fact]

@@ -23,6 +23,22 @@ public partial class PropertiesViewModel : ViewModelBase
     [ObservableProperty]
     private IBrush? _badgeBackground;
 
+    /// <summary>Molten Works metadata for the selected node (header row).</summary>
+    [ObservableProperty]
+    private string? _mwCode;
+
+    [ObservableProperty]
+    private string? _mwSub;
+
+    [ObservableProperty]
+    private Geometry? _mwIconGeometry;
+
+    [ObservableProperty]
+    private IBrush? _mwNeonBrush;
+
+    [ObservableProperty]
+    private IBrush? _mwBaseBrush;
+
     public ObservableCollection<ConfigFieldViewModel> Fields { get; } = new();
 
     public void LoadNode(PipelineNodeViewModel? node, NodeRegistry registry, Action<IUndoableCommand>? onConfigChanged = null)
@@ -35,6 +51,11 @@ public partial class PropertiesViewModel : ViewModelBase
             HasSelection = false;
             BadgeForeground = null;
             BadgeBackground = null;
+            MwCode = null;
+            MwSub = null;
+            MwIconGeometry = null;
+            MwNeonBrush = null;
+            MwBaseBrush = null;
             return;
         }
 
@@ -48,6 +69,12 @@ public partial class PropertiesViewModel : ViewModelBase
             NodeCategory.Output => ThemeHelper.GetBrush("ForgeOutputDim", "#26e8932f"),
             _ => ThemeHelper.GetBrush("ForgeElevated", "#252029")
         };
+
+        MwCode = node.MwCode;
+        MwSub = node.MwSub;
+        MwIconGeometry = node.MwIconGeometry;
+        MwNeonBrush = node.MwNeonBrush;
+        MwBaseBrush = node.MwBaseBrush;
 
         IReadOnlyList<ConfigField> schema = registry.GetConfigSchema(node.TypeKey);
         foreach (ConfigField field in schema)

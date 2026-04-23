@@ -41,12 +41,25 @@ public partial class ConfigFieldViewModel : ViewModelBase
         DefaultValue = field.DefaultValue;
         Tooltip = field.Description;
 
-        // Read initial value from config dictionary
+        // Read initial value from config. Bool must arrive pre-normalized to
+        // the capitalized "True"/"False" form that BoolStringConverter
+        // round-trips — element.GetRawText() yields lowercase, and a case
+        // mismatch would re-fire OnValueChanged on the first binding
+        // write-back and loop.
         if (_configDictionary.TryGetValue(Key, out JsonElement element))
         {
-            _value = element.ValueKind == JsonValueKind.String
-                ? element.GetString()
-                : element.GetRawText();
+            _value = element.ValueKind switch
+            {
+                JsonValueKind.String => element.GetString(),
+                JsonValueKind.True => "True",
+                JsonValueKind.False => "False",
+                _ => element.GetRawText(),
+            };
+        }
+        else if (FieldType == ConfigFieldType.Bool && DefaultValue is not null
+                 && bool.TryParse(DefaultValue, out bool defaultBool))
+        {
+            _value = defaultBool ? "True" : "False";
         }
         else
         {
@@ -58,12 +71,19 @@ public partial class ConfigFieldViewModel : ViewModelBase
     {
         if (value is not null)
         {
+            // Reject unparseable typed input early so we never serialise a raw
+            // string into a Bool/Int slot. On reload the config reader would
+            // call GetBoolean / GetInt32 on that JSON string and throw.
             if (FieldType == ConfigFieldType.Int && !int.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, out _))
             {
                 return;
             }
 
-            // Capture old value before mutation
+            if (FieldType == ConfigFieldType.Bool && !bool.TryParse(value, out _))
+            {
+                return;
+            }
+
             bool keyExisted = _configDictionary.TryGetValue(Key, out JsonElement oldElement);
 
             JsonElement newElement = FieldType switch

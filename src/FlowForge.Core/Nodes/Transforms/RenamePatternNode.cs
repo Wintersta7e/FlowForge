@@ -45,6 +45,11 @@ public class RenamePatternNode : ITransformNode
         _pattern = patternElement.GetString()
             ?? throw new NodeConfigurationException("RenamePattern: 'pattern' must be a non-null string.");
 
+        if (string.IsNullOrWhiteSpace(_pattern))
+        {
+            throw new NodeConfigurationException("RenamePattern: 'pattern' is empty — set a rename pattern like '{name}_{counter:000}{ext}' on the Rename Pattern station.");
+        }
+
         if (config.TryGetValue("startIndex", out JsonElement startIndexElement))
         {
             _startIndex = startIndexElement.GetInt32();

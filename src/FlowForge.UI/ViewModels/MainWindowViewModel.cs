@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Avalonia;
-using Avalonia.Styling;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FlowForge.Core.Execution;
@@ -41,11 +41,13 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isDirty;
 
+    /// <summary>
+    /// When true, all stations + pipes render in their running visual state
+    /// (heat pulse, molten liquid, LIVE pills) without executing any file I/O.
+    /// Useful for demoing the animation work without a long real pipeline.
+    /// </summary>
     [ObservableProperty]
-    private bool _isDarkTheme = true;
-
-    [ObservableProperty]
-    private string _themeIcon = "\u263E";
+    private bool _isDemoMode;
 
     public IReadOnlyList<RecentPipelineItem> RecentPipelineItems { get; private set; } = new List<RecentPipelineItem>();
 
@@ -82,14 +84,98 @@ public partial class MainWindowViewModel : ViewModelBase
 
         NodeLibrary.Initialize(_registry);
 
-        // Wire selection changes to properties panel
         Editor.PropertyChanged += OnEditorPropertyChanged;
-
-        // Refresh properties panel on undo/redo so fields read fresh config values
         Editor.UndoRedo.StateChanged += OnUndoRedoStateChanged;
-
-        // Track all graph changes (structural + config edits) for IsDirty
         Editor.GraphChanged += OnEditorGraphChanged;
+
+        // Drives the "forge lit" canvas state (heat pulse, pipe liquid,
+        // port glow) whenever a real run or demo toggle flips IsRunning.
+        ExecutionLog.PropertyChanged += OnExecutionLogPropertyChanged;
+
+        // Seed running-state on any station/pipe added after the initial
+        // toggle (template load, undo of a delete, drag completion) so
+        // new elements match the surrounding canvas instead of staying idle.
+        Editor.Nodes.CollectionChanged += OnEditorRunningCollectionChanged;
+        Editor.Connections.CollectionChanged += OnEditorRunningCollectionChanged;
+    }
+
+    private void OnExecutionLogPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
+    {
+        if (!string.Equals(args.PropertyName, nameof(ExecutionLogViewModel.IsRunning), StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        UpdateRunningVisual();
+    }
+
+    partial void OnIsDemoModeChanged(bool value)
+    {
+        UpdateRunningVisual();
+    }
+
+    /// <summary>
+    /// Push the combined "running" visual state (real pipeline OR demo mode)
+    /// to every station + connection so the canvas animations light up.
+    /// </summary>
+    private void UpdateRunningVisual()
+    {
+        // May be invoked off the UI thread (e.g. ExecutionLog.IsRunning flips
+        // in the finally of an async pipeline whose continuation resumes on a
+        // thread-pool thread). Bounce to the dispatcher before touching
+        // ObservableCollection-backed VMs.
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(UpdateRunningVisual);
+            return;
+        }
+
+        bool running = ExecutionLog.IsRunning || IsDemoMode;
+        foreach (PipelineNodeViewModel node in Editor.Nodes)
+        {
+            node.IsRunning = running;
+        }
+
+        foreach (PipelineConnectionViewModel connection in Editor.Connections)
+        {
+            connection.IsRunning = running;
+        }
+    }
+
+    private void OnEditorRunningCollectionChanged(object? sender, NotifyCollectionChangedEventArgs args)
+    {
+        // Reset fires with NewItems == null; re-sync the whole canvas so a
+        // bulk replace (template swap, Clear+Add sequence) still seeds any
+        // stations/pipes that landed in the new collection.
+        if (args.Action == NotifyCollectionChangedAction.Reset)
+        {
+            UpdateRunningVisual();
+            return;
+        }
+
+        if (args.NewItems is null)
+        {
+            return;
+        }
+
+        bool running = ExecutionLog.IsRunning || IsDemoMode;
+        if (!running)
+        {
+            return;
+        }
+
+        foreach (object? item in args.NewItems)
+        {
+            switch (item)
+            {
+                case PipelineNodeViewModel node:
+                    node.IsRunning = true;
+                    break;
+                case PipelineConnectionViewModel connection:
+                    connection.IsRunning = true;
+                    break;
+            }
+        }
     }
 
     private void OnEditorPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
@@ -102,7 +188,15 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void OnUndoRedoStateChanged(object? sender, EventArgs e)
     {
-        RefreshPropertiesPanel();
+        // Defer via Dispatcher.Post. This event fires synchronously from inside
+        // ConfigFieldViewModel.OnValueChanged, which itself fires from a binding
+        // setter during an in-flight control event (e.g. a CheckBox's Checked
+        // dispatch). Clearing and rebuilding Fields immediately would detach the
+        // very control whose event is still on the stack, leaving its visual
+        // tree in an inconsistent state and making the inspector look blank.
+        // Post queues the rebuild for the next dispatcher cycle so the control
+        // event completes cleanly first.
+        Dispatcher.UIThread.Post(RefreshPropertiesPanel);
     }
 
     private void OnEditorGraphChanged(object? sender, EventArgs e)
@@ -376,7 +470,13 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         finally
         {
-            ExecutionLog.IsRunning = false;
+            // RunAsync's awaited continuation can resume on a thread-pool
+            // thread, so the IsRunning setter (and its PropertyChanged cascade
+            // into XAML bindings + our visual handlers) must be marshalled
+            // back to the UI thread. Await InvokeAsync instead of fire-and-forget
+            // Post so the next ExecutePipelineAsync call is guaranteed to see
+            // IsRunning = false at the top-of-method guard.
+            await Dispatcher.UIThread.InvokeAsync(() => ExecutionLog.IsRunning = false);
             Interlocked.Exchange(ref _cts, null)?.Dispose();
         }
     }
@@ -401,17 +501,9 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void ToggleTheme()
+    private void ToggleDemoMode()
     {
-        if (Application.Current is null)
-        {
-            return;
-        }
-
-        IsDarkTheme = !IsDarkTheme;
-        Application.Current.RequestedThemeVariant = IsDarkTheme ? ThemeVariant.Dark : ThemeVariant.Light;
-        ThemeIcon = IsDarkTheme ? "\u263E" : "\u2600";
-        NodeLibrary.RefreshBrushes();
+        IsDemoMode = !IsDemoMode;
     }
 
     [RelayCommand]

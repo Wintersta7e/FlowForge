@@ -162,6 +162,21 @@ public class RenamePatternNodeTests
         act.Should().Throw<NodeConfigurationException>();
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("\t")]
+    public void Empty_or_whitespace_pattern_throws_friendly_configuration_error(string emptyPattern)
+    {
+        var node = new RenamePatternNode(NullLogger<RenamePatternNode>.Instance);
+        Dictionary<string, JsonElement> config = MakeConfig(emptyPattern);
+
+        Action act = () => node.Configure(config);
+
+        act.Should().Throw<NodeConfigurationException>()
+            .WithMessage("*rename pattern*");
+    }
+
     [Fact]
     public async Task CancellationToken_cancelled_throws_OperationCanceledException()
     {
@@ -179,17 +194,20 @@ public class RenamePatternNodeTests
     [Fact]
     public async Task TransformAsync_path_traversal_blocked()
     {
+        // A rename pattern that encodes '..' segments tries to escape the
+        // job's containing directory and write outside it. PathGuard should
+        // reject before any File.Move happens.
         using var dir = new TempDirectory();
-        dir.CreateFiles("malicious.txt");
+        dir.CreateFiles("photo.jpg");
 
-        string filePath = Path.Combine(dir.Path, "malicious.txt");
+        string filePath = Path.Combine(dir.Path, "photo.jpg");
         var node = new RenamePatternNode(NullLogger<RenamePatternNode>.Instance);
-        node.Configure(MakeConfig("{name}{ext}"));
+        node.Configure(MakeConfig("../../{name}{ext}"));
 
         var job = new FileJob
         {
-            OriginalPath = Path.Combine(dir.Path, "..", "..", "malicious.txt"),
-            CurrentPath = Path.Combine(dir.Path, "..", "..", "malicious.txt")
+            OriginalPath = filePath,
+            CurrentPath = filePath
         };
 
         Func<Task> act = () => node.TransformAsync(job, dryRun: false);

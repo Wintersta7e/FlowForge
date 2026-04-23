@@ -88,6 +88,43 @@ public class FolderOutputNodeTests
         act.Should().Throw<NodeConfigurationException>();
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("\t")]
+    public void Empty_or_whitespace_path_throws_friendly_configuration_error(string emptyPath)
+    {
+        var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
+        Dictionary<string, JsonElement> config = MakeConfig(new { path = emptyPath });
+
+        Action act = () => node.Configure(config);
+
+        act.Should().Throw<NodeConfigurationException>()
+            .WithMessage("*destination folder*");
+    }
+
+    [Fact]
+    public async Task Output_path_with_trailing_separator_writes_files_successfully()
+    {
+        // Picking an output folder with a trailing separator must still
+        // let files through — the containment check must not see a doubled
+        // separator and reject every file as "Path traversal blocked".
+        using var dir = new TempDirectory();
+        dir.CreateFiles("photo.jpg");
+
+        string sourcePath = Path.Combine(dir.Path, "photo.jpg");
+        string outputWithTrailingSeparator = dir.OutputPath + Path.DirectorySeparatorChar;
+
+        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
+        var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
+        node.Configure(MakeConfig(new { path = outputWithTrailingSeparator, mode = "copy" }));
+
+        await node.ConsumeAsync(job, dryRun: false);
+
+        File.Exists(Path.Combine(dir.OutputPath, "photo.jpg"))
+            .Should().BeTrue("trailing separator on the output path must not cause PathGuard to reject the destination");
+    }
+
     [Fact]
     public void Invalid_mode_throws_NodeConfigurationException()
     {
