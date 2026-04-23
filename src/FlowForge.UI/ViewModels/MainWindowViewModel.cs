@@ -90,6 +90,30 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // Track all graph changes (structural + config edits) for IsDirty
         Editor.GraphChanged += OnEditorGraphChanged;
+
+        // Propagate ExecutionLog.IsRunning to every station + connection so the
+        // canvas can switch into its "forge lit" running visual (heat pulse,
+        // pipe liquid, port glow).
+        ExecutionLog.PropertyChanged += OnExecutionLogPropertyChanged;
+    }
+
+    private void OnExecutionLogPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
+    {
+        if (!string.Equals(args.PropertyName, nameof(ExecutionLogViewModel.IsRunning), StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        bool running = ExecutionLog.IsRunning;
+        foreach (PipelineNodeViewModel node in Editor.Nodes)
+        {
+            node.IsRunning = running;
+        }
+
+        foreach (PipelineConnectionViewModel connection in Editor.Connections)
+        {
+            connection.IsRunning = running;
+        }
     }
 
     private void OnEditorPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
