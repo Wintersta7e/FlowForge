@@ -10,17 +10,21 @@ namespace FlowForge.UI.Views;
 /// </summary>
 public sealed class MwPipeConnection : Shape
 {
+    // Non-finite endpoints or offsets would corrupt the cubic StreamGeometry
+    // and silently draw nothing. Mirror the validator MwMercuryDroplet applies
+    // to its own Source/Target so both ends of the shared curve enforce the
+    // same boundary contract.
     public static readonly StyledProperty<Point> SourceProperty =
-        AvaloniaProperty.Register<MwPipeConnection, Point>(nameof(Source));
+        AvaloniaProperty.Register<MwPipeConnection, Point>(nameof(Source), validate: MwGeometry.IsFinite);
 
     public static readonly StyledProperty<Point> TargetProperty =
-        AvaloniaProperty.Register<MwPipeConnection, Point>(nameof(Target));
+        AvaloniaProperty.Register<MwPipeConnection, Point>(nameof(Target), validate: MwGeometry.IsFinite);
 
     public static readonly StyledProperty<Size> SourceOffsetProperty =
-        AvaloniaProperty.Register<MwPipeConnection, Size>(nameof(SourceOffset));
+        AvaloniaProperty.Register<MwPipeConnection, Size>(nameof(SourceOffset), validate: MwGeometry.IsFinite);
 
     public static readonly StyledProperty<Size> TargetOffsetProperty =
-        AvaloniaProperty.Register<MwPipeConnection, Size>(nameof(TargetOffset));
+        AvaloniaProperty.Register<MwPipeConnection, Size>(nameof(TargetOffset), validate: MwGeometry.IsFinite);
 
     static MwPipeConnection()
     {

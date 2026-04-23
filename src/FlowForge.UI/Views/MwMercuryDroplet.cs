@@ -23,20 +23,15 @@ public sealed class MwMercuryDroplet : Control
     private const double BoxSize = OuterRadius * 2;
 
     public static readonly StyledProperty<Point> SourceProperty =
-        AvaloniaProperty.Register<MwMercuryDroplet, Point>(nameof(Source), validate: IsFinite);
+        AvaloniaProperty.Register<MwMercuryDroplet, Point>(nameof(Source), validate: MwGeometry.IsFinite);
 
     public static readonly StyledProperty<Point> TargetProperty =
-        AvaloniaProperty.Register<MwMercuryDroplet, Point>(nameof(Target), validate: IsFinite);
+        AvaloniaProperty.Register<MwMercuryDroplet, Point>(nameof(Target), validate: MwGeometry.IsFinite);
 
-    public static readonly StyledProperty<double> ProgressProperty =
-        AvaloniaProperty.Register<MwMercuryDroplet, double>(nameof(Progress), validate: IsFinite);
-
-    // Reject NaN / ±Infinity at the property boundary so the bezier math never
-    // has to defend against non-finite coordinates. Math.Clamp(NaN, 0, 1)
+    // Reject NaN / ±Infinity at the property boundary; Math.Clamp(NaN, 0, 1)
     // returns NaN, which would propagate into Canvas.SetLeft / SetTop.
-    private static bool IsFinite(double value) => !double.IsNaN(value) && !double.IsInfinity(value);
-
-    private static bool IsFinite(Point value) => IsFinite(value.X) && IsFinite(value.Y);
+    public static readonly StyledProperty<double> ProgressProperty =
+        AvaloniaProperty.Register<MwMercuryDroplet, double>(nameof(Progress), validate: MwGeometry.IsFinite);
 
     // Single radial-gradient brush for the whole bead: opaque mercury core
     // fading through moltenHi yellow and molten orange to a transparent rim.
