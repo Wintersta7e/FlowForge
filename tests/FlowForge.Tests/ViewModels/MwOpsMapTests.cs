@@ -9,9 +9,8 @@ public class MwOpsMapTests
 {
     /// <summary>
     /// Every TypeKey registered in the default NodeRegistry must have a
-    /// bespoke MwOpsMap entry. The fallback returns the generic "Cog" icon
-    /// and the "hea" category bucket — landing a source or output node
-    /// there gives the wrong aura / port glow / neon accent colour.
+    /// bespoke MwOpsMap entry — the generic "Cog" / "hea" fallback is only
+    /// safe for truly unknown types, not registered ones.
     /// </summary>
     [Fact]
     public void Every_registered_type_key_has_a_bespoke_entry()

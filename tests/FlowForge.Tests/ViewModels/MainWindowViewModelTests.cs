@@ -13,11 +13,8 @@ namespace FlowForge.Tests.ViewModels;
 public class MainWindowViewModelTests
 {
     /// <summary>
-    /// Toggling the real execution flag must switch every station + pipe on
-    /// the canvas into the "forge lit" visual state. This is the single
-    /// point that drives the redesign's heat-pulse / aura / mercury-bead
-    /// animations, so regressions here would silently dead-ink the canvas
-    /// on every real pipeline run.
+    /// Toggling ExecutionLog.IsRunning must flip every station + pipe on the
+    /// canvas into the "forge lit" visual state and back.
     /// </summary>
     [Fact]
     public void ExecutionLog_IsRunning_propagates_to_nodes_and_connections()

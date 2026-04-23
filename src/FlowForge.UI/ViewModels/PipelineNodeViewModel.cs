@@ -227,7 +227,6 @@ public partial class PipelineNodeViewModel : ViewModelBase
 
     private static string BuildConfigPreview(IDictionary<string, JsonElement> config)
     {
-        // Show the first string config value as a preview (path, pattern, etc.)
         foreach (KeyValuePair<string, JsonElement> kvp in config)
         {
             if (kvp.Value.ValueKind == JsonValueKind.String)

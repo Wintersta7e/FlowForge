@@ -84,7 +84,6 @@ public partial class ConfigFieldViewModel : ViewModelBase
                 return;
             }
 
-            // Capture old value before mutation
             bool keyExisted = _configDictionary.TryGetValue(Key, out JsonElement oldElement);
 
             JsonElement newElement = FieldType switch

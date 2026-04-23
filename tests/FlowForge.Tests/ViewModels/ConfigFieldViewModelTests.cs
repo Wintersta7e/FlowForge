@@ -8,11 +8,8 @@ namespace FlowForge.Tests.ViewModels;
 public class ConfigFieldViewModelTests
 {
     /// <summary>
-    /// A bool stored in the config dict via JsonSerializer.SerializeToElement
-    /// round-trips through JsonElement.GetRawText() as lowercase "true"/"false",
-    /// but BoolStringConverter on the CheckBox emits capitalized "True"/"False".
-    /// The initial _value must arrive pre-normalized, or the first binding
-    /// write-back fires a fresh OnValueChanged and loops.
+    /// CheckBox's BoolStringConverter emits capitalized "True"/"False"; the
+    /// initial Value must match so the first binding write-back is a no-op.
     /// </summary>
     [Theory]
     [InlineData(true, "True")]
@@ -74,11 +71,8 @@ public class ConfigFieldViewModelTests
     }
 
     /// <summary>
-    /// Regression guard for the original infinite-loop scenario: after
-    /// construction the <see cref="ConfigFieldViewModel.Value"/> must already
-    /// match what the CheckBox's BoolStringConverter will write back ("True"
-    /// / "False"), so the first binding write-back is a no-op instead of a
-    /// fresh PropertyChanged that re-fires OnValueChanged in a loop.
+    /// Setting Value to the current value must be a PropertyChanged no-op so
+    /// a binding write-back cannot re-enter OnValueChanged.
     /// </summary>
     [Fact]
     public void Bool_value_setter_is_idempotent_when_writing_the_current_value()
