@@ -40,5 +40,11 @@
   <ItemGroup>
     <AvaloniaResource Include="Assets\icon.png" />
     <AvaloniaResource Include="Assets\Fonts\*.ttf" />
+    <!-- SIL OFL 1.1 §4 — the licence text must travel with the redistributed
+         font binaries. Copied next to the executable on publish so the
+         release zip (and every dev build) carries the notice. -->
+    <Content Include="Assets\Fonts\OFL.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 </Project>

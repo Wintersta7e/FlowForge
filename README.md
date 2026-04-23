@@ -210,6 +210,10 @@ Contributions are welcome! Please:
 
 MIT License — see [LICENSE](./LICENSE) for details.
 
+### Fonts and third-party components
+
+The desktop app embeds three open-source font families (Instrument Serif, Oswald, JetBrains Mono), each under the SIL Open Font License 1.1. See [THIRD-PARTY-NOTICES.md](./THIRD-PARTY-NOTICES.md) for the full list; the OFL text ships next to the font files in every release zip.
+
 ## Support
 
 - [Report issues](../../issues) or suggest features
