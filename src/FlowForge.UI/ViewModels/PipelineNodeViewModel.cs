@@ -81,8 +81,6 @@ public partial class PipelineNodeViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isRunning;
 
-    private readonly EventHandler? _themeChangedHandler;
-
     public PipelineNodeViewModel(NodeDefinition definition, NodeRegistry registry)
     {
         Id = definition.Id;
@@ -101,12 +99,6 @@ public partial class PipelineNodeViewModel : ViewModelBase
 
         RebuildBrushes();
 
-        if (Application.Current is { } app)
-        {
-            _themeChangedHandler = new EventHandler((_, _) => RebuildBrushes());
-            app.ActualThemeVariantChanged += _themeChangedHandler;
-        }
-
         // Source nodes have no input; output nodes have no output
         if (Category != NodeCategory.Source)
         {
@@ -116,14 +108,6 @@ public partial class PipelineNodeViewModel : ViewModelBase
         if (Category != NodeCategory.Output)
         {
             Output.Add(new PipelineConnectorViewModel("Out", isInput: false, this));
-        }
-    }
-
-    public void Detach()
-    {
-        if (Application.Current is { } app)
-        {
-            app.ActualThemeVariantChanged -= _themeChangedHandler;
         }
     }
 

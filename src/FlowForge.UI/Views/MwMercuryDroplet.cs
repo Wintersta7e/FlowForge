@@ -36,7 +36,7 @@ public sealed class MwMercuryDroplet : Control
     // Produces the "glowing metal bead" look in one paint instead of three
     // stacked solid-alpha ellipses (which kept compositing to a flat orange
     // disc with no visible mercury core).
-    private static readonly IBrush _dropletBrush = BuildDropletBrush();
+    private static readonly IBrush DropletBrush = BuildDropletBrush();
 
     private static IBrush BuildDropletBrush()
     {
@@ -93,7 +93,7 @@ public sealed class MwMercuryDroplet : Control
         var center = new Point(OuterRadius, OuterRadius);
         // Single filled ellipse painted with the cached radial gradient — gives
         // the concept's mercury-core + molten-halo bead in one pass.
-        context.DrawEllipse(_dropletBrush, null, center, OuterRadius, OuterRadius);
+        context.DrawEllipse(DropletBrush, null, center, OuterRadius, OuterRadius);
     }
 
     private Point ComputeBezierPoint()

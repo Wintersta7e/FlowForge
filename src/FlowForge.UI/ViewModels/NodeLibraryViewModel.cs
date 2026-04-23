@@ -92,15 +92,6 @@ public partial class NodeLibraryViewModel : ViewModelBase
         };
     }
 
-    public void RefreshBrushes()
-    {
-        if (_registry != null)
-        {
-            Initialize(_registry);
-            FilterItems();
-        }
-    }
-
     private void FilterItems()
     {
         string search = SearchText.Trim();

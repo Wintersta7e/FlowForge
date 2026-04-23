@@ -311,16 +311,6 @@
                 </Button>
 
                 <Button Classes="toolbarIcon"
-                        Command="{Binding ToggleThemeCommand}"
-                        ToolTip.Tip="Toggle Light/Dark Theme">
-                    <TextBlock Text="{Binding ThemeIcon}"
-                               FontSize="16"
-                               Foreground="{DynamicResource MwAsh}"
-                               HorizontalAlignment="Center"
-                               VerticalAlignment="Center" />
-                </Button>
-
-                <Button Classes="toolbarIcon"
                         ToolTip.Tip="Keyboard Shortcuts (F1)"
                         Click="OnShowShortcutsClick">
                     <TextBlock Text="?"
