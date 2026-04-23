@@ -239,6 +239,55 @@
                     </StackPanel>
                 </Button>
 
+                <!-- DEMO: toggles the running-state visual (heat pulse, mercury
+                     droplets, LIVE pills) without executing any file I/O. Button
+                     disabled while a real pipeline is running so the two states
+                     can't fight for control. -->
+                <Button Command="{Binding ToggleDemoModeCommand}"
+                        IsEnabled="{Binding !ExecutionLog.IsRunning}"
+                        ToolTip.Tip="Demo — toggle the running visuals without executing files">
+                    <Button.Styles>
+                        <Style Selector="Button">
+                            <Setter Property="Background" Value="Transparent" />
+                            <Setter Property="Foreground" Value="{DynamicResource MwAsh}" />
+                            <Setter Property="BorderBrush" Value="{DynamicResource MwIronDark}" />
+                            <Setter Property="BorderThickness" Value="1" />
+                            <Setter Property="FontFamily" Value="{DynamicResource MwDisplay}" />
+                            <Setter Property="FontWeight" Value="SemiBold" />
+                            <Setter Property="FontSize" Value="13" />
+                            <Setter Property="Padding" Value="14,6" />
+                        </Style>
+                        <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                            <Setter Property="Background" Value="{DynamicResource MwPanelHi}" />
+                        </Style>
+                    </Button.Styles>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <!-- Off: circle outline; On: filled cyan dot -->
+                        <Ellipse Width="9" Height="9"
+                                 Stroke="{DynamicResource MwAsh}"
+                                 StrokeThickness="1.4"
+                                 IsVisible="{Binding !IsDemoMode}"
+                                 VerticalAlignment="Center" />
+                        <Ellipse Width="9" Height="9"
+                                 Fill="{DynamicResource MwCyan}"
+                                 IsVisible="{Binding IsDemoMode}"
+                                 VerticalAlignment="Center">
+                            <Ellipse.Effect>
+                                <DropShadowEffect BlurRadius="8" Color="#2EF0FF" OffsetX="0" OffsetY="0" />
+                            </Ellipse.Effect>
+                        </Ellipse>
+                        <TextBlock Text="DEMO"
+                                   IsVisible="{Binding !IsDemoMode}"
+                                   VerticalAlignment="Center"
+                                   LetterSpacing="1.3" />
+                        <TextBlock Text="DEMO ON"
+                                   IsVisible="{Binding IsDemoMode}"
+                                   Foreground="{DynamicResource MwCyan}"
+                                   VerticalAlignment="Center"
+                                   LetterSpacing="1.3" />
+                    </StackPanel>
+                </Button>
+
                 <!-- IGNITE (hidden while running) -->
                 <Button Command="{Binding RunCommand}"
                         Classes="accent"

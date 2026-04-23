@@ -110,98 +110,211 @@
             </Border.Styles>
         </Border>
 
-        <!-- ═══ Animated ember particles (14 rising from bottom, staggered) ═══ -->
+        <!-- ═══ Animated ember particles (14 rising from bottom, staggered) ═══
+             Each ember has its own class (mw-ember-N) with a unique Delay so
+             they desync permanently after the first iteration. Durations also
+             vary slightly (6–11s) so they never re-align over time. -->
         <Canvas IsHitTestVisible="False" ClipToBounds="True">
             <Canvas.Styles>
+                <!-- Shared layout (opacity start) — selects all ember classes -->
                 <Style Selector="Ellipse.mw-ember">
                     <Setter Property="Opacity" Value="0" />
+                </Style>
+                <Style Selector="Ellipse.mw-ember-0">
                     <Style.Animations>
-                        <Animation Duration="0:0:8" IterationCount="INFINITE">
-                            <KeyFrame Cue="0%">
-                                <Setter Property="Opacity" Value="0" />
-                                <Setter Property="TranslateTransform.Y" Value="0" />
-                                <Setter Property="TranslateTransform.X" Value="0" />
-                            </KeyFrame>
-                            <KeyFrame Cue="15%">
-                                <Setter Property="Opacity" Value="0.9" />
-                            </KeyFrame>
-                            <KeyFrame Cue="100%">
-                                <Setter Property="Opacity" Value="0" />
-                                <Setter Property="TranslateTransform.Y" Value="-180" />
-                                <Setter Property="TranslateTransform.X" Value="16" />
-                            </KeyFrame>
+                        <Animation Duration="0:0:7" Delay="0:0:0" IterationCount="INFINITE">
+                            <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0" /><Setter Property="TranslateTransform.Y" Value="0" /><Setter Property="TranslateTransform.X" Value="0" /></KeyFrame>
+                            <KeyFrame Cue="15%"><Setter Property="Opacity" Value="0.9" /></KeyFrame>
+                            <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0" /><Setter Property="TranslateTransform.Y" Value="-180" /><Setter Property="TranslateTransform.X" Value="14" /></KeyFrame>
+                        </Animation>
+                    </Style.Animations>
+                </Style>
+                <Style Selector="Ellipse.mw-ember-1">
+                    <Style.Animations>
+                        <Animation Duration="0:0:9" Delay="0:0:0.5" IterationCount="INFINITE">
+                            <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0" /><Setter Property="TranslateTransform.Y" Value="0" /><Setter Property="TranslateTransform.X" Value="0" /></KeyFrame>
+                            <KeyFrame Cue="15%"><Setter Property="Opacity" Value="0.9" /></KeyFrame>
+                            <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0" /><Setter Property="TranslateTransform.Y" Value="-180" /><Setter Property="TranslateTransform.X" Value="-12" /></KeyFrame>
+                        </Animation>
+                    </Style.Animations>
+                </Style>
+                <Style Selector="Ellipse.mw-ember-2">
+                    <Style.Animations>
+                        <Animation Duration="0:0:8" Delay="0:0:1.1" IterationCount="INFINITE">
+                            <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0" /><Setter Property="TranslateTransform.Y" Value="0" /><Setter Property="TranslateTransform.X" Value="0" /></KeyFrame>
+                            <KeyFrame Cue="15%"><Setter Property="Opacity" Value="0.9" /></KeyFrame>
+                            <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0" /><Setter Property="TranslateTransform.Y" Value="-180" /><Setter Property="TranslateTransform.X" Value="18" /></KeyFrame>
+                        </Animation>
+                    </Style.Animations>
+                </Style>
+                <Style Selector="Ellipse.mw-ember-3">
+                    <Style.Animations>
+                        <Animation Duration="0:0:10" Delay="0:0:1.7" IterationCount="INFINITE">
+                            <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0" /><Setter Property="TranslateTransform.Y" Value="0" /><Setter Property="TranslateTransform.X" Value="0" /></KeyFrame>
+                            <KeyFrame Cue="15%"><Setter Property="Opacity" Value="0.9" /></KeyFrame>
+                            <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0" /><Setter Property="TranslateTransform.Y" Value="-180" /><Setter Property="TranslateTransform.X" Value="-16" /></KeyFrame>
+                        </Animation>
+                    </Style.Animations>
+                </Style>
+                <Style Selector="Ellipse.mw-ember-4">
+                    <Style.Animations>
+                        <Animation Duration="0:0:7.5" Delay="0:0:2.3" IterationCount="INFINITE">
+                            <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0" /><Setter Property="TranslateTransform.Y" Value="0" /><Setter Property="TranslateTransform.X" Value="0" /></KeyFrame>
+                            <KeyFrame Cue="15%"><Setter Property="Opacity" Value="0.9" /></KeyFrame>
+                            <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0" /><Setter Property="TranslateTransform.Y" Value="-180" /><Setter Property="TranslateTransform.X" Value="10" /></KeyFrame>
+                        </Animation>
+                    </Style.Animations>
+                </Style>
+                <Style Selector="Ellipse.mw-ember-5">
+                    <Style.Animations>
+                        <Animation Duration="0:0:9.5" Delay="0:0:2.9" IterationCount="INFINITE">
+                            <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0" /><Setter Property="TranslateTransform.Y" Value="0" /><Setter Property="TranslateTransform.X" Value="0" /></KeyFrame>
+                            <KeyFrame Cue="15%"><Setter Property="Opacity" Value="0.9" /></KeyFrame>
+                            <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0" /><Setter Property="TranslateTransform.Y" Value="-180" /><Setter Property="TranslateTransform.X" Value="-20" /></KeyFrame>
+                        </Animation>
+                    </Style.Animations>
+                </Style>
+                <Style Selector="Ellipse.mw-ember-6">
+                    <Style.Animations>
+                        <Animation Duration="0:0:8.5" Delay="0:0:3.5" IterationCount="INFINITE">
+                            <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0" /><Setter Property="TranslateTransform.Y" Value="0" /><Setter Property="TranslateTransform.X" Value="0" /></KeyFrame>
+                            <KeyFrame Cue="15%"><Setter Property="Opacity" Value="0.9" /></KeyFrame>
+                            <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0" /><Setter Property="TranslateTransform.Y" Value="-180" /><Setter Property="TranslateTransform.X" Value="22" /></KeyFrame>
+                        </Animation>
+                    </Style.Animations>
+                </Style>
+                <Style Selector="Ellipse.mw-ember-7">
+                    <Style.Animations>
+                        <Animation Duration="0:0:7" Delay="0:0:4.1" IterationCount="INFINITE">
+                            <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0" /><Setter Property="TranslateTransform.Y" Value="0" /><Setter Property="TranslateTransform.X" Value="0" /></KeyFrame>
+                            <KeyFrame Cue="15%"><Setter Property="Opacity" Value="0.9" /></KeyFrame>
+                            <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0" /><Setter Property="TranslateTransform.Y" Value="-180" /><Setter Property="TranslateTransform.X" Value="-14" /></KeyFrame>
+                        </Animation>
+                    </Style.Animations>
+                </Style>
+                <Style Selector="Ellipse.mw-ember-8">
+                    <Style.Animations>
+                        <Animation Duration="0:0:10" Delay="0:0:4.7" IterationCount="INFINITE">
+                            <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0" /><Setter Property="TranslateTransform.Y" Value="0" /><Setter Property="TranslateTransform.X" Value="0" /></KeyFrame>
+                            <KeyFrame Cue="15%"><Setter Property="Opacity" Value="0.9" /></KeyFrame>
+                            <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0" /><Setter Property="TranslateTransform.Y" Value="-180" /><Setter Property="TranslateTransform.X" Value="16" /></KeyFrame>
+                        </Animation>
+                    </Style.Animations>
+                </Style>
+                <Style Selector="Ellipse.mw-ember-9">
+                    <Style.Animations>
+                        <Animation Duration="0:0:8" Delay="0:0:5.3" IterationCount="INFINITE">
+                            <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0" /><Setter Property="TranslateTransform.Y" Value="0" /><Setter Property="TranslateTransform.X" Value="0" /></KeyFrame>
+                            <KeyFrame Cue="15%"><Setter Property="Opacity" Value="0.9" /></KeyFrame>
+                            <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0" /><Setter Property="TranslateTransform.Y" Value="-180" /><Setter Property="TranslateTransform.X" Value="-24" /></KeyFrame>
+                        </Animation>
+                    </Style.Animations>
+                </Style>
+                <Style Selector="Ellipse.mw-ember-10">
+                    <Style.Animations>
+                        <Animation Duration="0:0:9" Delay="0:0:5.9" IterationCount="INFINITE">
+                            <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0" /><Setter Property="TranslateTransform.Y" Value="0" /><Setter Property="TranslateTransform.X" Value="0" /></KeyFrame>
+                            <KeyFrame Cue="15%"><Setter Property="Opacity" Value="0.9" /></KeyFrame>
+                            <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0" /><Setter Property="TranslateTransform.Y" Value="-180" /><Setter Property="TranslateTransform.X" Value="12" /></KeyFrame>
+                        </Animation>
+                    </Style.Animations>
+                </Style>
+                <Style Selector="Ellipse.mw-ember-11">
+                    <Style.Animations>
+                        <Animation Duration="0:0:7.5" Delay="0:0:6.5" IterationCount="INFINITE">
+                            <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0" /><Setter Property="TranslateTransform.Y" Value="0" /><Setter Property="TranslateTransform.X" Value="0" /></KeyFrame>
+                            <KeyFrame Cue="15%"><Setter Property="Opacity" Value="0.9" /></KeyFrame>
+                            <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0" /><Setter Property="TranslateTransform.Y" Value="-180" /><Setter Property="TranslateTransform.X" Value="-18" /></KeyFrame>
+                        </Animation>
+                    </Style.Animations>
+                </Style>
+                <Style Selector="Ellipse.mw-ember-12">
+                    <Style.Animations>
+                        <Animation Duration="0:0:10" Delay="0:0:7.1" IterationCount="INFINITE">
+                            <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0" /><Setter Property="TranslateTransform.Y" Value="0" /><Setter Property="TranslateTransform.X" Value="0" /></KeyFrame>
+                            <KeyFrame Cue="15%"><Setter Property="Opacity" Value="0.9" /></KeyFrame>
+                            <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0" /><Setter Property="TranslateTransform.Y" Value="-180" /><Setter Property="TranslateTransform.X" Value="20" /></KeyFrame>
+                        </Animation>
+                    </Style.Animations>
+                </Style>
+                <Style Selector="Ellipse.mw-ember-13">
+                    <Style.Animations>
+                        <Animation Duration="0:0:8.5" Delay="0:0:7.7" IterationCount="INFINITE">
+                            <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0" /><Setter Property="TranslateTransform.Y" Value="0" /><Setter Property="TranslateTransform.X" Value="0" /></KeyFrame>
+                            <KeyFrame Cue="15%"><Setter Property="Opacity" Value="0.9" /></KeyFrame>
+                            <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0" /><Setter Property="TranslateTransform.Y" Value="-180" /><Setter Property="TranslateTransform.X" Value="-10" /></KeyFrame>
                         </Animation>
                     </Style.Animations>
                 </Style>
             </Canvas.Styles>
 
             <!-- 14 embers — scattered x%, varied size/color, staggered start. -->
-            <Ellipse Classes="mw-ember" Canvas.Left="60"  Canvas.Bottom="0" Width="3" Height="3"
+            <Ellipse Classes="mw-ember mw-ember-0" Canvas.Left="60"  Canvas.Bottom="0" Width="3" Height="3"
                      Fill="{DynamicResource MwMolten}">
                 <Ellipse.RenderTransform><TranslateTransform /></Ellipse.RenderTransform>
                 <Ellipse.Effect><DropShadowEffect BlurRadius="9" Color="#FF7A1A" OffsetX="0" OffsetY="0" /></Ellipse.Effect>
             </Ellipse>
-            <Ellipse Classes="mw-ember" Canvas.Left="150" Canvas.Bottom="0" Width="2" Height="2"
+            <Ellipse Classes="mw-ember mw-ember-1" Canvas.Left="150" Canvas.Bottom="0" Width="2" Height="2"
                      Fill="{DynamicResource MwMoltenHi}">
                 <Ellipse.RenderTransform><TranslateTransform /></Ellipse.RenderTransform>
                 <Ellipse.Effect><DropShadowEffect BlurRadius="6" Color="#FFD080" OffsetX="0" OffsetY="0" /></Ellipse.Effect>
             </Ellipse>
-            <Ellipse Classes="mw-ember" Canvas.Left="240" Canvas.Bottom="0" Width="4" Height="4"
+            <Ellipse Classes="mw-ember mw-ember-2" Canvas.Left="240" Canvas.Bottom="0" Width="4" Height="4"
                      Fill="{DynamicResource MwMolten}">
                 <Ellipse.RenderTransform><TranslateTransform /></Ellipse.RenderTransform>
                 <Ellipse.Effect><DropShadowEffect BlurRadius="12" Color="#FF7A1A" OffsetX="0" OffsetY="0" /></Ellipse.Effect>
             </Ellipse>
-            <Ellipse Classes="mw-ember" Canvas.Left="330" Canvas.Bottom="0" Width="3" Height="3"
+            <Ellipse Classes="mw-ember mw-ember-3" Canvas.Left="330" Canvas.Bottom="0" Width="3" Height="3"
                      Fill="{DynamicResource MwMoltenHi}">
                 <Ellipse.RenderTransform><TranslateTransform /></Ellipse.RenderTransform>
                 <Ellipse.Effect><DropShadowEffect BlurRadius="9" Color="#FFD080" OffsetX="0" OffsetY="0" /></Ellipse.Effect>
             </Ellipse>
-            <Ellipse Classes="mw-ember" Canvas.Left="420" Canvas.Bottom="0" Width="2" Height="2"
+            <Ellipse Classes="mw-ember mw-ember-4" Canvas.Left="420" Canvas.Bottom="0" Width="2" Height="2"
                      Fill="{DynamicResource MwMolten}">
                 <Ellipse.RenderTransform><TranslateTransform /></Ellipse.RenderTransform>
                 <Ellipse.Effect><DropShadowEffect BlurRadius="6" Color="#FF7A1A" OffsetX="0" OffsetY="0" /></Ellipse.Effect>
             </Ellipse>
-            <Ellipse Classes="mw-ember" Canvas.Left="510" Canvas.Bottom="0" Width="4" Height="4"
+            <Ellipse Classes="mw-ember mw-ember-5" Canvas.Left="510" Canvas.Bottom="0" Width="4" Height="4"
                      Fill="{DynamicResource MwMoltenHi}">
                 <Ellipse.RenderTransform><TranslateTransform /></Ellipse.RenderTransform>
                 <Ellipse.Effect><DropShadowEffect BlurRadius="12" Color="#FFD080" OffsetX="0" OffsetY="0" /></Ellipse.Effect>
             </Ellipse>
-            <Ellipse Classes="mw-ember" Canvas.Left="600" Canvas.Bottom="0" Width="3" Height="3"
+            <Ellipse Classes="mw-ember mw-ember-6" Canvas.Left="600" Canvas.Bottom="0" Width="3" Height="3"
                      Fill="{DynamicResource MwMolten}">
                 <Ellipse.RenderTransform><TranslateTransform /></Ellipse.RenderTransform>
                 <Ellipse.Effect><DropShadowEffect BlurRadius="9" Color="#FF7A1A" OffsetX="0" OffsetY="0" /></Ellipse.Effect>
             </Ellipse>
-            <Ellipse Classes="mw-ember" Canvas.Left="690" Canvas.Bottom="0" Width="2" Height="2"
+            <Ellipse Classes="mw-ember mw-ember-7" Canvas.Left="690" Canvas.Bottom="0" Width="2" Height="2"
                      Fill="{DynamicResource MwMoltenHi}">
                 <Ellipse.RenderTransform><TranslateTransform /></Ellipse.RenderTransform>
                 <Ellipse.Effect><DropShadowEffect BlurRadius="6" Color="#FFD080" OffsetX="0" OffsetY="0" /></Ellipse.Effect>
             </Ellipse>
-            <Ellipse Classes="mw-ember" Canvas.Left="780" Canvas.Bottom="0" Width="4" Height="4"
+            <Ellipse Classes="mw-ember mw-ember-8" Canvas.Left="780" Canvas.Bottom="0" Width="4" Height="4"
                      Fill="{DynamicResource MwMolten}">
                 <Ellipse.RenderTransform><TranslateTransform /></Ellipse.RenderTransform>
                 <Ellipse.Effect><DropShadowEffect BlurRadius="12" Color="#FF7A1A" OffsetX="0" OffsetY="0" /></Ellipse.Effect>
             </Ellipse>
-            <Ellipse Classes="mw-ember" Canvas.Left="870" Canvas.Bottom="0" Width="3" Height="3"
+            <Ellipse Classes="mw-ember mw-ember-9" Canvas.Left="870" Canvas.Bottom="0" Width="3" Height="3"
                      Fill="{DynamicResource MwMoltenHi}">
                 <Ellipse.RenderTransform><TranslateTransform /></Ellipse.RenderTransform>
                 <Ellipse.Effect><DropShadowEffect BlurRadius="9" Color="#FFD080" OffsetX="0" OffsetY="0" /></Ellipse.Effect>
             </Ellipse>
-            <Ellipse Classes="mw-ember" Canvas.Left="960" Canvas.Bottom="0" Width="2" Height="2"
+            <Ellipse Classes="mw-ember mw-ember-10" Canvas.Left="960" Canvas.Bottom="0" Width="2" Height="2"
                      Fill="{DynamicResource MwMolten}">
                 <Ellipse.RenderTransform><TranslateTransform /></Ellipse.RenderTransform>
                 <Ellipse.Effect><DropShadowEffect BlurRadius="6" Color="#FF7A1A" OffsetX="0" OffsetY="0" /></Ellipse.Effect>
             </Ellipse>
-            <Ellipse Classes="mw-ember" Canvas.Left="1050" Canvas.Bottom="0" Width="4" Height="4"
+            <Ellipse Classes="mw-ember mw-ember-11" Canvas.Left="1050" Canvas.Bottom="0" Width="4" Height="4"
                      Fill="{DynamicResource MwMoltenHi}">
                 <Ellipse.RenderTransform><TranslateTransform /></Ellipse.RenderTransform>
                 <Ellipse.Effect><DropShadowEffect BlurRadius="12" Color="#FFD080" OffsetX="0" OffsetY="0" /></Ellipse.Effect>
             </Ellipse>
-            <Ellipse Classes="mw-ember" Canvas.Left="1140" Canvas.Bottom="0" Width="3" Height="3"
+            <Ellipse Classes="mw-ember mw-ember-12" Canvas.Left="1140" Canvas.Bottom="0" Width="3" Height="3"
                      Fill="{DynamicResource MwMolten}">
                 <Ellipse.RenderTransform><TranslateTransform /></Ellipse.RenderTransform>
                 <Ellipse.Effect><DropShadowEffect BlurRadius="9" Color="#FF7A1A" OffsetX="0" OffsetY="0" /></Ellipse.Effect>
             </Ellipse>
-            <Ellipse Classes="mw-ember" Canvas.Left="1230" Canvas.Bottom="0" Width="2" Height="2"
+            <Ellipse Classes="mw-ember mw-ember-13" Canvas.Left="1230" Canvas.Bottom="0" Width="2" Height="2"
                      Fill="{DynamicResource MwMoltenHi}">
                 <Ellipse.RenderTransform><TranslateTransform /></Ellipse.RenderTransform>
                 <Ellipse.Effect><DropShadowEffect BlurRadius="6" Color="#FFD080" OffsetX="0" OffsetY="0" /></Ellipse.Effect>

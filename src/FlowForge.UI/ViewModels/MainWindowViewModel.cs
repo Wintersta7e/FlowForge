@@ -48,6 +48,14 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private string _themeIcon = "\u263E";
 
+    /// <summary>
+    /// When true, all stations + pipes render in their running visual state
+    /// (heat pulse, molten liquid, LIVE pills) without executing any file I/O.
+    /// Useful for demoing the animation work without a long real pipeline.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isDemoMode;
+
     public IReadOnlyList<RecentPipelineItem> RecentPipelineItems { get; private set; } = new List<RecentPipelineItem>();
 
     public EditorViewModel Editor { get; }
@@ -105,7 +113,21 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        bool running = ExecutionLog.IsRunning;
+        UpdateRunningVisual();
+    }
+
+    partial void OnIsDemoModeChanged(bool value)
+    {
+        UpdateRunningVisual();
+    }
+
+    /// <summary>
+    /// Push the combined "running" visual state (real pipeline OR demo mode)
+    /// to every station + connection so the canvas animations light up.
+    /// </summary>
+    private void UpdateRunningVisual()
+    {
+        bool running = ExecutionLog.IsRunning || IsDemoMode;
         foreach (PipelineNodeViewModel node in Editor.Nodes)
         {
             node.IsRunning = running;
@@ -445,6 +467,12 @@ public partial class MainWindowViewModel : ViewModelBase
         Application.Current.RequestedThemeVariant = IsDarkTheme ? ThemeVariant.Dark : ThemeVariant.Light;
         ThemeIcon = IsDarkTheme ? "\u263E" : "\u2600";
         NodeLibrary.RefreshBrushes();
+    }
+
+    [RelayCommand]
+    private void ToggleDemoMode()
+    {
+        IsDemoMode = !IsDemoMode;
     }
 
     [RelayCommand]
