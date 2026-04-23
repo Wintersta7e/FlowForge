@@ -12,7 +12,7 @@
     <Border Background="{DynamicResource MwPanelBody}"
             BorderBrush="{DynamicResource MwIronDark}"
             BorderThickness="1,0,0,0">
-        <DockPanel>
+        <DockPanel LastChildFill="True">
 
             <!-- Header: // inspector eyebrow + selected node title -->
             <StackPanel DockPanel.Dock="Top"
@@ -82,37 +82,41 @@
                 </Border>
             </StackPanel>
 
-            <!-- Empty state: centered serif italic prompt -->
-            <StackPanel IsVisible="{Binding !HasSelection}"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        Spacing="4"
-                        Margin="24">
-                <TextBlock Text="Select a station to"
-                           FontFamily="{DynamicResource MwSerif}"
-                           FontSize="16"
-                           FontStyle="Italic"
-                           LineHeight="24"
-                           Foreground="{DynamicResource MwFaint}"
-                           HorizontalAlignment="Center" />
-                <TextBlock Text="tune its settings."
-                           FontFamily="{DynamicResource MwSerif}"
-                           FontSize="16"
-                           FontStyle="Italic"
-                           LineHeight="24"
-                           Foreground="{DynamicResource MwFaint}"
-                           HorizontalAlignment="Center" />
-            </StackPanel>
+            <!-- Body: fields when selected, empty-state prompt otherwise. -->
+            <!-- Wrapped in a Grid so both can overlay without the empty-state
+                 StackPanel being default-docked Left (which squished it to a
+                 narrow column and made the panel look broken). -->
+            <Grid>
+                <!-- Empty state: centered serif prompt -->
+                <StackPanel IsVisible="{Binding !HasSelection}"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Spacing="4"
+                            Margin="24">
+                    <TextBlock Text="Select a station to"
+                               FontFamily="{DynamicResource MwSerif}"
+                               FontSize="16"
+                               LineHeight="24"
+                               Foreground="{DynamicResource MwFaint}"
+                               HorizontalAlignment="Center" />
+                    <TextBlock Text="tune its settings."
+                               FontFamily="{DynamicResource MwSerif}"
+                               FontSize="16"
+                               LineHeight="24"
+                               Foreground="{DynamicResource MwFaint}"
+                               HorizontalAlignment="Center" />
+                </StackPanel>
 
-            <!-- Fields list (unchanged — uses existing ConfigFieldTemplateSelector) -->
-            <ScrollViewer IsVisible="{Binding HasSelection}"
-                          Padding="16,8,16,18">
-                <ItemsControl ItemsSource="{Binding Fields}">
-                    <ItemsControl.ItemTemplate>
-                        <views:ConfigFieldTemplateSelector />
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </ScrollViewer>
+                <!-- Fields list (unchanged — uses existing ConfigFieldTemplateSelector) -->
+                <ScrollViewer IsVisible="{Binding HasSelection}"
+                              Padding="16,8,16,18">
+                    <ItemsControl ItemsSource="{Binding Fields}">
+                        <ItemsControl.ItemTemplate>
+                            <views:ConfigFieldTemplateSelector />
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
         </DockPanel>
     </Border>
 </UserControl>

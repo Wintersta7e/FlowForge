@@ -7,8 +7,12 @@ internal static class PathGuard
     /// </summary>
     public static void EnsureWithinDirectory(string candidatePath, string allowedRoot)
     {
-        string resolvedCandidate = Path.GetFullPath(candidatePath);
-        string resolvedRoot = Path.GetFullPath(allowedRoot);
+        // Normalize: strip any trailing separator. Path.GetFullPath preserves a
+        // user-typed trailing slash, so without trimming, resolvedRoot +
+        // DirectorySeparatorChar ended up doubled ("C:\\foo\\\\") and every
+        // valid child path was rejected as "resolves outside".
+        string resolvedCandidate = Path.TrimEndingDirectorySeparator(Path.GetFullPath(candidatePath));
+        string resolvedRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(allowedRoot));
 
         if (!resolvedCandidate.StartsWith(resolvedRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
             && !resolvedCandidate.Equals(resolvedRoot, StringComparison.OrdinalIgnoreCase))

@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Styling;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FlowForge.Core.Execution;
@@ -126,7 +127,15 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void OnUndoRedoStateChanged(object? sender, EventArgs e)
     {
-        RefreshPropertiesPanel();
+        // Defer via Dispatcher.Post. This event fires synchronously from inside
+        // ConfigFieldViewModel.OnValueChanged, which itself fires from a binding
+        // setter during an in-flight control event (e.g. a CheckBox's Checked
+        // dispatch). Clearing and rebuilding Fields immediately would detach the
+        // very control whose event is still on the stack, leaving its visual
+        // tree in an inconsistent state and making the inspector look blank.
+        // Post queues the rebuild for the next dispatcher cycle so the control
+        // event completes cleanly first.
+        Dispatcher.UIThread.Post(RefreshPropertiesPanel);
     }
 
     private void OnEditorGraphChanged(object? sender, EventArgs e)

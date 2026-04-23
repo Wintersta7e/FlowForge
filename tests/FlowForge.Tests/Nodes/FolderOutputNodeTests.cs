@@ -88,6 +88,45 @@ public class FolderOutputNodeTests
         act.Should().Throw<NodeConfigurationException>();
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("\t")]
+    public void Empty_or_whitespace_path_throws_friendly_configuration_error(string emptyPath)
+    {
+        var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
+        Dictionary<string, JsonElement> config = MakeConfig(new { path = emptyPath });
+
+        Action act = () => node.Configure(config);
+
+        act.Should().Throw<NodeConfigurationException>()
+            .WithMessage("*destination folder*");
+    }
+
+    [Fact]
+    public async Task Output_path_with_trailing_separator_writes_files_successfully()
+    {
+        // Reproduces the PathGuard trailing-separator bug: Path.GetFullPath
+        // preserves a user-typed trailing slash, so the "inside allowed root"
+        // check compared against "C:\\foo\\\\" (doubled) and every file was
+        // rejected with "Path traversal blocked". Users hit this when picking
+        // their output folder from a path they typed with a trailing slash.
+        using var dir = new TempDirectory();
+        dir.CreateFiles("photo.jpg");
+
+        string sourcePath = Path.Combine(dir.Path, "photo.jpg");
+        string outputWithTrailingSeparator = dir.OutputPath + Path.DirectorySeparatorChar;
+
+        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
+        var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
+        node.Configure(MakeConfig(new { path = outputWithTrailingSeparator, mode = "copy" }));
+
+        await node.ConsumeAsync(job, dryRun: false);
+
+        File.Exists(Path.Combine(dir.OutputPath, "photo.jpg"))
+            .Should().BeTrue("trailing separator on the output path must not cause PathGuard to reject the destination");
+    }
+
     [Fact]
     public void Invalid_mode_throws_NodeConfigurationException()
     {

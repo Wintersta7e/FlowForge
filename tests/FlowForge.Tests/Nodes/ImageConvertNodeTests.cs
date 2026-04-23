@@ -116,6 +116,18 @@ public class ImageConvertNodeTests
         act.Should().Throw<NodeConfigurationException>();
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("\t")]
+    public void Empty_or_whitespace_format_throws_friendly_configuration_error(string emptyFormat)
+    {
+        var node = new ImageConvertNode(NullLogger<ImageConvertNode>.Instance);
+        Action act = () => node.Configure(MakeConfig(new { format = emptyFormat }));
+        act.Should().Throw<NodeConfigurationException>()
+            .WithMessage("*Convert Format station*");
+    }
+
     [Fact]
     public async Task DryRun_updates_path_but_does_not_convert()
     {

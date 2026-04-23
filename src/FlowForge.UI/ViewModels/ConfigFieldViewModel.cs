@@ -41,12 +41,25 @@ public partial class ConfigFieldViewModel : ViewModelBase
         DefaultValue = field.DefaultValue;
         Tooltip = field.Description;
 
-        // Read initial value from config dictionary
+        // Read initial value from config dictionary. Normalize bool to the
+        // capitalized "True"/"False" form that BoolStringConverter round-trips —
+        // element.GetRawText() returns lowercase "true"/"false" and a case
+        // mismatch re-fires OnValueChanged on every binding write-back, which
+        // caused an infinite refresh loop when a CheckBox was toggled.
         if (_configDictionary.TryGetValue(Key, out JsonElement element))
         {
-            _value = element.ValueKind == JsonValueKind.String
-                ? element.GetString()
-                : element.GetRawText();
+            _value = element.ValueKind switch
+            {
+                JsonValueKind.String => element.GetString(),
+                JsonValueKind.True => "True",
+                JsonValueKind.False => "False",
+                _ => element.GetRawText(),
+            };
+        }
+        else if (FieldType == ConfigFieldType.Bool && DefaultValue is not null
+                 && bool.TryParse(DefaultValue, out bool defaultBool))
+        {
+            _value = defaultBool ? "True" : "False";
         }
         else
         {

@@ -162,6 +162,21 @@ public class RenamePatternNodeTests
         act.Should().Throw<NodeConfigurationException>();
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("\t")]
+    public void Empty_or_whitespace_pattern_throws_friendly_configuration_error(string emptyPattern)
+    {
+        var node = new RenamePatternNode(NullLogger<RenamePatternNode>.Instance);
+        Dictionary<string, JsonElement> config = MakeConfig(emptyPattern);
+
+        Action act = () => node.Configure(config);
+
+        act.Should().Throw<NodeConfigurationException>()
+            .WithMessage("*rename pattern*");
+    }
+
     [Fact]
     public async Task CancellationToken_cancelled_throws_OperationCanceledException()
     {
