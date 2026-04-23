@@ -71,7 +71,15 @@ public partial class ConfigFieldViewModel : ViewModelBase
     {
         if (value is not null)
         {
+            // Reject unparseable typed input early so we never serialise a raw
+            // string into a Bool/Int slot. On reload the config reader would
+            // call GetBoolean / GetInt32 on that JSON string and throw.
             if (FieldType == ConfigFieldType.Int && !int.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, out _))
+            {
+                return;
+            }
+
+            if (FieldType == ConfigFieldType.Bool && !bool.TryParse(value, out _))
             {
                 return;
             }

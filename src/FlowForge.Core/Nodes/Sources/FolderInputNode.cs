@@ -71,10 +71,12 @@ public class FolderInputNode : ISourceNode
         SearchOption searchOption = _recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
         string[] patterns = _filter.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-        // Normalize: strip any trailing separator (user-typed "C:\\foo\\" or picker-supplied root-drive "C:\\")
-        // so the prefix check never sees a doubled slash and rejects every file.
+        // Trim trailing separator so the prefix check below never sees a
+        // doubled slash. PathGuard.NormalizedRootPrefix keeps drive roots
+        // ("C:\") and UNC shares single-separated (TrimEndingDirectorySeparator
+        // preserves the root separator) so children still match StartsWith.
         string resolvedRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(_path));
-        string resolvedRootPrefix = resolvedRoot + Path.DirectorySeparatorChar;
+        string resolvedRootPrefix = PathGuard.NormalizedRootPrefix(resolvedRoot);
         var files = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (string pattern in patterns)
         {
