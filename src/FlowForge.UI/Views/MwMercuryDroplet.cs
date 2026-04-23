@@ -1,3 +1,5 @@
+using System;
+
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
@@ -6,10 +8,10 @@ namespace FlowForge.UI.Views;
 
 /// <summary>
 /// A molten mercury bead that rides along a cubic-bezier pipe at a driven
-/// <see cref="Progress"/> 0..1. Positions itself by writing Canvas.Left /
-/// Canvas.Top on itself so its local coords are reliable, then paints three
-/// concentric circles centered inside its 22×22 box: a dim molten outer halo,
-/// a warmer moltenHi middle halo, and a bright mercury core.
+/// <see cref="Progress"/> (clamped to 0..1). Positions itself by writing
+/// Canvas.Left / Canvas.Top on itself so its local coords are reliable, then
+/// paints a single ellipse with a cached radial-gradient brush — mercury
+/// core → moltenHi ring → molten halo → transparent rim — in one pass.
 /// The bezier matches <see cref="MwPipeConnection"/> exactly so the bead
 /// tracks the rendered pipe:
 ///   mx = (source.X + target.X) / 2
@@ -18,8 +20,6 @@ namespace FlowForge.UI.Views;
 public sealed class MwMercuryDroplet : Control
 {
     private const double OuterRadius = 11;
-    private const double MiddleRadius = 7;
-    private const double CoreRadius = 4.5;
     private const double BoxSize = OuterRadius * 2;
 
     public static readonly StyledProperty<Point> SourceProperty =
@@ -56,8 +56,10 @@ public sealed class MwMercuryDroplet : Control
 
     static MwMercuryDroplet()
     {
-        AffectsMeasure<MwMercuryDroplet>(SourceProperty, TargetProperty, ProgressProperty);
-        AffectsRender<MwMercuryDroplet>(SourceProperty, TargetProperty, ProgressProperty);
+        // Size is constant (22×22); only the on-canvas position changes, so
+        // invalidate arrange only. Render output is independent of these
+        // properties (the ellipse is drawn relative to local coords).
+        AffectsArrange<MwMercuryDroplet>(SourceProperty, TargetProperty, ProgressProperty);
     }
 
     public Point Source
@@ -80,19 +82,24 @@ public sealed class MwMercuryDroplet : Control
 
     protected override Size MeasureOverride(Size availableSize)
     {
+        return new Size(BoxSize, BoxSize);
+    }
+
+    protected override Size ArrangeOverride(Size finalSize)
+    {
         // Place ourselves via Canvas attached properties at the bezier point so
-        // our local (0,0) is the top-left of a 22×22 box centered on that point.
+        // our local (0,0) is the top-left of the box centered on that point.
+        // Positioning lives in Arrange, not Measure, because measured size is
+        // constant while position depends on animated Source/Target/Progress.
         Point pt = ComputeBezierPoint();
         Canvas.SetLeft(this, pt.X - OuterRadius);
         Canvas.SetTop(this, pt.Y - OuterRadius);
-        return new Size(BoxSize, BoxSize);
+        return finalSize;
     }
 
     public override void Render(DrawingContext context)
     {
         var center = new Point(OuterRadius, OuterRadius);
-        // Single filled ellipse painted with the cached radial gradient — gives
-        // the concept's mercury-core + molten-halo bead in one pass.
         context.DrawEllipse(DropletBrush, null, center, OuterRadius, OuterRadius);
     }
 
@@ -107,7 +114,9 @@ public sealed class MwMercuryDroplet : Control
         double targetY = target.Y;
         double midX = (sourceX + targetX) / 2.0;
 
-        double t = Progress;
+        // Clamp to curve domain — upstream animation drivers can overshoot at
+        // keyframe boundaries, which would send the bead off the pipe.
+        double t = Math.Clamp(Progress, 0.0, 1.0);
         double u = 1.0 - t;
 
         // Cubic bezier: B(t) = u³·P0 + 3·u²·t·P1 + 3·u·t²·P2 + t³·P3
