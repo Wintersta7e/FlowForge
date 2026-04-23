@@ -5,6 +5,7 @@
              xmlns:vm="using:FlowForge.UI.ViewModels"
              xmlns:nodify="using:Nodify.Avalonia"
              xmlns:nodifyConn="using:Nodify.Avalonia.Connections"
+             xmlns:views="using:FlowForge.UI.Views"
              mc:Ignorable="d"
              d:DesignWidth="1000" d:DesignHeight="600"
              x:Class="FlowForge.UI.Views.CanvasView"
@@ -350,18 +351,39 @@
                     <!-- ═══ Molten Works cast-iron station ═══ -->
                     <Grid Width="200" Height="130">
 
-                        <!-- Running glow (category-colored drop-shadow behind iron) -->
-                        <Border IsHitTestVisible="False"
-                                CornerRadius="3"
-                                IsVisible="{Binding IsRunning}"
-                                BoxShadow="0 0 24 0 #A6FF7A1A" />
-
-                        <!-- Iron body (200x130, rounded 3px, iron gradient) -->
+                        <!-- Iron body (200x130, rounded 3px, iron gradient).
+                             Idle depth stays in BoxShadow; running category bloom
+                             comes from a bindable DropShadowEffect. -->
                         <Border CornerRadius="3"
                                 Background="{DynamicResource MwIronBody}"
                                 BorderBrush="#050303"
                                 BorderThickness="1"
-                                BoxShadow="0 6 16 0 #B3000000">
+                                BoxShadow="0 6 16 0 #B3000000"
+                                Classes.running="{Binding IsRunning}">
+                            <Border.Styles>
+                                <Style Selector="Border.running">
+                                    <Style.Animations>
+                                        <Animation Duration="0:0:1.6" IterationCount="INFINITE">
+                                            <KeyFrame Cue="0%">
+                                                <Setter Property="(DropShadowEffect.Opacity)" Value="0.55" />
+                                            </KeyFrame>
+                                            <KeyFrame Cue="50%">
+                                                <Setter Property="(DropShadowEffect.Opacity)" Value="1" />
+                                            </KeyFrame>
+                                            <KeyFrame Cue="100%">
+                                                <Setter Property="(DropShadowEffect.Opacity)" Value="0.55" />
+                                            </KeyFrame>
+                                        </Animation>
+                                    </Style.Animations>
+                                </Style>
+                            </Border.Styles>
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="24"
+                                                  Color="{Binding CategoryGlowColor}"
+                                                  OffsetX="0"
+                                                  OffsetY="0"
+                                                  Opacity="0" />
+                            </Border.Effect>
                             <!-- Inset highlight on top + subtle bottom shadow -->
                             <Border CornerRadius="3"
                                     BorderThickness="0,1,0,1"
@@ -377,30 +399,33 @@
                             </Border>
                         </Border>
 
-                        <!-- Heat pulse: radial molten glow inside the iron when running (1.6s pulse) -->
+                        <!-- Heat pulse: category radial glow inside the iron when running. -->
                         <Border IsHitTestVisible="False"
                                 CornerRadius="2"
                                 Margin="8"
-                                Opacity="0.3"
-                                IsVisible="{Binding IsRunning}">
-                            <Border.Background>
-                                <RadialGradientBrush Center="0.5,0.5" GradientOrigin="0.5,0.5" RadiusX="0.7" RadiusY="0.7">
-                                    <GradientStop Offset="0" Color="#FFD080" />
-                                    <GradientStop Offset="0.65" Color="Transparent" />
-                                </RadialGradientBrush>
-                            </Border.Background>
+                                Background="{Binding MwHeatPulseBrush}"
+                                Opacity="0.85"
+                                IsVisible="{Binding IsRunning}"
+                                Classes="heat-pulse"
+                                Classes.running="{Binding IsRunning}">
+                            <Border.Effect>
+                                <BlurEffect Radius="10" />
+                            </Border.Effect>
                             <Border.Styles>
-                                <Style Selector="Border">
+                                <Style Selector="Border.heat-pulse.running">
                                     <Style.Animations>
                                         <Animation Duration="0:0:1.6" IterationCount="INFINITE">
                                             <KeyFrame Cue="0%">
-                                                <Setter Property="Opacity" Value="0.3" />
+                                                <Setter Property="Opacity" Value="0.85" />
+                                                <Setter Property="(BlurEffect.Radius)" Value="10" />
                                             </KeyFrame>
                                             <KeyFrame Cue="50%">
-                                                <Setter Property="Opacity" Value="0.55" />
+                                                <Setter Property="Opacity" Value="1" />
+                                                <Setter Property="(BlurEffect.Radius)" Value="14" />
                                             </KeyFrame>
                                             <KeyFrame Cue="100%">
-                                                <Setter Property="Opacity" Value="0.3" />
+                                                <Setter Property="Opacity" Value="0.85" />
+                                                <Setter Property="(BlurEffect.Radius)" Value="10" />
                                             </KeyFrame>
                                         </Animation>
                                     </Style.Animations>
@@ -466,10 +491,29 @@
                                         Orientation="Horizontal"
                                         Spacing="4"
                                         VerticalAlignment="Center">
+                                <!-- Pulsing LIVE dot when running (1s opacity cycle) -->
                                 <Ellipse Width="5" Height="5"
                                          VerticalAlignment="Center"
                                          IsVisible="{Binding IsRunning}"
-                                         Fill="{Binding MwNeonBrush}" />
+                                         Fill="{Binding MwNeonBrush}">
+                                    <Ellipse.Effect>
+                                        <DropShadowEffect BlurRadius="6"
+                                                          Color="{Binding CategoryGlowColor}"
+                                                          OffsetX="0"
+                                                          OffsetY="0" />
+                                    </Ellipse.Effect>
+                                    <Ellipse.Styles>
+                                        <Style Selector="Ellipse">
+                                            <Style.Animations>
+                                                <Animation Duration="0:0:1" IterationCount="INFINITE">
+                                                    <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.55" /></KeyFrame>
+                                                    <KeyFrame Cue="50%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+                                                    <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0.55" /></KeyFrame>
+                                                </Animation>
+                                            </Style.Animations>
+                                        </Style>
+                                    </Ellipse.Styles>
+                                </Ellipse>
                                 <Ellipse Width="5" Height="5"
                                          VerticalAlignment="Center"
                                          IsVisible="{Binding !IsRunning}"
@@ -494,28 +538,53 @@
                         <!-- Main body: icon well + text column -->
                         <Grid Margin="14,28,32,16"
                               ColumnDefinitions="48,10,*">
-                            <!-- Icon well -->
-                            <Border Grid.Column="0"
-                                    Width="48" Height="48"
-                                    CornerRadius="3"
-                                    BorderThickness="1"
-                                    BorderBrush="#050303"
-                                    VerticalAlignment="Top">
-                                <Border.Background>
-                                    <RadialGradientBrush Center="0.3,0.2" GradientOrigin="0.3,0.2" RadiusX="0.9" RadiusY="0.9">
-                                        <GradientStop Offset="0" Color="#3a1808" />
-                                        <GradientStop Offset="1" Color="#0a0503" />
-                                    </RadialGradientBrush>
-                                </Border.Background>
-                                <Viewbox Width="26" Height="26">
-                                    <Path Data="{Binding MwIconGeometry}"
-                                          Stroke="{Binding MwNeonBrush}"
-                                          StrokeThickness="1.7"
-                                          StrokeLineCap="Round"
-                                          StrokeJoin="Round"
-                                          Width="40" Height="40" />
-                                </Viewbox>
-                            </Border>
+                            <!-- Icon well (with running glow halo via Effect) -->
+                            <Grid Grid.Column="0" Width="48" Height="48" VerticalAlignment="Top">
+                                <!-- Glow halo: sits behind the iron well, only when running. -->
+                                <Border Width="48" Height="48"
+                                        CornerRadius="3"
+                                        Background="{Binding MwGlowBrush}"
+                                        Opacity="0.3"
+                                        IsVisible="{Binding IsRunning}"
+                                        IsHitTestVisible="False">
+                                    <Border.Effect>
+                                        <DropShadowEffect BlurRadius="18"
+                                                          Color="{Binding CategoryGlowColor}"
+                                                          OffsetX="0"
+                                                          OffsetY="0" />
+                                    </Border.Effect>
+                                </Border>
+                                <Border Width="48" Height="48"
+                                        CornerRadius="3"
+                                        BorderThickness="1"
+                                        BorderBrush="#050303">
+                                    <Border.Background>
+                                        <RadialGradientBrush Center="0.3,0.2" GradientOrigin="0.3,0.2" RadiusX="0.9" RadiusY="0.9">
+                                            <GradientStop Offset="0" Color="#3a1808" />
+                                            <GradientStop Offset="1" Color="#0a0503" />
+                                        </RadialGradientBrush>
+                                    </Border.Background>
+                                    <!-- Icon: ash/muted when idle, full category neon + brighter stroke when running. -->
+                                    <Viewbox Width="26" Height="26">
+                                        <Grid>
+                                            <Path Data="{Binding MwIconGeometry}"
+                                                  Stroke="{DynamicResource MwAsh}"
+                                                  StrokeThickness="1.7"
+                                                  StrokeLineCap="Round"
+                                                  StrokeJoin="Round"
+                                                  Width="40" Height="40"
+                                                  IsVisible="{Binding !IsRunning}" />
+                                            <Path Data="{Binding MwIconGeometry}"
+                                                  Stroke="{Binding MwNeonBrush}"
+                                                  StrokeThickness="2.2"
+                                                  StrokeLineCap="Round"
+                                                  StrokeJoin="Round"
+                                                  Width="40" Height="40"
+                                                  IsVisible="{Binding IsRunning}" />
+                                        </Grid>
+                                    </Viewbox>
+                                </Border>
+                            </Grid>
 
                             <!-- Text column -->
                             <StackPanel Grid.Column="2"
@@ -615,11 +684,23 @@
                                                             <GradientStop Offset="1" Color="#4a4a58" />
                                                         </LinearGradientBrush>
                                                     </Border.Background>
-                                                    <Ellipse Width="6" Height="6"
-                                                             HorizontalAlignment="Left"
-                                                             VerticalAlignment="Center"
-                                                             Margin="3,0,0,0"
-                                                             Fill="{DynamicResource MwChromeDk}" />
+                                                    <Grid HorizontalAlignment="Left"
+                                                          VerticalAlignment="Center"
+                                                          Margin="3,0,0,0">
+                                                        <Ellipse Width="6" Height="6"
+                                                                 Fill="{DynamicResource MwChromeDk}"
+                                                                 IsVisible="{Binding !Node.IsRunning}" />
+                                                        <Ellipse Width="6" Height="6"
+                                                                 Fill="{DynamicResource MwMercury}"
+                                                                 IsVisible="{Binding Node.IsRunning}">
+                                                            <Ellipse.Effect>
+                                                                <DropShadowEffect BlurRadius="8"
+                                                                                  Color="{Binding Node.CategoryGlowColor}"
+                                                                                  OffsetX="0"
+                                                                                  OffsetY="0" />
+                                                            </Ellipse.Effect>
+                                                        </Ellipse>
+                                                    </Grid>
                                                 </Border>
                                             </ControlTemplate>
                                         </nodifyConn:Connector.Template>
@@ -653,11 +734,23 @@
                                                             <GradientStop Offset="1" Color="#050303" />
                                                         </LinearGradientBrush>
                                                     </Border.Background>
-                                                    <Ellipse Width="6" Height="6"
-                                                             HorizontalAlignment="Right"
-                                                             VerticalAlignment="Center"
-                                                             Margin="0,0,3,0"
-                                                             Fill="{DynamicResource MwChromeDk}" />
+                                                    <Grid HorizontalAlignment="Right"
+                                                          VerticalAlignment="Center"
+                                                          Margin="0,0,3,0">
+                                                        <Ellipse Width="6" Height="6"
+                                                                 Fill="{DynamicResource MwChromeDk}"
+                                                                 IsVisible="{Binding !Node.IsRunning}" />
+                                                        <Ellipse Width="6" Height="6"
+                                                                 Fill="{DynamicResource MwMercury}"
+                                                                 IsVisible="{Binding Node.IsRunning}">
+                                                            <Ellipse.Effect>
+                                                                <DropShadowEffect BlurRadius="8"
+                                                                                  Color="{Binding Node.CategoryGlowColor}"
+                                                                                  OffsetX="0"
+                                                                                  OffsetY="0" />
+                                                            </Ellipse.Effect>
+                                                        </Ellipse>
+                                                    </Grid>
                                                 </Border>
                                             </ControlTemplate>
                                         </nodifyConn:Connector.Template>
@@ -677,78 +770,123 @@
 
             <nodify:NodifyEditor.ConnectionTemplate>
                 <DataTemplate x:DataType="vm:PipelineConnectionViewModel">
-                    <!-- Chrome pipe: 5-layer stroke (shadow → outer → core → inner → highlight).
-                         ArrowEnds="None" kills Nodify's default arrowhead. -->
+                    <!-- Chrome pipe: 5-layer stroke (shadow → outer → core → inner → highlight). -->
                     <Grid>
-                        <nodifyConn:Connection Source="{Binding Source.Anchor}"
-                                               Target="{Binding Target.Anchor}"
-                                               ArrowEnds="None"
-                                               ArrowSize="0,0"
-                                               StrokeLineCap="Round"
-                                               Stroke="#D9000000"
-                                               StrokeThickness="16" />
-                        <nodifyConn:Connection Source="{Binding Source.Anchor}"
-                                               Target="{Binding Target.Anchor}"
-                                               ArrowEnds="None"
-                                               ArrowSize="0,0"
-                                               StrokeLineCap="Round"
-                                               Stroke="{DynamicResource MwChromeDk}"
-                                               StrokeThickness="12" />
-                        <nodifyConn:Connection Source="{Binding Source.Anchor}"
-                                               Target="{Binding Target.Anchor}"
-                                               ArrowEnds="None"
-                                               ArrowSize="0,0"
-                                               StrokeLineCap="Round"
-                                               Stroke="{DynamicResource MwChrome}"
-                                               StrokeThickness="9" />
-                        <nodifyConn:Connection Source="{Binding Source.Anchor}"
-                                               Target="{Binding Target.Anchor}"
-                                               ArrowEnds="None"
-                                               ArrowSize="0,0"
-                                               StrokeLineCap="Round"
-                                               Stroke="#050303"
-                                               StrokeThickness="6" />
+                        <views:MwPipeConnection Source="{Binding Source.Anchor}"
+                                                Target="{Binding Target.Anchor}"
+                                                StrokeLineCap="Round"
+                                                Stroke="#D9000000"
+                                                StrokeThickness="16" />
+                        <views:MwPipeConnection Source="{Binding Source.Anchor}"
+                                                Target="{Binding Target.Anchor}"
+                                                StrokeLineCap="Round"
+                                                Stroke="{DynamicResource MwChromeDk}"
+                                                StrokeThickness="12" />
+                        <views:MwPipeConnection Source="{Binding Source.Anchor}"
+                                                Target="{Binding Target.Anchor}"
+                                                StrokeLineCap="Round"
+                                                Stroke="{DynamicResource MwChrome}"
+                                                StrokeThickness="9" />
+                        <views:MwPipeConnection Source="{Binding Source.Anchor}"
+                                                Target="{Binding Target.Anchor}"
+                                                StrokeLineCap="Round"
+                                                Stroke="#050303"
+                                                StrokeThickness="6" />
                         <!-- Inner liquid, dark when idle (hidden while running) -->
-                        <nodifyConn:Connection Source="{Binding Source.Anchor}"
-                                               Target="{Binding Target.Anchor}"
-                                               ArrowEnds="None"
-                                               ArrowSize="0,0"
-                                               StrokeLineCap="Round"
-                                               Stroke="#1a1208"
-                                               StrokeThickness="5"
-                                               IsVisible="{Binding !IsRunning}" />
+                        <views:MwPipeConnection Source="{Binding Source.Anchor}"
+                                                Target="{Binding Target.Anchor}"
+                                                StrokeLineCap="Round"
+                                                Stroke="#1a1208"
+                                                StrokeThickness="5"
+                                                IsVisible="{Binding !IsRunning}" />
                         <!-- Molten liquid when running (with orange glow) -->
-                        <nodifyConn:Connection Source="{Binding Source.Anchor}"
-                                               Target="{Binding Target.Anchor}"
-                                               ArrowEnds="None"
-                                               ArrowSize="0,0"
-                                               StrokeLineCap="Round"
-                                               Stroke="{DynamicResource MwPipeLiquid}"
-                                               StrokeThickness="5"
-                                               IsVisible="{Binding IsRunning}">
-                            <nodifyConn:Connection.Effect>
+                        <views:MwPipeConnection Source="{Binding Source.Anchor}"
+                                                Target="{Binding Target.Anchor}"
+                                                StrokeLineCap="Round"
+                                                Stroke="{DynamicResource MwPipeLiquid}"
+                                                StrokeThickness="5"
+                                                IsVisible="{Binding IsRunning}">
+                            <views:MwPipeConnection.Effect>
                                 <DropShadowEffect BlurRadius="10" Color="#FF7A1A" OffsetX="0" OffsetY="0" />
-                            </nodifyConn:Connection.Effect>
-                        </nodifyConn:Connection>
+                            </views:MwPipeConnection.Effect>
+                        </views:MwPipeConnection>
                         <!-- Bright molten core when running -->
-                        <nodifyConn:Connection Source="{Binding Source.Anchor}"
-                                               Target="{Binding Target.Anchor}"
-                                               ArrowEnds="None"
-                                               ArrowSize="0,0"
-                                               StrokeLineCap="Round"
-                                               Stroke="{DynamicResource MwMoltenHi}"
-                                               StrokeThickness="1.5"
-                                               Opacity="0.9"
-                                               IsVisible="{Binding IsRunning}" />
+                        <views:MwPipeConnection Source="{Binding Source.Anchor}"
+                                                Target="{Binding Target.Anchor}"
+                                                StrokeLineCap="Round"
+                                                Stroke="{DynamicResource MwMoltenHi}"
+                                                StrokeThickness="1.5"
+                                                Opacity="0.9"
+                                                IsVisible="{Binding IsRunning}" />
                         <!-- Chrome top highlight -->
-                        <nodifyConn:Connection Source="{Binding Source.Anchor}"
-                                               Target="{Binding Target.Anchor}"
-                                               ArrowEnds="None"
-                                               ArrowSize="0,0"
-                                               StrokeLineCap="Round"
-                                               Stroke="{DynamicResource MwChromeHi}"
-                                               StrokeThickness="1"
-                                               Opacity="0.7" />
+                        <views:MwPipeConnection Source="{Binding Source.Anchor}"
+                                                Target="{Binding Target.Anchor}"
+                                                StrokeLineCap="Round"
+                                                Stroke="{DynamicResource MwChromeHi}"
+                                                StrokeThickness="1"
+                                                Opacity="0.7" />
+
+                        <!-- ═══ Mercury droplets (visible while running) ═══
+                             Four beads ride the bezier with staggered delays so the
+                             pipe looks like liquid metal flowing through chrome. -->
+                        <Canvas IsVisible="{Binding IsRunning}" IsHitTestVisible="False">
+                            <views:MwMercuryDroplet x:Name="Droplet0"
+                                                    Source="{Binding Source.Anchor}"
+                                                    Target="{Binding Target.Anchor}">
+                                <views:MwMercuryDroplet.Styles>
+                                    <Style Selector="views|MwMercuryDroplet">
+                                        <Style.Animations>
+                                            <Animation Duration="0:0:2.4" Delay="0:0:0" IterationCount="INFINITE">
+                                                <KeyFrame Cue="0%"><Setter Property="views:MwMercuryDroplet.Progress" Value="0" /></KeyFrame>
+                                                <KeyFrame Cue="100%"><Setter Property="views:MwMercuryDroplet.Progress" Value="1" /></KeyFrame>
+                                            </Animation>
+                                        </Style.Animations>
+                                    </Style>
+                                </views:MwMercuryDroplet.Styles>
+                            </views:MwMercuryDroplet>
+                            <views:MwMercuryDroplet x:Name="Droplet1"
+                                                    Source="{Binding Source.Anchor}"
+                                                    Target="{Binding Target.Anchor}">
+                                <views:MwMercuryDroplet.Styles>
+                                    <Style Selector="views|MwMercuryDroplet">
+                                        <Style.Animations>
+                                            <Animation Duration="0:0:2.4" Delay="0:0:0.6" IterationCount="INFINITE">
+                                                <KeyFrame Cue="0%"><Setter Property="views:MwMercuryDroplet.Progress" Value="0" /></KeyFrame>
+                                                <KeyFrame Cue="100%"><Setter Property="views:MwMercuryDroplet.Progress" Value="1" /></KeyFrame>
+                                            </Animation>
+                                        </Style.Animations>
+                                    </Style>
+                                </views:MwMercuryDroplet.Styles>
+                            </views:MwMercuryDroplet>
+                            <views:MwMercuryDroplet x:Name="Droplet2"
+                                                    Source="{Binding Source.Anchor}"
+                                                    Target="{Binding Target.Anchor}">
+                                <views:MwMercuryDroplet.Styles>
+                                    <Style Selector="views|MwMercuryDroplet">
+                                        <Style.Animations>
+                                            <Animation Duration="0:0:2.4" Delay="0:0:1.2" IterationCount="INFINITE">
+                                                <KeyFrame Cue="0%"><Setter Property="views:MwMercuryDroplet.Progress" Value="0" /></KeyFrame>
+                                                <KeyFrame Cue="100%"><Setter Property="views:MwMercuryDroplet.Progress" Value="1" /></KeyFrame>
+                                            </Animation>
+                                        </Style.Animations>
+                                    </Style>
+                                </views:MwMercuryDroplet.Styles>
+                            </views:MwMercuryDroplet>
+                            <views:MwMercuryDroplet x:Name="Droplet3"
+                                                    Source="{Binding Source.Anchor}"
+                                                    Target="{Binding Target.Anchor}">
+                                <views:MwMercuryDroplet.Styles>
+                                    <Style Selector="views|MwMercuryDroplet">
+                                        <Style.Animations>
+                                            <Animation Duration="0:0:2.4" Delay="0:0:1.8" IterationCount="INFINITE">
+                                                <KeyFrame Cue="0%"><Setter Property="views:MwMercuryDroplet.Progress" Value="0" /></KeyFrame>
+                                                <KeyFrame Cue="100%"><Setter Property="views:MwMercuryDroplet.Progress" Value="1" /></KeyFrame>
+                                            </Animation>
+                                        </Style.Animations>
+                                    </Style>
+                                </views:MwMercuryDroplet.Styles>
+                            </views:MwMercuryDroplet>
+                        </Canvas>
                     </Grid>
                 </DataTemplate>
             </nodify:NodifyEditor.ConnectionTemplate>

@@ -61,6 +61,14 @@ public partial class PipelineNodeViewModel : ViewModelBase
     [ObservableProperty]
     private IBrush _mwGlowBrush = null!;
 
+    /// <summary>Mw category glow color for bindable drop-shadow effects.</summary>
+    [ObservableProperty]
+    private Color _categoryGlowColor;
+
+    /// <summary>Mw running heat-pulse brush, tinted by category glow.</summary>
+    [ObservableProperty]
+    private IBrush _mwHeatPulseBrush = null!;
+
     /// <summary>Forge-themed icon geometry (pit/mold/die/chisel/…).</summary>
     [ObservableProperty]
     private Geometry? _mwIconGeometry;
@@ -167,8 +175,39 @@ public partial class PipelineNodeViewModel : ViewModelBase
         MwBaseBrush = ThemeHelper.GetBrush(MwOpsMap.BaseKey(MwCategory), "#3a1808");
         MwNeonBrush = ThemeHelper.GetBrush(MwOpsMap.NeonKey(MwCategory), "#ff7a1a");
         MwGlowBrush = ThemeHelper.GetBrush(MwOpsMap.GlowKey(MwCategory), "#ffd080");
+        Color glowColor = ThemeHelper.GetColor(MwGlowColorKey(MwCategory), "#ffd080");
+        CategoryGlowColor = glowColor;
+        MwHeatPulseBrush = BuildHeatPulseBrush(glowColor);
         MwIconGeometry = ThemeHelper.GetGeometry(MwOpsMap.IconKey(MwOpsMap.Get(TypeKey).Icon));
     }
+
+    private static IBrush BuildHeatPulseBrush(Color glowColor)
+    {
+        return new RadialGradientBrush
+        {
+            Center = new RelativePoint(0.5, 0.5, RelativeUnit.Relative),
+            GradientOrigin = new RelativePoint(0.5, 0.5, RelativeUnit.Relative),
+            RadiusX = new RelativeScalar(0.7, RelativeUnit.Relative),
+            RadiusY = new RelativeScalar(0.7, RelativeUnit.Relative),
+            GradientStops =
+            {
+                new GradientStop(Color.FromArgb(0xA6, glowColor.R, glowColor.G, glowColor.B), 0),
+                new GradientStop(Color.FromArgb(0x40, glowColor.R, glowColor.G, glowColor.B), 0.45),
+                new GradientStop(Colors.Transparent, 0.65),
+            },
+        };
+    }
+
+    private static string MwGlowColorKey(string category) => category switch
+    {
+        "src" => "MwSrcGlowColor",
+        "snk" => "MwSnkGlowColor",
+        "shp" => "MwShpGlowColor",
+        "flt" => "MwFltGlowColor",
+        "hea" => "MwHeaGlowColor",
+        "met" => "MwMetGlowColor",
+        _ => "MwMoltenHiColor",
+    };
 
     private static string BuildConfigPreview(IDictionary<string, JsonElement> config)
     {
