@@ -5,15 +5,14 @@ using Avalonia.Media;
 namespace FlowForge.UI.Views;
 
 /// <summary>
-/// Molten Works pipe path that renders the same midpoint cubic used by the
-/// concept reference and by <see cref="MwMercuryDroplet"/>.
+/// Molten Works pipe path. Shares its cubic control points with
+/// <see cref="MwMercuryDroplet"/> via <see cref="MwGeometry.GetMidpointControls"/>
+/// so beads ride exactly on the rendered curve. The shared
+/// <see cref="MwGeometry.IsFinite(Point)"/> validator rejects non-finite
+/// endpoints at the property boundary on both ends of the curve.
 /// </summary>
 public sealed class MwPipeConnection : Shape
 {
-    // Non-finite endpoints or offsets would corrupt the cubic StreamGeometry
-    // and silently draw nothing. Mirror the validator MwMercuryDroplet applies
-    // to its own Source/Target so both ends of the shared curve enforce the
-    // same boundary contract.
     public static readonly StyledProperty<Point> SourceProperty =
         AvaloniaProperty.Register<MwPipeConnection, Point>(nameof(Source), validate: MwGeometry.IsFinite);
 
@@ -63,16 +62,13 @@ public sealed class MwPipeConnection : Shape
     {
         Point source = ApplyOffset(Source, SourceOffset);
         Point target = ApplyOffset(Target, TargetOffset);
-        double midX = (source.X + target.X) / 2.0;
+        (Point cp1, Point cp2) = MwGeometry.GetMidpointControls(source, target);
 
         var geometry = new StreamGeometry();
         using (StreamGeometryContext context = geometry.Open())
         {
             context.BeginFigure(source, false);
-            context.CubicBezierTo(
-                new Point(midX, source.Y),
-                new Point(midX, target.Y),
-                target);
+            context.CubicBezierTo(cp1, cp2, target);
         }
 
         return geometry;
