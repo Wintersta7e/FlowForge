@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FlowForge.Core.Execution;
 
@@ -13,10 +12,10 @@ public partial class NodeLibraryViewModel : ViewModelBase
     {
         ["Source"] = "Input",
         ["Transform"] = "Process",
-        ["Output"] = "Save To"
+        ["Output"] = "Save To",
     };
 
-    private List<NodeLibraryGroupViewModel> _allGroups = new();
+    private readonly List<NodeLibraryGroupViewModel> _allGroups = new();
 
     [ObservableProperty]
     private string _searchText = string.Empty;
@@ -28,16 +27,12 @@ public partial class NodeLibraryViewModel : ViewModelBase
         FilterItems();
     }
 
-    private NodeRegistry? _registry;
-
     public void Initialize(NodeRegistry registry)
     {
-        _registry = registry;
         _allGroups.Clear();
         Groups.Clear();
 
         Dictionary<string, List<NodeLibraryItemViewModel>> categoryItems = new(StringComparer.Ordinal);
-        Dictionary<string, NodeCategory> categoryKeys = new(StringComparer.Ordinal);
 
         foreach (string typeKey in registry.GetRegisteredTypeKeys())
         {
@@ -49,12 +44,9 @@ public partial class NodeLibraryViewModel : ViewModelBase
             {
                 existingItems = new List<NodeLibraryItemViewModel>();
                 categoryItems[categoryName] = existingItems;
-                categoryKeys[categoryName] = category;
             }
 
-            string icon = NodeIconMap.Icons.GetValueOrDefault(typeKey, "\u2699");
-            (IBrush iconBg, IBrush iconFg) = GetCategoryBrushes(category);
-            existingItems.Add(new NodeLibraryItemViewModel(typeKey, displayName, icon, iconBg, iconFg));
+            existingItems.Add(new NodeLibraryItemViewModel(typeKey, displayName));
         }
 
         string[] orderedCategories = ["Input", "Process", "Save To"];
@@ -62,34 +54,11 @@ public partial class NodeLibraryViewModel : ViewModelBase
         {
             if (categoryItems.TryGetValue(cat, out List<NodeLibraryItemViewModel>? items))
             {
-                IBrush categoryBrush = GetCategoryHeaderBrush(categoryKeys[cat]);
-                NodeLibraryGroupViewModel group = new(cat, new ObservableCollection<NodeLibraryItemViewModel>(items), categoryBrush);
+                NodeLibraryGroupViewModel group = new(cat, new ObservableCollection<NodeLibraryItemViewModel>(items));
                 _allGroups.Add(group);
                 Groups.Add(group);
             }
         }
-    }
-
-    private static (IBrush IconBg, IBrush IconFg) GetCategoryBrushes(NodeCategory category)
-    {
-        return category switch
-        {
-            NodeCategory.Source => (ThemeHelper.GetBrush("ForgeSourceDim", "#145bb8f5"), ThemeHelper.GetBrush("ForgeSource", "#5bb8f5")),
-            NodeCategory.Transform => (ThemeHelper.GetBrush("ForgeTransformDim", "#145ce0a0"), ThemeHelper.GetBrush("ForgeTransform", "#5ce0a0")),
-            NodeCategory.Output => (ThemeHelper.GetBrush("ForgeOutputDim", "#14e8932f"), ThemeHelper.GetBrush("ForgeOutput", "#e8932f")),
-            _ => (ThemeHelper.GetBrush("ForgeElevated", "#252029"), ThemeHelper.GetBrush("ForgeTextMuted", "#564a62"))
-        };
-    }
-
-    private static IBrush GetCategoryHeaderBrush(NodeCategory category)
-    {
-        return category switch
-        {
-            NodeCategory.Source => ThemeHelper.GetBrush("ForgeSource", "#5bb8f5"),
-            NodeCategory.Transform => ThemeHelper.GetBrush("ForgeTransform", "#5ce0a0"),
-            NodeCategory.Output => ThemeHelper.GetBrush("ForgeOutput", "#e8932f"),
-            _ => ThemeHelper.GetBrush("ForgeTextMuted", "#564a62")
-        };
     }
 
     private void FilterItems()
@@ -105,7 +74,6 @@ public partial class NodeLibraryViewModel : ViewModelBase
 
             if (hasMatches && !isVisible)
             {
-                // Insert at the correct position to maintain category order
                 int insertIndex = 0;
                 foreach (NodeLibraryGroupViewModel existing in _allGroups)
                 {
