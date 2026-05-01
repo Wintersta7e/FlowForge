@@ -100,16 +100,6 @@ public partial class EditorViewModel : ViewModelBase
             {
                 node.PropertyChanged -= OnNodePropertyChanged;
                 _subscribedNodes.Remove(node);
-
-                foreach (PipelineConnectorViewModel connector in node.Input)
-                {
-                    connector.Detach();
-                }
-
-                foreach (PipelineConnectorViewModel connector in node.Output)
-                {
-                    connector.Detach();
-                }
             }
         }
 
@@ -140,7 +130,6 @@ public partial class EditorViewModel : ViewModelBase
     public void ClearAll()
     {
         UnsubscribeAllNodes();
-        DetachAllNodesAndConnectors();
         Nodes.Clear();
         Connections.Clear();
         SelectedNode = null;
@@ -148,26 +137,9 @@ public partial class EditorViewModel : ViewModelBase
         UndoRedo.Clear();
     }
 
-    private void DetachAllNodesAndConnectors()
-    {
-        foreach (PipelineNodeViewModel node in Nodes)
-        {
-            foreach (PipelineConnectorViewModel connector in node.Input)
-            {
-                connector.Detach();
-            }
-
-            foreach (PipelineConnectorViewModel connector in node.Output)
-            {
-                connector.Detach();
-            }
-        }
-    }
-
     public int LoadGraph(PipelineGraph graph, NodeRegistry registry)
     {
         UnsubscribeAllNodes();
-        DetachAllNodesAndConnectors();
         Nodes.Clear();
         Connections.Clear();
 
