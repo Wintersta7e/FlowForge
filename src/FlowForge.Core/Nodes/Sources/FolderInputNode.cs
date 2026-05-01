@@ -71,12 +71,7 @@ public class FolderInputNode : ISourceNode
         SearchOption searchOption = _recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
         string[] patterns = _filter.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-        // Trim trailing separator so the prefix check below never sees a
-        // doubled slash. PathGuard.NormalizedRootPrefix keeps drive roots
-        // ("C:\") and UNC shares single-separated (TrimEndingDirectorySeparator
-        // preserves the root separator) so children still match StartsWith.
         string resolvedRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(_path));
-        string resolvedRootPrefix = PathGuard.NormalizedRootPrefix(resolvedRoot);
         var files = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (string pattern in patterns)
         {
@@ -84,10 +79,9 @@ public class FolderInputNode : ISourceNode
             {
                 foreach (string file in Directory.EnumerateFiles(_path, pattern, searchOption))
                 {
-                    // Filter out files that resolve outside the source root (e.g. via symlinks)
+                    // Filter out files that resolve outside the source root (e.g. via symlinks).
                     string resolvedFile = Path.GetFullPath(file);
-                    if (!resolvedFile.StartsWith(resolvedRootPrefix, StringComparison.OrdinalIgnoreCase) &&
-                        !resolvedFile.Equals(resolvedRoot, StringComparison.OrdinalIgnoreCase))
+                    if (!PathGuard.IsWithinResolvedDirectory(resolvedFile, resolvedRoot))
                     {
                         _logger.LogWarning(
                             "FolderInput: skipping '{FilePath}' — resolves outside source root '{Root}'",
@@ -118,8 +112,6 @@ public class FolderInputNode : ISourceNode
                 }
             }
         }
-
-        // SortedSet handles dedup and ordering automatically
 
         foreach (string filePath in files)
         {

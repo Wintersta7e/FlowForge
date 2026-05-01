@@ -7,19 +7,25 @@ internal static class PathGuard
     /// </summary>
     public static void EnsureWithinDirectory(string candidatePath, string allowedRoot)
     {
-        // Trim trailing separator before the prefix comparison — otherwise a
-        // user-typed "C:\foo\" doubles the separator in resolvedRoot +
-        // DirectorySeparatorChar and rejects every valid child.
         string resolvedCandidate = Path.TrimEndingDirectorySeparator(Path.GetFullPath(candidatePath));
         string resolvedRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(allowedRoot));
-        string rootPrefix = NormalizedRootPrefix(resolvedRoot);
 
-        if (!resolvedCandidate.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase)
-            && !resolvedCandidate.Equals(resolvedRoot, StringComparison.OrdinalIgnoreCase))
+        if (!IsWithinResolvedDirectory(resolvedCandidate, resolvedRoot))
         {
             throw new InvalidOperationException(
                 $"Path traversal blocked: '{candidatePath}' resolves outside '{allowedRoot}'.");
         }
+    }
+
+    /// <summary>
+    /// Predicate form of the containment check operating on already-resolved paths
+    /// (avoid re-running <see cref="Path.GetFullPath(string)"/> per file in a loop).
+    /// </summary>
+    public static bool IsWithinResolvedDirectory(string resolvedCandidate, string resolvedRoot)
+    {
+        string rootPrefix = NormalizedRootPrefix(resolvedRoot);
+        return resolvedCandidate.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase)
+            || resolvedCandidate.Equals(resolvedRoot, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
