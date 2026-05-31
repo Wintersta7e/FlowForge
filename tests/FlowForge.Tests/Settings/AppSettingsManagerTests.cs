@@ -35,7 +35,7 @@ public class AppSettingsManagerTests
             DefaultInputFolder = "/home/user/input",
             DefaultOutputFolder = "/home/user/output",
             MaxConcurrency = 4,
-            RecentPipelines = new List<string> { "/home/user/pipelines/test.ffpipe" },
+            RecentPipelines = new List<string> { Path.Combine(dir.Path, "pipelines", "test.ffpipe") },
         };
 
         await manager.SaveAsync(original);

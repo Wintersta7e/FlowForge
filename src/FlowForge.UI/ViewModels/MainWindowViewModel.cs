@@ -42,9 +42,8 @@ public partial class MainWindowViewModel : ViewModelBase
     private bool _isDirty;
 
     /// <summary>
-    /// When true, all stations + pipes render in their running visual state
-    /// (heat pulse, molten liquid, LIVE pills) without executing any file I/O.
-    /// Useful for demoing the animation work without a long real pipeline.
+    /// When true, the running visual state (heat pulse, molten liquid, LIVE pills) lights up
+    /// without executing any file I/O — used to exercise animations without a real pipeline.
     /// </summary>
     [ObservableProperty]
     private bool _isDemoMode;
@@ -87,14 +86,7 @@ public partial class MainWindowViewModel : ViewModelBase
         Editor.PropertyChanged += OnEditorPropertyChanged;
         Editor.UndoRedo.StateChanged += OnUndoRedoStateChanged;
         Editor.GraphChanged += OnEditorGraphChanged;
-
-        // Drives the "forge lit" canvas state (heat pulse, pipe liquid,
-        // port glow) whenever a real run or demo toggle flips IsRunning.
         ExecutionLog.PropertyChanged += OnExecutionLogPropertyChanged;
-
-        // Seed running-state on any station/pipe added after the initial
-        // toggle (template load, undo of a delete, drag completion) so
-        // new elements match the surrounding canvas instead of staying idle.
         Editor.Nodes.CollectionChanged += OnEditorRunningCollectionChanged;
         Editor.Connections.CollectionChanged += OnEditorRunningCollectionChanged;
     }
@@ -120,10 +112,7 @@ public partial class MainWindowViewModel : ViewModelBase
     /// </summary>
     private void UpdateRunningVisual()
     {
-        // May be invoked off the UI thread (e.g. ExecutionLog.IsRunning flips
-        // in the finally of an async pipeline whose continuation resumes on a
-        // thread-pool thread). Bounce to the dispatcher before touching
-        // ObservableCollection-backed VMs.
+        // May be invoked off the UI thread; ObservableCollection touches must run on the dispatcher.
         if (!Dispatcher.UIThread.CheckAccess())
         {
             Dispatcher.UIThread.Post(UpdateRunningVisual);
@@ -144,9 +133,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void OnEditorRunningCollectionChanged(object? sender, NotifyCollectionChangedEventArgs args)
     {
-        // Reset fires with NewItems == null; re-sync the whole canvas so a
-        // bulk replace (template swap, Clear+Add sequence) still seeds any
-        // stations/pipes that landed in the new collection.
+        // Reset fires with NewItems == null; re-sync the whole canvas to cover bulk replace.
         if (args.Action == NotifyCollectionChangedAction.Reset)
         {
             UpdateRunningVisual();
@@ -188,14 +175,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void OnUndoRedoStateChanged(object? sender, EventArgs e)
     {
-        // Defer via Dispatcher.Post. This event fires synchronously from inside
-        // ConfigFieldViewModel.OnValueChanged, which itself fires from a binding
-        // setter during an in-flight control event (e.g. a CheckBox's Checked
-        // dispatch). Clearing and rebuilding Fields immediately would detach the
-        // very control whose event is still on the stack, leaving its visual
-        // tree in an inconsistent state and making the inspector look blank.
-        // Post queues the rebuild for the next dispatcher cycle so the control
-        // event completes cleanly first.
+        // Fires synchronously from a binding setter mid-control-event; defer the rebuild
+        // until the dispatcher is idle so we don't detach the control still on the stack.
         Dispatcher.UIThread.Post(RefreshPropertiesPanel);
     }
 
@@ -206,8 +187,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void RefreshPropertiesPanel()
     {
-        // PushExecuted (not Execute) because the MVVM binding already mutated the config dictionary.
-        // PushOrCoalesce merges repeated keystrokes on the same field into a single undo entry.
+        // PushExecuted: the MVVM binding has already mutated the config dictionary; PushOrCoalesce
+        // merges repeated keystrokes on the same field into a single undo entry.
         Properties.LoadNode(Editor.SelectedNode, _registry, cmd =>
         {
             if (cmd is UndoRedo.Commands.ChangeConfigCommand configCmd)
@@ -470,12 +451,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         finally
         {
-            // RunAsync's awaited continuation can resume on a thread-pool
-            // thread, so the IsRunning setter (and its PropertyChanged cascade
-            // into XAML bindings + our visual handlers) must be marshalled
-            // back to the UI thread. Await InvokeAsync instead of fire-and-forget
-            // Post so the next ExecutePipelineAsync call is guaranteed to see
-            // IsRunning = false at the top-of-method guard.
+            // Awaited (not Post) so the next ExecutePipelineAsync sees IsRunning=false at its guard.
             await Dispatcher.UIThread.InvokeAsync(() => ExecutionLog.IsRunning = false);
             Interlocked.Exchange(ref _cts, null)?.Dispose();
         }

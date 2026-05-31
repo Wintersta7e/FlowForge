@@ -41,11 +41,8 @@ public partial class ConfigFieldViewModel : ViewModelBase
         DefaultValue = field.DefaultValue;
         Tooltip = field.Description;
 
-        // Read initial value from config. Bool must arrive pre-normalized to
-        // the capitalized "True"/"False" form that BoolStringConverter
-        // round-trips — element.GetRawText() yields lowercase, and a case
-        // mismatch would re-fire OnValueChanged on the first binding
-        // write-back and loop.
+        // Bool must be the capitalized "True"/"False" form BoolStringConverter round-trips;
+        // GetRawText yields lowercase, which would re-fire OnValueChanged and loop.
         if (_configDictionary.TryGetValue(Key, out JsonElement element))
         {
             _value = element.ValueKind switch
@@ -71,9 +68,8 @@ public partial class ConfigFieldViewModel : ViewModelBase
     {
         if (value is not null)
         {
-            // Reject unparseable typed input early so we never serialise a raw
-            // string into a Bool/Int slot. On reload the config reader would
-            // call GetBoolean / GetInt32 on that JSON string and throw.
+            // Reject unparseable input so we never serialise a raw string into a Bool/Int slot
+            // (GetBoolean/GetInt32 on reload would throw).
             if (FieldType == ConfigFieldType.Int && !int.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, out _))
             {
                 return;
@@ -102,7 +98,6 @@ public partial class ConfigFieldViewModel : ViewModelBase
         }
         else
         {
-            // Guard: only create undo entry when key actually existed (I6)
             bool keyExisted = _configDictionary.TryGetValue(Key, out JsonElement oldElement);
             if (!keyExisted)
             {

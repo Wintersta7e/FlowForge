@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using Avalonia.Media;
 
 namespace FlowForge.UI.ViewModels;
 
@@ -11,14 +10,12 @@ public class NodeLibraryGroupViewModel : ViewModelBase
     private readonly List<NodeLibraryItemViewModel> _allItems;
 
     public string Category { get; }
-    public IBrush CategoryBrush { get; }
     public ObservableCollection<NodeLibraryItemViewModel> Items { get; }
 
-    public NodeLibraryGroupViewModel(string category, ObservableCollection<NodeLibraryItemViewModel> items, IBrush categoryBrush)
+    public NodeLibraryGroupViewModel(string category, ObservableCollection<NodeLibraryItemViewModel> items)
     {
         Category = category;
         Items = items;
-        CategoryBrush = categoryBrush;
         _allItems = new List<NodeLibraryItemViewModel>(items);
     }
 
@@ -31,7 +28,6 @@ public class NodeLibraryGroupViewModel : ViewModelBase
     {
         if (string.IsNullOrWhiteSpace(search))
         {
-            // Restore all items, avoiding unnecessary churn
             if (Items.Count == _allItems.Count)
             {
                 return true;
