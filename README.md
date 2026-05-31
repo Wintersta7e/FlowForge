@@ -1,220 +1,163 @@
+<div align="center">
+
 # FlowForge
 
-A visual node-based file processing pipeline tool. Build reusable workflows for renaming, resizing, converting, and filtering files — no scripting required.
+**A node-based file processing pipeline for everyday file chores.**
 
-[![CI](https://github.com/Wintersta7e/FlowForge/actions/workflows/ci.yml/badge.svg)](https://github.com/Wintersta7e/FlowForge/actions/workflows/ci.yml)
-![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet)
-![Avalonia](https://img.shields.io/badge/Avalonia-11.3-8B44AC?logo=dotnet)
-![C#](https://img.shields.io/badge/C%23-14-239120?logo=csharp)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
+Wire source, transform, and output nodes into reusable workflows for renaming,
+resizing, converting, and filtering files. Run from a desktop GUI or the command line.
 
-<p align="center">
-  <img src="screenshots/empty-state.png" alt="FlowForge empty state — Build your pipeline from raw ore, with one-click templates" width="820">
-</p>
+[![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com)
+[![C#](https://img.shields.io/badge/C%23-14-239120?logo=csharp&logoColor=white)](https://learn.microsoft.com/dotnet/csharp/)
+[![Avalonia](https://img.shields.io/badge/Avalonia-11-8B44AC?logo=dotnet&logoColor=white)](https://avaloniaui.net)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Status](https://img.shields.io/badge/status-personal%20%C2%B7%20actively%20developed-brightgreen)](#status)
+[![CI](https://github.com/Wintersta7e/FlowForge/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Wintersta7e/FlowForge/actions/workflows/ci.yml)
 
-## Overview
+<br>
 
-FlowForge lets you visually connect source, transform, and output nodes to build file processing pipelines:
+<img src="screenshots/editor-overview.png" alt="The FlowForge visual pipeline editor" width="900">
 
-- **Visual Node Editor** — Drag-and-drop canvas with pan, zoom, and wire connections
-- **Undo/Redo** — Full undo/redo for all editor actions (add, delete, move, connect, disconnect, config changes) with Ctrl+Z / Ctrl+Y
-- **11 Built-in Nodes** — Sources, transforms, and outputs covering common file operations
-- **Real-time Progress** — Live scanning count, per-file processing status, and throughput reporting
-- **Pipeline Templates** — Pre-wired workflows for common tasks (photo import, batch rename, web export, compression)
-- **CLI Runner** — Execute pipelines from the command line for automation and scripting
-- **Molten Works theme** — Cast-iron stations with chrome pipes and live mercury flow when a pipeline runs
-- **Cross-platform** — Runs on Windows, macOS, and Linux via Avalonia UI
+</div>
+
+---
+
+## Why
+
+I built FlowForge for myself — a repeatable way to run the same boring file
+chores (rename a folder of photos by date, resize a batch for the web, strip
+metadata before sharing) without hand-writing a throwaway script every time.
+It's **local-first**, **offline-capable**, and sends **no telemetry** — no
+account, no network call, nothing leaves your machine.
+
+It's a personal tool, not a product — but it's open source under MIT, and if it
+looks useful to you, you're welcome to clone it and give it a try. There's no
+adoption goal and no support guarantees, but issues and PRs are read.
+
+The same pipelines run from a desktop GUI or the command line
+(`flowforge run my-pipeline.ffpipe`) — two front-ends over one shared core engine.
+
+## Status
+
+Actively developed personal tool. The engine, node library, desktop UI, and CLI
+are all implemented and covered by an extensive test suite (378 tests) under
+strict analyzers (StyleCop + Meziantou, warnings-as-errors). The `.ffpipe`
+format is stable across the 2.x line — treat it as a working tool you can build
+and run, not a finished, packaged consumer app.
+
+**Implemented:**
+- Visual node editor — drag-and-drop canvas, pan/zoom, wiring, rubber-band
+  selection, full undo/redo
+- 11 built-in node types (see [Features](#features))
+- `flowforge` CLI — `run` with per-run input/output overrides, dry-run,
+  `--format json`, and a defined exit-code contract
+- Pipeline templates — Photo Import, Batch Rename, Web Export, Compress
+- Real-time progress — live scan count, per-file status, throughput reporting
+- "Molten Works" dark theme — cast-iron stations, chrome pipes, mercury beads
+  that flow along the pipes while a pipeline runs
+- Cross-platform via Avalonia (Windows, macOS, Linux); self-contained Windows
+  x64 build on the [Releases page](https://github.com/Wintersta7e/FlowForge/releases)
+
+**Not done yet:** packaged / signed installers beyond the win-x64 release zip.
 
 ## Features
 
-### Node Types
+### Engine + CLI
+- Pipeline runner with dry-run mode (**zero file I/O**), full `CancellationToken`
+  support, and structured progress events
+- **11 built-in node types:**
+  - *sources & outputs:* `FolderInput`, `FolderOutput`
+  - *rename:* `RenamePattern`, `RenameRegex`, `RenameAddAffix`
+  - *organise:* `Filter`, `Sort`
+  - *image:* `ImageResize`, `ImageConvert`, `ImageCompress`
+  - *metadata:* `MetadataExtract`
+- Token-based renaming (`{name}`, `{date}`, `{counter}`, `{meta}`), regex
+  find/replace with capture groups, and EXIF / file-metadata reads
+- Atomic `.ffpipe` writes (write-to-`.tmp`-then-rename); path guards keep every
+  write inside its target directory
+- Workflows are plain `.ffpipe` JSON — git-trackable, diffable, shareable
+- `flowforge` CLI mirrors the GUI: per-run input/output overrides, dry-run,
+  `--format json` for machine-readable output, exit codes (`0` success,
+  `1` partial, `2` failure / bad args)
 
-| Category | Node | Description |
-|----------|------|-------------|
-| **Input** | Folder Input | Enumerate files from a directory with recursive and filter options |
-| **Process** | Rename Pattern | Token-based renaming (`{name}`, `{date}`, `{counter}`, `{meta}`) |
-| **Process** | Rename Regex | Regex find-and-replace with capture group support |
-| **Process** | Rename Add Affix | Add prefix and/or suffix to filenames |
-| **Process** | Filter | Conditional filtering by extension, size, date, or regex |
-| **Process** | Sort | Reorder files by name, extension, or size |
-| **Process** | Image Resize | Resize images with aspect ratio control |
-| **Process** | Image Convert | Convert between JPEG, PNG, WebP, BMP, and TIFF |
-| **Process** | Image Compress | Quality-based compression for JPEG, PNG, and WebP |
-| **Process** | Metadata Extract | Read EXIF and file metadata into pipeline variables |
-| **Save To** | Folder Output | Copy or move processed files with optional backup before overwrite |
+### Desktop editor
+- Node-graph canvas (Nodify.Avalonia): pan, zoom, drag, rubber-band selection
+- Categorised node library with search and drag-to-canvas
+- Properties panel — config forms auto-generated from node schemas (text,
+  number, boolean, file/folder picker, dropdown) with hover tooltips
+- Undo/redo (Ctrl+Z / Ctrl+Y) for every editor action; config-field edits
+  coalesce into single entries
+- Live execution log with success / fail / skip counts and per-file detail
+- Template starters, recent-pipelines menu, zoom-to-fit, keyboard-shortcut help dialog
 
-### Pipeline Editor
+### Explicitly declined (not on the roadmap)
+- Media transcoding (FFmpeg) • PDF processing • Authentication or accounts • Telemetry or analytics • Network calls or cloud sync • Commercially licensed canvas libraries
 
-<p align="center">
-  <img src="screenshots/editor-overview.png" alt="FlowForge editor — three-panel layout with library, canvas, and inspector over the pipeline console" width="900">
-</p>
+## Stack
 
-- **Canvas** — Nodify-powered node graph with pan, zoom, drag, and rubber-band selection
-- **Node Library** — Categorized sidebar with search and drag-to-canvas support
-- **Properties Panel** — Auto-generated config forms from node schemas (text, number, boolean, file/folder picker, dropdown)
-- **Undo/Redo** — Ctrl+Z / Ctrl+Y for all editor actions with 25-step history; config field edits coalesce into single undo entries
-- **Execution Log** — Live progress with success/fail/skip counts and per-file details
-- **Templates** — One-click pipeline starters: Photo Import, Batch Rename, Web Export, Compress
-- **Recent Pipelines** — MRU menu with quick access to recently opened files
-- **Keyboard Shortcuts** — Help dialog showing all available shortcuts
-- **Zoom-to-Fit** — Toolbar button to fit the entire graph into the viewport
-- **Config Tooltips** — Hover descriptions on all node configuration fields
-- **Molten Works theme** — Cast-iron stations, chrome pipes, glowing mercury beads that travel along the pipes while a pipeline is running, and category-colored heat halos on active stations
-
-<p align="center">
-  <img src="screenshots/stations-running.png" alt="Cast-iron stations with category-colored halos and flowing mercury beads while a pipeline runs" width="680">
-</p>
-
-### CLI Runner
-
-```bash
-flowforge run pipeline.ffpipe [--input <dir>] [--output <dir>] [--dry-run] [--verbose] [--format json]
-```
-
-- Override input/output directories per run
-- Dry-run mode for safe previewing
-- JSON output mode (`--format json`) for machine-readable results
-- Structured logging via `ILogger<T>` (routed to stderr in JSON mode)
-- Exit codes: 0 (success), 1 (partial failure), 2 (total failure / invalid arguments)
-
-### Pipeline Format
-
-Pipelines are saved as `.ffpipe` files (human-readable JSON, UTF-8):
-
-```json
-{
-  "name": "Photo Import",
-  "nodes": [
-    { "id": "...", "typeKey": "FolderInput", "config": { "path": "/photos" } }
-  ],
-  "connections": [
-    { "sourceId": "...", "targetId": "..." }
-  ]
-}
-```
-
-## Tech Stack
-
-| Technology | Purpose |
-|------------|---------|
-| [.NET 10](https://dotnet.microsoft.com) | Runtime and build system |
-| [Avalonia 11](https://avaloniaui.net) | Cross-platform desktop UI framework |
-| [Nodify.Avalonia](https://github.com/miroiu/nodify) | Node graph editor control |
-| [CommunityToolkit.Mvvm](https://learn.microsoft.com/dotnet/communitytoolkit/mvvm) | MVVM framework |
-| [SixLabors.ImageSharp](https://sixlabors.com/products/imagesharp) | Image processing (resize, convert, compress) |
-| [MetadataExtractor](https://github.com/drewnoakes/metadata-extractor-dotnet) | EXIF and file metadata reading |
-| [Microsoft.Extensions.Logging](https://learn.microsoft.com/dotnet/core/extensions/logging) | Logging abstraction (`ILogger<T>`) |
-| [Serilog](https://serilog.net) | Logging provider (console + rolling file) |
-| [Microsoft.Extensions.DependencyInjection](https://learn.microsoft.com/dotnet/core/extensions/dependency-injection) | IoC container |
-| [System.CommandLine](https://learn.microsoft.com/dotnet/standard/commandline) | CLI argument parsing |
-| [xUnit](https://xunit.net) + [FluentAssertions](https://fluentassertions.com) | Testing framework (342 tests) |
-
-## Project Structure
-
-```
-FlowForge/
-├── FlowForge.sln
-├── src/
-│   ├── FlowForge.Core/           # Business logic (no UI references)
-│   │   ├── DependencyInjection/  # AddFlowForgeCore() service registration
-│   │   ├── Execution/            # PipelineRunner, NodeRegistry
-│   │   ├── Models/               # FileJob, ExecutionResult
-│   │   ├── Nodes/
-│   │   │   ├── Base/             # Interfaces, ConfigField, exceptions
-│   │   │   ├── Sources/          # FolderInputNode
-│   │   │   ├── Transforms/       # 8 transform nodes
-│   │   │   └── Outputs/          # FolderOutputNode
-│   │   ├── Pipeline/             # PipelineGraph, Serializer, Templates
-│   │   └── Settings/             # AppSettings, AppSettingsManager
-│   ├── FlowForge.UI/             # Avalonia desktop app (MVVM)
-│   │   ├── ViewModels/           # 14 view models
-│   │   ├── Views/                # 5 view pairs + template selector
-│   │   ├── UndoRedo/             # Command pattern undo/redo system
-│   │   ├── Themes/               # MoltenForgeTheme.axaml
-│   │   └── Services/             # DialogService
-│   └── FlowForge.CLI/            # CLI runner (System.CommandLine)
-└── tests/
-    └── FlowForge.Tests/          # 342 xUnit tests
-        ├── DependencyInjection/  # DI registration tests
-        ├── Nodes/                # 11 node test files
-        ├── Execution/            # Runner + progress tests
-        ├── Pipeline/             # Serializer + template tests
-        ├── Models/               # FileJob tests
-        ├── Settings/             # AppSettings tests
-        ├── UndoRedo/             # UndoRedoManager + command tests
-        ├── ViewModels/           # ViewModel tests
-        └── Helpers/              # TempDirectory, TestFileFactory, PipelineBuilder
-```
-
-## Download
-
-Grab the latest release from the [Releases page](https://github.com/Wintersta7e/FlowForge/releases) — self-contained Windows x64 build, no .NET SDK required.
-
-## Getting Started
-
-### Prerequisites (building from source)
-
-- [.NET 10 SDK](https://dotnet.microsoft.com/download) or later
-
-### Build
-
-```bash
-# Clone the repository
-git clone https://github.com/Wintersta7e/FlowForge.git
-cd FlowForge
-
-# Build all projects
-dotnet build
-
-# Run the desktop app
-dotnet run --project src/FlowForge.UI
-
-# Run the CLI
-dotnet run --project src/FlowForge.CLI -- run pipeline.ffpipe --dry-run
-```
-
-### Run Tests
-
-```bash
-# Run all tests
-dotnet test --logger "console;verbosity=normal"
-
-# Run specific test class
-dotnet test --filter "FullyQualifiedName~RenamePatternNodeTests"
-```
+| Layer | Choice | Notes |
+|---|---|---|
+| Core | .NET 10, C# 14 | Pure logic, no UI references; strict analyzers from commit one |
+| UI | Avalonia 11 (MVVM) | Cross-platform desktop; CommunityToolkit.Mvvm |
+| Node graph | Nodify.Avalonia | Canvas, pan/zoom, typed-port wiring |
+| Images | SixLabors.ImageSharp | Resize, convert, compress |
+| Metadata | MetadataExtractor | EXIF / file-metadata reads |
+| Logging | Microsoft.Extensions.Logging + Serilog | `ILogger<T>` everywhere; console + rolling file |
+| DI | Microsoft.Extensions.DependencyInjection | `AddFlowForgeCore()` composition root |
+| CLI | System.CommandLine | Subcommands + global flags |
+| Tests | xUnit + FluentAssertions + Bogus | 378 tests |
 
 ## Quick Start
 
-1. **Launch the app** — `dotnet run --project src/FlowForge.UI`
-2. **Use a template** — Click a template button on the empty canvas (Photo Import, Batch Rename, Web Export, or Compress)
-3. **Or build from scratch** — Drag nodes from the sidebar onto the canvas
-4. **Connect nodes** — Drag from an output pin to an input pin to create a wire
-5. **Configure** — Select a node and edit its settings in the Properties panel
-6. **Preview** — Click Preview to simulate the run without changing any files
-7. **Run** — Click Run to execute the pipeline
-8. **Save** — Save your pipeline as a `.ffpipe` file to reuse later
+```bash
+# Clone and build
+git clone https://github.com/Wintersta7e/FlowForge.git && cd FlowForge
+dotnet build
 
-## Contributing
+# Run the checks
+dotnet test
+dotnet format FlowForge.sln --verify-no-changes
 
-Contributions are welcome! Please:
+# Desktop app
+dotnet run --project src/FlowForge.UI
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Ensure `dotnet build` passes with zero warnings
-5. Ensure `dotnet test` passes
-6. Ensure `dotnet format FlowForge.sln --verify-no-changes` passes
-7. Submit a pull request
+# CLI
+dotnet run --project src/FlowForge.CLI -- --help
+dotnet run --project src/FlowForge.CLI -- run pipeline.ffpipe --dry-run
+```
+
+.NET 10 SDK required to build from source. Prefer a binary? The self-contained
+Windows x64 build is on the [Releases page](https://github.com/Wintersta7e/FlowForge/releases) — no SDK needed.
+
+## Layout
+
+```
+FlowForge/
+├── src/
+│   ├── FlowForge.Core/    # engine, nodes, serializer, settings (no UI deps)
+│   ├── FlowForge.UI/      # Avalonia desktop app (MVVM)
+│   └── FlowForge.CLI/     # flowforge CLI (System.CommandLine)
+├── tests/
+│   └── FlowForge.Tests/   # xUnit + FluentAssertions + Bogus
+├── samples/               # example .ffpipe pipelines
+├── FlowForge.sln
+├── Directory.Build.props  # .NET 10, analyzers, warnings-as-errors
+└── .editorconfig          # code style + StyleCop / Meziantou rules
+```
+
+## Design Principles
+
+1. **Local-first.** No network calls, no telemetry, no account — everything runs on your machine.
+2. **Layered and testable.** `FlowForge.Core` is pure logic with no UI references; the UI and CLI are thin composition roots over the same engine.
+3. **CLI is first-class.** Anything a pipeline does in the GUI runs headless from the CLI, with JSON output and a clear exit-code contract for scripting.
+4. **Safe by default.** Dry-run does zero file I/O, path guards keep writes inside their target directory, and overwrite-with-backup is opt-in.
+5. **Inspectable and reusable.** Pipelines are plain `.ffpipe` JSON — save them, diff them, re-run them.
+6. **Strict from commit one.** TreatWarningsAsErrors, StyleCop + Meziantou analyzers, and a `dotnet format` gate enforced in CI.
 
 ## License
 
-MIT License — see [LICENSE](./LICENSE) for details.
+[MIT](LICENSE). The desktop app embeds three OFL-1.1 font families (Instrument Serif, Oswald, JetBrains Mono) — see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
-### Fonts and third-party components
+---
 
-The desktop app embeds three open-source font families (Instrument Serif, Oswald, JetBrains Mono), each under the SIL Open Font License 1.1. See [THIRD-PARTY-NOTICES.md](./THIRD-PARTY-NOTICES.md) for the full list; the OFL text ships next to the font files in every release zip.
-
-## Support
-
-- [Report issues](../../issues) or suggest features
-- Star this repository if you find it useful
+FlowForge is a personal tool — built for everyday file chores, with no telemetry, analytics, or network calls.
