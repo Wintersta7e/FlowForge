@@ -172,12 +172,13 @@ public class RenameRegexNodeTests
         var node = new RenameRegexNode(NullLogger<RenameRegexNode>.Instance);
         node.Configure(MakeConfig(new { pattern = @"\d+", replacement = "X" }));
 
-        FileJob job = MakeJob(Path.Combine("/nonexistent/path", "file99.txt"));
+        string inputPath = Path.Combine("/nonexistent/path", "file99.txt");
+        FileJob job = MakeJob(inputPath);
         IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
 
         FileJob output = result.Single();
         output.FileName.Should().Be("fileX.txt");
-        output.CurrentPath.Should().Be(Path.Combine("/nonexistent/path", "fileX.txt"));
+        output.CurrentPath.Should().Be(Path.Combine(Path.GetDirectoryName(inputPath)!, "fileX.txt"));
         output.NodeLog.Should().ContainSingle()
             .Which.Should().Contain("RenameRegex:");
     }
