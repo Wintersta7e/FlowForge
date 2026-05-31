@@ -6,22 +6,108 @@ on:
   pull_request:
     branches: [main]
 
-jobs:
-  build-and-test:
-    runs-on: ubuntu-latest
+# Cancel superseded runs on the same ref so stale builds don't pile up.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
+# Least privilege: CI only needs to read the repo.
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  format:
+    name: format
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-
-      - name: Build
-        run: dotnet build -c Release
-
-      - name: Test
-        run: dotnet test --logger "console;verbosity=normal"
-
-      - name: Check formatting
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Build.props') }}
+          restore-keys: ${{ runner.os }}-nuget-
+      - run: dotnet restore
+      - name: Verify formatting
         run: dotnet format FlowForge.sln --verify-no-changes
+
+  # Job name kept as "build-and-test" so the existing required status check
+  # keeps being reported with zero branch-protection changes.
+  build-and-test:
+    name: build-and-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Build.props') }}
+          restore-keys: ${{ runner.os }}-nuget-
+      - run: dotnet restore
+      - name: Build (Release)
+        run: dotnet build -c Release --no-restore
+      - name: Test (Release, no rebuild)
+        run: dotnet test -c Release --no-build --logger "console;verbosity=normal"
+
+  # Mirror of build-and-test on the actual release target (win-x64).
+  build-and-test-windows:
+    name: build-and-test-windows
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Build.props') }}
+          restore-keys: ${{ runner.os }}-nuget-
+      - run: dotnet restore
+      - name: Build (Release)
+        run: dotnet build -c Release --no-restore
+      - name: Test (Release, no rebuild)
+        run: dotnet test -c Release --no-build --logger "console;verbosity=normal"
+
+  audit:
+    name: dependency-audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet restore
+      - name: Report deprecated packages (informational)
+        run: dotnet list package --deprecated --include-transitive || true
+      - name: Fail on unaccepted vulnerable packages
+        shell: bash
+        run: |
+          dotnet list package --vulnerable --include-transitive 2>&1 | tee vuln.txt
+          # Vulnerable entries are printed as table rows beginning with "> ".
+          # Allowlist: Tmds.DBus.Protocol — transitive via Avalonia.FreeDesktop,
+          # Linux-only, not exploitable on the win-x64 target. Mirrors the
+          # NuGetAuditSuppress entry in Directory.Build.props.
+          if grep -E '^\s*>\s' vuln.txt | grep -viq 'Tmds\.DBus\.Protocol'; then
+            echo "::error::Unaccepted vulnerable package(s) detected:"
+            grep -E '^\s*>\s' vuln.txt | grep -vi 'Tmds\.DBus\.Protocol'
+            exit 1
+          fi
+          echo "No unaccepted vulnerable packages."

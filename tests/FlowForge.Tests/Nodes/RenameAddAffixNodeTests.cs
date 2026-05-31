@@ -95,12 +95,13 @@ public class RenameAddAffixNodeTests
         var node = new RenameAddAffixNode(NullLogger<RenameAddAffixNode>.Instance);
         node.Configure(MakeConfig(new { prefix = "NEW_" }));
 
-        FileJob job = MakeJob(Path.Combine("/nonexistent/path", "test.jpg"));
+        string inputPath = Path.Combine("/nonexistent/path", "test.jpg");
+        FileJob job = MakeJob(inputPath);
         IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
 
         FileJob output = result.Single();
         output.FileName.Should().Be("NEW_test.jpg");
-        output.CurrentPath.Should().Be(Path.Combine("/nonexistent/path", "NEW_test.jpg"));
+        output.CurrentPath.Should().Be(Path.Combine(Path.GetDirectoryName(inputPath)!, "NEW_test.jpg"));
         output.NodeLog.Should().ContainSingle()
             .Which.Should().Contain("RenameAddAffix:");
     }
