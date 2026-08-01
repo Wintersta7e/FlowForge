@@ -9,20 +9,14 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <!-- CS1591: Suppress missing XML doc warnings — GenerateDocumentationFile is only needed for IDE0005 -->
-    <!-- AD0001: Suppress analyzer internal crashes (Meziantou bug on .NET 10) -->
-    <NoWarn>$(NoWarn);CS1591;AD0001</NoWarn>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
-  <ItemGroup>
-    <!-- Tmds.DBus.Protocol 0.21.2 vulnerability — transitive dep from Avalonia.FreeDesktop (Linux D-Bus).
-         Not exploitable: app targets win-x64. Suppress until Avalonia updates their dependency. -->
-    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-xrw6-gwf8-vvr9" />
-  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Meziantou.Analyzer" Version="1.0.103">
+    <PackageReference Include="Meziantou.Analyzer" Version="3.0.138">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>

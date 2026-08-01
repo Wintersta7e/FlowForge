@@ -9,8 +9,8 @@ public sealed class RemoveNodesCommand : IUndoableCommand
 {
     private readonly ObservableCollection<PipelineNodeViewModel> _nodes;
     private readonly ObservableCollection<PipelineConnectionViewModel> _connections;
-    private readonly List<PipelineNodeViewModel> _removedNodes;
-    private readonly List<PipelineConnectionViewModel> _removedConnections;
+    private readonly IReadOnlyList<PipelineNodeViewModel> _removedNodes;
+    private readonly IReadOnlyList<PipelineConnectionViewModel> _removedConnections;
     private readonly Dictionary<PipelineNodeViewModel, bool> _selectionState;
 
     public string Description { get; }
@@ -18,8 +18,8 @@ public sealed class RemoveNodesCommand : IUndoableCommand
     public RemoveNodesCommand(
         ObservableCollection<PipelineNodeViewModel> nodes,
         ObservableCollection<PipelineConnectionViewModel> connections,
-        List<PipelineNodeViewModel> removedNodes,
-        List<PipelineConnectionViewModel> removedConnections)
+        IReadOnlyList<PipelineNodeViewModel> removedNodes,
+        IReadOnlyList<PipelineConnectionViewModel> removedConnections)
     {
         _nodes = nodes;
         _connections = connections;

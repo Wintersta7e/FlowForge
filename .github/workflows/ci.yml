@@ -97,17 +97,14 @@ jobs:
       - run: dotnet restore
       - name: Report deprecated packages (informational)
         run: dotnet list package --deprecated --include-transitive || true
-      - name: Fail on unaccepted vulnerable packages
+      - name: Fail on vulnerable packages
         shell: bash
         run: |
           dotnet list package --vulnerable --include-transitive 2>&1 | tee vuln.txt
           # Vulnerable entries are printed as table rows beginning with "> ".
-          # Allowlist: Tmds.DBus.Protocol — transitive via Avalonia.FreeDesktop,
-          # Linux-only, not exploitable on the win-x64 target. Mirrors the
-          # NuGetAuditSuppress entry in Directory.Build.props.
-          if grep -E '^\s*>\s' vuln.txt | grep -viq 'Tmds\.DBus\.Protocol'; then
-            echo "::error::Unaccepted vulnerable package(s) detected:"
-            grep -E '^\s*>\s' vuln.txt | grep -vi 'Tmds\.DBus\.Protocol'
+          if grep -qE '^\s*>\s' vuln.txt; then
+            echo "::error::Vulnerable package(s) detected:"
+            grep -E '^\s*>\s' vuln.txt
             exit 1
           fi
-          echo "No unaccepted vulnerable packages."
+          echo "No vulnerable packages."

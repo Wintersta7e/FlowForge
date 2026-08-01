@@ -40,12 +40,12 @@ public class RenameAddAffixNode : ITransformNode
             _suffix = suffixElement.GetString() ?? string.Empty;
         }
 
-        if (_prefix.Contains(Path.DirectorySeparatorChar) || _prefix.Contains(Path.AltDirectorySeparatorChar) || _prefix.Contains(".."))
+        if (_prefix.Contains(Path.DirectorySeparatorChar) || _prefix.Contains(Path.AltDirectorySeparatorChar) || _prefix.Contains("..", StringComparison.Ordinal))
         {
             throw new NodeConfigurationException("RenameAddAffix: 'prefix' must not contain path separators or '..' sequences.");
         }
 
-        if (_suffix.Contains(Path.DirectorySeparatorChar) || _suffix.Contains(Path.AltDirectorySeparatorChar) || _suffix.Contains(".."))
+        if (_suffix.Contains(Path.DirectorySeparatorChar) || _suffix.Contains(Path.AltDirectorySeparatorChar) || _suffix.Contains("..", StringComparison.Ordinal))
         {
             throw new NodeConfigurationException("RenameAddAffix: 'suffix' must not contain path separators or '..' sequences.");
         }

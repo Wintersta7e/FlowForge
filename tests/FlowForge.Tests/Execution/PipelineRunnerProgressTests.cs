@@ -12,7 +12,7 @@ public class PipelineRunnerProgressTests
     private sealed class SyncProgress<T> : IProgress<T>
     {
         private readonly List<T> _events = new();
-        private readonly object _lock = new();
+        private readonly Lock _lock = new();
 
         public IReadOnlyList<T> Events
         {

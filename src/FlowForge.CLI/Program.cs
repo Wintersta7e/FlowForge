@@ -1,5 +1,6 @@
 using System.CommandLine;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using FlowForge.Core.DependencyInjection;
@@ -87,8 +88,10 @@ static async Task<int> RunPipelineAsync(
     var services = new ServiceCollection();
     services.AddLogging(builder => builder.AddSerilog(dispose: true));
     services.AddFlowForgeCore();
+    ServiceProvider sp = services.BuildServiceProvider();
+
     // dispose: true on AddSerilog ensures Serilog flushes when the ServiceProvider is disposed
-    await using ServiceProvider sp = services.BuildServiceProvider();
+    await using ConfiguredAsyncDisposable spLifetime = sp.ConfigureAwait(false);
 
     // Resolve runner from DI container before the try block so that DI failures
     // are not caught by the InvalidOperationException handler below.

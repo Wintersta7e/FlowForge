@@ -280,7 +280,7 @@ public class FilterNodeTests
     }
 
     [Fact]
-    public void Unknown_operator_throws_InvalidOperationException()
+    public async Task Unknown_operator_throws_InvalidOperationException()
     {
         var node = new FilterNode(NullLogger<FilterNode>.Instance);
         node.Configure(MakeConfig(new[]
@@ -290,7 +290,7 @@ public class FilterNodeTests
 
         var job = new FileJob { OriginalPath = FakePath("a.jpg"), CurrentPath = FakePath("a.jpg") };
         Func<Task> act = () => node.TransformAsync(job, dryRun: true);
-        act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Unknown filter operator*");
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Unknown filter operator*");
     }
 
     [Fact]
