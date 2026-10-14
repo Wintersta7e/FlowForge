@@ -27,6 +27,7 @@ public class PipelineRunner
         IProgress<PipelineProgressEvent>? progress = null,
         CancellationToken ct = default)
     {
+        await Task.CompletedTask.ConfigureAwait(ConfigureAwaitOptions.ForceYielding);
         var stopwatch = Stopwatch.StartNew();
         var result = new ExecutionResult { IsDryRun = dryRun };
         bool succeeded = false;
