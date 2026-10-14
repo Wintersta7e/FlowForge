@@ -122,7 +122,7 @@ public class PipelineReportingTests
         {
         }
 
-        public Task<IEnumerable<FileJob>> TransformAsync(FileJob job, bool dryRun, CancellationToken ct = default)
+        public Task<IEnumerable<FileJob>> TransformAsync(FileJob job, RunContext context, CancellationToken ct = default)
         {
             var extra = new FileJob
             {

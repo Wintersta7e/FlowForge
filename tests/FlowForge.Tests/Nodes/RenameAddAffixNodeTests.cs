@@ -3,6 +3,7 @@ using FluentAssertions;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Transforms;
 using FlowForge.Core.Nodes.Base;
+using FlowForge.Tests.Helpers;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlowForge.Tests.Nodes;
@@ -33,7 +34,7 @@ public class RenameAddAffixNodeTests
         node.Configure(MakeConfig(new { prefix = "IMG_" }));
 
         FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "photo.jpg"));
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Dry());
 
         FileJob output = result.Single();
         output.FileName.Should().Be("IMG_photo.jpg");
@@ -46,7 +47,7 @@ public class RenameAddAffixNodeTests
         node.Configure(MakeConfig(new { suffix = "_backup" }));
 
         FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "photo.jpg"));
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Dry());
 
         FileJob output = result.Single();
         output.FileName.Should().Be("photo_backup.jpg");
@@ -59,7 +60,7 @@ public class RenameAddAffixNodeTests
         node.Configure(MakeConfig(new { prefix = "PRE_", suffix = "_SUF" }));
 
         FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "photo.jpg"));
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Dry());
 
         FileJob output = result.Single();
         output.FileName.Should().Be("PRE_photo_SUF.jpg");
@@ -82,7 +83,7 @@ public class RenameAddAffixNodeTests
         node.Configure(MakeConfig(new { prefix = "A_", suffix = "_Z" }));
 
         FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "document.tar.gz"));
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Dry());
 
         FileJob output = result.Single();
         output.FileName.Should().Be("A_document.tar_Z.gz");
@@ -97,7 +98,7 @@ public class RenameAddAffixNodeTests
 
         string inputPath = Path.Combine("/nonexistent/path", "test.jpg");
         FileJob job = MakeJob(inputPath);
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Dry());
 
         FileJob output = result.Single();
         output.FileName.Should().Be("NEW_test.jpg");
@@ -116,7 +117,7 @@ public class RenameAddAffixNodeTests
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        Func<Task> act = () => node.TransformAsync(job, dryRun: true, ct: cts.Token);
+        Func<Task> act = () => node.TransformAsync(job, TestRunContext.Dry(), ct: cts.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
     }

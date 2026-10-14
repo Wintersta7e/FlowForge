@@ -1,4 +1,5 @@
 using System.Text.Json;
+using FlowForge.Core.Execution;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
 using Microsoft.Extensions.Logging;
@@ -64,7 +65,7 @@ public class ImageCompressNode : ITransformNode
         _logger.LogDebug("ImageCompress: configured with Quality={Quality}, Format={Format}", _quality, _format ?? "original");
     }
 
-    public async Task<IEnumerable<FileJob>> TransformAsync(FileJob job, bool dryRun, CancellationToken ct = default)
+    public async Task<IEnumerable<FileJob>> TransformAsync(FileJob job, RunContext context, CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
 
@@ -73,7 +74,7 @@ public class ImageCompressNode : ITransformNode
             return new[] { job };
         }
 
-        if (dryRun)
+        if (context.DryRun)
         {
             job.NodeLog.Add($"ImageCompress: would compress to quality={_quality}");
             return new[] { job };

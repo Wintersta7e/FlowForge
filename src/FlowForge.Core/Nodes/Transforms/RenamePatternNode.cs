@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using FlowForge.Core.Execution;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
 using Microsoft.Extensions.Logging;
@@ -78,7 +79,7 @@ public class RenamePatternNode : ITransformNode
         }
     }
 
-    public Task<IEnumerable<FileJob>> TransformAsync(FileJob job, bool dryRun, CancellationToken ct = default)
+    public Task<IEnumerable<FileJob>> TransformAsync(FileJob job, RunContext context, CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
 
@@ -114,7 +115,7 @@ public class RenamePatternNode : ITransformNode
 
         PathGuard.EnsureWithinDirectory(newPath, directory);
 
-        if (!dryRun)
+        if (!context.DryRun)
         {
             if (!PathGuard.IsSameFile(oldPath, newPath))
             {

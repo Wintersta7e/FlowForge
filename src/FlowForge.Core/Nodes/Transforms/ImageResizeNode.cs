@@ -1,4 +1,5 @@
 using System.Text.Json;
+using FlowForge.Core.Execution;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
 using Microsoft.Extensions.Logging;
@@ -103,14 +104,14 @@ public class ImageResizeNode : ITransformNode
             _width, _height, _resizeMode, _maintainAspect, _dpi);
     }
 
-    public async Task<IEnumerable<FileJob>> TransformAsync(FileJob job, bool dryRun, CancellationToken ct = default)
+    public async Task<IEnumerable<FileJob>> TransformAsync(FileJob job, RunContext context, CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
 
         int targetWidth = _width ?? 0;
         int targetHeight = _height ?? 0;
 
-        if (dryRun)
+        if (context.DryRun)
         {
             job.NodeLog.Add($"ImageResize: would resize to {targetWidth}x{targetHeight} ({_resizeMode})");
             return new[] { job };

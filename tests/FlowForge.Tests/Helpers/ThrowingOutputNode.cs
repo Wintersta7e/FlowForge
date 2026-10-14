@@ -1,4 +1,5 @@
 using System.Text.Json;
+using FlowForge.Core.Execution;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
 
@@ -16,6 +17,8 @@ public sealed class ThrowingOutputNode : IOutputNode
     {
     }
 
-    public Task ConsumeAsync(FileJob job, bool dryRun, CancellationToken ct = default) =>
+    public DestinationClaim? ClaimDestination(FileJob job, RunContext context) => null;
+
+    public Task ConsumeAsync(FileJob job, DestinationClaim? claim, RunContext context, CancellationToken ct = default) =>
         Task.FromException(new InvalidOperationException(ThrownMessage));
 }

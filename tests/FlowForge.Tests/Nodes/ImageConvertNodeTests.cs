@@ -130,7 +130,7 @@ public class ImageConvertNodeTests
             CurrentPath = inputPath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
         result.Should().HaveCount(1);
 
         string expectedPath = Path.Combine(dir.Path, "photo.png");
@@ -158,7 +158,7 @@ public class ImageConvertNodeTests
             CurrentPath = inputPath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
         result.Should().HaveCount(1);
 
         string expectedPath = Path.Combine(dir.Path, "graphic.jpg");
@@ -186,7 +186,7 @@ public class ImageConvertNodeTests
             CurrentPath = inputPath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
         result.Should().HaveCount(1);
 
         string expectedPath = Path.Combine(dir.Path, "sample.webp");
@@ -240,7 +240,7 @@ public class ImageConvertNodeTests
             CurrentPath = inputPath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Dry());
         result.Should().HaveCount(1);
 
         string expectedPath = Path.Combine(dir.Path, "original.png");
@@ -268,7 +268,7 @@ public class ImageConvertNodeTests
             CurrentPath = inputPath
         };
 
-        await node.TransformAsync(job, dryRun: false);
+        await node.TransformAsync(job, TestRunContext.Live());
 
         string convertedPath = Path.Combine(dir.Path, "delete_me.png");
         File.Exists(convertedPath).Should().BeTrue();
@@ -291,7 +291,7 @@ public class ImageConvertNodeTests
             CurrentPath = inputPath
         };
 
-        await node.TransformAsync(job, dryRun: false);
+        await node.TransformAsync(job, TestRunContext.Live());
 
         job.CurrentPath.Should().Be(inputPath);
         File.Exists(inputPath).Should().BeTrue();
@@ -316,7 +316,7 @@ public class ImageConvertNodeTests
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        Func<Task> act = () => node.TransformAsync(job, dryRun: false, ct: cts.Token);
+        Func<Task> act = () => node.TransformAsync(job, TestRunContext.Live(), ct: cts.Token);
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
@@ -338,7 +338,7 @@ public class ImageConvertNodeTests
             CurrentPath = inputPath
         };
 
-        await node.TransformAsync(job, dryRun: false);
+        await node.TransformAsync(job, TestRunContext.Live());
 
         job.Status.Should().NotBe(FileJobStatus.Failed);
         TiffTagReader.ReadCompression(job.CurrentPath).Should().Be(5, "TIFF output is written as LZW");
@@ -361,7 +361,7 @@ public class ImageConvertNodeTests
             CurrentPath = inputPath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
 
         result.Should().ContainSingle().Which.Should().BeSameAs(job);
         job.Status.Should().Be(FileJobStatus.Failed);
@@ -387,7 +387,7 @@ public class ImageConvertNodeTests
             CurrentPath = inputPath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
 
         result.Should().ContainSingle().Which.Should().BeSameAs(job);
         job.Status.Should().Be(FileJobStatus.Failed);

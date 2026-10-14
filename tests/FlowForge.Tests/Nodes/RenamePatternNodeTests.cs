@@ -41,7 +41,7 @@ public class RenamePatternNodeTests
         node.Configure(MakeConfig("{name}_copy{ext}"));
 
         FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "photo.jpg"));
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Dry());
 
         FileJob output = result.Single();
         output.FileName.Should().Be("photo_copy.jpg");
@@ -54,7 +54,7 @@ public class RenamePatternNodeTests
         node.Configure(MakeConfig("renamed{ext}"));
 
         FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "document.PDF"));
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Dry());
 
         FileJob output = result.Single();
         output.FileName.Should().Be("renamed.PDF");
@@ -70,9 +70,9 @@ public class RenamePatternNodeTests
         FileJob job2 = MakeJob(Path.Combine(Path.GetTempPath(), "b.jpg"));
         FileJob job3 = MakeJob(Path.Combine(Path.GetTempPath(), "c.jpg"));
 
-        IEnumerable<FileJob> result1 = await node.TransformAsync(job1, dryRun: true);
-        IEnumerable<FileJob> result2 = await node.TransformAsync(job2, dryRun: true);
-        IEnumerable<FileJob> result3 = await node.TransformAsync(job3, dryRun: true);
+        IEnumerable<FileJob> result1 = await node.TransformAsync(job1, TestRunContext.Dry());
+        IEnumerable<FileJob> result2 = await node.TransformAsync(job2, TestRunContext.Dry());
+        IEnumerable<FileJob> result3 = await node.TransformAsync(job3, TestRunContext.Dry());
 
         result1.Single().FileName.Should().Be("001.jpg");
         result2.Single().FileName.Should().Be("002.jpg");
@@ -86,7 +86,7 @@ public class RenamePatternNodeTests
         node.Configure(MakeConfig("{counter:000}{ext}", startIndex: 10));
 
         FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "file.png"));
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Dry());
 
         result.Single().FileName.Should().Be("010.png");
     }
@@ -99,7 +99,7 @@ public class RenamePatternNodeTests
 
         FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "photo.jpg"));
         DateTime before = DateTime.Today;
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Dry());
         DateTime after = DateTime.Today;
 
         // A run that crosses midnight may stamp either date.
@@ -119,7 +119,7 @@ public class RenamePatternNodeTests
             Metadata = { ["Author"] = "Alice" }
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Dry());
         result.Single().FileName.Should().Be("Alice_doc.txt");
     }
 
@@ -130,7 +130,7 @@ public class RenamePatternNodeTests
         node.Configure(MakeConfig("{meta:Missing}_{name}{ext}"));
 
         FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "doc.txt"));
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Dry());
 
         result.Single().FileName.Should().Be("_doc.txt");
     }
@@ -143,7 +143,7 @@ public class RenamePatternNodeTests
 
         // Use a path that doesn't exist — if File.Move were called, it would throw
         FileJob job = MakeJob(Path.Combine("/nonexistent/path", "test.jpg"));
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Dry());
 
         FileJob output = result.Single();
         output.FileName.Should().Be("test_renamed.jpg");
@@ -196,7 +196,7 @@ public class RenamePatternNodeTests
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        Func<Task> act = () => node.TransformAsync(job, dryRun: true, ct: cts.Token);
+        Func<Task> act = () => node.TransformAsync(job, TestRunContext.Dry(), ct: cts.Token);
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
@@ -219,7 +219,7 @@ public class RenamePatternNodeTests
             CurrentPath = filePath
         };
 
-        Func<Task> act = () => node.TransformAsync(job, dryRun: false);
+        Func<Task> act = () => node.TransformAsync(job, TestRunContext.Live());
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Path traversal blocked*");
     }
@@ -238,7 +238,7 @@ public class RenamePatternNodeTests
         node.Configure(MakeConfig("photo_{counter}{ext}"));
 
         FileJob job = MakeJob(source);
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
 
         FileJob output = result.Single();
         output.FileName.Should().Be("photo_1_1.jpg");
@@ -260,7 +260,7 @@ public class RenamePatternNodeTests
         node.Configure(MakeConfig("photo_{counter}{ext}"));
 
         FileJob job = MakeJob(source);
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
 
         FileJob output = result.Single();
         output.FileName.Should().Be("photo_1_2.jpg");

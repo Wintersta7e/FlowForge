@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FluentAssertions;
+using FlowForge.Core.Execution;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Outputs;
 using FlowForge.Core.Nodes.Base;
@@ -18,6 +19,12 @@ public class FolderOutputNodeTests
             .ToDictionary(p => p.Name, p => p.Value.Clone());
     }
 
+    private static async Task ClaimAndConsumeAsync(FolderOutputNode node, FileJob job, RunContext ctx, CancellationToken ct = default)
+    {
+        DestinationClaim? claim = node.ClaimDestination(job, ctx);
+        await node.ConsumeAsync(job, claim, ctx, ct);
+    }
+
     [Fact]
     public async Task Copy_mode_preserves_source_file()
     {
@@ -30,7 +37,7 @@ public class FolderOutputNodeTests
         var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         node.Configure(MakeConfig(new { path = dir.OutputPath, mode = "copy" }));
 
-        await node.ConsumeAsync(job, dryRun: false);
+        await ClaimAndConsumeAsync(node, job, TestRunContext.Live());
 
         File.Exists(sourcePath).Should().BeTrue("copy mode should preserve the source file");
         string destPath = Path.Combine(dir.OutputPath, "photo.jpg");
@@ -50,7 +57,7 @@ public class FolderOutputNodeTests
         var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         node.Configure(MakeConfig(new { path = dir.OutputPath, mode = "move" }));
 
-        await node.ConsumeAsync(job, dryRun: false);
+        await ClaimAndConsumeAsync(node, job, TestRunContext.Live());
 
         File.Exists(sourcePath).Should().BeFalse("move mode should remove the source file");
         string destPath = Path.Combine(dir.OutputPath, "photo.jpg");
@@ -71,7 +78,7 @@ public class FolderOutputNodeTests
         string destDir = Path.Combine(dir.Path, "nonexistent_output");
         node.Configure(MakeConfig(new { path = destDir, mode = "copy" }));
 
-        await node.ConsumeAsync(job, dryRun: true);
+        await ClaimAndConsumeAsync(node, job, TestRunContext.Dry());
 
         File.Exists(sourcePath).Should().BeTrue("source should be untouched in dry-run");
         Directory.Exists(destDir).Should().BeFalse("destination directory should not be created in dry-run");
@@ -119,7 +126,7 @@ public class FolderOutputNodeTests
         var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         node.Configure(MakeConfig(new { path = outputWithTrailingSeparator, mode = "copy" }));
 
-        await node.ConsumeAsync(job, dryRun: false);
+        await ClaimAndConsumeAsync(node, job, TestRunContext.Live());
 
         File.Exists(Path.Combine(dir.OutputPath, "photo.jpg"))
             .Should().BeTrue("trailing separator on the output path must not cause PathGuard to reject the destination");
@@ -151,7 +158,7 @@ public class FolderOutputNodeTests
         var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         node.Configure(MakeConfig(new { path = newOutputDir, mode = "copy" }));
 
-        await node.ConsumeAsync(job, dryRun: false);
+        await ClaimAndConsumeAsync(node, job, TestRunContext.Live());
 
         Directory.Exists(newOutputDir).Should().BeTrue();
         File.Exists(Path.Combine(newOutputDir, "photo.jpg")).Should().BeTrue();
@@ -172,14 +179,14 @@ public class FolderOutputNodeTests
         var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         node.Configure(MakeConfig(new { path = dir.OutputPath, mode = "copy", overwrite = true }));
 
-        await node.ConsumeAsync(job, dryRun: false);
+        await ClaimAndConsumeAsync(node, job, TestRunContext.Live());
 
         string content = File.ReadAllText(destPath);
         content.Should().Be("test content: photo.jpg");
     }
 
     [Fact]
-    public async Task Overwrite_false_throws_when_destination_exists()
+    public void Overwrite_false_throws_when_destination_exists()
     {
         using var dir = new TempDirectory();
         dir.CreateFiles("photo.jpg");
@@ -193,9 +200,10 @@ public class FolderOutputNodeTests
         var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         node.Configure(MakeConfig(new { path = dir.OutputPath, mode = "copy", overwrite = false }));
 
-        Func<Task> act = async () => await node.ConsumeAsync(job, dryRun: false);
+        Action act = () => node.ClaimDestination(job, TestRunContext.Live());
 
-        await act.Should().ThrowAsync<IOException>();
+        act.Should().Throw<IOException>()
+            .Where(e => e.Message.StartsWith("FolderOutput: ", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -220,7 +228,7 @@ public class FolderOutputNodeTests
             sourceBasePath = sourceBase
         }));
 
-        await node.ConsumeAsync(job, dryRun: false);
+        await ClaimAndConsumeAsync(node, job, TestRunContext.Live());
 
         string expectedPath = Path.Combine(dir.OutputPath, "photos", "2024", "beach.jpg");
         File.Exists(expectedPath).Should().BeTrue();
@@ -242,7 +250,7 @@ public class FolderOutputNodeTests
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        Func<Task> act = () => node.ConsumeAsync(job, dryRun: false, ct: cts.Token);
+        Func<Task> act = () => ClaimAndConsumeAsync(node, job, TestRunContext.Live(), cts.Token);
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
@@ -258,7 +266,7 @@ public class FolderOutputNodeTests
         var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         node.Configure(MakeConfig(new { path = dir.OutputPath, mode = "copy" }));
 
-        await node.ConsumeAsync(job, dryRun: false);
+        await ClaimAndConsumeAsync(node, job, TestRunContext.Live());
 
         job.NodeLog.Should().ContainSingle()
             .Which.Should().Contain("FolderOutput")
@@ -287,7 +295,7 @@ public class FolderOutputNodeTests
             backupSuffix = ".bak"
         }));
 
-        await node.ConsumeAsync(job, dryRun: false);
+        await ClaimAndConsumeAsync(node, job, TestRunContext.Live());
 
         File.Exists(destPath).Should().BeTrue();
         File.Exists(destPath + ".bak").Should().BeTrue("backup should be created before overwrite");
@@ -313,7 +321,7 @@ public class FolderOutputNodeTests
             backupSuffix = ".bak"
         }));
 
-        await node.ConsumeAsync(job, dryRun: false);
+        await ClaimAndConsumeAsync(node, job, TestRunContext.Live());
 
         string destPath = Path.Combine(dir.OutputPath, "photo.jpg");
         File.Exists(destPath).Should().BeTrue();
@@ -342,7 +350,7 @@ public class FolderOutputNodeTests
             backupSuffix = ".bak"
         }));
 
-        await node.ConsumeAsync(job, dryRun: true);
+        await ClaimAndConsumeAsync(node, job, TestRunContext.Dry());
 
         File.Exists(destPath + ".bak").Should().BeFalse("dry-run should not create backup");
         job.NodeLog.Should().Contain(s => s.Contains("backup", StringComparison.OrdinalIgnoreCase));
@@ -369,7 +377,7 @@ public class FolderOutputNodeTests
             enableBackup = true
         }));
 
-        await node.ConsumeAsync(job, dryRun: false);
+        await ClaimAndConsumeAsync(node, job, TestRunContext.Live());
 
         File.Exists(destPath + ".bak").Should().BeTrue("default backup suffix should be .bak");
     }
@@ -396,7 +404,7 @@ public class FolderOutputNodeTests
             backupSuffix = ".bak"
         }));
 
-        await node.ConsumeAsync(job, dryRun: false);
+        await ClaimAndConsumeAsync(node, job, TestRunContext.Live());
 
         File.Exists(sourcePath).Should().BeFalse("move should remove source");
         File.Exists(destPath + ".bak").Should().BeTrue("backup should exist");
@@ -474,7 +482,7 @@ public class FolderOutputNodeTests
         }));
 
         // overwrite=false should throw IOException, but NO backup should be created
-        Func<Task> act = () => node.ConsumeAsync(job, dryRun: false);
+        Func<Task> act = () => ClaimAndConsumeAsync(node, job, TestRunContext.Live());
         await act.Should().ThrowAsync<IOException>();
         File.Exists(destPath + ".bak").Should().BeFalse("backup should not be created when overwrite is false");
     }

@@ -46,7 +46,7 @@ public class FolderOutputDeliveryTests
         var job = new FileJob { OriginalPath = source, CurrentPath = source };
 
         cts.CancelAfter(TimeSpan.FromMilliseconds(300));
-        Exception? thrown = await Record.ExceptionAsync(() => node.ConsumeAsync(job, dryRun: false, cts.Token));
+        Exception? thrown = await Record.ExceptionAsync(() => ClaimAndConsumeAsync(node, job, TestRunContext.Live(), cts.Token));
         await writer;
         pipe?.Dispose();
 
@@ -85,7 +85,7 @@ public class FolderOutputDeliveryTests
         FolderOutputNode node = CreateNode(new { path = output, overwrite = true });
         var job = new FileJob { OriginalPath = source, CurrentPath = source };
 
-        Exception? thrown = await Record.ExceptionAsync(() => node.ConsumeAsync(job, dryRun: false));
+        Exception? thrown = await Record.ExceptionAsync(() => ClaimAndConsumeAsync(node, job, TestRunContext.Live()));
 
         string because = await DescribeAsync(source, thrown, destination, output);
         thrown.Should().BeAssignableTo<IOException>(because);
@@ -187,7 +187,7 @@ public class FolderOutputDeliveryTests
         FolderOutputNode node = CreateNode(new { path = output, overwrite = true, enableBackup = true });
         var job = new FileJob { OriginalPath = source, CurrentPath = source };
 
-        await node.ConsumeAsync(job, dryRun: false);
+        await ClaimAndConsumeAsync(node, job, TestRunContext.Live());
 
         string because = Report(
             $"out/p.txt = {await File.ReadAllTextAsync(destination)}",
@@ -271,6 +271,12 @@ public class FolderOutputDeliveryTests
         var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         node.Configure(Config(config));
         return node;
+    }
+
+    private static async Task ClaimAndConsumeAsync(FolderOutputNode node, FileJob job, RunContext ctx, CancellationToken ct = default)
+    {
+        DestinationClaim? claim = node.ClaimDestination(job, ctx);
+        await node.ConsumeAsync(job, claim, ctx, ct);
     }
 
     private static Dictionary<string, JsonElement> Config(object config) =>

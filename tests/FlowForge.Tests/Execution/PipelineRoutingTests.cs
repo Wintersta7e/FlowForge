@@ -233,7 +233,9 @@ public class PipelineRoutingTests
         {
         }
 
-        public async Task ConsumeAsync(FileJob job, bool dryRun, CancellationToken ct = default)
+        public DestinationClaim? ClaimDestination(FileJob job, RunContext context) => null;
+
+        public async Task ConsumeAsync(FileJob job, DestinationClaim? claim, RunContext context, CancellationToken ct = default)
         {
             lock (_sync)
             {

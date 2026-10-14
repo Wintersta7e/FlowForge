@@ -248,4 +248,38 @@ public class PipelineRunnerTests
         job.ErrorMessage.Should().Be(expected);
         job.NodeLog.Should().Contain(expected);
     }
+
+    [Fact]
+    public async Task Claim_refusal_fails_the_job_without_consuming()
+    {
+        using var dir = new TempDirectory();
+        dir.CreateFiles("a.txt", "b.txt");
+
+        var refusing = new RefusingOutputNode();
+        var registry = NodeRegistry.CreateDefault(NullLoggerFactory.Instance);
+        registry.Register<RefusingOutputNode>(
+            RefusingOutputNode.RegisteredTypeKey,
+            () => refusing,
+            "Refusing Output",
+            NodeCategory.Output,
+            () => []);
+
+        PipelineGraph pipeline = PipelineBuilder
+            .New("Claim Refusal Test")
+            .AddSource("FolderInput", new { path = dir.Path, filter = "*.txt" })
+            .AddOutput(RefusingOutputNode.RegisteredTypeKey, new { })
+            .Build();
+
+        var runner = new PipelineRunner(registry, NullLogger<PipelineRunner>.Instance, maxConcurrency: 2);
+        ExecutionResult result = await runner.RunAsync(pipeline, dryRun: false);
+
+        result.Failed.Should().Be(2, "a refused claim fails its job (consume calls: {0})", refusing.ConsumeCalls);
+        result.Jobs.Should().HaveCount(2);
+        foreach (FileJob job in result.Jobs)
+        {
+            job.ErrorMessage.Should().Contain(RefusingOutputNode.RegisteredTypeKey).And.Contain("destination refused");
+        }
+
+        refusing.ConsumeCalls.Should().Be(0);
+    }
 }

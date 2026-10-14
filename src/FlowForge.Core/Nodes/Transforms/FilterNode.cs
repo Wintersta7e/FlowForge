@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using FlowForge.Core.Execution;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
 using Microsoft.Extensions.Logging;
@@ -68,7 +69,7 @@ public class FilterNode : ITransformNode
         }
     }
 
-    public Task<IEnumerable<FileJob>> TransformAsync(FileJob job, bool dryRun, CancellationToken ct = default)
+    public Task<IEnumerable<FileJob>> TransformAsync(FileJob job, RunContext context, CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
 
@@ -78,12 +79,12 @@ public class FilterNode : ITransformNode
             // Cache FileInfo once per file for size/date fields (PERF-02)
             bool needsFileInfo = _conditions.Any(c =>
                 c.Field is "size" or "createdat" or "modifiedat");
-            FileInfo? fileInfo = needsFileInfo ? GetCachedFileInfo(job.CurrentPath, dryRun) : null;
+            FileInfo? fileInfo = needsFileInfo ? GetCachedFileInfo(job.CurrentPath, context) : null;
 
             matches = true;
             for (int idx = 0; idx < _conditions.Count; idx++)
             {
-                if (!EvaluateCondition(_conditions[idx], idx, job, dryRun, fileInfo))
+                if (!EvaluateCondition(_conditions[idx], idx, job, fileInfo))
                 {
                     matches = false;
                     break;
@@ -110,7 +111,7 @@ public class FilterNode : ITransformNode
         return Task.FromResult(Enumerable.Empty<FileJob>());
     }
 
-    private bool EvaluateCondition(FilterCondition condition, int index, FileJob job, bool dryRun, FileInfo? fileInfo)
+    private bool EvaluateCondition(FilterCondition condition, int index, FileJob job, FileInfo? fileInfo)
     {
         string fieldValue = GetFieldValue(condition.Field, job, fileInfo);
 
@@ -145,9 +146,9 @@ public class FilterNode : ITransformNode
         };
     }
 
-    private FileInfo? GetCachedFileInfo(string path, bool dryRun)
+    private FileInfo? GetCachedFileInfo(string path, RunContext context)
     {
-        if (dryRun)
+        if (context.DryRun)
         {
             return null;
         }

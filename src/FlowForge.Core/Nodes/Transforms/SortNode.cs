@@ -1,4 +1,5 @@
 using System.Text.Json;
+using FlowForge.Core.Execution;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
 using Microsoft.Extensions.Logging;
@@ -51,7 +52,7 @@ public class SortNode : ITransformNode, IBufferedTransformNode
         }
     }
 
-    public Task<IEnumerable<FileJob>> TransformAsync(FileJob job, bool dryRun, CancellationToken ct = default)
+    public Task<IEnumerable<FileJob>> TransformAsync(FileJob job, RunContext context, CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
         _buffer.Add(job);
@@ -60,7 +61,7 @@ public class SortNode : ITransformNode, IBufferedTransformNode
         return Task.FromResult(Enumerable.Empty<FileJob>());
     }
 
-    public Task<IEnumerable<FileJob>> FlushAsync(bool dryRun = false, CancellationToken ct = default)
+    public Task<IEnumerable<FileJob>> FlushAsync(RunContext context, CancellationToken ct = default)
     {
         try
         {
@@ -73,9 +74,9 @@ public class SortNode : ITransformNode, IBufferedTransformNode
             {
                 "filename" => SortByKey(_buffer, j => j.FileName, descending, StringComparer.OrdinalIgnoreCase),
                 "extension" => SortByKey(_buffer, j => j.Extension, descending, StringComparer.OrdinalIgnoreCase),
-                "size" => SortByKey(_buffer, j => GetFileSize(j.CurrentPath, dryRun), descending, Comparer<long>.Default),
-                "createdat" => SortByKey(_buffer, j => GetFileCreatedAt(j.CurrentPath, dryRun), descending, Comparer<DateTime>.Default),
-                "modifiedat" => SortByKey(_buffer, j => GetFileModifiedAt(j.CurrentPath, dryRun), descending, Comparer<DateTime>.Default),
+                "size" => SortByKey(_buffer, j => GetFileSize(j.CurrentPath, context), descending, Comparer<long>.Default),
+                "createdat" => SortByKey(_buffer, j => GetFileCreatedAt(j.CurrentPath, context), descending, Comparer<DateTime>.Default),
+                "modifiedat" => SortByKey(_buffer, j => GetFileModifiedAt(j.CurrentPath, context), descending, Comparer<DateTime>.Default),
                 _ => throw new InvalidOperationException($"Unknown sort field: '{_field}'")
             };
 
@@ -138,9 +139,9 @@ public class SortNode : ITransformNode, IBufferedTransformNode
         return result;
     }
 
-    private long GetFileSize(string path, bool dryRun)
+    private long GetFileSize(string path, RunContext context)
     {
-        if (dryRun)
+        if (context.DryRun)
         {
             return 0;
         }
@@ -154,9 +155,9 @@ public class SortNode : ITransformNode, IBufferedTransformNode
         return new FileInfo(path).Length;
     }
 
-    private DateTime GetFileCreatedAt(string path, bool dryRun)
+    private DateTime GetFileCreatedAt(string path, RunContext context)
     {
-        if (dryRun)
+        if (context.DryRun)
         {
             return DateTime.MinValue;
         }
@@ -170,9 +171,9 @@ public class SortNode : ITransformNode, IBufferedTransformNode
         return File.GetCreationTimeUtc(path);
     }
 
-    private DateTime GetFileModifiedAt(string path, bool dryRun)
+    private DateTime GetFileModifiedAt(string path, RunContext context)
     {
-        if (dryRun)
+        if (context.DryRun)
         {
             return DateTime.MinValue;
         }

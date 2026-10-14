@@ -35,7 +35,7 @@ public class FilterNodeTests
             CurrentPath = FakePath("photo.jpg")
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Dry());
         result.Should().HaveCount(1);
         result.First().NodeLog.Should().Contain(l => l.Contains("passed"));
     }
@@ -55,7 +55,7 @@ public class FilterNodeTests
             CurrentPath = FakePath("document.pdf")
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Dry());
         result.Should().BeEmpty();
         job.Status.Should().Be(FileJobStatus.Skipped);
     }
@@ -75,7 +75,7 @@ public class FilterNodeTests
             CurrentPath = FakePath("my_photo_001.jpg")
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Dry());
         result.Should().HaveCount(1);
     }
 
@@ -99,8 +99,8 @@ public class FilterNodeTests
             CurrentPath = FakePath("abc.jpg")
         };
 
-        IEnumerable<FileJob> resultMatch = await node.TransformAsync(jobMatch, dryRun: true);
-        IEnumerable<FileJob> resultNoMatch = await node.TransformAsync(jobNoMatch, dryRun: true);
+        IEnumerable<FileJob> resultMatch = await node.TransformAsync(jobMatch, TestRunContext.Dry());
+        IEnumerable<FileJob> resultNoMatch = await node.TransformAsync(jobNoMatch, TestRunContext.Dry());
 
         resultMatch.Should().HaveCount(1);
         resultNoMatch.Should().BeEmpty();
@@ -125,7 +125,7 @@ public class FilterNodeTests
             CurrentPath = filePath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
         result.Should().HaveCount(1);
     }
 
@@ -150,8 +150,8 @@ public class FilterNodeTests
             CurrentPath = FakePath("document.jpg")
         };
 
-        IEnumerable<FileJob> resultBoth = await node.TransformAsync(jobBoth, dryRun: true);
-        IEnumerable<FileJob> resultExtOnly = await node.TransformAsync(jobExtOnly, dryRun: true);
+        IEnumerable<FileJob> resultBoth = await node.TransformAsync(jobBoth, TestRunContext.Dry());
+        IEnumerable<FileJob> resultExtOnly = await node.TransformAsync(jobExtOnly, TestRunContext.Dry());
 
         resultBoth.Should().HaveCount(1);
         resultExtOnly.Should().BeEmpty();
@@ -173,7 +173,7 @@ public class FilterNodeTests
             CurrentPath = Path.Combine(Path.GetTempPath(), new string('a', 50) + "!.txt")
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Dry());
         result.Should().BeEmpty();
         job.Status.Should().Be(FileJobStatus.Failed);
         job.ErrorMessage.Should().Contain("regex match timed out");
@@ -207,7 +207,7 @@ public class FilterNodeTests
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        Func<Task> act = () => node.TransformAsync(job, dryRun: true, ct: cts.Token);
+        Func<Task> act = () => node.TransformAsync(job, TestRunContext.Dry(), ct: cts.Token);
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
@@ -223,8 +223,8 @@ public class FilterNodeTests
         var jobTmp = new FileJob { OriginalPath = FakePath("a.tmp"), CurrentPath = FakePath("a.tmp") };
         var jobJpg = new FileJob { OriginalPath = FakePath("b.jpg"), CurrentPath = FakePath("b.jpg") };
 
-        IEnumerable<FileJob> resultTmp = await node.TransformAsync(jobTmp, dryRun: true);
-        IEnumerable<FileJob> resultJpg = await node.TransformAsync(jobJpg, dryRun: true);
+        IEnumerable<FileJob> resultTmp = await node.TransformAsync(jobTmp, TestRunContext.Dry());
+        IEnumerable<FileJob> resultJpg = await node.TransformAsync(jobJpg, TestRunContext.Dry());
 
         resultTmp.Should().BeEmpty();
         resultJpg.Should().HaveCount(1);
@@ -242,8 +242,8 @@ public class FilterNodeTests
         var jobMatch = new FileJob { OriginalPath = FakePath("IMG_001.jpg"), CurrentPath = FakePath("IMG_001.jpg") };
         var jobMiss = new FileJob { OriginalPath = FakePath("DSC_001.jpg"), CurrentPath = FakePath("DSC_001.jpg") };
 
-        (await node.TransformAsync(jobMatch, dryRun: true)).Should().HaveCount(1);
-        (await node.TransformAsync(jobMiss, dryRun: true)).Should().BeEmpty();
+        (await node.TransformAsync(jobMatch, TestRunContext.Dry())).Should().HaveCount(1);
+        (await node.TransformAsync(jobMiss, TestRunContext.Dry())).Should().BeEmpty();
     }
 
     [Fact]
@@ -258,8 +258,8 @@ public class FilterNodeTests
         var jobMatch = new FileJob { OriginalPath = FakePath("photo_final.jpg"), CurrentPath = FakePath("photo_final.jpg") };
         var jobMiss = new FileJob { OriginalPath = FakePath("photo_draft.jpg"), CurrentPath = FakePath("photo_draft.jpg") };
 
-        (await node.TransformAsync(jobMatch, dryRun: true)).Should().HaveCount(1);
-        (await node.TransformAsync(jobMiss, dryRun: true)).Should().BeEmpty();
+        (await node.TransformAsync(jobMatch, TestRunContext.Dry())).Should().HaveCount(1);
+        (await node.TransformAsync(jobMiss, TestRunContext.Dry())).Should().BeEmpty();
     }
 
     [Fact]
@@ -276,7 +276,7 @@ public class FilterNodeTests
         }));
 
         var job = new FileJob { OriginalPath = filePath, CurrentPath = filePath };
-        (await node.TransformAsync(job, dryRun: false)).Should().HaveCount(1);
+        (await node.TransformAsync(job, TestRunContext.Live())).Should().HaveCount(1);
     }
 
     [Fact]
@@ -289,7 +289,7 @@ public class FilterNodeTests
         }));
 
         var job = new FileJob { OriginalPath = FakePath("a.jpg"), CurrentPath = FakePath("a.jpg") };
-        Func<Task> act = () => node.TransformAsync(job, dryRun: true);
+        Func<Task> act = () => node.TransformAsync(job, TestRunContext.Dry());
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Unknown filter operator*");
     }
 
@@ -304,7 +304,7 @@ public class FilterNodeTests
 
         var job = new FileJob { OriginalPath = FakePath("a.txt"), CurrentPath = FakePath("a.txt") };
         // In dry-run, createdAt returns DateTime.MinValue, so it should NOT be greater than MinValue
-        (await node.TransformAsync(job, dryRun: true)).Should().BeEmpty();
+        (await node.TransformAsync(job, TestRunContext.Dry())).Should().BeEmpty();
     }
 
     [Fact]
@@ -321,7 +321,7 @@ public class FilterNodeTests
         }));
 
         var job = new FileJob { OriginalPath = filePath, CurrentPath = filePath };
-        (await node.TransformAsync(job, dryRun: false)).Should().HaveCount(1);
+        (await node.TransformAsync(job, TestRunContext.Live())).Should().HaveCount(1);
     }
 
     [Fact]

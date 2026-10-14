@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using FlowForge.Core.Execution;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
 using MetadataExtractor;
@@ -61,11 +62,11 @@ public class MetadataExtractNode : ITransformNode
         }
     }
 
-    public Task<IEnumerable<FileJob>> TransformAsync(FileJob job, bool dryRun, CancellationToken ct = default)
+    public Task<IEnumerable<FileJob>> TransformAsync(FileJob job, RunContext context, CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
 
-        if (dryRun)
+        if (context.DryRun)
         {
             job.NodeLog.Add("Dry-run: skipping metadata extraction");
             IEnumerable<FileJob> dryRunResult = new[] { job };

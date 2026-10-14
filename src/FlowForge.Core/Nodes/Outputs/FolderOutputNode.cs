@@ -1,4 +1,5 @@
 using System.Text.Json;
+using FlowForge.Core.Execution;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
 using Microsoft.Extensions.Logging;
@@ -105,10 +106,8 @@ public class FolderOutputNode : IOutputNode
         }
     }
 
-    public async Task ConsumeAsync(FileJob job, bool dryRun, CancellationToken ct = default)
+    public DestinationClaim? ClaimDestination(FileJob job, RunContext context)
     {
-        ct.ThrowIfCancellationRequested();
-
         string fileName = Path.GetFileName(job.CurrentPath);
         string destinationDir = _path;
 
@@ -132,28 +131,58 @@ public class FolderOutputNode : IOutputNode
         PathGuard.EnsureWithinDirectory(destinationPath, _path);
         RefuseLinkedComponents(destinationPath);
 
-        if (dryRun)
+        if (!File.Exists(destinationPath))
         {
-            if (_enableBackup && _overwrite && File.Exists(destinationPath))
+            return new DestinationClaim(destinationPath, ClaimKind.New, BackupPath: null);
+        }
+
+        if (!_overwrite)
+        {
+            throw new IOException($"FolderOutput: '{destinationPath}' already exists and 'overwrite' is off.");
+        }
+
+        if (!_enableBackup)
+        {
+            return new DestinationClaim(destinationPath, ClaimKind.Replace, BackupPath: null);
+        }
+
+        string backupPath = destinationPath + _backupSuffix;
+        PathGuard.EnsureWithinDirectory(backupPath, _path);
+        return new DestinationClaim(destinationPath, ClaimKind.ReplaceWithBackup, backupPath);
+    }
+
+    public async Task ConsumeAsync(FileJob job, DestinationClaim? claim, RunContext context, CancellationToken ct = default)
+    {
+        if (claim is null)
+        {
+            throw new InvalidOperationException("FolderOutput: no destination was claimed for this job.");
+        }
+
+        ct.ThrowIfCancellationRequested();
+
+        if (context.DryRun)
+        {
+            if (claim.Kind == ClaimKind.ReplaceWithBackup)
             {
-                job.NodeLog.Add($"FolderOutput: Would backup '{destinationPath}' → '{destinationPath}{_backupSuffix}' [dry-run]");
+                job.NodeLog.Add($"FolderOutput: Would backup '{claim.Path}' → '{claim.BackupPath}' [dry-run]");
             }
 
-            job.NodeLog.Add($"FolderOutput: → '{destinationPath}' ({_mode}) [dry-run]");
+            job.NodeLog.Add($"FolderOutput: → '{claim.Path}' ({_mode}) [dry-run]");
             return;
         }
 
+        string destinationDir = Path.GetDirectoryName(claim.Path) ?? _path;
         Directory.CreateDirectory(destinationDir);
-        await DeliverAsync(job, destinationPath, ct).ConfigureAwait(false);
+        await DeliverAsync(job, claim, ct).ConfigureAwait(false);
 
         // Delete the path the delivered bytes came from, never the file just delivered.
-        if (_mode.Equals("move", StringComparison.OrdinalIgnoreCase) && !PathGuard.IsSameFile(job.CurrentPath, destinationPath))
+        if (_mode.Equals("move", StringComparison.OrdinalIgnoreCase) && !PathGuard.IsSameFile(job.CurrentPath, claim.Path))
         {
             DeleteMovedSource(job);
         }
 
-        job.CurrentPath = destinationPath;
-        job.NodeLog.Add($"FolderOutput: → '{destinationPath}' ({_mode})");
+        job.CurrentPath = claim.Path;
+        job.NodeLog.Add($"FolderOutput: → '{claim.Path}' ({_mode})");
     }
 
     /// <summary>
@@ -194,8 +223,9 @@ public class FolderOutputNode : IOutputNode
     /// Copies the job's file to a temporary name beside the destination, then renames it into place,
     /// so a cancelled or failed copy leaves an existing destination untouched.
     /// </summary>
-    private async Task DeliverAsync(FileJob job, string destinationPath, CancellationToken ct)
+    private async Task DeliverAsync(FileJob job, DestinationClaim claim, CancellationToken ct)
     {
+        string destinationPath = claim.Path;
         string tempPath = $"{destinationPath}.{Guid.NewGuid():N}.tmp";
         try
         {
@@ -214,18 +244,15 @@ public class FolderOutputNode : IOutputNode
             File.SetCreationTimeUtc(tempPath, sourceInfo.CreationTimeUtc);
             File.SetLastWriteTimeUtc(tempPath, sourceInfo.LastWriteTimeUtc);
 
-            bool exists = File.Exists(destinationPath);
-            if (exists && _overwrite && _enableBackup)
+            if (claim.Kind == ClaimKind.ReplaceWithBackup)
             {
-                string backupPath = destinationPath + _backupSuffix;
-                PathGuard.EnsureWithinDirectory(backupPath, _path);
-                File.Replace(tempPath, destinationPath, backupPath);
-                job.NodeLog.Add($"FolderOutput: Backed up '{destinationPath}' → '{backupPath}'");
+                File.Replace(tempPath, destinationPath, claim.BackupPath);
+                job.NodeLog.Add($"FolderOutput: Backed up '{destinationPath}' → '{claim.BackupPath}'");
             }
             else
             {
-                // Without overwrite this fails on a destination that appeared meanwhile, leaving it intact.
-                File.Move(tempPath, destinationPath, overwrite: exists && _overwrite);
+                // A new claim fails on a destination that appeared meanwhile, leaving it intact.
+                File.Move(tempPath, destinationPath, overwrite: claim.Kind == ClaimKind.Replace);
             }
         }
         finally

@@ -8,6 +8,8 @@ namespace FlowForge.Core.Execution;
 
 public class PipelineRunner
 {
+    private static readonly string DefaultStagingRoot = Path.Combine(Path.GetTempPath(), "FlowForge", "runs");
+
     private readonly NodeRegistry _registry;
     private readonly ILogger<PipelineRunner> _logger;
     private readonly int _maxConcurrency;
@@ -30,6 +32,7 @@ public class PipelineRunner
         await Task.CompletedTask.ConfigureAwait(ConfigureAwaitOptions.ForceYielding);
         var stopwatch = Stopwatch.StartNew();
         var result = new ExecutionResult { IsDryRun = dryRun };
+        using RunContext context = new(dryRun, DefaultStagingRoot);
         bool succeeded = false;
 
         try
@@ -55,10 +58,10 @@ public class PipelineRunner
 
             foreach ((Guid id, ITransformNode transform) in transforms)
             {
-                await ApplyTransformAsync(id, transform, router, dryRun, result, lineages, progress, ct).ConfigureAwait(false);
+                await ApplyTransformAsync(id, transform, router, context, result, lineages, progress, ct).ConfigureAwait(false);
             }
 
-            await DispatchOutputJobsAsync(connections, outputs, router, dryRun, result, lineages, progress, ct).ConfigureAwait(false);
+            await DispatchOutputJobsAsync(connections, outputs, router, context, result, lineages, progress, ct).ConfigureAwait(false);
 
             succeeded = true;
         }
@@ -147,7 +150,7 @@ public class PipelineRunner
         IReadOnlyList<Connection> connections,
         Dictionary<Guid, IOutputNode> outputs,
         JobRouter router,
-        bool dryRun,
+        RunContext context,
         ExecutionResult result,
         LineageCounter lineages,
         IProgress<PipelineProgressEvent>? progress,
@@ -164,8 +167,15 @@ public class PipelineRunner
                 foreach (FileJob job in router.CarriedOn(connection))
                 {
                     ct.ThrowIfCancellationRequested();
+
+                    // Claims run here, one job at a time in input order, before any delivery they decide starts.
+                    if (!TryClaimDestination(job, output, context, result, lineages, progress, out DestinationClaim? claim))
+                    {
+                        continue;
+                    }
+
                     await semaphore.WaitAsync(ct).ConfigureAwait(false);
-                    Task task = ConsumeJobAsync(job, output, dryRun, result, lineages, progress, semaphore, ct);
+                    Task task = ConsumeJobAsync(job, output, claim, context, result, lineages, progress, semaphore, ct);
                     outputTasks.Add(task);
                 }
             }
@@ -201,7 +211,7 @@ public class PipelineRunner
         Guid nodeId,
         ITransformNode transform,
         JobRouter router,
-        bool dryRun,
+        RunContext context,
         ExecutionResult result,
         LineageCounter lineages,
         IProgress<PipelineProgressEvent>? progress,
@@ -213,7 +223,7 @@ public class PipelineRunner
             try
             {
                 job.Status = FileJobStatus.Processing;
-                IEnumerable<FileJob> transformed = await transform.TransformAsync(job, dryRun, ct).ConfigureAwait(false);
+                IEnumerable<FileJob> transformed = await transform.TransformAsync(job, context, ct).ConfigureAwait(false);
                 var transformedList = transformed.ToList();
 
                 if (transformedList.Count == 0)
@@ -242,7 +252,7 @@ public class PipelineRunner
 
         if (transform is IBufferedTransformNode buffered)
         {
-            IEnumerable<FileJob> flushed = await buffered.FlushAsync(dryRun: dryRun, ct: ct).ConfigureAwait(false);
+            IEnumerable<FileJob> flushed = await buffered.FlushAsync(context, ct).ConfigureAwait(false);
             RouteEmitted(transform.TypeKey, nodeId, flushed, router, result, lineages, progress);
         }
     }
@@ -298,10 +308,35 @@ public class PipelineRunner
         }
     }
 
+    /// <summary>Claims the job's destination; a refusal ends the job as failed and returns false.</summary>
+    private bool TryClaimDestination(
+        FileJob job,
+        IOutputNode output,
+        RunContext context,
+        ExecutionResult result,
+        LineageCounter lineages,
+        IProgress<PipelineProgressEvent>? progress,
+        out DestinationClaim? claim)
+    {
+        try
+        {
+            claim = output.ClaimDestination(job, context);
+            return true;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            claim = null;
+            FailOutput(job, output, ex);
+            RecordTerminal(job, lineages, result, progress);
+            return false;
+        }
+    }
+
     private async Task ConsumeJobAsync(
         FileJob job,
         IOutputNode output,
-        bool dryRun,
+        DestinationClaim? claim,
+        RunContext context,
         ExecutionResult result,
         LineageCounter lineages,
         IProgress<PipelineProgressEvent>? progress,
@@ -312,16 +347,12 @@ public class PipelineRunner
         {
             try
             {
-                await output.ConsumeAsync(job, dryRun, ct).ConfigureAwait(false);
+                await output.ConsumeAsync(job, claim, context, ct).ConfigureAwait(false);
                 job.Status = FileJobStatus.Succeeded;
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                job.Status = FileJobStatus.Failed;
-                string reason = $"Output '{output.TypeKey}' failed: {ex.Message}";
-                job.NodeLog.Add(reason);
-                job.ErrorMessage ??= reason;
-                _logger.LogError(ex, "Output node {Node} failed for {File}", output.TypeKey, job.FileName);
+                FailOutput(job, output, ex);
             }
 
             RecordTerminal(job, lineages, result, progress);
@@ -330,6 +361,15 @@ public class PipelineRunner
         {
             semaphore.Release();
         }
+    }
+
+    private void FailOutput(FileJob job, IOutputNode output, Exception ex)
+    {
+        job.Status = FileJobStatus.Failed;
+        string reason = $"Output '{output.TypeKey}' failed: {ex.Message}";
+        job.NodeLog.Add(reason);
+        job.ErrorMessage ??= reason;
+        _logger.LogError(ex, "Output node {Node} failed for {File}", output.TypeKey, job.FileName);
     }
 
     /// <summary>

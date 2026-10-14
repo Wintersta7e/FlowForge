@@ -41,7 +41,7 @@ public class RenameRegexNodeTests
         node.Configure(MakeConfig(new { pattern = @"\d+", replacement = "X" }));
 
         FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "photo123.jpg"));
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Dry());
 
         FileJob output = result.Single();
         output.FileName.Should().Be("photoX.jpg");
@@ -54,7 +54,7 @@ public class RenameRegexNodeTests
         node.Configure(MakeConfig(new { pattern = @"(\w+)-(\w+)", replacement = "$2_$1" }));
 
         FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "hello-world.txt"));
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Dry());
 
         FileJob output = result.Single();
         output.FileName.Should().Be("world_hello.txt");
@@ -67,7 +67,7 @@ public class RenameRegexNodeTests
         node.Configure(MakeConfig(new { pattern = "tmp", replacement = "REPLACED", scope = "filename" }));
 
         FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "tmp_file.txt"));
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Dry());
 
         FileJob output = result.Single();
         output.FileName.Should().Be("REPLACED_file.txt");
@@ -88,7 +88,7 @@ public class RenameRegexNodeTests
         var node = new RenameRegexNode(NullLogger<RenameRegexNode>.Instance);
         node.Configure(MakeConfig(new { pattern = "klm", replacement = "xyz", scope = "fullpath" }));
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Dry());
 
         FileJob output = result.Single();
         output.FileName.Should().Be("xyz_test.txt");
@@ -107,7 +107,7 @@ public class RenameRegexNodeTests
         var node = new RenameRegexNode(NullLogger<RenameRegexNode>.Instance);
         node.Configure(MakeConfig(new { pattern = "safe\\.txt", replacement = "../escaped.txt", scope = "fullpath" }));
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Dry());
         result.Should().ContainSingle();
         job.Status.Should().Be(FileJobStatus.Failed);
         job.ErrorMessage.Should().Contain("path traversal blocked");
@@ -167,7 +167,7 @@ public class RenameRegexNodeTests
         node.Configure(MakeConfig(new { pattern = @"\d+", replacement = "X" }));
 
         FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "nodigits.txt"));
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Dry());
 
         FileJob output = result.Single();
         output.FileName.Should().Be("nodigits.txt");
@@ -181,7 +181,7 @@ public class RenameRegexNodeTests
 
         string inputPath = Path.Combine("/nonexistent/path", "file99.txt");
         FileJob job = MakeJob(inputPath);
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Dry());
 
         FileJob output = result.Single();
         output.FileName.Should().Be("fileX.txt");
@@ -200,7 +200,7 @@ public class RenameRegexNodeTests
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        Func<Task> act = () => node.TransformAsync(job, dryRun: true, ct: cts.Token);
+        Func<Task> act = () => node.TransformAsync(job, TestRunContext.Dry(), ct: cts.Token);
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
@@ -214,7 +214,7 @@ public class RenameRegexNodeTests
         string maliciousName = new string('a', 30) + "!.txt";
         FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), maliciousName));
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Dry());
 
         result.Should().ContainSingle();
         job.Status.Should().Be(FileJobStatus.Failed);
@@ -232,7 +232,7 @@ public class RenameRegexNodeTests
         node.Configure(MakeConfig(new { pattern = "old_name", replacement = "new_name", scope = "fullpath" }));
 
         FileJob job = MakeJob(filePath);
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
 
         result.Should().ContainSingle();
         string expectedPath = Path.Combine(dir.Path, "new_name.txt");
@@ -248,7 +248,7 @@ public class RenameRegexNodeTests
         node.Configure(MakeConfig(new { pattern = "file", replacement = "sub/file", scope = "filename" }));
 
         FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "file.txt"));
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Dry());
 
         result.Should().ContainSingle();
         job.Status.Should().Be(FileJobStatus.Failed);

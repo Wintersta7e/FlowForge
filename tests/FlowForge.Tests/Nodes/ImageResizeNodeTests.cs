@@ -35,7 +35,7 @@ public class ImageResizeNodeTests
             CurrentPath = filePath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
         result.Should().HaveCount(1);
 
         using Image resized = await Image.LoadAsync(filePath);
@@ -59,7 +59,7 @@ public class ImageResizeNodeTests
             CurrentPath = filePath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
         result.Should().HaveCount(1);
 
         using Image resized = await Image.LoadAsync(filePath);
@@ -83,7 +83,7 @@ public class ImageResizeNodeTests
             CurrentPath = filePath
         };
 
-        await node.TransformAsync(job, dryRun: false);
+        await node.TransformAsync(job, TestRunContext.Live());
 
         using Image resized = await Image.LoadAsync(filePath);
         resized.Width.Should().Be(200);
@@ -107,7 +107,7 @@ public class ImageResizeNodeTests
             CurrentPath = filePath
         };
 
-        await node.TransformAsync(job, dryRun: true);
+        await node.TransformAsync(job, TestRunContext.Dry());
 
         using Image unchanged = await Image.LoadAsync(filePath);
         unchanged.Width.Should().Be(800);
@@ -141,7 +141,7 @@ public class ImageResizeNodeTests
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        Func<Task> act = () => node.TransformAsync(job, dryRun: false, ct: cts.Token);
+        Func<Task> act = () => node.TransformAsync(job, TestRunContext.Live(), ct: cts.Token);
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
@@ -164,7 +164,7 @@ public class ImageResizeNodeTests
         node.Configure(MakeConfig(new { width = 50, height = 50, mode = "max", maintainAspect = false }));
 
         var job = new FileJob { OriginalPath = filePath, CurrentPath = filePath };
-        await node.TransformAsync(job, dryRun: false);
+        await node.TransformAsync(job, TestRunContext.Live());
 
         using var image = Image.Load(filePath);
         image.Width.Should().Be(50);
@@ -189,7 +189,7 @@ public class ImageResizeNodeTests
             CurrentPath = filePath
         };
 
-        await node.TransformAsync(job, dryRun: false);
+        await node.TransformAsync(job, TestRunContext.Live());
 
         job.Status.Should().NotBe(FileJobStatus.Failed);
         TiffTagReader.ReadCompression(job.CurrentPath).Should().Be(5, "TIFF output is written as LZW");
@@ -212,7 +212,7 @@ public class ImageResizeNodeTests
             CurrentPath = filePath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
 
         result.Should().ContainSingle().Which.Should().BeSameAs(job);
         job.Status.Should().Be(FileJobStatus.Failed);

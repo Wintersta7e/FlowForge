@@ -1,4 +1,5 @@
 using System.Text.Json;
+using FlowForge.Core.Execution;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
 using Microsoft.Extensions.Logging;
@@ -73,13 +74,13 @@ public class ImageConvertNode : ITransformNode
         _logger.LogDebug("ImageConvert: configured with TargetFormat={TargetFormat}", _format);
     }
 
-    public async Task<IEnumerable<FileJob>> TransformAsync(FileJob job, bool dryRun, CancellationToken ct = default)
+    public async Task<IEnumerable<FileJob>> TransformAsync(FileJob job, RunContext context, CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
 
         string newPath = BuildTargetPath(job);
 
-        if (dryRun)
+        if (context.DryRun)
         {
             job.CurrentPath = newPath;
             job.NodeLog.Add($"ImageConvert: would convert to {_format}");

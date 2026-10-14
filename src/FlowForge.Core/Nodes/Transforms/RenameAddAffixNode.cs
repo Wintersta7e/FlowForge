@@ -1,4 +1,5 @@
 using System.Text.Json;
+using FlowForge.Core.Execution;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
 using Microsoft.Extensions.Logging;
@@ -58,7 +59,7 @@ public class RenameAddAffixNode : ITransformNode
         _logger.LogDebug("RenameAddAffix: configured with Prefix={Prefix}, Suffix={Suffix}", _prefix, _suffix);
     }
 
-    public Task<IEnumerable<FileJob>> TransformAsync(FileJob job, bool dryRun, CancellationToken ct = default)
+    public Task<IEnumerable<FileJob>> TransformAsync(FileJob job, RunContext context, CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
 
@@ -73,7 +74,7 @@ public class RenameAddAffixNode : ITransformNode
 
         PathGuard.EnsureWithinDirectory(newPath, directory);
 
-        if (!dryRun && !string.Equals(oldPath, newPath, StringComparison.Ordinal))
+        if (!context.DryRun && !string.Equals(oldPath, newPath, StringComparison.Ordinal))
         {
             // .NET has no async File.Move/Copy API; sync call is acceptable for metadata-only operations
             File.Move(oldPath, newPath, overwrite: false);

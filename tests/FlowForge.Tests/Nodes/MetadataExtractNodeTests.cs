@@ -36,7 +36,7 @@ public class MetadataExtractNodeTests
             CurrentPath = filePath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
 
         result.Should().HaveCount(1);
         FileJob resultJob = result.First();
@@ -62,7 +62,7 @@ public class MetadataExtractNodeTests
             CurrentPath = filePath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
 
         result.Should().HaveCount(1);
         FileJob resultJob = result.First();
@@ -87,7 +87,7 @@ public class MetadataExtractNodeTests
             CurrentPath = filePath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
 
         result.Should().HaveCount(1);
         FileJob resultJob = result.First();
@@ -112,7 +112,7 @@ public class MetadataExtractNodeTests
             CurrentPath = filePath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
 
         result.Should().HaveCount(1);
         FileJob resultJob = result.First();
@@ -157,7 +157,7 @@ public class MetadataExtractNodeTests
             CurrentPath = filePath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
 
         result.Should().HaveCount(1);
         FileJob resultJob = result.First();
@@ -235,7 +235,7 @@ public class MetadataExtractNodeTests
             CurrentPath = fakePath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
 
         result.Should().HaveCount(1);
         FileJob resultJob = result.First();
@@ -260,7 +260,7 @@ public class MetadataExtractNodeTests
             CurrentPath = filePath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
 
         result.Should().HaveCount(1);
         FileJob resultJob = result.First();
@@ -286,7 +286,7 @@ public class MetadataExtractNodeTests
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        Func<Task> act = () => node.TransformAsync(job, dryRun: false, ct: cts.Token);
+        Func<Task> act = () => node.TransformAsync(job, TestRunContext.Live(), ct: cts.Token);
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
@@ -304,7 +304,7 @@ public class MetadataExtractNodeTests
             CurrentPath = fakePath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Dry());
 
         result.Should().ContainSingle();
         FileJob resultJob = result.First();

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using FlowForge.Core.Execution;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
 using Microsoft.Extensions.Logging;
@@ -75,7 +76,7 @@ public class RenameRegexNode : ITransformNode
             _regex.ToString(), _replacement, _scope);
     }
 
-    public Task<IEnumerable<FileJob>> TransformAsync(FileJob job, bool dryRun, CancellationToken ct = default)
+    public Task<IEnumerable<FileJob>> TransformAsync(FileJob job, RunContext context, CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
 
@@ -125,7 +126,7 @@ public class RenameRegexNode : ITransformNode
                 PathGuard.EnsureWithinDirectory(newPath, directory);
             }
 
-            if (!dryRun && !string.Equals(oldPath, newPath, StringComparison.Ordinal))
+            if (!context.DryRun && !string.Equals(oldPath, newPath, StringComparison.Ordinal))
             {
                 // .NET has no async File.Move/Copy API; sync call is acceptable for metadata-only operations
                 File.Move(oldPath, newPath, overwrite: false);

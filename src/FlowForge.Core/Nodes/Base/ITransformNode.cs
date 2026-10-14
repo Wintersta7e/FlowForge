@@ -1,4 +1,5 @@
 using System.Text.Json;
+using FlowForge.Core.Execution;
 using FlowForge.Core.Models;
 
 namespace FlowForge.Core.Nodes.Base;
@@ -11,5 +12,5 @@ public interface ITransformNode
 {
     string TypeKey { get; }
     void Configure(IDictionary<string, JsonElement> config);
-    Task<IEnumerable<FileJob>> TransformAsync(FileJob job, bool dryRun, CancellationToken ct = default);
+    Task<IEnumerable<FileJob>> TransformAsync(FileJob job, RunContext context, CancellationToken ct = default);
 }

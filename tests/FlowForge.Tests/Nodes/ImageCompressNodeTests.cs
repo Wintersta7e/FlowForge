@@ -40,7 +40,7 @@ public class ImageCompressNodeTests
             CurrentPath = filePath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
         result.Should().HaveCount(1);
 
         File.Exists(filePath).Should().BeTrue();
@@ -65,7 +65,7 @@ public class ImageCompressNodeTests
             CurrentPath = filePath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
         result.Should().HaveCount(1);
 
         File.Exists(filePath).Should().BeTrue();
@@ -88,7 +88,7 @@ public class ImageCompressNodeTests
             CurrentPath = filePath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
         result.Should().HaveCount(1);
         File.Exists(filePath).Should().BeTrue();
     }
@@ -109,7 +109,7 @@ public class ImageCompressNodeTests
             CurrentPath = filePath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
         result.Should().HaveCount(1);
         File.Exists(filePath).Should().BeTrue();
     }
@@ -155,7 +155,7 @@ public class ImageCompressNodeTests
             CurrentPath = filePath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
         byte[] after = await File.ReadAllBytesAsync(filePath);
         string magic = Magic(after);
 
@@ -176,10 +176,10 @@ public class ImageCompressNodeTests
         node.Configure(MakeConfig(new { quality = 80, format = "jpg" }));
 
         var job = new FileJob { OriginalPath = filePath, CurrentPath = filePath };
-        await node.TransformAsync(job, dryRun: false);
+        await node.TransformAsync(job, TestRunContext.Live());
         byte[] bytes = await File.ReadAllBytesAsync(filePath);
         var dryJob = new FileJob { OriginalPath = filePath, CurrentPath = filePath };
-        await node.TransformAsync(dryJob, dryRun: true);
+        await node.TransformAsync(dryJob, TestRunContext.Dry());
 
         int scanned = 0;
         var mismatches = new List<string>();
@@ -236,7 +236,7 @@ public class ImageCompressNodeTests
             CurrentPath = filePath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
         result.Should().ContainSingle();
         job.Status.Should().Be(FileJobStatus.Failed);
         job.ErrorMessage.Should().Contain("unsupported format").And.Contain("bmp");
@@ -260,7 +260,7 @@ public class ImageCompressNodeTests
             CurrentPath = filePath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
         result.Should().ContainSingle();
         job.Status.Should().Be(FileJobStatus.Failed);
         job.ErrorMessage.Should().Contain("unsupported format").And.Contain("bmp");
@@ -283,7 +283,7 @@ public class ImageCompressNodeTests
             CurrentPath = filePath
         };
 
-        await node.TransformAsync(job, dryRun: true);
+        await node.TransformAsync(job, TestRunContext.Dry());
 
         new FileInfo(filePath).Length.Should().Be(originalSize);
         job.NodeLog.Should().ContainSingle(log => log.Contains("would compress"));
@@ -308,7 +308,7 @@ public class ImageCompressNodeTests
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        Func<Task> act = () => node.TransformAsync(job, dryRun: false, ct: cts.Token);
+        Func<Task> act = () => node.TransformAsync(job, TestRunContext.Live(), ct: cts.Token);
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
@@ -329,7 +329,7 @@ public class ImageCompressNodeTests
             CurrentPath = filePath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
 
         result.Should().ContainSingle().Which.Should().BeSameAs(job);
         job.Status.Should().Be(FileJobStatus.Failed);
