@@ -50,7 +50,8 @@ public class PipelineRunner
             var transformNodes = orderedTransforms.Select(d => _registry.GetTransform(d)).ToList();
             var outputNodes = outputNodeDefs.Select(d => _registry.GetOutput(d)).ToList();
 
-            List<FileJob> allJobs = await CollectSourceJobsAsync(sourceNodes, progress, ct).ConfigureAwait(false);
+            var lineages = new LineageCounter();
+            List<FileJob> allJobs = await CollectSourceJobsAsync(sourceNodes, lineages, progress, ct).ConfigureAwait(false);
             result.TotalFiles = allJobs.Count;
 
             progress?.Report(new PhaseChanged(ExecutionPhase.Processing));
@@ -58,10 +59,10 @@ public class PipelineRunner
             IReadOnlyList<FileJob> currentJobs = allJobs;
             foreach (ITransformNode transform in transformNodes)
             {
-                currentJobs = await ApplyTransformAsync(transform, currentJobs, dryRun, result, ct).ConfigureAwait(false);
+                currentJobs = await ApplyTransformAsync(transform, currentJobs, dryRun, result, lineages, progress, ct).ConfigureAwait(false);
             }
 
-            await DispatchOutputJobsAsync(currentJobs, outputNodes, dryRun, result, progress, ct).ConfigureAwait(false);
+            await DispatchOutputJobsAsync(currentJobs, outputNodes, dryRun, result, lineages, progress, ct).ConfigureAwait(false);
 
             succeeded = true;
         }
@@ -116,6 +117,7 @@ public class PipelineRunner
 
     private static async Task<List<FileJob>> CollectSourceJobsAsync(
         List<ISourceNode> sourceNodes,
+        LineageCounter lineages,
         IProgress<PipelineProgressEvent>? progress,
         CancellationToken ct)
     {
@@ -128,6 +130,7 @@ public class PipelineRunner
             {
                 ct.ThrowIfCancellationRequested();
                 allJobs.Add(job);
+                lineages.AddOriginal(job);
 
                 if (allJobs.Count == 1 || allJobs.Count - lastReportedCount >= 100)
                 {
@@ -150,6 +153,7 @@ public class PipelineRunner
         List<IOutputNode> outputNodes,
         bool dryRun,
         ExecutionResult result,
+        LineageCounter lineages,
         IProgress<PipelineProgressEvent>? progress,
         CancellationToken ct)
     {
@@ -164,17 +168,12 @@ public class PipelineRunner
 
                 if (job.Status == FileJobStatus.Skipped)
                 {
-                    lock (result)
-                    {
-                        result.Skipped++;
-                        result.Jobs.Add(job);
-                    }
-                    progress?.Report(new FileProcessed(job));
+                    RecordTerminal(job, lineages, result, progress);
                     continue;
                 }
 
                 await semaphore.WaitAsync(ct).ConfigureAwait(false);
-                Task task = ConsumeJobAsync(job, outputNodes, dryRun, result, progress, semaphore, ct);
+                Task task = ConsumeJobAsync(job, outputNodes, dryRun, result, lineages, progress, semaphore, ct);
                 outputTasks.Add(task);
             }
 
@@ -210,6 +209,8 @@ public class PipelineRunner
         IReadOnlyList<FileJob> jobs,
         bool dryRun,
         ExecutionResult result,
+        LineageCounter lineages,
+        IProgress<PipelineProgressEvent>? progress,
         CancellationToken ct)
     {
         var nextJobs = new List<FileJob>();
@@ -229,12 +230,13 @@ public class PipelineRunner
                     // their jobs will be counted after FlushAsync.
                     if (transform is not IBufferedTransformNode)
                     {
-                        HandleEmptyTransformResult(transform, job, result);
+                        HandleEmptyTransformResult(transform, job, result, lineages, progress);
                     }
                 }
                 else
                 {
-                    PartitionTransformResults(transform, transformedList, nextJobs, result);
+                    lineages.Join(job, transformedList);
+                    PartitionTransformResults(transform, transformedList, nextJobs, result, lineages, progress);
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -242,72 +244,55 @@ public class PipelineRunner
                 job.Status = FileJobStatus.Failed;
                 job.ErrorMessage = ex.Message;
                 _logger.LogError(ex, "Transform {NodeType} failed for {File}", transform.TypeKey, job.OriginalPath);
-                lock (result)
-                {
-                    result.Failed++;
-                    result.Jobs.Add(job);
-                }
+                RecordTerminal(job, lineages, result, progress);
             }
         }
 
         if (transform is IBufferedTransformNode buffered)
         {
-            await FlushBufferedTransformAsync(buffered, transform.TypeKey, nextJobs, result, dryRun, ct).ConfigureAwait(false);
+            await FlushBufferedTransformAsync(buffered, transform.TypeKey, nextJobs, result, lineages, progress, dryRun, ct).ConfigureAwait(false);
         }
 
         return nextJobs;
     }
 
-    private void HandleEmptyTransformResult(ITransformNode transform, FileJob job, ExecutionResult result)
+    private void HandleEmptyTransformResult(
+        ITransformNode transform,
+        FileJob job,
+        ExecutionResult result,
+        LineageCounter lineages,
+        IProgress<PipelineProgressEvent>? progress)
     {
         if (job.Status == FileJobStatus.Failed)
         {
             _logger.LogError("Transform {NodeType} set Failed for {File}: {ErrorMessage}", transform.TypeKey, job.OriginalPath, job.ErrorMessage);
-            lock (result)
-            {
-                result.Failed++;
-                result.Jobs.Add(job);
-            }
         }
-        else if (job.Status == FileJobStatus.Skipped)
-        {
-            lock (result)
-            {
-                result.Skipped++;
-                result.Jobs.Add(job);
-            }
-        }
-        else
+        else if (job.Status != FileJobStatus.Skipped)
         {
             job.Status = FileJobStatus.Skipped;
             job.NodeLog.Add($"Transform '{transform.TypeKey}' returned empty with no status change — treated as skipped.");
             _logger.LogWarning(
                 "Transform {NodeType} returned empty for {File} with status Processing — treating as skipped",
                 transform.TypeKey, job.OriginalPath);
-            lock (result)
-            {
-                result.Skipped++;
-                result.Jobs.Add(job);
-            }
         }
+
+        RecordTerminal(job, lineages, result, progress);
     }
 
     private void PartitionTransformResults(
         ITransformNode transform,
         List<FileJob> transformedList,
         List<FileJob> nextJobs,
-        ExecutionResult result)
+        ExecutionResult result,
+        LineageCounter lineages,
+        IProgress<PipelineProgressEvent>? progress)
     {
         foreach (FileJob tj in transformedList)
         {
             if (tj.Status == FileJobStatus.Failed)
             {
                 _logger.LogError("Transform {NodeType} set Failed for {File}", transform.TypeKey, tj.OriginalPath);
-                lock (result)
-                {
-                    result.Failed++;
-                    result.Jobs.Add(tj);
-                }
+                RecordTerminal(tj, lineages, result, progress);
             }
             else
             {
@@ -321,6 +306,8 @@ public class PipelineRunner
         string typeKey,
         List<FileJob> nextJobs,
         ExecutionResult result,
+        LineageCounter lineages,
+        IProgress<PipelineProgressEvent>? progress,
         bool dryRun,
         CancellationToken ct)
     {
@@ -330,11 +317,7 @@ public class PipelineRunner
             if (fj.Status == FileJobStatus.Failed)
             {
                 _logger.LogError("Transform {NodeType} flush set Failed for {File}: {ErrorMessage}", typeKey, fj.OriginalPath, fj.ErrorMessage);
-                lock (result)
-                {
-                    result.Failed++;
-                    result.Jobs.Add(fj);
-                }
+                RecordTerminal(fj, lineages, result, progress);
             }
             else
             {
@@ -348,6 +331,7 @@ public class PipelineRunner
         List<IOutputNode> outputs,
         bool dryRun,
         ExecutionResult result,
+        LineageCounter lineages,
         IProgress<PipelineProgressEvent>? progress,
         SemaphoreSlim semaphore,
         CancellationToken ct)
@@ -378,21 +362,7 @@ public class PipelineRunner
                 job.Status = FileJobStatus.Succeeded;
             }
 
-            lock (result)
-            {
-                if (anyFailed)
-                {
-                    result.Failed++;
-                }
-                else
-                {
-                    result.Succeeded++;
-                }
-
-                result.Jobs.Add(job);
-            }
-
-            progress?.Report(new FileProcessed(job));
+            RecordTerminal(job, lineages, result, progress);
         }
         catch (OperationCanceledException)
         {
@@ -402,6 +372,41 @@ public class PipelineRunner
         {
             semaphore.Release();
         }
+    }
+
+    /// <summary>
+    /// Records one terminal job: exactly one counter, one <see cref="ExecutionResult.Jobs"/> entry and one
+    /// <see cref="FileProcessed"/>, which completes the original when this was its last live branch.
+    /// </summary>
+    private static void RecordTerminal(
+        FileJob job,
+        LineageCounter lineages,
+        ExecutionResult result,
+        IProgress<PipelineProgressEvent>? progress)
+    {
+        bool completes;
+        lock (result)
+        {
+            switch (job.Status)
+            {
+                case FileJobStatus.Succeeded:
+                    result.Succeeded++;
+                    break;
+                case FileJobStatus.Failed:
+                    result.Failed++;
+                    break;
+                case FileJobStatus.Skipped:
+                    result.Skipped++;
+                    break;
+                default:
+                    throw new UnreachableException($"A terminal job cannot have status {job.Status}.");
+            }
+
+            result.Jobs.Add(job);
+            completes = lineages.Complete(job);
+        }
+
+        progress?.Report(new FileProcessed(job) { CompletesOriginal = completes });
     }
 
     /// <summary>

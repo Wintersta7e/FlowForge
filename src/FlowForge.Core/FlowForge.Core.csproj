@@ -14,4 +14,8 @@
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="FlowForge.Tests" />
+  </ItemGroup>
+
 </Project>
