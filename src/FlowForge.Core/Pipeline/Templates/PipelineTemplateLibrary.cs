@@ -4,6 +4,8 @@ namespace FlowForge.Core.Pipeline.Templates;
 
 public static class PipelineTemplateLibrary
 {
+    private static readonly string[] PhotoImportMetadataKeys = ["EXIF:DateTaken"];
+
     public static IReadOnlyList<PipelineTemplate> Templates { get; } = new[]
     {
         PhotoImportByDate(),
@@ -63,8 +65,6 @@ public static class PipelineTemplateLibrary
 
         return clone;
     }
-
-    private static readonly string[] PhotoImportMetadataKeys = ["EXIF:DateTaken"];
 
     private static PipelineTemplate PhotoImportByDate()
     {

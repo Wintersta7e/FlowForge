@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Photo Import template runs as shipped** — its metadata step was saved without the EXIF date key, so every run stopped with "MetadataExtract: 'keys' is required."
+
 ## [2.0.0] - 2026-04-23
 
 ### Added

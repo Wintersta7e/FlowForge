@@ -110,6 +110,44 @@ public class SamplePipelineTests
         failures.Should().BeEmpty();
     }
 
+    [Fact]
+    public void Every_template_configures_cleanly()
+    {
+        string[] ids = PipelineTemplateLibrary.Templates.Select(t => t.Id).ToArray();
+        _output.WriteLine($"[templates] scanned={ids.Length}");
+        ids.Should().NotBeEmpty("the template library must hold at least one template");
+
+        using var dir = new TempDirectory();
+        string inputPath = Path.Combine(dir.Path, "input");
+        Directory.CreateDirectory(inputPath);
+
+        var registry = NodeRegistry.CreateDefault(NullLoggerFactory.Instance);
+        List<string> failures = [];
+        foreach (string id in ids)
+        {
+            PipelineGraph graph = PipelineTemplateLibrary.CreateFromTemplate(id);
+            foreach (NodeDefinition node in graph.Nodes)
+            {
+                if (string.Equals(node.TypeKey, "FolderInput", StringComparison.Ordinal))
+                {
+                    node.Config["path"] = JsonSerializer.SerializeToElement(inputPath);
+                }
+                else if (string.Equals(node.TypeKey, "FolderOutput", StringComparison.Ordinal))
+                {
+                    node.Config["path"] = JsonSerializer.SerializeToElement(dir.OutputPath);
+                }
+
+                string? error = ConfigureNode(registry, node);
+                if (error != null)
+                {
+                    failures.Add($"{id}: node {node.Id} ({node.TypeKey}): {error}");
+                }
+            }
+        }
+
+        failures.Should().BeEmpty();
+    }
+
     /// <summary>
     /// Creates the node through the registry, which runs its Configure; returns the
     /// failure text, or null when the node configured cleanly.
