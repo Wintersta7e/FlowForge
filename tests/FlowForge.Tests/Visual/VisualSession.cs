@@ -2,11 +2,14 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
 using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using FlowForge.Core.Execution;
 using FlowForge.Core.Settings;
 using FlowForge.Tests.Helpers;
@@ -14,6 +17,7 @@ using FlowForge.UI;
 using FlowForge.UI.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Nodify.Avalonia;
 using Xunit.Abstractions;
 using Xunit.Sdk;
 
@@ -24,9 +28,11 @@ namespace FlowForge.Tests.Visual;
 /// model reads isolated in a temp directory. Tests reach a state by pumping the dispatcher
 /// and the render timer until a condition holds, never by waiting on the clock.
 /// </summary>
-[System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Pump and the frame readers are session members: tests reach every harness step through the session they opened.")]
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Pump, the frame readers and the input helpers are session members: tests reach every harness step through the session they opened.")]
 internal sealed class VisualSession : IDisposable
 {
+    public const string WebExportTemplate = "image-web-export";
+
     private const string ConfigHomeVariable = "XDG_CONFIG_HOME";
 
     private static readonly TimeSpan DefaultDeadline = TimeSpan.FromSeconds(3);
@@ -215,6 +221,53 @@ internal sealed class VisualSession : IDisposable
         Matrix transform = visual.TransformToVisual(topLevel)
             ?? throw new InvalidOperationException($"{visual.GetType().Name} has no transform to its window.");
         return PixelRect.FromRect(new Rect(visual.Bounds.Size).TransformToAABB(transform), topLevel.RenderScaling);
+    }
+
+    // The visual's centre in the coordinates of its own top level (the window, or a popup's root).
+    public Point CentreOf(Avalonia.Visual visual) =>
+        visual.TranslatePoint(new Point(visual.Bounds.Width / 2, visual.Bounds.Height / 2), TopLevel.GetTopLevel(visual)!)
+            ?? throw new InvalidOperationException($"{visual.GetType().Name} has no transform to its window.");
+
+    // A left press and release at the visual's centre, sent to the top level that shows it.
+    public void Click(Avalonia.Visual visual)
+    {
+        TopLevel topLevel = TopLevel.GetTopLevel(visual)
+            ?? throw new InvalidOperationException($"{visual.GetType().Name} is not in a window.");
+        Point centre = CentreOf(visual);
+        topLevel.MouseDown(centre, MouseButton.Left, RawInputModifiers.None);
+        topLevel.MouseUp(centre, MouseButton.Left, RawInputModifiers.None);
+    }
+
+    public List<ItemContainer> Stations() =>
+        Window.GetVisualDescendants().OfType<ItemContainer>()
+            .Where(c => c.DataContext is PipelineNodeViewModel && c.Bounds.Width > 0)
+            .ToList();
+
+    public ItemContainer WaitForStation(PipelineNodeViewModel node)
+    {
+        ItemContainer? Find() => Stations().SingleOrDefault(c => ReferenceEquals(c.DataContext, node));
+        RenderUntil(() => Find() is not null, $"{node.TypeKey} station shown");
+        return Find()!;
+    }
+
+    public void LoadTemplate(string templateId)
+    {
+        ViewModel.LoadTemplateCommand.Execute(templateId);
+        RenderUntil(() => Stations().Count == ViewModel.Editor.Nodes.Count, "template stations laid out");
+    }
+
+    public List<ContentPresenter> InspectorCards() =>
+        Window.GetVisualDescendants().OfType<ItemsControl>()
+            .Single(list => ReferenceEquals(list.ItemsSource, ViewModel.Properties.Fields))
+            .GetRealizedContainers().OfType<ContentPresenter>().ToList();
+
+    // Every current field has a laid-out card in the inspector, in field order.
+    public bool InspectorReady()
+    {
+        List<ContentPresenter> cards = InspectorCards();
+        return cards.Count > 0
+            && cards.Select(card => card.DataContext).SequenceEqual(ViewModel.Properties.Fields)
+            && cards.All(card => card.Child is { Bounds.Width: > 0 });
     }
 
     public void Dispose()

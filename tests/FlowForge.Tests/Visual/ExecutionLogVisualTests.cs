@@ -2,9 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Primitives;
-using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
-using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Styling;
@@ -102,9 +100,9 @@ public sealed class ExecutionLogVisualTests
         session.RenderUntil(() => RowsShown(rows, 3), "three log rows shown");
 
         // Pressing the open tab collapses the row list; pressing it again expands it.
-        Click(window, CentreInWindow(outputTab));
+        session.Click(outputTab);
         session.RenderUntil(() => !log.IsPanelExpanded && !rows.IsEffectivelyVisible, "row list collapsed");
-        Click(window, CentreInWindow(outputTab));
+        session.Click(outputTab);
         session.RenderUntil(() => log.IsPanelExpanded && RowsShown(rows, 3), "row list expanded");
         using WriteableBitmap frame = session.Capture(VisualFrames.LogRows);
 
@@ -196,16 +194,6 @@ public sealed class ExecutionLogVisualTests
 
     private static bool RowsShown(ItemsControl rows, int count) =>
         rows.IsEffectivelyVisible && RowGrids(rows) is { } grids && grids.Count == count && grids.All(g => g.Bounds.Height > 0);
-
-    private static Point CentreInWindow(Avalonia.Visual visual) =>
-        visual.TranslatePoint(new Point(visual.Bounds.Width / 2, visual.Bounds.Height / 2), TopLevel.GetTopLevel(visual)!)
-            ?? throw new InvalidOperationException($"{visual.GetType().Name} has no transform to its window.");
-
-    private static void Click(TopLevel topLevel, Point point)
-    {
-        topLevel.MouseDown(point, MouseButton.Left, RawInputModifiers.None);
-        topLevel.MouseUp(point, MouseButton.Left, RawInputModifiers.None);
-    }
 
     private static Color ThemeColour(string key)
     {

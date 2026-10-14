@@ -28,7 +28,6 @@ namespace FlowForge.Tests.Visual;
 public sealed class EditorInteractionTests
 {
     private const string EditedPattern = "{name}_edited{ext}";
-    private const string WebExportTemplate = "image-web-export";
 
     private readonly ITestOutputHelper _output;
 
@@ -51,7 +50,7 @@ public sealed class EditorInteractionTests
         TreeViewItem row = LibraryRows(window).First();
         string typeKey = ((NodeLibraryItemViewModel)row.DataContext!).TypeKey;
         NodifyEditor editor = Editor(window);
-        Point start = CentreInWindow(row);
+        Point start = session.CentreOf(row);
         Point drop = InWindow(editor, new Point(editor.Bounds.Width * 0.4, editor.Bounds.Height * 0.3));
 
         window.MouseDown(start, MouseButton.Left, RawInputModifiers.None);
@@ -137,7 +136,7 @@ public sealed class EditorInteractionTests
         using WriteableBitmap frame = session.Capture(VisualFrames.Inspector(typeKey));
 
         IReadOnlyList<ConfigField> schema = registry.GetConfigSchema(typeKey);
-        List<ContentPresenter> cards = InspectorCards(session);
+        List<ContentPresenter> cards = session.InspectorCards();
         _output.WriteLine($"type-keys={RegisteredTypeKeys.Count}");
         session.ViewModel.Editor.SelectedNode!.TypeKey.Should().Be(typeKey);
         cards.Should().HaveCount(schema.Count, "the inspector shows one card per schema field");
@@ -169,18 +168,18 @@ public sealed class EditorInteractionTests
         Select(session, rename);
         EditField(session, "pattern", () =>
         {
-            Click(window, CentreInWindow(FieldEditor<TextBox>(session, "pattern")));
+            session.Click(FieldEditor<TextBox>(session, "pattern"));
             window.KeyTextInput(EditedPattern);
         });
         EditField(session, "startIndex", () =>
         {
-            Click(window, CentreInWindow(FieldEditor<TextBox>(session, "startIndex")));
+            session.Click(FieldEditor<TextBox>(session, "startIndex"));
             window.KeyPress(Key.A, RawInputModifiers.Control, PhysicalKey.A, "a");
             window.KeyRelease(Key.A, RawInputModifiers.Control, PhysicalKey.A, "a");
             window.KeyTextInput("7");
         });
         Select(session, output);
-        EditField(session, "overwrite", () => Click(window, CentreInWindow(FieldEditor<CheckBox>(session, "overwrite"))));
+        EditField(session, "overwrite", () => session.Click(FieldEditor<CheckBox>(session, "overwrite")));
         EditField(session, "mode", () => PickOption(session, FieldEditor<ComboBox>(session, "mode"), "move"));
         using WriteableBitmap frame = session.Capture(VisualFrames.EditPersists);
 
@@ -213,11 +212,11 @@ public sealed class EditorInteractionTests
         using var session = VisualSession.Open(_output);
         MainWindow window = session.Window;
         EditorViewModel editor = session.ViewModel.Editor;
-        session.ViewModel.LoadTemplateCommand.Execute(WebExportTemplate);
+        session.LoadTemplate(VisualSession.WebExportTemplate);
         PipelineNodeViewModel station = editor.Nodes[1];
         int before = editor.Nodes.Count;
 
-        Click(window, CentreInWindow(WaitForStation(session, station)));
+        session.Click(session.WaitForStation(station));
         session.RenderUntil(() => editor.SelectedNode is not null, "a station selected");
         PipelineNodeViewModel? selected = editor.SelectedNode;
         window.KeyPress(Key.Delete, RawInputModifiers.None, PhysicalKey.Delete, keySymbol: null);
@@ -252,7 +251,7 @@ public sealed class EditorInteractionTests
         PipelineNodeViewModel node = editor.Nodes.Single();
         NodifyEditor canvas = Editor(window);
         Vector delta = new Vector(80, 40) * canvas.ViewportZoom;
-        Point from = CentreInWindow(WaitForStation(session, node));
+        Point from = session.CentreOf(session.WaitForStation(node));
 
         // A real pointer reaches the station before pressing; the editor reads that last pointer
         // event when a station drag begins, and has none if the press is the first event it sees.
@@ -279,23 +278,22 @@ public sealed class EditorInteractionTests
     {
         using var session = VisualSession.Open(_output);
         EditorViewModel editor = session.ViewModel.Editor;
-        session.ViewModel.LoadTemplateCommand.Execute(WebExportTemplate);
 
         // Fitting measures the laid-out stations, so they must exist first.
-        session.RenderUntil(() => Stations(session.Window).Count == editor.Nodes.Count, "template stations laid out");
+        session.LoadTemplate(VisualSession.WebExportTemplate);
         editor.RequestFitToScreen();
         NodifyEditor canvas = Editor(session.Window);
         var visible = new Rect(canvas.Bounds.Size);
 
         // Both corners go through the zoom transform; a station's own bounds are unscaled.
         session.RenderUntil(
-            () => Stations(session.Window).All(s =>
+            () => session.Stations().All(s =>
                 visible.Contains(s.TranslatePoint(default, canvas)!.Value)
                 && visible.Contains(s.TranslatePoint(new Point(s.Bounds.Width, s.Bounds.Height), canvas)!.Value)),
             "every template station fitted on screen");
         using WriteableBitmap frame = session.Capture(VisualFrames.NodeRender);
 
-        List<ItemContainer> stations = Stations(session.Window);
+        List<ItemContainer> stations = session.Stations();
         foreach (ItemContainer station in stations)
         {
             var node = (PipelineNodeViewModel)station.DataContext!;
@@ -325,15 +323,6 @@ public sealed class EditorInteractionTests
         visual.TranslatePoint(point, TopLevel.GetTopLevel(visual)!)
             ?? throw new InvalidOperationException($"{visual.GetType().Name} has no transform to its window.");
 
-    private static Point CentreInWindow(Avalonia.Visual visual) =>
-        InWindow(visual, new Point(visual.Bounds.Width / 2, visual.Bounds.Height / 2));
-
-    private static void Click(TopLevel topLevel, Point point)
-    {
-        topLevel.MouseDown(point, MouseButton.Left, RawInputModifiers.None);
-        topLevel.MouseUp(point, MouseButton.Left, RawInputModifiers.None);
-    }
-
     private static Connector WaitForPort(VisualSession session, PipelineConnectorViewModel port)
     {
         Connector? Find() => session.Window.GetVisualDescendants().OfType<Connector>()
@@ -345,8 +334,8 @@ public sealed class EditorInteractionTests
     // Press on one port, move halfway (where midway runs), move onto the other port and release there.
     private static void DragBetween(VisualSession session, Connector from, Connector to, Action? midway = null)
     {
-        Point start = CentreInWindow(from);
-        Point end = CentreInWindow(to);
+        Point start = session.CentreOf(from);
+        Point end = session.CentreOf(to);
         session.Window.MouseDown(start, MouseButton.Left, RawInputModifiers.None);
         session.Window.MouseMove(start + ((end - start) / 2), RawInputModifiers.LeftMouseButton);
         session.Pump();
@@ -357,45 +346,18 @@ public sealed class EditorInteractionTests
         session.Pump();
     }
 
-    private static List<ItemContainer> Stations(Window window) =>
-        window.GetVisualDescendants().OfType<ItemContainer>()
-            .Where(c => c.DataContext is PipelineNodeViewModel && c.Bounds.Width > 0)
-            .ToList();
-
-    private static ItemContainer WaitForStation(VisualSession session, PipelineNodeViewModel node)
-    {
-        ItemContainer? Find() => Stations(session.Window).SingleOrDefault(c => ReferenceEquals(c.DataContext, node));
-        session.RenderUntil(() => Find() is not null, $"{node.TypeKey} station shown");
-        return Find()!;
-    }
-
     // Clicks the station's body, away from its ports, and waits for the inspector to show its fields.
     private static void Select(VisualSession session, PipelineNodeViewModel node)
     {
-        Click(session.Window, CentreInWindow(WaitForStation(session, node)));
+        session.Click(session.WaitForStation(node));
         session.RenderUntil(
-            () => ReferenceEquals(session.ViewModel.Editor.SelectedNode, node) && InspectorReady(session),
+            () => ReferenceEquals(session.ViewModel.Editor.SelectedNode, node) && session.InspectorReady(),
             $"{node.TypeKey} selected and its fields shown");
-    }
-
-    private static ItemsControl InspectorList(VisualSession session) =>
-        session.Window.GetVisualDescendants().OfType<ItemsControl>()
-            .Single(list => ReferenceEquals(list.ItemsSource, session.ViewModel.Properties.Fields));
-
-    private static List<ContentPresenter> InspectorCards(VisualSession session) =>
-        InspectorList(session).GetRealizedContainers().OfType<ContentPresenter>().ToList();
-
-    // Every current field has a laid-out card, in field order.
-    private static bool InspectorReady(VisualSession session)
-    {
-        List<ContentPresenter> cards = InspectorCards(session);
-        return cards.Select(card => card.DataContext).SequenceEqual(session.ViewModel.Properties.Fields)
-            && cards.All(card => card.Child is { Bounds.Width: > 0 });
     }
 
     private static T FieldEditor<T>(VisualSession session, string key)
         where T : Control =>
-        InspectorCards(session)
+        session.InspectorCards()
             .Single(card => card.DataContext is ConfigFieldViewModel field && string.Equals(field.Key, key, StringComparison.Ordinal))
             .GetVisualDescendants().OfType<T>().First();
 
@@ -407,19 +369,19 @@ public sealed class EditorInteractionTests
         session.RenderUntil(
             () => session.ViewModel.Properties.Fields.Count > 0
                 && !ReferenceEquals(session.ViewModel.Properties.Fields[0], before)
-                && InspectorReady(session),
+                && session.InspectorReady(),
             $"inspector rebuilt after editing {key}");
     }
 
     // Opens the drop-down with a click and clicks the option in its popup.
     private static void PickOption(VisualSession session, ComboBox comboBox, string option)
     {
-        Click(session.Window, CentreInWindow(comboBox));
+        session.Click(comboBox);
         ComboBoxItem? Find() => comboBox.GetRealizedContainers().OfType<ComboBoxItem>()
             .SingleOrDefault(item => string.Equals(item.Content as string, option, StringComparison.Ordinal) && item.Bounds.Width > 0);
         session.RenderUntil(() => comboBox.IsDropDownOpen && Find() is not null, $"option '{option}' shown");
         ComboBoxItem target = Find()!;
-        Click(TopLevel.GetTopLevel(target)!, CentreInWindow(target));
+        session.Click(target);
     }
 
     private static string? ValueText(IDictionary<string, JsonElement> config, string key) =>
