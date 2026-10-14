@@ -27,6 +27,12 @@ internal static class VisualFrames
 
     public const string NodeRender = "s93-node-render";
 
+    public const string LogProgress = "s96-log-progress";
+
+    public const string LogRows = "s96-log-rows";
+
+    public const string RealRun = "s96-real-run";
+
     internal const string InspectorPrefix = "c7-04-inspector-";
 
     public static IReadOnlyList<string> Ids { get; } = typeof(VisualFrames)
