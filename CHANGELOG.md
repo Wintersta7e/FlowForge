@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
 - **Atomic folder output** — each file is copied to a temporary name and renamed into place, so a cancelled or failed copy no longer truncates an existing destination; backups are an atomic swap; a destination that is a link is refused; `move` deletes the source only after the copy is in place, and never when source and destination are the same file.
 - **Output folders with links** — folder output refuses to deliver through a linked folder below the destination, and preserve-structure no longer treats a sibling folder whose name merely starts with the base folder's name as inside it.
 - **CLI exit codes** — the CLI now exits 0 on success, 1 when some files failed and 2 on failure or invalid arguments, as documented. Every run used to exit 0 and argument errors exited 1.
+- **CLI progress order** — the scan count now always prints before "Processing N files…"; the two lines could appear out of order.
 
 ## [2.0.0] - 2026-04-23
 

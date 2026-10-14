@@ -7,7 +7,6 @@ using System.Text.Json.Serialization;
 using FlowForge.CLI;
 using FlowForge.Core.DependencyInjection;
 using FlowForge.Core.Execution;
-using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
 using FlowForge.Core.Pipeline;
 using Microsoft.Extensions.DependencyInjection;
@@ -126,7 +125,7 @@ static async Task<int> RunPipelineAsync(
             return CliExitCode.Failure;
         }
 
-        IProgress<PipelineProgressEvent> progress = CreateProgressReporter(statusWriter, verbose);
+        IProgress<PipelineProgressEvent> progress = new CliProgressReporter(statusWriter, Console.Error, verbose);
 
         ExecutionResult result = await runner.RunAsync(graph, dryRun, progress, cancellationToken).ConfigureAwait(false);
 
@@ -266,71 +265,6 @@ static bool ApplyNodeOverride(
     node.Config[configKey] = JsonSerializer.SerializeToElement(value);
     statusWriter.WriteLine($"{label} override: {value}");
     return true;
-}
-
-// Create a progress reporter that writes execution status to the given writer.
-static IProgress<PipelineProgressEvent> CreateProgressReporter(TextWriter statusWriter, bool verbose)
-{
-    int discoveredCount = 0;
-    object outputLock = new object();
-
-    return new Progress<PipelineProgressEvent>(evt =>
-    {
-        lock (outputLock)
-        {
-            switch (evt)
-            {
-                case PhaseChanged { Phase: ExecutionPhase.Enumerating }:
-                    statusWriter.Write("Scanning...");
-                    break;
-
-                case FilesDiscovered discovered:
-                    discoveredCount = discovered.TotalCount;
-                    statusWriter.Write($"\rScanning... {discovered.TotalCount} files found");
-                    break;
-
-                case PhaseChanged { Phase: ExecutionPhase.Processing }:
-                    statusWriter.WriteLine();
-                    statusWriter.WriteLine($"Processing {discoveredCount} files...");
-                    statusWriter.WriteLine();
-                    break;
-
-                case FileProcessed { Job: var job }:
-                    PrintFileResult(statusWriter, job, verbose);
-                    break;
-
-                case PhaseChanged { Phase: ExecutionPhase.Complete }:
-                    break;
-            }
-        }
-    });
-}
-
-// Print the status line (and optional detail) for a single processed file.
-static void PrintFileResult(TextWriter statusWriter, FileJob job, bool verbose)
-{
-    string statusIcon = job.Status switch
-    {
-        FileJobStatus.Succeeded => "[OK]",
-        FileJobStatus.Failed => "[FAIL]",
-        FileJobStatus.Skipped => "[SKIP]",
-        _ => "[??]"
-    };
-
-    statusWriter.WriteLine($"  {statusIcon} {Path.GetFileName(job.OriginalPath)}");
-
-    if (verbose)
-    {
-        foreach (string logEntry in job.NodeLog)
-        {
-            statusWriter.WriteLine($"        {logEntry}");
-        }
-    }
-
-    if (job.Status == FileJobStatus.Failed && job.ErrorMessage is not null)
-    {
-        Console.Error.WriteLine($"        Error: {job.ErrorMessage}");
-    }
 }
 
 // Print the pipeline execution summary to the status writer.

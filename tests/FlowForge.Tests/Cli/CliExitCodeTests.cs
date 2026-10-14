@@ -21,7 +21,7 @@ public class CliExitCodeTests
         { "missing argument", ["run"], 2, false, [] },
         { "invalid option value", ["run", "{valid}", "--format", "xml"], 2, true, [] },
         { "unknown option", ["run", "{valid}", "--bogus"], 2, true, [] },
-        { "valid run", ["run", "{valid}"], 0, false, [] },
+        { "valid run", ["run", "{valid}"], 0, false, ["Scanning... 2 files found", "Processing 2 files..."] },
     };
 
     [Theory]
