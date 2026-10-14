@@ -177,18 +177,14 @@ public class FolderOutputNode : IOutputNode
         Directory.CreateDirectory(destinationDir);
         await DeliverAsync(job, claim, ct).ConfigureAwait(false);
 
-        // Delete the path the delivered bytes came from, never the file just delivered.
-        if (_mode.Equals("move", StringComparison.OrdinalIgnoreCase) && !PathGuard.IsSameFile(job.CurrentPath, claim.Path))
-        {
-            DeleteMovedSource(job);
-        }
-
+        // The run deletes a moved original only once every delivery of it is in place.
+        context.Destinations.RecordDelivery(job.OriginalPath, claim.Path, byMove: string.Equals(_mode, "move", StringComparison.Ordinal));
         job.CurrentPath = claim.Path;
         job.NodeLog.Add($"FolderOutput: → '{claim.Path}' ({_mode})");
     }
 
     /// <summary>
-    /// Copies the job's file to a temporary name beside the destination, then renames it into place,
+    /// Copies the job's content to a temporary name beside the destination, then renames it into place,
     /// so a cancelled or failed copy leaves an existing destination untouched.
     /// </summary>
     private async Task DeliverAsync(FileJob job, DestinationClaim claim, CancellationToken ct)
@@ -197,7 +193,7 @@ public class FolderOutputNode : IOutputNode
         string tempPath = $"{destinationPath}.{Guid.NewGuid():N}.tmp";
         try
         {
-            FileStream sourceStream = new(job.CurrentPath, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true);
+            FileStream sourceStream = new(job.ContentPath, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true);
             await using (sourceStream.ConfigureAwait(false))
             {
                 FileStream tempStream = new(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, useAsync: true);
@@ -208,7 +204,7 @@ public class FolderOutputNode : IOutputNode
             }
 
             // Restore original timestamps on the copy
-            var sourceInfo = new FileInfo(job.CurrentPath);
+            var sourceInfo = new FileInfo(job.ContentPath);
             File.SetCreationTimeUtc(tempPath, sourceInfo.CreationTimeUtc);
             File.SetLastWriteTimeUtc(tempPath, sourceInfo.LastWriteTimeUtc);
 
@@ -233,19 +229,6 @@ public class FolderOutputNode : IOutputNode
             {
                 _logger.LogWarning(ex, "FolderOutput: could not delete temporary file {TempPath}", tempPath);
             }
-        }
-    }
-
-    private void DeleteMovedSource(FileJob job)
-    {
-        try
-        {
-            File.Delete(job.CurrentPath);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            _logger.LogWarning(ex, "FolderOutput: delivered but could not delete source {Path}", job.CurrentPath);
-            job.NodeLog.Add($"FolderOutput: Delivered, but could not delete the source '{job.CurrentPath}': {ex.Message}");
         }
     }
 }

@@ -110,25 +110,11 @@ public class RenamePatternNode : ITransformNode
             };
         });
 
-        string oldPath = job.CurrentPath;
         string newPath = Path.Combine(directory, newName);
 
         PathGuard.EnsureWithinDirectory(newPath, directory);
 
-        if (!context.DryRun)
-        {
-            if (!PathGuard.IsSameFile(oldPath, newPath))
-            {
-                newPath = ResolveConflict(newPath);
-            }
-
-            if (!string.Equals(oldPath, newPath, StringComparison.Ordinal))
-            {
-                // .NET has no async File.Move/Copy API; sync call is acceptable for metadata-only operations
-                File.Move(oldPath, newPath, overwrite: false);
-            }
-        }
-
+        // The rename is logical: only the name changes; the output resolves name clashes.
         job.CurrentPath = newPath;
         job.NodeLog.Add($"RenamePattern: '{oldName}' → '{Path.GetFileName(newPath)}'");
 
@@ -148,31 +134,5 @@ public class RenamePatternNode : ITransformNode
         {
             return DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         }
-    }
-
-    private static string ResolveConflict(string path)
-    {
-        if (!File.Exists(path))
-        {
-            return path;
-        }
-
-        string directory = Path.GetDirectoryName(path) ?? string.Empty;
-        string nameWithoutExt = Path.GetFileNameWithoutExtension(path);
-        string extension = Path.GetExtension(path);
-
-        int suffix = 1;
-        string candidate;
-        do
-        {
-            candidate = Path.Combine(directory, $"{nameWithoutExt}_{suffix}{extension}");
-            if (suffix > 10000)
-            {
-                throw new InvalidOperationException($"Too many filename conflicts for '{path}'.");
-            }
-            suffix++;
-        } while (File.Exists(candidate));
-
-        return candidate;
     }
 }

@@ -25,6 +25,14 @@ public class FolderOutputNodeTests
         await node.ConsumeAsync(job, claim, ctx, ct);
     }
 
+    /// <summary>The runner deletes a moved original once every delivery of it is in place, so moves run through it.</summary>
+    private static Task<ExecutionResult> RunMoveAsync(TempDirectory dir, object outputConfig) =>
+        new PipelineRunner(NodeRegistry.CreateDefault(NullLoggerFactory.Instance), NullLogger<PipelineRunner>.Instance, stagingRoot: dir.StagingRoot)
+            .RunAsync(PipelineBuilder.New()
+                .AddSource("FolderInput", new { path = dir.Path, recursive = false })
+                .AddOutput("FolderOutput", outputConfig)
+                .Build());
+
     [Fact]
     public async Task Copy_mode_preserves_source_file()
     {
@@ -32,7 +40,7 @@ public class FolderOutputNodeTests
         dir.CreateFiles("photo.jpg");
 
         string sourcePath = Path.Combine(dir.Path, "photo.jpg");
-        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
+        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath, ContentPath = sourcePath };
 
         var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         node.Configure(MakeConfig(new { path = dir.OutputPath, mode = "copy" }));
@@ -52,13 +60,10 @@ public class FolderOutputNodeTests
         dir.CreateFiles("photo.jpg");
 
         string sourcePath = Path.Combine(dir.Path, "photo.jpg");
-        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
 
-        var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
-        node.Configure(MakeConfig(new { path = dir.OutputPath, mode = "move" }));
+        ExecutionResult result = await RunMoveAsync(dir, new { path = dir.OutputPath, mode = "move" });
 
-        await ClaimAndConsumeAsync(node, job, TestRunContext.Live());
-
+        result.Succeeded.Should().Be(1);
         File.Exists(sourcePath).Should().BeFalse("move mode should remove the source file");
         string destPath = Path.Combine(dir.OutputPath, "photo.jpg");
         File.Exists(destPath).Should().BeTrue();
@@ -72,7 +77,7 @@ public class FolderOutputNodeTests
         dir.CreateFiles("photo.jpg");
 
         string sourcePath = Path.Combine(dir.Path, "photo.jpg");
-        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
+        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath, ContentPath = sourcePath };
 
         var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         string destDir = Path.Combine(dir.Path, "nonexistent_output");
@@ -122,7 +127,7 @@ public class FolderOutputNodeTests
         string sourcePath = Path.Combine(dir.Path, "photo.jpg");
         string outputWithTrailingSeparator = dir.OutputPath + Path.DirectorySeparatorChar;
 
-        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
+        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath, ContentPath = sourcePath };
         var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         node.Configure(MakeConfig(new { path = outputWithTrailingSeparator, mode = "copy" }));
 
@@ -150,7 +155,7 @@ public class FolderOutputNodeTests
         dir.CreateFiles("photo.jpg");
 
         string sourcePath = Path.Combine(dir.Path, "photo.jpg");
-        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
+        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath, ContentPath = sourcePath };
 
         string newOutputDir = Path.Combine(dir.Path, "brand_new_folder");
         Directory.Exists(newOutputDir).Should().BeFalse("directory should not exist before test");
@@ -174,7 +179,7 @@ public class FolderOutputNodeTests
         string destPath = Path.Combine(dir.OutputPath, "photo.jpg");
         File.WriteAllText(destPath, "old content");
 
-        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
+        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath, ContentPath = sourcePath };
 
         var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         node.Configure(MakeConfig(new { path = dir.OutputPath, mode = "copy", overwrite = true }));
@@ -195,7 +200,7 @@ public class FolderOutputNodeTests
         string destPath = Path.Combine(dir.OutputPath, "photo.jpg");
         File.WriteAllText(destPath, "existing content");
 
-        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
+        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath, ContentPath = sourcePath };
 
         var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         node.Configure(MakeConfig(new { path = dir.OutputPath, mode = "copy", overwrite = false }));
@@ -217,7 +222,7 @@ public class FolderOutputNodeTests
         string sourceFile = Path.Combine(subDir, "beach.jpg");
         File.WriteAllText(sourceFile, "image data");
 
-        var job = new FileJob { OriginalPath = sourceFile, CurrentPath = sourceFile };
+        var job = new FileJob { OriginalPath = sourceFile, CurrentPath = sourceFile, ContentPath = sourceFile };
 
         var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         node.Configure(MakeConfig(new
@@ -242,7 +247,7 @@ public class FolderOutputNodeTests
         dir.CreateFiles("photo.jpg");
 
         string sourcePath = Path.Combine(dir.Path, "photo.jpg");
-        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
+        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath, ContentPath = sourcePath };
 
         var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         node.Configure(MakeConfig(new { path = dir.OutputPath, mode = "copy" }));
@@ -261,7 +266,7 @@ public class FolderOutputNodeTests
         dir.CreateFiles("report.txt");
 
         string sourcePath = Path.Combine(dir.Path, "report.txt");
-        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
+        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath, ContentPath = sourcePath };
 
         var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         node.Configure(MakeConfig(new { path = dir.OutputPath, mode = "copy" }));
@@ -283,7 +288,7 @@ public class FolderOutputNodeTests
         string destPath = Path.Combine(dir.OutputPath, "photo.jpg");
         File.WriteAllText(destPath, "original at destination");
 
-        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
+        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath, ContentPath = sourcePath };
 
         var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         node.Configure(MakeConfig(new
@@ -310,7 +315,7 @@ public class FolderOutputNodeTests
 
         string sourcePath = Path.Combine(dir.Path, "photo.jpg");
 
-        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
+        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath, ContentPath = sourcePath };
 
         var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         node.Configure(MakeConfig(new
@@ -338,7 +343,7 @@ public class FolderOutputNodeTests
         string destPath = Path.Combine(dir.OutputPath, "photo.jpg");
         File.WriteAllText(destPath, "original");
 
-        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
+        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath, ContentPath = sourcePath };
 
         var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         node.Configure(MakeConfig(new
@@ -366,7 +371,7 @@ public class FolderOutputNodeTests
         string destPath = Path.Combine(dir.OutputPath, "photo.jpg");
         File.WriteAllText(destPath, "original");
 
-        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
+        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath, ContentPath = sourcePath };
 
         var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         node.Configure(MakeConfig(new
@@ -392,20 +397,16 @@ public class FolderOutputNodeTests
         string destPath = Path.Combine(dir.OutputPath, "photo.jpg");
         File.WriteAllText(destPath, "original at destination");
 
-        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
-
-        var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
-        node.Configure(MakeConfig(new
+        ExecutionResult result = await RunMoveAsync(dir, new
         {
             path = dir.OutputPath,
             mode = "move",
             overwrite = true,
             enableBackup = true,
             backupSuffix = ".bak"
-        }));
+        });
 
-        await ClaimAndConsumeAsync(node, job, TestRunContext.Live());
-
+        result.Succeeded.Should().Be(1);
         File.Exists(sourcePath).Should().BeFalse("move should remove source");
         File.Exists(destPath + ".bak").Should().BeTrue("backup should exist");
         File.ReadAllText(destPath + ".bak").Should().Be("original at destination");
@@ -469,7 +470,7 @@ public class FolderOutputNodeTests
         string destPath = Path.Combine(dir.OutputPath, "photo.jpg");
         File.WriteAllText(destPath, "existing content");
 
-        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath };
+        var job = new FileJob { OriginalPath = sourcePath, CurrentPath = sourcePath, ContentPath = sourcePath };
 
         var node = new FolderOutputNode(NullLogger<FolderOutputNode>.Instance);
         node.Configure(MakeConfig(new

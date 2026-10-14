@@ -25,6 +25,12 @@ public class FileJob
         }
     }
 
+    /// <summary>
+    /// Where the job's bytes are: the original until a transform rewrites the content, then a staged copy.
+    /// <see cref="CurrentPath"/> carries the name; this carries the content.
+    /// </summary>
+    public string ContentPath { get; set; } = string.Empty;
+
     /// <summary>Key-value metadata bag (EXIF, ID3, custom). Values are strings.</summary>
     public IDictionary<string, string> Metadata { get; init; } = new Dictionary<string, string>(StringComparer.Ordinal);
 
@@ -50,6 +56,7 @@ public class FileJob
     internal FileJob CloneForBranch() => new()
     {
         OriginalPath = OriginalPath,
+        ContentPath = ContentPath,
         CurrentPath = CurrentPath,
         Status = Status,
         Metadata = new Dictionary<string, string>(Metadata, StringComparer.Ordinal),

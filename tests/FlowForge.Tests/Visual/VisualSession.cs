@@ -78,9 +78,7 @@ internal sealed class VisualSession : IDisposable
                 }
             });
             services.AddSingleton(sp => NodeRegistry.CreateDefault(sp.GetRequiredService<ILoggerFactory>()));
-            services.AddTransient(sp => new PipelineRunner(
-                sp.GetRequiredService<NodeRegistry>(),
-                sp.GetRequiredService<ILogger<PipelineRunner>>()));
+            services.AddTransient(sp => new PipelineRunner(sp.GetRequiredService<NodeRegistry>(), sp.GetRequiredService<ILogger<PipelineRunner>>(), stagingRoot: Temp.StagingRoot));
             _provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
 
             Dialogs = new StubDialogService();

@@ -1,4 +1,6 @@
 using System.Text.Json;
+using FlowForge.Core.Execution;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlowForge.Core.Pipeline;
 
@@ -15,11 +17,33 @@ internal static class CompatTable
         "When two files in one run get the same output name, the later one is now saved with a numbered suffix "
         + "(_1, _2 and so on) instead of failing or replacing the first. An existing file with 'overwrite' off still fails.";
 
+    private const string SourceUnchangedMessage =
+        "Transforms no longer change, rename or delete files in the input folder. Their results now appear only in output folders.";
+
+    private const string RenameAtOutputMessage =
+        "Renames no longer check or change the input folder. Name clashes are now resolved only in the output folder, "
+        + "with a numbered suffix (_1, _2 and so on).";
+
+    private const string MoveAfterDeliveriesMessage =
+        "'move' now copies the result and deletes the original only after every delivery of it has succeeded.";
+
+    /// <summary>The built-in node types, for entries that apply to every node of a category.</summary>
+    private static readonly NodeRegistry BuiltInNodes = NodeRegistry.CreateDefault(NullLoggerFactory.Instance);
+
     internal static IReadOnlyList<CompatEntry> Entries { get; } =
     [
         new("tiff-output-lzw", "1.0", "ImageConvert", null, config => HasValue(config, "format", "tiff"), TiffLzwMessage),
         new("tiff-output-lzw", "1.0", "ImageResize", null, _ => true, TiffLzwMessage),
         new("output-name-collision-suffix", "1.0", null, graph => HasNode(graph, "FolderOutput"), null, CollisionSuffixMessage),
+        new("source-files-unchanged", "1.0", null, HasTransform, null, SourceUnchangedMessage),
+        new(
+            "rename-collision-at-output",
+            "1.0",
+            null,
+            graph => HasNode(graph, "RenamePattern") || HasNode(graph, "RenameRegex") || HasNode(graph, "RenameAddAffix"),
+            null,
+            RenameAtOutputMessage),
+        new("move-after-all-deliveries", "1.0", "FolderOutput", null, IsMove, MoveAfterDeliveriesMessage),
     ];
 
     /// <summary>
@@ -73,6 +97,15 @@ internal static class CompatTable
 
     private static bool HasNode(PipelineGraph graph, string typeKey) =>
         graph.Nodes.Any(n => string.Equals(n.TypeKey, typeKey, StringComparison.Ordinal));
+
+    private static bool HasTransform(PipelineGraph graph) =>
+        graph.Nodes.Any(n => BuiltInNodes.IsRegistered(n.TypeKey)
+            && BuiltInNodes.GetCategoryForTypeKey(n.TypeKey) == NodeCategory.Transform);
+
+    private static bool IsMove(IDictionary<string, JsonElement> config) =>
+        config.TryGetValue("mode", out JsonElement element)
+        && element.ValueKind == JsonValueKind.String
+        && string.Equals(element.GetString(), "move", StringComparison.Ordinal);
 
     private static bool HasValue(IDictionary<string, JsonElement> config, string key, string value) =>
         config.TryGetValue(key, out JsonElement element)

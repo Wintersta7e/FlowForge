@@ -13,7 +13,7 @@ internal static class BigTiffGuard
         // The decoder loops on a crafted BigTIFF header and ignores cancellation, so the header is checked before any decode.
         byte[] header = new byte[4];
         int read;
-        FileStream stream = new(job.CurrentPath, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true);
+        FileStream stream = new(job.ContentPath, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true);
         await using (stream.ConfigureAwait(false))
         {
             read = await stream.ReadAtLeastAsync(header, 4, throwOnEndOfStream: false, ct).ConfigureAwait(false);

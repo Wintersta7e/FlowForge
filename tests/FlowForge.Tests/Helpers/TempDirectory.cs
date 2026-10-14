@@ -5,10 +5,14 @@ public sealed class TempDirectory : IDisposable
     public string Path { get; }
     public string OutputPath { get; }
 
+    /// <summary>A staging root for runners in this test; created by the first staged write.</summary>
+    public string StagingRoot { get; }
+
     public TempDirectory()
     {
         Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "FlowForge_Test_" + Guid.NewGuid().ToString("N"));
         OutputPath = System.IO.Path.Combine(Path, "output");
+        StagingRoot = System.IO.Path.Combine(Path, ".staging");
         Directory.CreateDirectory(Path);
         Directory.CreateDirectory(OutputPath);
     }

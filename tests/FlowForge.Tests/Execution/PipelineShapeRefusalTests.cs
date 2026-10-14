@@ -27,7 +27,7 @@ public class PipelineShapeRefusalTests
         var graph = new PipelineGraph { Nodes = { source, sink, stray }, Connections = { Wire(source, sink) } };
 
         var before = TreeSnapshot.Take(input);
-        Exception? refusal = await Record.ExceptionAsync(() => CreateRunner().RunAsync(graph));
+        Exception? refusal = await Record.ExceptionAsync(() => CreateRunner(dir.StagingRoot).RunAsync(graph));
         string listing = "in: " + string.Join(", ", Directory.GetFiles(input).Select(Path.GetFileName));
         _output.WriteLine(listing);
 
@@ -55,7 +55,7 @@ public class PipelineShapeRefusalTests
 
         var before = TreeSnapshot.Take(input);
         ExecutionResult? result = null;
-        Exception? refusal = await Record.ExceptionAsync(async () => result = await CreateRunner().RunAsync(graph));
+        Exception? refusal = await Record.ExceptionAsync(async () => result = await CreateRunner(dir.StagingRoot).RunAsync(graph));
         int copied = Directory.Exists(copyOutput) ? Directory.GetFiles(copyOutput).Length : 0;
         string listing = $"outA entries={copied} succeeded={result?.Succeeded.ToString(CultureInfo.InvariantCulture) ?? "-"}";
         _output.WriteLine(listing);
@@ -67,8 +67,8 @@ public class PipelineShapeRefusalTests
         Directory.Exists(moveOutput).Should().BeFalse();
     }
 
-    private static PipelineRunner CreateRunner() =>
-        new(NodeRegistry.CreateDefault(NullLoggerFactory.Instance), NullLogger<PipelineRunner>.Instance);
+    private static PipelineRunner CreateRunner(string stagingRoot) =>
+        new PipelineRunner(NodeRegistry.CreateDefault(NullLoggerFactory.Instance), NullLogger<PipelineRunner>.Instance, stagingRoot: stagingRoot);
 
     private static string CreateInput(TempDirectory dir, params string[] names)
     {

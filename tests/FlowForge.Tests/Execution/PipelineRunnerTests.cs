@@ -9,10 +9,10 @@ namespace FlowForge.Tests.Execution;
 
 public class PipelineRunnerTests
 {
-    private static PipelineRunner CreateRunner()
+    private static PipelineRunner CreateRunner(string stagingRoot)
     {
         var registry = NodeRegistry.CreateDefault(NullLoggerFactory.Instance);
-        return new PipelineRunner(registry, NullLogger<PipelineRunner>.Instance, maxConcurrency: 2);
+        return new PipelineRunner(registry, NullLogger<PipelineRunner>.Instance, maxConcurrency: 2, stagingRoot: stagingRoot);
     }
 
     [Fact]
@@ -28,7 +28,7 @@ public class PipelineRunnerTests
             .AddOutput("FolderOutput", new { path = dir.OutputPath, mode = "copy" })
             .Build();
 
-        PipelineRunner runner = CreateRunner();
+        PipelineRunner runner = CreateRunner(dir.StagingRoot);
         ExecutionResult result = await runner.RunAsync(pipeline, dryRun: false);
 
         result.Succeeded.Should().Be(5);
@@ -57,7 +57,7 @@ public class PipelineRunnerTests
             .AddOutput("FolderOutput", new { path = dir.OutputPath, mode = "copy" })
             .Build();
 
-        PipelineRunner runner = CreateRunner();
+        PipelineRunner runner = CreateRunner(dir.StagingRoot);
         ExecutionResult result = await runner.RunAsync(pipeline, dryRun: true);
 
         result.Succeeded.Should().Be(3);
@@ -75,8 +75,9 @@ public class PipelineRunnerTests
     [Fact]
     public async Task Empty_graph_throws()
     {
+        using var dir = new TempDirectory();
         var pipeline = new PipelineGraph();
-        PipelineRunner runner = CreateRunner();
+        PipelineRunner runner = CreateRunner(dir.StagingRoot);
 
         Func<Task> act = () => runner.RunAsync(pipeline);
         await act.Should().ThrowAsync<InvalidOperationException>()
@@ -86,10 +87,11 @@ public class PipelineRunnerTests
     [Fact]
     public async Task Unknown_node_type_throws()
     {
+        using var dir = new TempDirectory();
         var pipeline = new PipelineGraph();
         pipeline.Nodes.Add(new NodeDefinition { TypeKey = "NonExistentNode" });
 
-        PipelineRunner runner = CreateRunner();
+        PipelineRunner runner = CreateRunner(dir.StagingRoot);
         Func<Task> act = () => runner.RunAsync(pipeline);
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Unknown node type*");
@@ -98,6 +100,7 @@ public class PipelineRunnerTests
     [Fact]
     public async Task Cyclic_graph_throws()
     {
+        using var dir = new TempDirectory();
         var node1 = new NodeDefinition { TypeKey = "FolderInput" };
         var node2 = new NodeDefinition { TypeKey = "RenamePattern" };
 
@@ -107,7 +110,7 @@ public class PipelineRunnerTests
         pipeline.Connections.Add(new Connection { FromNode = node1.Id, ToNode = node2.Id });
         pipeline.Connections.Add(new Connection { FromNode = node2.Id, ToNode = node1.Id });
 
-        PipelineRunner runner = CreateRunner();
+        PipelineRunner runner = CreateRunner(dir.StagingRoot);
         Func<Task> act = () => runner.RunAsync(pipeline);
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*cycle*");
@@ -125,7 +128,7 @@ public class PipelineRunnerTests
             .AddOutput("FolderOutput", new { path = dir.OutputPath, mode = "move" })
             .Build();
 
-        PipelineRunner runner = CreateRunner();
+        PipelineRunner runner = CreateRunner(dir.StagingRoot);
         ExecutionResult result = await runner.RunAsync(pipeline, dryRun: false);
 
         result.Succeeded.Should().Be(2);
@@ -150,7 +153,7 @@ public class PipelineRunnerTests
             .AddOutput("FolderOutput", new { path = dir.OutputPath, mode = "copy" })
             .Build();
 
-        PipelineRunner runner = CreateRunner();
+        PipelineRunner runner = CreateRunner(dir.StagingRoot);
         ExecutionResult result = await runner.RunAsync(pipeline, dryRun: true);
 
         result.Failed.Should().Be(1, "path traversal should be counted as a failed job");
@@ -174,7 +177,7 @@ public class PipelineRunnerTests
         using var cts = new CancellationTokenSource();
         cts.Cancel(); // Cancel immediately
 
-        PipelineRunner runner = CreateRunner();
+        PipelineRunner runner = CreateRunner(dir.StagingRoot);
         Func<Task> act = () => runner.RunAsync(pipeline, ct: cts.Token);
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
@@ -193,7 +196,7 @@ public class PipelineRunnerTests
         var missing = Guid.NewGuid();
         pipeline.Connections.Add(new Connection { FromNode = missing, ToNode = outputId });
 
-        PipelineRunner runner = CreateRunner();
+        PipelineRunner runner = CreateRunner(dir.StagingRoot);
         Func<Task> act = () => runner.RunAsync(pipeline, dryRun: false);
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage($"Connection references unknown source node: {missing}");
@@ -213,7 +216,7 @@ public class PipelineRunnerTests
         var missing = Guid.NewGuid();
         pipeline.Connections.Add(new Connection { FromNode = inputId, ToNode = missing });
 
-        PipelineRunner runner = CreateRunner();
+        PipelineRunner runner = CreateRunner(dir.StagingRoot);
         Func<Task> act = () => runner.RunAsync(pipeline, dryRun: false);
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage($"Connection references unknown target node: {missing}");
@@ -239,7 +242,7 @@ public class PipelineRunnerTests
             .AddOutput(ThrowingOutputNode.RegisteredTypeKey, new { })
             .Build();
 
-        var runner = new PipelineRunner(registry, NullLogger<PipelineRunner>.Instance, maxConcurrency: 2);
+        var runner = new PipelineRunner(registry, NullLogger<PipelineRunner>.Instance, maxConcurrency: 2, stagingRoot: dir.StagingRoot);
         ExecutionResult result = await runner.RunAsync(pipeline, dryRun: false);
 
         result.Failed.Should().Be(1);
@@ -270,7 +273,7 @@ public class PipelineRunnerTests
             .AddOutput(RefusingOutputNode.RegisteredTypeKey, new { })
             .Build();
 
-        var runner = new PipelineRunner(registry, NullLogger<PipelineRunner>.Instance, maxConcurrency: 2);
+        var runner = new PipelineRunner(registry, NullLogger<PipelineRunner>.Instance, maxConcurrency: 2, stagingRoot: dir.StagingRoot);
         ExecutionResult result = await runner.RunAsync(pipeline, dryRun: false);
 
         result.Failed.Should().Be(2, "a refused claim fails its job (consume calls: {0})", refusing.ConsumeCalls);

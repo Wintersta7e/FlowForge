@@ -1,7 +1,6 @@
 using System.Text.Json;
 using FlowForge.Core.Execution;
 using FlowForge.Core.Pipeline;
-using FlowForge.Core.Pipeline.Templates;
 using FlowForge.Tests.Helpers;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -11,29 +10,14 @@ namespace FlowForge.Tests.Execution;
 
 public class DryRunTreeAuditTests
 {
-    private const string SamplePrefix = "sample/";
-    private const string TemplatePrefix = "template/";
-
     private readonly ITestOutputHelper _output;
 
     public DryRunTreeAuditTests(ITestOutputHelper output) => _output = output;
 
     public static TheoryData<string, string> Pipelines()
     {
-        string samplesDir = RepoRoot.Combine("samples");
-        string[] samples = Directory.Exists(samplesDir)
-            ? Directory.GetFiles(samplesDir, "*.ffpipe").Select(Path.GetFileNameWithoutExtension)
-                .OfType<string>().Order(StringComparer.Ordinal).ToArray()
-            : [];
-        if (samples.Length == 0)
-        {
-            throw new InvalidOperationException($"No .ffpipe sample found under '{samplesDir}'.");
-        }
-
         var data = new TheoryData<string, string>();
-        IEnumerable<string> pipelines = samples.Select(stem => SamplePrefix + stem)
-            .Concat(PipelineTemplateLibrary.Templates.Select(t => TemplatePrefix + t.Id));
-        foreach (string pipeline in pipelines)
+        foreach (string pipeline in PreviewPipelineRows.Names())
         {
             data.Add(pipeline, "absent");
             data.Add(pipeline, "prepopulated");
@@ -48,17 +32,15 @@ public class DryRunTreeAuditTests
     {
         using var dir = new TempDirectory();
         string root = Path.Combine(dir.Path, "root");
-        CreateFixture(Path.Combine(root, "input"));
-        PipelineGraph graph = await LoadAsync(pipeline);
-        PointAt(graph, Path.Combine(root, "input"), Path.Combine(root, "output"));
+        PreviewPipelineRows.CreateFixture(Path.Combine(root, "input"));
+        PipelineGraph graph = await PreviewPipelineRows.LoadAsync(pipeline, root);
 
         if (string.Equals(state, "prepopulated", StringComparison.Ordinal))
         {
             string scratch = Path.Combine(dir.Path, "scratch");
-            CreateFixture(Path.Combine(scratch, "input"));
-            PipelineGraph live = await LoadAsync(pipeline);
-            PointAt(live, Path.Combine(scratch, "input"), Path.Combine(scratch, "output"));
-            await CreateRunner().RunAsync(live);
+            PreviewPipelineRows.CreateFixture(Path.Combine(scratch, "input"));
+            PipelineGraph live = await PreviewPipelineRows.LoadAsync(pipeline, scratch);
+            await CreateRunner(dir.StagingRoot).RunAsync(live);
 
             string liveOutput = Path.Combine(scratch, "output");
             string[] produced = Directory.Exists(liveOutput)
@@ -73,7 +55,7 @@ public class DryRunTreeAuditTests
                 File.Copy(file, target);
             }
 
-            foreach (NodeDefinition node in graph.Nodes.Where(n => IsType(n, "FolderOutput")))
+            foreach (NodeDefinition node in graph.Nodes.Where(n => string.Equals(n.TypeKey, "FolderOutput", StringComparison.Ordinal)))
             {
                 node.Config["overwrite"] = JsonSerializer.SerializeToElement(true);
                 node.Config["enableBackup"] = JsonSerializer.SerializeToElement(true);
@@ -81,42 +63,10 @@ public class DryRunTreeAuditTests
         }
 
         var before = TreeSnapshot.Take(root);
-        await CreateRunner().RunAsync(graph, dryRun: true);
+        await CreateRunner(dir.StagingRoot).RunAsync(graph, dryRun: true);
         TreeSnapshot.AssertUnchanged(before, TreeSnapshot.Take(root), _output, $"{pipeline}/{state}");
     }
 
-    private static PipelineRunner CreateRunner() =>
-        new(NodeRegistry.CreateDefault(NullLoggerFactory.Instance), NullLogger<PipelineRunner>.Instance);
-
-    private static async Task<PipelineGraph> LoadAsync(string pipeline) =>
-        pipeline.StartsWith(SamplePrefix, StringComparison.Ordinal)
-            ? await PipelineSerializer.LoadAsync(RepoRoot.Combine("samples", pipeline[SamplePrefix.Length..] + ".ffpipe"))
-            : PipelineTemplateLibrary.CreateFromTemplate(pipeline[TemplatePrefix.Length..]);
-
-    private static void CreateFixture(string input)
-    {
-        TestFileFactory.CreateTestImage(Path.Combine(input, "holiday.jpg"));
-        TestFileFactory.CreateTestPng(Path.Combine(input, "scan.png"));
-        File.WriteAllText(Path.Combine(input, "notes.txt"), "notes");
-        TestFileFactory.CreateTestImage(Path.Combine(input, "sub", "inner.jpg"));
-        File.WriteAllText(Path.Combine(input, "sub", "readme.txt"), "readme");
-    }
-
-    private static void PointAt(PipelineGraph graph, string input, string output)
-    {
-        foreach (NodeDefinition node in graph.Nodes)
-        {
-            if (IsType(node, "FolderInput"))
-            {
-                node.Config["path"] = JsonSerializer.SerializeToElement(input);
-            }
-            else if (IsType(node, "FolderOutput"))
-            {
-                node.Config["path"] = JsonSerializer.SerializeToElement(output);
-            }
-        }
-    }
-
-    private static bool IsType(NodeDefinition node, string typeKey) =>
-        string.Equals(node.TypeKey, typeKey, StringComparison.Ordinal);
+    private static PipelineRunner CreateRunner(string stagingRoot) =>
+        new PipelineRunner(NodeRegistry.CreateDefault(NullLoggerFactory.Instance), NullLogger<PipelineRunner>.Instance, stagingRoot: stagingRoot);
 }

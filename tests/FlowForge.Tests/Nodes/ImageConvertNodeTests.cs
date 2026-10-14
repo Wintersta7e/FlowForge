@@ -30,7 +30,7 @@ public class ImageConvertNodeTests
         TestFileFactory.CreateTestImage(jpgPath, width: 10, height: 10);
         TestFileFactory.CreateTestPng(pngPath, width: 20, height: 20);
 
-        ExecutionResult result = await CreateRunner().RunAsync(ConvertToJpegGraph(input, Path.Combine(dir.Path, "out")));
+        ExecutionResult result = await CreateRunner(dir.StagingRoot).RunAsync(ConvertToJpegGraph(input, Path.Combine(dir.Path, "out")));
 
         string jpg = Dimensions(jpgPath);
         string png = Dimensions(pngPath);
@@ -39,10 +39,7 @@ public class ImageConvertNodeTests
         string because = $"photo.jpg {jpg}, photo.png {png}";
         jpg.Should().Be("10x10", because);
         png.Should().Be("20x20", because);
-        result.Succeeded.Should().Be(1, because);
-        result.Failed.Should().Be(1, because);
-        result.Jobs.Should().ContainSingle(j => j.Status == FileJobStatus.Failed, because)
-            .Which.ErrorMessage.Should().NotBeNullOrEmpty();
+        result.Succeeded.Should().Be(2, because);
     }
 
     [Fact]
@@ -50,22 +47,26 @@ public class ImageConvertNodeTests
     {
         using var dir = new TempDirectory();
         string input = Path.Combine(dir.Path, "in");
-        TestFileFactory.CreateTestImage(Path.Combine(input, "photo.JPG"), width: 10, height: 10);
+        string source = Path.Combine(input, "photo.JPG");
+        TestFileFactory.CreateTestImage(source, width: 10, height: 10);
+        byte[] sourceBytes = await File.ReadAllBytesAsync(source);
 
-        ExecutionResult result = await CreateRunner().RunAsync(ConvertToJpegGraph(input, Path.Combine(dir.Path, "out")));
+        ExecutionResult result = await CreateRunner(dir.StagingRoot).RunAsync(ConvertToJpegGraph(input, Path.Combine(dir.Path, "out")));
 
-        var names = Directory.GetFiles(input).Select(f => Path.GetFileName(f)).ToList();
-        string listing = "in: " + string.Join(", ", names);
+        string output = Path.Combine(dir.Path, "out");
+        var names = Directory.GetFiles(output).Select(f => Path.GetFileName(f)).ToList();
+        string listing = "in: " + string.Join(", ", Directory.GetFiles(input).Select(f => Path.GetFileName(f))) + "; out: " + string.Join(", ", names);
         _output.WriteLine(listing);
         string? converted = names.Find(n => string.Equals(n, "photo.jpg", StringComparison.OrdinalIgnoreCase));
         converted.Should().NotBeNull(listing);
-        byte[] bytes = await File.ReadAllBytesAsync(Path.Combine(input, converted!));
+        byte[] bytes = await File.ReadAllBytesAsync(Path.Combine(output, converted!));
         bytes.Take(2).Should().Equal(new byte[] { 0xFF, 0xD8 }, listing);
         result.Jobs.Should().ContainSingle(listing).Which.Status.Should().Be(FileJobStatus.Succeeded, listing);
+        (await File.ReadAllBytesAsync(source)).Should().Equal(sourceBytes, listing);
     }
 
-    private static PipelineRunner CreateRunner() =>
-        new(NodeRegistry.CreateDefault(NullLoggerFactory.Instance), NullLogger<PipelineRunner>.Instance);
+    private static PipelineRunner CreateRunner(string stagingRoot) =>
+        new PipelineRunner(NodeRegistry.CreateDefault(NullLoggerFactory.Instance), NullLogger<PipelineRunner>.Instance, stagingRoot: stagingRoot);
 
     private static PipelineGraph ConvertToJpegGraph(string input, string output)
     {
@@ -118,8 +119,10 @@ public class ImageConvertNodeTests
     public async Task Convert_jpeg_to_png_creates_valid_png()
     {
         using var dir = new TempDirectory();
+        using RunContext ctx = TestRunContext.Live(dir.StagingRoot);
         string inputPath = Path.Combine(dir.Path, "photo.jpg");
         TestFileFactory.CreateTestImage(inputPath, width: 100, height: 100);
+        byte[] sourceBytes = await File.ReadAllBytesAsync(inputPath);
 
         var node = new ImageConvertNode(NullLogger<ImageConvertNode>.Instance);
         node.Configure(MakeConfig(new { format = "png" }));
@@ -127,27 +130,32 @@ public class ImageConvertNodeTests
         var job = new FileJob
         {
             OriginalPath = inputPath,
-            CurrentPath = inputPath
+            CurrentPath = inputPath,
+            ContentPath = inputPath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
+        IEnumerable<FileJob> result = await node.TransformAsync(job, ctx);
         result.Should().HaveCount(1);
 
         string expectedPath = Path.Combine(dir.Path, "photo.png");
         job.CurrentPath.Should().Be(expectedPath);
-        File.Exists(expectedPath).Should().BeTrue();
+        File.Exists(expectedPath).Should().BeFalse("the converted file is staged, not written beside the source");
 
-        using Image image = await Image.LoadAsync(expectedPath);
+        using Image image = await Image.LoadAsync(job.ContentPath);
         image.Width.Should().Be(100);
         image.Height.Should().Be(100);
+        image.Metadata.DecodedImageFormat!.Name.Should().Be("PNG");
+        (await File.ReadAllBytesAsync(inputPath)).Should().Equal(sourceBytes, "the source is never rewritten");
     }
 
     [Fact]
     public async Task Convert_png_to_jpeg_creates_valid_jpeg()
     {
         using var dir = new TempDirectory();
+        using RunContext ctx = TestRunContext.Live(dir.StagingRoot);
         string inputPath = Path.Combine(dir.Path, "graphic.png");
         TestFileFactory.CreateTestPng(inputPath, width: 80, height: 60);
+        byte[] sourceBytes = await File.ReadAllBytesAsync(inputPath);
 
         var node = new ImageConvertNode(NullLogger<ImageConvertNode>.Instance);
         node.Configure(MakeConfig(new { format = "jpg" }));
@@ -155,27 +163,32 @@ public class ImageConvertNodeTests
         var job = new FileJob
         {
             OriginalPath = inputPath,
-            CurrentPath = inputPath
+            CurrentPath = inputPath,
+            ContentPath = inputPath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
+        IEnumerable<FileJob> result = await node.TransformAsync(job, ctx);
         result.Should().HaveCount(1);
 
         string expectedPath = Path.Combine(dir.Path, "graphic.jpg");
         job.CurrentPath.Should().Be(expectedPath);
-        File.Exists(expectedPath).Should().BeTrue();
+        File.Exists(expectedPath).Should().BeFalse("the converted file is staged, not written beside the source");
 
-        using Image image = await Image.LoadAsync(expectedPath);
+        using Image image = await Image.LoadAsync(job.ContentPath);
         image.Width.Should().Be(80);
         image.Height.Should().Be(60);
+        image.Metadata.DecodedImageFormat!.Name.Should().Be("JPEG");
+        (await File.ReadAllBytesAsync(inputPath)).Should().Equal(sourceBytes, "the source is never rewritten");
     }
 
     [Fact]
     public async Task Convert_to_webp_creates_webp_file()
     {
         using var dir = new TempDirectory();
+        using RunContext ctx = TestRunContext.Live(dir.StagingRoot);
         string inputPath = Path.Combine(dir.Path, "sample.jpg");
         TestFileFactory.CreateTestImage(inputPath, width: 50, height: 50);
+        byte[] sourceBytes = await File.ReadAllBytesAsync(inputPath);
 
         var node = new ImageConvertNode(NullLogger<ImageConvertNode>.Instance);
         node.Configure(MakeConfig(new { format = "webp" }));
@@ -183,16 +196,20 @@ public class ImageConvertNodeTests
         var job = new FileJob
         {
             OriginalPath = inputPath,
-            CurrentPath = inputPath
+            CurrentPath = inputPath,
+            ContentPath = inputPath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
+        IEnumerable<FileJob> result = await node.TransformAsync(job, ctx);
         result.Should().HaveCount(1);
 
         string expectedPath = Path.Combine(dir.Path, "sample.webp");
         job.CurrentPath.Should().Be(expectedPath);
-        File.Exists(expectedPath).Should().BeTrue();
-        new FileInfo(expectedPath).Length.Should().BeGreaterThan(0);
+        File.Exists(expectedPath).Should().BeFalse("the converted file is staged, not written beside the source");
+        byte[] converted = await File.ReadAllBytesAsync(job.ContentPath);
+        converted.Take(4).Should().Equal("RIFF"u8.ToArray());
+        converted.Skip(8).Take(4).Should().Equal("WEBP"u8.ToArray());
+        (await File.ReadAllBytesAsync(inputPath)).Should().Equal(sourceBytes, "the source is never rewritten");
     }
 
     [Fact]
@@ -237,7 +254,8 @@ public class ImageConvertNodeTests
         var job = new FileJob
         {
             OriginalPath = inputPath,
-            CurrentPath = inputPath
+            CurrentPath = inputPath,
+            ContentPath = inputPath
         };
 
         IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Dry());
@@ -253,11 +271,13 @@ public class ImageConvertNodeTests
     }
 
     [Fact]
-    public async Task Original_file_deleted_when_extension_changes()
+    public async Task Original_file_is_kept_when_extension_changes()
     {
         using var dir = new TempDirectory();
-        string inputPath = Path.Combine(dir.Path, "delete_me.jpg");
+        using RunContext ctx = TestRunContext.Live(dir.StagingRoot);
+        string inputPath = Path.Combine(dir.Path, "keep_me.jpg");
         TestFileFactory.CreateTestImage(inputPath, width: 100, height: 100);
+        byte[] sourceBytes = await File.ReadAllBytesAsync(inputPath);
 
         var node = new ImageConvertNode(NullLogger<ImageConvertNode>.Instance);
         node.Configure(MakeConfig(new { format = "png" }));
@@ -265,20 +285,23 @@ public class ImageConvertNodeTests
         var job = new FileJob
         {
             OriginalPath = inputPath,
-            CurrentPath = inputPath
+            CurrentPath = inputPath,
+            ContentPath = inputPath
         };
 
-        await node.TransformAsync(job, TestRunContext.Live());
+        await node.TransformAsync(job, ctx);
 
-        string convertedPath = Path.Combine(dir.Path, "delete_me.png");
-        File.Exists(convertedPath).Should().BeTrue();
-        File.Exists(inputPath).Should().BeFalse();
+        job.CurrentPath.Should().Be(Path.Combine(dir.Path, "keep_me.png"));
+        Directory.GetFiles(dir.Path).Should().Equal(inputPath);
+        (await File.ReadAllBytesAsync(inputPath)).Should().Equal(sourceBytes);
+        (await File.ReadAllBytesAsync(job.ContentPath)).Take(4).Should().Equal(new byte[] { 0x89, 0x50, 0x4E, 0x47 });
     }
 
     [Fact]
     public async Task Same_format_conversion_does_not_delete_original()
     {
         using var dir = new TempDirectory();
+        using RunContext ctx = TestRunContext.Live(dir.StagingRoot);
         string inputPath = Path.Combine(dir.Path, "keep_me.jpg");
         TestFileFactory.CreateTestImage(inputPath, width: 100, height: 100);
 
@@ -288,10 +311,11 @@ public class ImageConvertNodeTests
         var job = new FileJob
         {
             OriginalPath = inputPath,
-            CurrentPath = inputPath
+            CurrentPath = inputPath,
+            ContentPath = inputPath
         };
 
-        await node.TransformAsync(job, TestRunContext.Live());
+        await node.TransformAsync(job, ctx);
 
         job.CurrentPath.Should().Be(inputPath);
         File.Exists(inputPath).Should().BeTrue();
@@ -301,6 +325,7 @@ public class ImageConvertNodeTests
     public async Task CancellationToken_cancelled_throws_OperationCanceledException()
     {
         using var dir = new TempDirectory();
+        using RunContext ctx = TestRunContext.Live(dir.StagingRoot);
         string inputPath = Path.Combine(dir.Path, "cancel.png");
         TestFileFactory.CreateTestPng(inputPath, width: 100, height: 100);
 
@@ -310,13 +335,14 @@ public class ImageConvertNodeTests
         var job = new FileJob
         {
             OriginalPath = inputPath,
-            CurrentPath = inputPath
+            CurrentPath = inputPath,
+            ContentPath = inputPath
         };
 
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        Func<Task> act = () => node.TransformAsync(job, TestRunContext.Live(), ct: cts.Token);
+        Func<Task> act = () => node.TransformAsync(job, ctx, ct: cts.Token);
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
@@ -326,6 +352,7 @@ public class ImageConvertNodeTests
     public async Task Convert_to_tiff_writes_lzw_for_ccitt_input(string fixture)
     {
         using var dir = new TempDirectory();
+        using RunContext ctx = TestRunContext.Live(dir.StagingRoot);
         string inputPath = Path.Combine(dir.Path, fixture);
         File.Copy(TestFileFactory.ImageFixturePath(fixture), inputPath);
 
@@ -335,19 +362,22 @@ public class ImageConvertNodeTests
         var job = new FileJob
         {
             OriginalPath = inputPath,
-            CurrentPath = inputPath
+            CurrentPath = inputPath,
+            ContentPath = inputPath
         };
 
-        await node.TransformAsync(job, TestRunContext.Live());
+        await node.TransformAsync(job, ctx);
 
         job.Status.Should().NotBe(FileJobStatus.Failed);
-        TiffTagReader.ReadCompression(job.CurrentPath).Should().Be(5, "TIFF output is written as LZW");
+        TiffTagReader.ReadCompression(job.ContentPath).Should().Be(5, "TIFF output is written as LZW");
+        (await File.ReadAllBytesAsync(inputPath)).Should().Equal(await File.ReadAllBytesAsync(TestFileFactory.ImageFixturePath(fixture)));
     }
 
     [Fact(Timeout = 10000)]
     public async Task BigTiff_input_fails_without_decoding()
     {
         using var dir = new TempDirectory();
+        using RunContext ctx = TestRunContext.Live(dir.StagingRoot);
         string inputPath = Path.Combine(dir.Path, "header.tiff");
         TestFileFactory.CreateBigTiffHeader(inputPath);
         byte[] originalBytes = File.ReadAllBytes(inputPath);
@@ -358,10 +388,11 @@ public class ImageConvertNodeTests
         var job = new FileJob
         {
             OriginalPath = inputPath,
-            CurrentPath = inputPath
+            CurrentPath = inputPath,
+            ContentPath = inputPath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
+        IEnumerable<FileJob> result = await node.TransformAsync(job, ctx);
 
         result.Should().ContainSingle().Which.Should().BeSameAs(job);
         job.Status.Should().Be(FileJobStatus.Failed);
@@ -374,6 +405,7 @@ public class ImageConvertNodeTests
     public async Task Big_endian_BigTiff_input_fails_without_decoding()
     {
         using var dir = new TempDirectory();
+        using RunContext ctx = TestRunContext.Live(dir.StagingRoot);
         string inputPath = Path.Combine(dir.Path, "header.tiff");
         TestFileFactory.CreateBigTiffHeader(inputPath, bigEndian: true);
         byte[] originalBytes = File.ReadAllBytes(inputPath);
@@ -384,10 +416,11 @@ public class ImageConvertNodeTests
         var job = new FileJob
         {
             OriginalPath = inputPath,
-            CurrentPath = inputPath
+            CurrentPath = inputPath,
+            ContentPath = inputPath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
+        IEnumerable<FileJob> result = await node.TransformAsync(job, ctx);
 
         result.Should().ContainSingle().Which.Should().BeSameAs(job);
         job.Status.Should().Be(FileJobStatus.Failed);

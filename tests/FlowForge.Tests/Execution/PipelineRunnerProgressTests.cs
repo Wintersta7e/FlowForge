@@ -26,10 +26,10 @@ public class PipelineRunnerProgressTests
         }
     }
 
-    private static PipelineRunner CreateRunner()
+    private static PipelineRunner CreateRunner(string stagingRoot)
     {
         var registry = NodeRegistry.CreateDefault(NullLoggerFactory.Instance);
-        return new PipelineRunner(registry, NullLogger<PipelineRunner>.Instance, maxConcurrency: 2);
+        return new PipelineRunner(registry, NullLogger<PipelineRunner>.Instance, maxConcurrency: 2, stagingRoot: stagingRoot);
     }
 
     [Fact]
@@ -45,7 +45,7 @@ public class PipelineRunnerProgressTests
             .Build();
 
         var progress = new SyncProgress<PipelineProgressEvent>();
-        PipelineRunner runner = CreateRunner();
+        PipelineRunner runner = CreateRunner(dir.StagingRoot);
 
         await runner.RunAsync(pipeline, dryRun: true, progress);
 
@@ -66,7 +66,7 @@ public class PipelineRunnerProgressTests
             .Build();
 
         var progress = new SyncProgress<PipelineProgressEvent>();
-        PipelineRunner runner = CreateRunner();
+        PipelineRunner runner = CreateRunner(dir.StagingRoot);
 
         await runner.RunAsync(pipeline, dryRun: true, progress);
 
@@ -88,7 +88,7 @@ public class PipelineRunnerProgressTests
             .Build();
 
         var progress = new SyncProgress<PipelineProgressEvent>();
-        PipelineRunner runner = CreateRunner();
+        PipelineRunner runner = CreateRunner(dir.StagingRoot);
 
         await runner.RunAsync(pipeline, dryRun: true, progress);
 
@@ -114,7 +114,7 @@ public class PipelineRunnerProgressTests
             .Build();
 
         var progress = new SyncProgress<PipelineProgressEvent>();
-        PipelineRunner runner = CreateRunner();
+        PipelineRunner runner = CreateRunner(dir.StagingRoot);
 
         await runner.RunAsync(pipeline, dryRun: true, progress);
 
@@ -136,7 +136,7 @@ public class PipelineRunnerProgressTests
             .Build();
 
         var progress = new SyncProgress<PipelineProgressEvent>();
-        PipelineRunner runner = CreateRunner();
+        PipelineRunner runner = CreateRunner(dir.StagingRoot);
 
         await runner.RunAsync(pipeline, dryRun: true, progress);
 
@@ -157,7 +157,7 @@ public class PipelineRunnerProgressTests
             .Build();
 
         var progress = new SyncProgress<PipelineProgressEvent>();
-        PipelineRunner runner = CreateRunner();
+        PipelineRunner runner = CreateRunner(dir.StagingRoot);
 
         using var cts = new CancellationTokenSource();
         cts.Cancel();
@@ -181,7 +181,7 @@ public class PipelineRunnerProgressTests
             .AddOutput("FolderOutput", new { path = dir.OutputPath, mode = "copy" })
             .Build();
 
-        PipelineRunner runner = CreateRunner();
+        PipelineRunner runner = CreateRunner(dir.StagingRoot);
 
         ExecutionResult result = await runner.RunAsync(pipeline, dryRun: true, progress: null);
 

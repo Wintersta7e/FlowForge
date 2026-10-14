@@ -30,7 +30,8 @@ public class RenamePatternNodeTests
         return new FileJob
         {
             OriginalPath = filePath,
-            CurrentPath = filePath
+            CurrentPath = filePath,
+            ContentPath = filePath
         };
     }
 
@@ -116,6 +117,7 @@ public class RenamePatternNodeTests
         {
             OriginalPath = Path.Combine(Path.GetTempPath(), "doc.txt"),
             CurrentPath = Path.Combine(Path.GetTempPath(), "doc.txt"),
+            ContentPath = Path.Combine(Path.GetTempPath(), "doc.txt"),
             Metadata = { ["Author"] = "Alice" }
         };
 
@@ -216,54 +218,13 @@ public class RenamePatternNodeTests
         var job = new FileJob
         {
             OriginalPath = filePath,
-            CurrentPath = filePath
+            CurrentPath = filePath,
+            ContentPath = filePath
         };
 
         Func<Task> act = () => node.TransformAsync(job, TestRunContext.Live());
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Path traversal blocked*");
-    }
-
-    [Fact]
-    public async Task ResolveConflict_appends_suffix_when_file_exists()
-    {
-        using var dir = new TempDirectory();
-        string existing = Path.Combine(dir.Path, "photo_1.jpg");
-        File.WriteAllText(existing, "original");
-
-        string source = Path.Combine(dir.Path, "input.jpg");
-        File.WriteAllText(source, "new");
-
-        var node = new RenamePatternNode(NullLogger<RenamePatternNode>.Instance);
-        node.Configure(MakeConfig("photo_{counter}{ext}"));
-
-        FileJob job = MakeJob(source);
-        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
-
-        FileJob output = result.Single();
-        output.FileName.Should().Be("photo_1_1.jpg");
-        File.Exists(output.CurrentPath).Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task ResolveConflict_increments_until_free_slot()
-    {
-        using var dir = new TempDirectory();
-        // Create conflicting files: photo_1.jpg and photo_1_1.jpg
-        File.WriteAllText(Path.Combine(dir.Path, "photo_1.jpg"), "a");
-        File.WriteAllText(Path.Combine(dir.Path, "photo_1_1.jpg"), "b");
-
-        string source = Path.Combine(dir.Path, "input.jpg");
-        File.WriteAllText(source, "new");
-
-        var node = new RenamePatternNode(NullLogger<RenamePatternNode>.Instance);
-        node.Configure(MakeConfig("photo_{counter}{ext}"));
-
-        FileJob job = MakeJob(source);
-        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
-
-        FileJob output = result.Single();
-        output.FileName.Should().Be("photo_1_2.jpg");
     }
 
     [Fact]
@@ -276,8 +237,8 @@ public class RenamePatternNodeTests
         Directory.CreateDirectory(input);
         await File.WriteAllTextAsync(source, "a");
 
-        ExecutionResult dry = await CreateRunner().RunAsync(IdentityGraph(input, output), dryRun: true);
-        ExecutionResult live = await CreateRunner().RunAsync(IdentityGraph(input, output));
+        ExecutionResult dry = await CreateRunner(dir.StagingRoot).RunAsync(IdentityGraph(input, output), dryRun: true);
+        ExecutionResult live = await CreateRunner(dir.StagingRoot).RunAsync(IdentityGraph(input, output));
 
         string dryLine = RenameLine(dry);
         string liveLine = RenameLine(live);
@@ -305,8 +266,8 @@ public class RenamePatternNodeTests
         };
     }
 
-    private static PipelineRunner CreateRunner() =>
-        new(NodeRegistry.CreateDefault(NullLoggerFactory.Instance), NullLogger<PipelineRunner>.Instance);
+    private static PipelineRunner CreateRunner(string stagingRoot) =>
+        new PipelineRunner(NodeRegistry.CreateDefault(NullLoggerFactory.Instance), NullLogger<PipelineRunner>.Instance, stagingRoot: stagingRoot);
 
     private static NodeDefinition Node(string typeKey, object config) => new()
     {

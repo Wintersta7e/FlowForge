@@ -35,7 +35,7 @@ public class RunnerEntryTests
             .AddTransform(ContextRecordingTransform.RegisteredTypeKey, new { })
             .AddOutput("FolderOutput", new { path = dir.OutputPath, mode = "copy" })
             .Build();
-        var runner = new PipelineRunner(registry, NullLogger<PipelineRunner>.Instance);
+        var runner = new PipelineRunner(registry, NullLogger<PipelineRunner>.Instance, stagingRoot: dir.StagingRoot);
         using var caller = new SingleThreadContext();
 
         SynchronizationContext? saved = SynchronizationContext.Current;

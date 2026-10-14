@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FluentAssertions;
+using FlowForge.Core.Execution;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Transforms;
 using FlowForge.Core.Nodes.Base;
@@ -27,9 +28,11 @@ public class ImageCompressNodeTests
     public async Task Compress_jpeg_quality50_reduces_or_maintains_size()
     {
         using var dir = new TempDirectory();
+        using RunContext ctx = TestRunContext.Live(dir.StagingRoot);
         string filePath = Path.Combine(dir.Path, "photo.jpg");
         TestFileFactory.CreateTestImage(filePath, width: 200, height: 200);
         long originalSize = new FileInfo(filePath).Length;
+        byte[] sourceBytes = await File.ReadAllBytesAsync(filePath);
 
         var node = new ImageCompressNode(NullLogger<ImageCompressNode>.Instance);
         node.Configure(MakeConfig(new { quality = 50 }));
@@ -37,24 +40,28 @@ public class ImageCompressNodeTests
         var job = new FileJob
         {
             OriginalPath = filePath,
-            CurrentPath = filePath
+            CurrentPath = filePath,
+            ContentPath = filePath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
+        IEnumerable<FileJob> result = await node.TransformAsync(job, ctx);
         result.Should().HaveCount(1);
 
-        File.Exists(filePath).Should().BeTrue();
-        long compressedSize = new FileInfo(filePath).Length;
-        compressedSize.Should().BeLessThanOrEqualTo(originalSize);
+        job.ContentPath.Should().NotBe(filePath);
+        byte[] compressed = await File.ReadAllBytesAsync(job.ContentPath);
+        compressed.Take(2).Should().Equal(new byte[] { 0xFF, 0xD8 }, Magic(compressed));
+        compressed.LongLength.Should().BeLessThanOrEqualTo(originalSize);
+        (await File.ReadAllBytesAsync(filePath)).Should().Equal(sourceBytes, "the source is never rewritten");
     }
 
     [Fact]
     public async Task Compress_png_quality50()
     {
         using var dir = new TempDirectory();
+        using RunContext ctx = TestRunContext.Live(dir.StagingRoot);
         string filePath = Path.Combine(dir.Path, "image.png");
         TestFileFactory.CreateTestPng(filePath, width: 200, height: 200);
-        long originalSize = new FileInfo(filePath).Length;
+        byte[] sourceBytes = await File.ReadAllBytesAsync(filePath);
 
         var node = new ImageCompressNode(NullLogger<ImageCompressNode>.Instance);
         node.Configure(MakeConfig(new { quality = 50 }));
@@ -62,56 +69,69 @@ public class ImageCompressNodeTests
         var job = new FileJob
         {
             OriginalPath = filePath,
-            CurrentPath = filePath
+            CurrentPath = filePath,
+            ContentPath = filePath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
+        IEnumerable<FileJob> result = await node.TransformAsync(job, ctx);
         result.Should().HaveCount(1);
 
-        File.Exists(filePath).Should().BeTrue();
-        new FileInfo(filePath).Length.Should().BeGreaterThan(0);
+        job.ContentPath.Should().NotBe(filePath);
+        byte[] compressed = await File.ReadAllBytesAsync(job.ContentPath);
+        compressed.Take(4).Should().Equal(new byte[] { 0x89, 0x50, 0x4E, 0x47 }, Magic(compressed));
+        (await File.ReadAllBytesAsync(filePath)).Should().Equal(sourceBytes, "the source is never rewritten");
     }
 
     [Fact]
     public async Task Quality_boundary_minimum_1()
     {
         using var dir = new TempDirectory();
+        using RunContext ctx = TestRunContext.Live(dir.StagingRoot);
         string filePath = Path.Combine(dir.Path, "min.jpg");
         TestFileFactory.CreateTestImage(filePath, width: 100, height: 100);
 
         var node = new ImageCompressNode(NullLogger<ImageCompressNode>.Instance);
         node.Configure(MakeConfig(new { quality = 1 }));
+        byte[] sourceBytes = await File.ReadAllBytesAsync(filePath);
 
         var job = new FileJob
         {
             OriginalPath = filePath,
-            CurrentPath = filePath
+            CurrentPath = filePath,
+            ContentPath = filePath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
+        IEnumerable<FileJob> result = await node.TransformAsync(job, ctx);
         result.Should().HaveCount(1);
-        File.Exists(filePath).Should().BeTrue();
+        job.ContentPath.Should().NotBe(filePath);
+        (await File.ReadAllBytesAsync(job.ContentPath)).Take(2).Should().Equal(new byte[] { 0xFF, 0xD8 });
+        (await File.ReadAllBytesAsync(filePath)).Should().Equal(sourceBytes, "the source is never rewritten");
     }
 
     [Fact]
     public async Task Quality_boundary_maximum_100()
     {
         using var dir = new TempDirectory();
+        using RunContext ctx = TestRunContext.Live(dir.StagingRoot);
         string filePath = Path.Combine(dir.Path, "max.jpg");
         TestFileFactory.CreateTestImage(filePath, width: 100, height: 100);
 
         var node = new ImageCompressNode(NullLogger<ImageCompressNode>.Instance);
         node.Configure(MakeConfig(new { quality = 100 }));
+        byte[] sourceBytes = await File.ReadAllBytesAsync(filePath);
 
         var job = new FileJob
         {
             OriginalPath = filePath,
-            CurrentPath = filePath
+            CurrentPath = filePath,
+            ContentPath = filePath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
+        IEnumerable<FileJob> result = await node.TransformAsync(job, ctx);
         result.Should().HaveCount(1);
-        File.Exists(filePath).Should().BeTrue();
+        job.ContentPath.Should().NotBe(filePath);
+        (await File.ReadAllBytesAsync(job.ContentPath)).Take(2).Should().Equal(new byte[] { 0xFF, 0xD8 });
+        (await File.ReadAllBytesAsync(filePath)).Should().Equal(sourceBytes, "the source is never rewritten");
     }
 
     [Fact]
@@ -142,6 +162,7 @@ public class ImageCompressNodeTests
     public async Task Format_override_uses_different_encoder()
     {
         using var dir = new TempDirectory();
+        using RunContext ctx = TestRunContext.Live(dir.StagingRoot);
         string filePath = Path.Combine(dir.Path, "override.jpg");
         TestFileFactory.CreateTestImage(filePath, width: 100, height: 100);
         byte[] before = await File.ReadAllBytesAsync(filePath);
@@ -152,10 +173,11 @@ public class ImageCompressNodeTests
         var job = new FileJob
         {
             OriginalPath = filePath,
-            CurrentPath = filePath
+            CurrentPath = filePath,
+            ContentPath = filePath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
+        IEnumerable<FileJob> result = await node.TransformAsync(job, ctx);
         byte[] after = await File.ReadAllBytesAsync(filePath);
         string magic = Magic(after);
 
@@ -169,16 +191,17 @@ public class ImageCompressNodeTests
     public async Task Cross_format_override_fails_without_writing()
     {
         using var dir = new TempDirectory();
+        using RunContext ctx = TestRunContext.Live(dir.StagingRoot);
         string filePath = Path.Combine(dir.Path, "pic.png");
         TestFileFactory.CreateTestPng(filePath, width: 40, height: 40);
 
         var node = new ImageCompressNode(NullLogger<ImageCompressNode>.Instance);
         node.Configure(MakeConfig(new { quality = 80, format = "jpg" }));
 
-        var job = new FileJob { OriginalPath = filePath, CurrentPath = filePath };
-        await node.TransformAsync(job, TestRunContext.Live());
+        var job = new FileJob { OriginalPath = filePath, CurrentPath = filePath, ContentPath = filePath };
+        await node.TransformAsync(job, ctx);
         byte[] bytes = await File.ReadAllBytesAsync(filePath);
-        var dryJob = new FileJob { OriginalPath = filePath, CurrentPath = filePath };
+        var dryJob = new FileJob { OriginalPath = filePath, CurrentPath = filePath, ContentPath = filePath };
         await node.TransformAsync(dryJob, TestRunContext.Dry());
 
         int scanned = 0;
@@ -224,6 +247,7 @@ public class ImageCompressNodeTests
     public async Task Unsupported_format_sets_failed_status()
     {
         using var dir = new TempDirectory();
+        using RunContext ctx = TestRunContext.Live(dir.StagingRoot);
         string filePath = Path.Combine(dir.Path, "unsupported.bmp");
         TestFileFactory.CreateTestBmp(filePath, width: 100, height: 100);
 
@@ -233,10 +257,11 @@ public class ImageCompressNodeTests
         var job = new FileJob
         {
             OriginalPath = filePath,
-            CurrentPath = filePath
+            CurrentPath = filePath,
+            ContentPath = filePath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
+        IEnumerable<FileJob> result = await node.TransformAsync(job, ctx);
         result.Should().ContainSingle();
         job.Status.Should().Be(FileJobStatus.Failed);
         job.ErrorMessage.Should().Contain("unsupported format").And.Contain("bmp");
@@ -246,6 +271,7 @@ public class ImageCompressNodeTests
     public async Task Unsupported_extension_without_format_override_sets_failed()
     {
         using var dir = new TempDirectory();
+        using RunContext ctx = TestRunContext.Live(dir.StagingRoot);
         // Create a .bmp file (valid image but unsupported format for compression)
         string filePath = Path.Combine(dir.Path, "image.bmp");
         TestFileFactory.CreateTestBmp(filePath, width: 100, height: 100);
@@ -257,10 +283,11 @@ public class ImageCompressNodeTests
         var job = new FileJob
         {
             OriginalPath = filePath,
-            CurrentPath = filePath
+            CurrentPath = filePath,
+            ContentPath = filePath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
+        IEnumerable<FileJob> result = await node.TransformAsync(job, ctx);
         result.Should().ContainSingle();
         job.Status.Should().Be(FileJobStatus.Failed);
         job.ErrorMessage.Should().Contain("unsupported format").And.Contain("bmp");
@@ -280,7 +307,8 @@ public class ImageCompressNodeTests
         var job = new FileJob
         {
             OriginalPath = filePath,
-            CurrentPath = filePath
+            CurrentPath = filePath,
+            ContentPath = filePath
         };
 
         await node.TransformAsync(job, TestRunContext.Dry());
@@ -293,6 +321,7 @@ public class ImageCompressNodeTests
     public async Task CancellationToken_cancelled_throws_OperationCanceledException()
     {
         using var dir = new TempDirectory();
+        using RunContext ctx = TestRunContext.Live(dir.StagingRoot);
         string filePath = Path.Combine(dir.Path, "cancel.jpg");
         TestFileFactory.CreateTestImage(filePath, width: 100, height: 100);
 
@@ -302,13 +331,14 @@ public class ImageCompressNodeTests
         var job = new FileJob
         {
             OriginalPath = filePath,
-            CurrentPath = filePath
+            CurrentPath = filePath,
+            ContentPath = filePath
         };
 
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        Func<Task> act = () => node.TransformAsync(job, TestRunContext.Live(), ct: cts.Token);
+        Func<Task> act = () => node.TransformAsync(job, ctx, ct: cts.Token);
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
@@ -316,6 +346,7 @@ public class ImageCompressNodeTests
     public async Task BigTiff_input_fails_without_decoding()
     {
         using var dir = new TempDirectory();
+        using RunContext ctx = TestRunContext.Live(dir.StagingRoot);
         string filePath = Path.Combine(dir.Path, "header.tiff");
         TestFileFactory.CreateBigTiffHeader(filePath);
         byte[] originalBytes = File.ReadAllBytes(filePath);
@@ -326,10 +357,11 @@ public class ImageCompressNodeTests
         var job = new FileJob
         {
             OriginalPath = filePath,
-            CurrentPath = filePath
+            CurrentPath = filePath,
+            ContentPath = filePath
         };
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
+        IEnumerable<FileJob> result = await node.TransformAsync(job, ctx);
 
         result.Should().ContainSingle().Which.Should().BeSameAs(job);
         job.Status.Should().Be(FileJobStatus.Failed);

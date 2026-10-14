@@ -23,7 +23,8 @@ public class RenameAddAffixNodeTests
         return new FileJob
         {
             OriginalPath = filePath,
-            CurrentPath = filePath
+            CurrentPath = filePath,
+            ContentPath = filePath
         };
     }
 

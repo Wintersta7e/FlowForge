@@ -30,7 +30,8 @@ public class RenameRegexNodeTests
         return new FileJob
         {
             OriginalPath = filePath,
-            CurrentPath = filePath
+            CurrentPath = filePath,
+            ContentPath = filePath
         };
     }
 
@@ -237,8 +238,8 @@ public class RenameRegexNodeTests
         result.Should().ContainSingle();
         string expectedPath = Path.Combine(dir.Path, "new_name.txt");
         result.First().CurrentPath.Should().Be(expectedPath);
-        File.Exists(expectedPath).Should().BeTrue();
-        File.Exists(filePath).Should().BeFalse();
+        File.Exists(expectedPath).Should().BeFalse("a rename changes only the job's name");
+        File.ReadAllText(filePath).Should().Be("test");
     }
 
     [Fact]
@@ -280,7 +281,7 @@ public class RenameRegexNodeTests
             Connections = { Wire(source, rename), Wire(rename, sink) },
         };
 
-        ExecutionResult result = await CreateRunner().RunAsync(graph);
+        ExecutionResult result = await CreateRunner(dir.StagingRoot).RunAsync(graph);
 
         var contents = new List<string>();
         var lines = new List<string> { $"caseSensitive={caseSensitive}" };
@@ -294,21 +295,19 @@ public class RenameRegexNodeTests
 
         lines.ForEach(_output.WriteLine);
         string because = string.Join("; ", lines);
+        result.Jobs.Should().ContainSingle(because).Which.Status.Should().Be(FileJobStatus.Succeeded, because);
+        delivered.Select(f => Path.GetFileName(f)).Should().Equal(["photo.txt"], because);
+        (await File.ReadAllTextAsync(Path.Combine(output, "photo.txt"))).Should().Be("UPPER", because);
+        contents.Should().NotContain("LOWER", because);
+        (await File.ReadAllTextAsync(upper)).Should().Be("UPPER", because);
         if (caseSensitive)
         {
-            result.Jobs.Should().ContainSingle(because).Which.Status.Should().Be(FileJobStatus.Failed, because);
-            contents.Should().NotContain("LOWER", because);
-            (await File.ReadAllTextAsync(upper)).Should().Be("UPPER", because);
             (await File.ReadAllTextAsync(lower)).Should().Be("LOWER", because);
-        }
-        else
-        {
-            (await File.ReadAllTextAsync(Path.Combine(output, "photo.txt"))).Should().Be("UPPER", because);
         }
     }
 
-    private static PipelineRunner CreateRunner() =>
-        new(NodeRegistry.CreateDefault(NullLoggerFactory.Instance), NullLogger<PipelineRunner>.Instance);
+    private static PipelineRunner CreateRunner(string stagingRoot) =>
+        new PipelineRunner(NodeRegistry.CreateDefault(NullLoggerFactory.Instance), NullLogger<PipelineRunner>.Instance, stagingRoot: stagingRoot);
 
     private static NodeDefinition Node(string typeKey, object config) => new()
     {

@@ -33,7 +33,8 @@ public class MetadataExtractNodeTests
         var job = new FileJob
         {
             OriginalPath = filePath,
-            CurrentPath = filePath
+            CurrentPath = filePath,
+            ContentPath = filePath
         };
 
         IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
@@ -59,7 +60,8 @@ public class MetadataExtractNodeTests
         var job = new FileJob
         {
             OriginalPath = filePath,
-            CurrentPath = filePath
+            CurrentPath = filePath,
+            ContentPath = filePath
         };
 
         IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
@@ -84,7 +86,8 @@ public class MetadataExtractNodeTests
         var job = new FileJob
         {
             OriginalPath = filePath,
-            CurrentPath = filePath
+            CurrentPath = filePath,
+            ContentPath = filePath
         };
 
         IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
@@ -109,7 +112,8 @@ public class MetadataExtractNodeTests
         var job = new FileJob
         {
             OriginalPath = filePath,
-            CurrentPath = filePath
+            CurrentPath = filePath,
+            ContentPath = filePath
         };
 
         IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
@@ -133,8 +137,7 @@ public class MetadataExtractNodeTests
             .AddOutput("FolderOutput", new { path = dir.OutputPath, mode = "copy" })
             .Build();
 
-        var runner = new PipelineRunner(
-            NodeRegistry.CreateDefault(NullLoggerFactory.Instance), NullLogger<PipelineRunner>.Instance, maxConcurrency: 2);
+        var runner = new PipelineRunner(NodeRegistry.CreateDefault(NullLoggerFactory.Instance), NullLogger<PipelineRunner>.Instance, maxConcurrency: 2, stagingRoot: dir.StagingRoot);
         ExecutionResult result = await runner.RunAsync(pipeline, dryRun: false);
 
         result.Failed.Should().Be(1);
@@ -154,7 +157,8 @@ public class MetadataExtractNodeTests
         var job = new FileJob
         {
             OriginalPath = filePath,
-            CurrentPath = filePath
+            CurrentPath = filePath,
+            ContentPath = filePath
         };
 
         IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
@@ -232,7 +236,8 @@ public class MetadataExtractNodeTests
         var job = new FileJob
         {
             OriginalPath = fakePath,
-            CurrentPath = fakePath
+            CurrentPath = fakePath,
+            ContentPath = fakePath
         };
 
         IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
@@ -257,7 +262,8 @@ public class MetadataExtractNodeTests
         var job = new FileJob
         {
             OriginalPath = filePath,
-            CurrentPath = filePath
+            CurrentPath = filePath,
+            ContentPath = filePath
         };
 
         IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
@@ -280,7 +286,8 @@ public class MetadataExtractNodeTests
         var job = new FileJob
         {
             OriginalPath = Path.Combine(Path.GetTempPath(), "test.txt"),
-            CurrentPath = Path.Combine(Path.GetTempPath(), "test.txt")
+            CurrentPath = Path.Combine(Path.GetTempPath(), "test.txt"),
+            ContentPath = Path.Combine(Path.GetTempPath(), "test.txt")
         };
 
         using var cts = new CancellationTokenSource();
@@ -301,7 +308,8 @@ public class MetadataExtractNodeTests
         var job = new FileJob
         {
             OriginalPath = fakePath,
-            CurrentPath = fakePath
+            CurrentPath = fakePath,
+            ContentPath = fakePath
         };
 
         IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Dry());

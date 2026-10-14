@@ -100,6 +100,7 @@ public class FileJobTests
         {
             OriginalPath = Path.Combine(Path.GetTempPath(), "original.jpg"),
             CurrentPath = Path.Combine(Path.GetTempPath(), "renamed.jpg"),
+            ContentPath = Path.Combine(Path.GetTempPath(), "staged.bin"),
             Status = FileJobStatus.Processing,
         };
         job.Metadata["Camera"] = "Model X";
@@ -110,6 +111,7 @@ public class FileJobTests
         clone.Id.Should().NotBe(job.Id);
         clone.OriginalPath.Should().Be(job.OriginalPath);
         clone.CurrentPath.Should().Be(job.CurrentPath);
+        clone.ContentPath.Should().Be(job.ContentPath);
         clone.Status.Should().Be(job.Status);
         clone.Metadata.Should().BeEquivalentTo(job.Metadata);
         clone.NodeLog.Should().Equal(job.NodeLog);

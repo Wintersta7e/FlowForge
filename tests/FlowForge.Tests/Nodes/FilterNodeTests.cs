@@ -32,7 +32,8 @@ public class FilterNodeTests
         var job = new FileJob
         {
             OriginalPath = FakePath("photo.jpg"),
-            CurrentPath = FakePath("photo.jpg")
+            CurrentPath = FakePath("photo.jpg"),
+            ContentPath = FakePath("photo.jpg")
         };
 
         IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Dry());
@@ -52,7 +53,8 @@ public class FilterNodeTests
         var job = new FileJob
         {
             OriginalPath = FakePath("document.pdf"),
-            CurrentPath = FakePath("document.pdf")
+            CurrentPath = FakePath("document.pdf"),
+            ContentPath = FakePath("document.pdf")
         };
 
         IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Dry());
@@ -72,7 +74,8 @@ public class FilterNodeTests
         var job = new FileJob
         {
             OriginalPath = FakePath("my_photo_001.jpg"),
-            CurrentPath = FakePath("my_photo_001.jpg")
+            CurrentPath = FakePath("my_photo_001.jpg"),
+            ContentPath = FakePath("my_photo_001.jpg")
         };
 
         IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Dry());
@@ -91,12 +94,14 @@ public class FilterNodeTests
         var jobMatch = new FileJob
         {
             OriginalPath = FakePath("001.jpg"),
-            CurrentPath = FakePath("001.jpg")
+            CurrentPath = FakePath("001.jpg"),
+            ContentPath = FakePath("001.jpg")
         };
         var jobNoMatch = new FileJob
         {
             OriginalPath = FakePath("abc.jpg"),
-            CurrentPath = FakePath("abc.jpg")
+            CurrentPath = FakePath("abc.jpg"),
+            ContentPath = FakePath("abc.jpg")
         };
 
         IEnumerable<FileJob> resultMatch = await node.TransformAsync(jobMatch, TestRunContext.Dry());
@@ -122,7 +127,8 @@ public class FilterNodeTests
         var job = new FileJob
         {
             OriginalPath = filePath,
-            CurrentPath = filePath
+            CurrentPath = filePath,
+            ContentPath = filePath
         };
 
         IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Live());
@@ -142,12 +148,14 @@ public class FilterNodeTests
         var jobBoth = new FileJob
         {
             OriginalPath = FakePath("photo_001.jpg"),
-            CurrentPath = FakePath("photo_001.jpg")
+            CurrentPath = FakePath("photo_001.jpg"),
+            ContentPath = FakePath("photo_001.jpg")
         };
         var jobExtOnly = new FileJob
         {
             OriginalPath = FakePath("document.jpg"),
-            CurrentPath = FakePath("document.jpg")
+            CurrentPath = FakePath("document.jpg"),
+            ContentPath = FakePath("document.jpg")
         };
 
         IEnumerable<FileJob> resultBoth = await node.TransformAsync(jobBoth, TestRunContext.Dry());
@@ -170,7 +178,8 @@ public class FilterNodeTests
         var job = new FileJob
         {
             OriginalPath = Path.Combine(Path.GetTempPath(), new string('a', 50) + "!.txt"),
-            CurrentPath = Path.Combine(Path.GetTempPath(), new string('a', 50) + "!.txt")
+            CurrentPath = Path.Combine(Path.GetTempPath(), new string('a', 50) + "!.txt"),
+            ContentPath = Path.Combine(Path.GetTempPath(), new string('a', 50) + "!.txt")
         };
 
         IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Dry());
@@ -201,7 +210,8 @@ public class FilterNodeTests
         var job = new FileJob
         {
             OriginalPath = FakePath("test.jpg"),
-            CurrentPath = FakePath("test.jpg")
+            CurrentPath = FakePath("test.jpg"),
+            ContentPath = FakePath("test.jpg")
         };
 
         using var cts = new CancellationTokenSource();
@@ -220,8 +230,8 @@ public class FilterNodeTests
             new { field = "extension", @operator = "notequals", value = ".tmp" }
         }));
 
-        var jobTmp = new FileJob { OriginalPath = FakePath("a.tmp"), CurrentPath = FakePath("a.tmp") };
-        var jobJpg = new FileJob { OriginalPath = FakePath("b.jpg"), CurrentPath = FakePath("b.jpg") };
+        var jobTmp = new FileJob { OriginalPath = FakePath("a.tmp"), CurrentPath = FakePath("a.tmp"), ContentPath = FakePath("a.tmp") };
+        var jobJpg = new FileJob { OriginalPath = FakePath("b.jpg"), CurrentPath = FakePath("b.jpg"), ContentPath = FakePath("b.jpg") };
 
         IEnumerable<FileJob> resultTmp = await node.TransformAsync(jobTmp, TestRunContext.Dry());
         IEnumerable<FileJob> resultJpg = await node.TransformAsync(jobJpg, TestRunContext.Dry());
@@ -239,8 +249,8 @@ public class FilterNodeTests
             new { field = "filename", @operator = "startswith", value = "IMG_" }
         }));
 
-        var jobMatch = new FileJob { OriginalPath = FakePath("IMG_001.jpg"), CurrentPath = FakePath("IMG_001.jpg") };
-        var jobMiss = new FileJob { OriginalPath = FakePath("DSC_001.jpg"), CurrentPath = FakePath("DSC_001.jpg") };
+        var jobMatch = new FileJob { OriginalPath = FakePath("IMG_001.jpg"), CurrentPath = FakePath("IMG_001.jpg"), ContentPath = FakePath("IMG_001.jpg") };
+        var jobMiss = new FileJob { OriginalPath = FakePath("DSC_001.jpg"), CurrentPath = FakePath("DSC_001.jpg"), ContentPath = FakePath("DSC_001.jpg") };
 
         (await node.TransformAsync(jobMatch, TestRunContext.Dry())).Should().HaveCount(1);
         (await node.TransformAsync(jobMiss, TestRunContext.Dry())).Should().BeEmpty();
@@ -255,8 +265,8 @@ public class FilterNodeTests
             new { field = "filename", @operator = "endswith", value = "_final.jpg" }
         }));
 
-        var jobMatch = new FileJob { OriginalPath = FakePath("photo_final.jpg"), CurrentPath = FakePath("photo_final.jpg") };
-        var jobMiss = new FileJob { OriginalPath = FakePath("photo_draft.jpg"), CurrentPath = FakePath("photo_draft.jpg") };
+        var jobMatch = new FileJob { OriginalPath = FakePath("photo_final.jpg"), CurrentPath = FakePath("photo_final.jpg"), ContentPath = FakePath("photo_final.jpg") };
+        var jobMiss = new FileJob { OriginalPath = FakePath("photo_draft.jpg"), CurrentPath = FakePath("photo_draft.jpg"), ContentPath = FakePath("photo_draft.jpg") };
 
         (await node.TransformAsync(jobMatch, TestRunContext.Dry())).Should().HaveCount(1);
         (await node.TransformAsync(jobMiss, TestRunContext.Dry())).Should().BeEmpty();
@@ -275,7 +285,7 @@ public class FilterNodeTests
             new { field = "size", @operator = "greaterthan", value = "100" }
         }));
 
-        var job = new FileJob { OriginalPath = filePath, CurrentPath = filePath };
+        var job = new FileJob { OriginalPath = filePath, CurrentPath = filePath, ContentPath = filePath };
         (await node.TransformAsync(job, TestRunContext.Live())).Should().HaveCount(1);
     }
 
@@ -288,7 +298,7 @@ public class FilterNodeTests
             new { field = "extension", @operator = "bogus", value = ".jpg" }
         }));
 
-        var job = new FileJob { OriginalPath = FakePath("a.jpg"), CurrentPath = FakePath("a.jpg") };
+        var job = new FileJob { OriginalPath = FakePath("a.jpg"), CurrentPath = FakePath("a.jpg"), ContentPath = FakePath("a.jpg") };
         Func<Task> act = () => node.TransformAsync(job, TestRunContext.Dry());
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Unknown filter operator*");
     }
@@ -302,7 +312,7 @@ public class FilterNodeTests
             new { field = "createdAt", @operator = "greaterthan", value = "0001-01-01T00:00:00.0000000" }
         }));
 
-        var job = new FileJob { OriginalPath = FakePath("a.txt"), CurrentPath = FakePath("a.txt") };
+        var job = new FileJob { OriginalPath = FakePath("a.txt"), CurrentPath = FakePath("a.txt"), ContentPath = FakePath("a.txt") };
         // In dry-run, createdAt returns DateTime.MinValue, so it should NOT be greater than MinValue
         (await node.TransformAsync(job, TestRunContext.Dry())).Should().BeEmpty();
     }
@@ -320,7 +330,7 @@ public class FilterNodeTests
             new { field = "modifiedAt", @operator = "greaterthan", value = "2000-01-01T00:00:00.0000000" }
         }));
 
-        var job = new FileJob { OriginalPath = filePath, CurrentPath = filePath };
+        var job = new FileJob { OriginalPath = filePath, CurrentPath = filePath, ContentPath = filePath };
         (await node.TransformAsync(job, TestRunContext.Live())).Should().HaveCount(1);
     }
 

@@ -19,7 +19,7 @@ public class SortNodeTests
 
     private static FileJob MakeJob(string filePath)
     {
-        return new FileJob { OriginalPath = filePath, CurrentPath = filePath };
+        return new FileJob { OriginalPath = filePath, CurrentPath = filePath, ContentPath = filePath };
     }
 
     [Fact]

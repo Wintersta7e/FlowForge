@@ -4,6 +4,7 @@ using FlowForge.Core.Models;
 using FlowForge.Core.Pipeline;
 using FlowForge.Tests.Helpers;
 using FluentAssertions;
+using MetadataExtractor.Formats.Jpeg;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit.Abstractions;
 
@@ -26,7 +27,7 @@ public class DestinationCollisionTests
         await File.WriteAllTextAsync(existing, "PREVIOUS");
         string hashBefore = Sha256(existing);
 
-        ExecutionResult result = await CreateRunner().RunAsync(Graph(input, new { path = output, overwrite = false }));
+        ExecutionResult result = await CreateRunner(dir.StagingRoot).RunAsync(Graph(input, new { path = output, overwrite = false }));
 
         string because = Describe(result, output);
         result.Jobs.Should().ContainSingle(because);
@@ -55,7 +56,7 @@ public class DestinationCollisionTests
         for (int run = 0; run < concurrencies.Length; run++)
         {
             string output = CreateFolder(dir, $"out{run}");
-            ExecutionResult result = await CreateRunner(concurrencies[run])
+            ExecutionResult result = await CreateRunner(dir.StagingRoot, concurrencies[run])
                 .RunAsync(Graph(input, new { path = output, preserveStructure = false }, recursive: true));
             result.Failed.Should().Be(0, Describe(result, output));
             maps.Add(($"run {run} at {concurrencies[run]}", HashByName(output)));
@@ -82,7 +83,7 @@ public class DestinationCollisionTests
         await File.WriteAllTextAsync(Path.Combine(input, "s2", "x.txt"), "SECOND");
         await File.WriteAllTextAsync(Path.Combine(output, "x.txt"), "PREVIOUS");
 
-        ExecutionResult result = await CreateRunner()
+        ExecutionResult result = await CreateRunner(dir.StagingRoot)
             .RunAsync(Graph(input, new { path = output, overwrite = true }, recursive: true));
 
         string because = Describe(result, output);
@@ -103,7 +104,7 @@ public class DestinationCollisionTests
             string pHash = Sha256(Path.Combine(input, "p.jpg"));
             string bakHash = Sha256(Path.Combine(input, "p.jpg.bak"));
 
-            ExecutionResult result = await CreateRunner().RunAsync(
+            ExecutionResult result = await CreateRunner(dir.StagingRoot).RunAsync(
                 Graph(input, new { path = output, overwrite = true, enableBackup = true }));
 
             IReadOnlyDictionary<string, string> delivered = HashByName(output);
@@ -133,7 +134,7 @@ public class DestinationCollisionTests
                 .AddOutput("FolderOutput", new { path = output, overwrite = true, enableBackup = true })
                 .Build();
 
-            ExecutionResult result = await CreateRunner().RunAsync(graph);
+            ExecutionResult result = await CreateRunner(dir.StagingRoot).RunAsync(graph);
 
             IReadOnlyDictionary<string, string> delivered = HashByName(output);
             string because = Describe(result, output);
@@ -152,6 +153,31 @@ public class DestinationCollisionTests
         }
     }
 
+    [Fact]
+    public async Task Same_logical_name_gets_a_suffix()
+    {
+        using var dir = new TempDirectory();
+        string input = CreateFolder(dir, "in");
+        string output = CreateFolder(dir, "out");
+        TestFileFactory.CreateTestImage(Path.Combine(input, "x.jpeg"), width: 10, height: 10);
+        TestFileFactory.CreateTestPng(Path.Combine(input, "x.png"), width: 20, height: 20);
+        var before = TreeSnapshot.Take(input);
+        PipelineGraph graph = PipelineBuilder.New()
+            .AddSource("FolderInput", new { path = input })
+            .AddTransform("ImageConvert", new { format = "jpg" })
+            .AddOutput("FolderOutput", new { path = output })
+            .Build();
+
+        ExecutionResult result = await CreateRunner(dir.StagingRoot).RunAsync(graph);
+
+        string because = Describe(result, output);
+        _output.WriteLine($"[convert] {because}");
+        result.Succeeded.Should().Be(2, because);
+        Dimensions(Path.Combine(output, "x.jpg")).Should().Be("10x10", because);
+        Dimensions(Path.Combine(output, "x_1.jpg")).Should().Be("20x20", because);
+        TreeSnapshot.AssertUnchanged(before, TreeSnapshot.Take(input), _output, "source");
+    }
+
     private static async Task<(string Input, string Output)> CreateBackupCaseAsync(TempDirectory dir)
     {
         string input = CreateFolder(dir, "in");
@@ -168,8 +194,8 @@ public class DestinationCollisionTests
             .AddOutput("FolderOutput", outputConfig)
             .Build();
 
-    private static PipelineRunner CreateRunner(int maxConcurrency = 2) =>
-        new(NodeRegistry.CreateDefault(NullLoggerFactory.Instance), NullLogger<PipelineRunner>.Instance, maxConcurrency);
+    private static PipelineRunner CreateRunner(string stagingRoot, int maxConcurrency = 2) =>
+        new PipelineRunner(NodeRegistry.CreateDefault(NullLoggerFactory.Instance), NullLogger<PipelineRunner>.Instance, maxConcurrency, stagingRoot);
 
     private static string CreateFolder(TempDirectory dir, string name)
     {
@@ -179,6 +205,18 @@ public class DestinationCollisionTests
     }
 
     private static string Sha256(string path) => Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(path)));
+
+    /// <summary>Reads a JPEG's dimensions with a library other than the one that wrote it.</summary>
+    private static string Dimensions(string path)
+    {
+        if (!File.Exists(path))
+        {
+            return "missing";
+        }
+
+        JpegDirectory jpeg = MetadataExtractor.ImageMetadataReader.ReadMetadata(path).OfType<JpegDirectory>().First();
+        return $"{MetadataExtractor.DirectoryExtensions.GetInt32(jpeg, JpegDirectory.TagImageWidth)}x{MetadataExtractor.DirectoryExtensions.GetInt32(jpeg, JpegDirectory.TagImageHeight)}";
+    }
 
     private static IReadOnlyDictionary<string, string> HashByName(string folder) =>
         Directory.GetFiles(folder).ToDictionary(f => Path.GetFileName(f), Sha256, StringComparer.Ordinal);

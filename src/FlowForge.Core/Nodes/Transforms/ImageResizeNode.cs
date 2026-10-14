@@ -4,7 +4,6 @@ using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
 using Microsoft.Extensions.Logging;
 using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Advanced;
 using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.Formats.Tiff;
 using SixLabors.ImageSharp.Formats.Tiff.Constants;
@@ -117,7 +116,7 @@ public class ImageResizeNode : ITransformNode
             return new[] { job };
         }
 
-        var fileInfo = new FileInfo(job.CurrentPath);
+        var fileInfo = new FileInfo(job.ContentPath);
         if (fileInfo.Length > MaxFileSizeBytes)
         {
             job.Status = FileJobStatus.Failed;
@@ -131,10 +130,12 @@ public class ImageResizeNode : ITransformNode
             return new[] { job };
         }
 
-        string tmpPath = job.CurrentPath + $".{Guid.NewGuid():N}.tmp";
+        IImageEncoder encoder = EncoderFor(job, out IImageFormat format);
+        string staged = context.NewStagingPath("." + format.FileExtensions.First());
+        bool referenced = false;
         try
         {
-            using Image image = await Image.LoadAsync(SafeDecoderOptions, job.CurrentPath, ct).ConfigureAwait(false);
+            using Image image = await Image.LoadAsync(SafeDecoderOptions, job.ContentPath, ct).ConfigureAwait(false);
 
             ResizeMode effectiveMode = _maintainAspect ? _resizeMode : ResizeMode.Stretch;
 
@@ -153,34 +154,41 @@ public class ImageResizeNode : ITransformNode
                 image.Metadata.VerticalResolution = _dpi.Value;
             }
 
-            IImageEncoder encoder = image.DetectEncoder(job.CurrentPath);
-
-            // The image library's CCITT fax encoders are unsafe, so TIFF output is always LZW.
-            if (encoder is TiffEncoder)
-            {
-                encoder = new TiffEncoder { Compression = TiffCompression.Lzw };
-            }
-
-            await image.SaveAsync(tmpPath, encoder, ct).ConfigureAwait(false);
-
-            File.Move(tmpPath, job.CurrentPath, overwrite: true);
+            await image.SaveAsync(staged, encoder, ct).ConfigureAwait(false);
+            context.SetContent(job, staged);
+            referenced = true;
 
             job.NodeLog.Add($"ImageResize: resized to {image.Width}x{image.Height} ({_resizeMode})");
             return new[] { job };
         }
         finally
         {
-            if (File.Exists(tmpPath))
+            if (!referenced)
             {
                 try
                 {
-                    File.Delete(tmpPath);
+                    File.Delete(staged);
                 }
                 catch (IOException ex)
                 {
-                    _logger.LogWarning(ex, "ImageResize: failed to clean up temp file {TmpPath}", tmpPath);
+                    _logger.LogWarning(ex, "ImageResize: failed to clean up staged file {StagedPath}", staged);
                 }
             }
         }
+    }
+
+    /// <summary>The encoder follows the file's name, never the staged file's.</summary>
+    private static IImageEncoder EncoderFor(FileJob job, out IImageFormat format)
+    {
+        if (!Configuration.Default.ImageFormatsManager.TryFindFormatByFileExtension(job.Extension.TrimStart('.'), out IImageFormat? found))
+        {
+            throw new UnknownImageFormatException($"ImageResize: no image format is known for the extension '{job.Extension}'.");
+        }
+
+        format = found;
+        IImageEncoder encoder = Configuration.Default.ImageFormatsManager.GetEncoder(format);
+
+        // The image library's CCITT fax encoders are unsafe, so TIFF output is always LZW.
+        return encoder is TiffEncoder ? new TiffEncoder { Compression = TiffCompression.Lzw } : encoder;
     }
 }

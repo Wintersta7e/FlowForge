@@ -8,10 +8,10 @@ namespace FlowForge.Tests.Execution;
 
 public class Phase1IntegrationTests
 {
-    private static PipelineRunner CreateRunner()
+    private static PipelineRunner CreateRunner(string stagingRoot)
     {
         var registry = NodeRegistry.CreateDefault(NullLoggerFactory.Instance);
-        return new PipelineRunner(registry, NullLogger<PipelineRunner>.Instance, maxConcurrency: 2);
+        return new PipelineRunner(registry, NullLogger<PipelineRunner>.Instance, maxConcurrency: 2, stagingRoot: stagingRoot);
     }
 
     [Fact]
@@ -28,7 +28,7 @@ public class Phase1IntegrationTests
             .AddOutput("FolderOutput", new { path = dir.OutputPath, mode = "copy" })
             .Build();
 
-        PipelineRunner runner = CreateRunner();
+        PipelineRunner runner = CreateRunner(dir.StagingRoot);
         ExecutionResult result = await runner.RunAsync(pipeline, dryRun: false);
 
         result.Succeeded.Should().Be(3);
@@ -61,7 +61,7 @@ public class Phase1IntegrationTests
             .AddOutput("FolderOutput", new { path = dir.OutputPath, mode = "copy" })
             .Build();
 
-        PipelineRunner runner = CreateRunner();
+        PipelineRunner runner = CreateRunner(dir.StagingRoot);
         ExecutionResult result = await runner.RunAsync(pipeline, dryRun: false);
 
         result.Succeeded.Should().Be(2);
@@ -84,7 +84,7 @@ public class Phase1IntegrationTests
             .AddOutput("FolderOutput", new { path = dir.OutputPath, mode = "copy" })
             .Build();
 
-        PipelineRunner runner = CreateRunner();
+        PipelineRunner runner = CreateRunner(dir.StagingRoot);
         ExecutionResult result = await runner.RunAsync(pipeline, dryRun: false);
 
         result.Succeeded.Should().Be(3);
@@ -106,7 +106,7 @@ public class Phase1IntegrationTests
             .AddOutput("FolderOutput", new { path = dir.OutputPath, mode = "copy" })
             .Build();
 
-        PipelineRunner runner = CreateRunner();
+        PipelineRunner runner = CreateRunner(dir.StagingRoot);
         ExecutionResult result = await runner.RunAsync(pipeline, dryRun: false);
 
         result.Succeeded.Should().Be(2);
@@ -131,7 +131,7 @@ public class Phase1IntegrationTests
             .AddOutput("FolderOutput", new { path = dir.OutputPath, mode = "copy" })
             .Build();
 
-        PipelineRunner runner = CreateRunner();
+        PipelineRunner runner = CreateRunner(dir.StagingRoot);
         ExecutionResult result = await runner.RunAsync(pipeline, dryRun: false);
 
         result.Succeeded.Should().Be(2);
@@ -152,7 +152,7 @@ public class Phase1IntegrationTests
             .AddOutput("FolderOutput", new { path = dir.OutputPath, mode = "copy" })
             .Build();
 
-        PipelineRunner runner = CreateRunner();
+        PipelineRunner runner = CreateRunner(dir.StagingRoot);
         ExecutionResult result = await runner.RunAsync(pipeline, dryRun: false);
 
         result.Succeeded.Should().Be(2);

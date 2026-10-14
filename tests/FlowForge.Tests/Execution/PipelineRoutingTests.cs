@@ -28,7 +28,7 @@ public class PipelineRoutingTests
         NodeDefinition stray = PipelineBuilder.Node("RenameAddAffix", new { prefix = "x_" });
         graph.Nodes.Add(stray);
 
-        Func<Task> act = () => CreateRunner().RunAsync(graph, dryRun: false);
+        Func<Task> act = () => CreateRunner(dir.StagingRoot).RunAsync(graph, dryRun: false);
 
         string expected = $"Node 'RenameAddAffix' ({stray.Id}) is not on a path from a source to an output.";
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*" + expected + "*");
@@ -52,7 +52,7 @@ public class PipelineRoutingTests
             Connections = { Wire(inB, inA), Wire(inA, output) },
         };
 
-        Func<Task> act = () => CreateRunner().RunAsync(graph, dryRun: false);
+        Func<Task> act = () => CreateRunner(dirA.StagingRoot).RunAsync(graph, dryRun: false);
 
         string expected = $"Connection from 'FolderInput' ({inB.Id}) into source node 'FolderInput' ({inA.Id}) is not allowed.";
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*" + expected + "*");
@@ -76,7 +76,7 @@ public class PipelineRoutingTests
             Connections = { Wire(input, outA), Wire(outA, outB) },
         };
 
-        Func<Task> act = () => CreateRunner().RunAsync(graph, dryRun: false);
+        Func<Task> act = () => CreateRunner(dir.StagingRoot).RunAsync(graph, dryRun: false);
 
         string expected = $"Connection out of output node 'FolderOutput' ({outA.Id}) to 'FolderOutput' ({outB.Id}) is not allowed.";
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*" + expected + "*");
@@ -96,7 +96,7 @@ public class PipelineRoutingTests
             .Build();
         graph.Connections.Add(new Connection { FromNode = graph.Nodes[0].Id, ToNode = graph.Nodes[1].Id });
 
-        ExecutionResult result = await CreateRunner().RunAsync(graph, dryRun: false);
+        ExecutionResult result = await CreateRunner(dir.StagingRoot).RunAsync(graph, dryRun: false);
 
         _output.WriteLine($"[routing] delivered={dir.OutputFiles.Length}");
         dir.OutputFiles.Should().NotBeEmpty();
@@ -133,7 +133,7 @@ public class PipelineRoutingTests
                     .AddOutput("FolderOutput", new { path = dir.OutputPath, mode = "copy" })
                     .Build();
 
-                await CreateRunner(concurrency).RunAsync(graph, dryRun: false);
+                await CreateRunner(dir.StagingRoot, concurrency).RunAsync(graph, dryRun: false);
 
                 Dictionary<string, string> delivered = dir.OutputFiles.ToDictionary(
                     name => name,
@@ -168,7 +168,7 @@ public class PipelineRoutingTests
             .AddSource("FolderInput", new { path = dir.Path, recursive = false })
             .AddOutput(PeakCountingOutput.RegisteredTypeKey, new { })
             .Build();
-        var runner = new PipelineRunner(registry, NullLogger<PipelineRunner>.Instance, maxConcurrency: cap);
+        var runner = new PipelineRunner(registry, NullLogger<PipelineRunner>.Instance, maxConcurrency: cap, stagingRoot: dir.StagingRoot);
 
         // A runner that never lets two calls overlap would leave the first call waiting; fail instead of hanging.
         using var hangGuard = new CancellationTokenSource(TimeSpan.FromSeconds(60));
@@ -180,8 +180,8 @@ public class PipelineRoutingTests
         counter.Peak.Should().Be(cap);
     }
 
-    private static PipelineRunner CreateRunner(int maxConcurrency = 2) =>
-        new(NodeRegistry.CreateDefault(NullLoggerFactory.Instance), NullLogger<PipelineRunner>.Instance, maxConcurrency);
+    private static PipelineRunner CreateRunner(string stagingRoot, int maxConcurrency = 2) =>
+        new PipelineRunner(NodeRegistry.CreateDefault(NullLoggerFactory.Instance), NullLogger<PipelineRunner>.Instance, maxConcurrency, stagingRoot);
 
     private static string[] SourceNames(TempDirectory dir) =>
         Directory.GetFiles(dir.Path).Select(f => Path.GetFileName(f)).ToArray();

@@ -37,7 +37,7 @@ public class PipelineReportingTests
             .Build();
         var progress = new SyncProgress<PipelineProgressEvent>();
 
-        ExecutionResult result = await CreateRunner(NodeRegistry.CreateDefault(NullLoggerFactory.Instance))
+        ExecutionResult result = await CreateRunner(NodeRegistry.CreateDefault(NullLoggerFactory.Instance), dir.StagingRoot)
             .RunAsync(graph, dryRun: true, progress);
 
         var events = progress.Events.OfType<FileProcessed>().ToList();
@@ -79,7 +79,7 @@ public class PipelineReportingTests
             .Build();
         var progress = new SyncProgress<PipelineProgressEvent>();
 
-        ExecutionResult result = await CreateRunner(registry).RunAsync(graph, dryRun: true, progress);
+        ExecutionResult result = await CreateRunner(registry, dir.StagingRoot).RunAsync(graph, dryRun: true, progress);
 
         var events = progress.Events.OfType<FileProcessed>().ToList();
         var completing = events.Where(e => e.CompletesOriginal).ToList();
@@ -91,8 +91,8 @@ public class PipelineReportingTests
             .And.BeEquivalentTo(events.Select(e => e.Job.OriginalPath).Distinct(StringComparer.Ordinal));
     }
 
-    private static PipelineRunner CreateRunner(NodeRegistry registry) =>
-        new(registry, NullLogger<PipelineRunner>.Instance, maxConcurrency: 2);
+    private static PipelineRunner CreateRunner(NodeRegistry registry, string stagingRoot) =>
+        new PipelineRunner(registry, NullLogger<PipelineRunner>.Instance, maxConcurrency: 2, stagingRoot: stagingRoot);
 
     private sealed class SyncProgress<T> : IProgress<T>
     {

@@ -79,7 +79,7 @@ public class FilterNode : ITransformNode
             // Cache FileInfo once per file for size/date fields (PERF-02)
             bool needsFileInfo = _conditions.Any(c =>
                 c.Field is "size" or "createdat" or "modifiedat");
-            FileInfo? fileInfo = needsFileInfo ? GetCachedFileInfo(job.CurrentPath, context) : null;
+            FileInfo? fileInfo = needsFileInfo ? GetCachedFileInfo(job.ContentPath, context) : null;
 
             matches = true;
             for (int idx = 0; idx < _conditions.Count; idx++)

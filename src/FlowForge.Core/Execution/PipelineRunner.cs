@@ -14,13 +14,17 @@ public class PipelineRunner
     private readonly ILogger<PipelineRunner> _logger;
     private readonly int _maxConcurrency;
 
-    public PipelineRunner(NodeRegistry registry, ILogger<PipelineRunner> logger, int maxConcurrency = 0)
+    /// <summary>Where runs keep staged copies of the files a transform rewrote.</summary>
+    private readonly string _stagingRoot;
+
+    public PipelineRunner(NodeRegistry registry, ILogger<PipelineRunner> logger, int maxConcurrency = 0, string? stagingRoot = null)
     {
         ArgumentNullException.ThrowIfNull(registry);
         ArgumentNullException.ThrowIfNull(logger);
         _registry = registry;
         _logger = logger;
         _maxConcurrency = maxConcurrency > 0 ? maxConcurrency : Environment.ProcessorCount;
+        _stagingRoot = stagingRoot ?? DefaultStagingRoot;
     }
 
     public async Task<ExecutionResult> RunAsync(
@@ -32,7 +36,7 @@ public class PipelineRunner
         await Task.CompletedTask.ConfigureAwait(ConfigureAwaitOptions.ForceYielding);
         var stopwatch = Stopwatch.StartNew();
         var result = new ExecutionResult { IsDryRun = dryRun };
-        using RunContext context = new(dryRun, DefaultStagingRoot);
+        using RunContext context = new(dryRun, _stagingRoot);
         bool succeeded = false;
 
         try
@@ -49,10 +53,15 @@ public class PipelineRunner
             (List<(Guid Id, ISourceNode Node)> sources, List<(Guid Id, ITransformNode Node)> transforms, Dictionary<Guid, IOutputNode> outputs) =
                 CreateNodes(graph, validation.Order);
 
+            if (!dryRun)
+            {
+                RunContext.SweepStaleRuns(_stagingRoot, _logger);
+            }
+
             IReadOnlyList<Connection> connections = validation.Connections;
             var lineages = new LineageCounter();
             var router = new JobRouter(connections, lineages);
-            result.TotalFiles = await DiscoverJobsAsync(sources, router, lineages, progress, ct).ConfigureAwait(false);
+            result.TotalFiles = await DiscoverJobsAsync(sources, router, lineages, context, progress, ct).ConfigureAwait(false);
 
             progress?.Report(new PhaseChanged(ExecutionPhase.Processing));
 
@@ -111,6 +120,7 @@ public class PipelineRunner
         List<(Guid Id, ISourceNode Node)> sources,
         JobRouter router,
         LineageCounter lineages,
+        RunContext context,
         IProgress<PipelineProgressEvent>? progress,
         CancellationToken ct)
     {
@@ -123,6 +133,12 @@ public class PipelineRunner
             {
                 ct.ThrowIfCancellationRequested();
                 discovered++;
+                job.ContentPath = job.OriginalPath;
+                if (!context.DryRun)
+                {
+                    context.Destinations.RegisterOriginal(job.OriginalPath);
+                }
+
                 lineages.AddOriginal(job);
                 router.Emit(job, id);
 
@@ -232,13 +248,13 @@ public class PipelineRunner
                     // their jobs are routed after FlushAsync.
                     if (transform is not IBufferedTransformNode)
                     {
-                        HandleEmptyTransformResult(transform, job, result, lineages, progress);
+                        HandleEmptyTransformResult(transform, job, context, result, lineages, progress);
                     }
                 }
                 else
                 {
                     lineages.Join(job, transformedList);
-                    RouteEmitted(transform.TypeKey, nodeId, transformedList, router, result, lineages, progress);
+                    RouteEmitted(transform.TypeKey, nodeId, transformedList, router, context, result, lineages, progress);
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -246,20 +262,21 @@ public class PipelineRunner
                 job.Status = FileJobStatus.Failed;
                 job.ErrorMessage = ex.Message;
                 _logger.LogError(ex, "Transform {NodeType} failed for {File}", transform.TypeKey, job.OriginalPath);
-                RecordTerminal(job, lineages, result, progress);
+                RecordTerminal(job, context, lineages, result, progress);
             }
         }
 
         if (transform is IBufferedTransformNode buffered)
         {
             IEnumerable<FileJob> flushed = await buffered.FlushAsync(context, ct).ConfigureAwait(false);
-            RouteEmitted(transform.TypeKey, nodeId, flushed, router, result, lineages, progress);
+            RouteEmitted(transform.TypeKey, nodeId, flushed, router, context, result, lineages, progress);
         }
     }
 
     private void HandleEmptyTransformResult(
         ITransformNode transform,
         FileJob job,
+        RunContext context,
         ExecutionResult result,
         LineageCounter lineages,
         IProgress<PipelineProgressEvent>? progress)
@@ -277,7 +294,7 @@ public class PipelineRunner
                 transform.TypeKey, job.OriginalPath);
         }
 
-        RecordTerminal(job, lineages, result, progress);
+        RecordTerminal(job, context, lineages, result, progress);
     }
 
     /// <summary>A failed or skipped job ends at the node that emitted it; every other job travels on.</summary>
@@ -286,6 +303,7 @@ public class PipelineRunner
         Guid nodeId,
         IEnumerable<FileJob> emitted,
         JobRouter router,
+        RunContext context,
         ExecutionResult result,
         LineageCounter lineages,
         IProgress<PipelineProgressEvent>? progress)
@@ -295,11 +313,11 @@ public class PipelineRunner
             if (job.Status == FileJobStatus.Failed)
             {
                 _logger.LogError("Transform {NodeType} set Failed for {File}: {ErrorMessage}", typeKey, job.OriginalPath, job.ErrorMessage);
-                RecordTerminal(job, lineages, result, progress);
+                RecordTerminal(job, context, lineages, result, progress);
             }
             else if (job.Status == FileJobStatus.Skipped)
             {
-                RecordTerminal(job, lineages, result, progress);
+                RecordTerminal(job, context, lineages, result, progress);
             }
             else
             {
@@ -327,7 +345,7 @@ public class PipelineRunner
         {
             claim = null;
             FailOutput(job, output, ex);
-            RecordTerminal(job, lineages, result, progress);
+            RecordTerminal(job, context, lineages, result, progress);
             return false;
         }
     }
@@ -355,7 +373,7 @@ public class PipelineRunner
                 FailOutput(job, output, ex);
             }
 
-            RecordTerminal(job, lineages, result, progress);
+            RecordTerminal(job, context, lineages, result, progress);
         }
         finally
         {
@@ -375,13 +393,24 @@ public class PipelineRunner
     /// <summary>
     /// Records one terminal job: exactly one counter, one <see cref="ExecutionResult.Jobs"/> entry and one
     /// <see cref="FileProcessed"/>, which completes the original when this was its last live branch.
+    /// The job's staged content is let go, and a moved original is deleted once every delivery of it is in place.
     /// </summary>
-    private static void RecordTerminal(
+    private void RecordTerminal(
         FileJob job,
+        RunContext context,
         LineageCounter lineages,
         ExecutionResult result,
         IProgress<PipelineProgressEvent>? progress)
     {
+        context.ReleaseContent(job);
+        if (!context.DryRun)
+        {
+            foreach (string original in context.Destinations.CompleteBranch(job.OriginalPath, job.Status == FileJobStatus.Failed))
+            {
+                DeleteMovedOriginal(job, original);
+            }
+        }
+
         bool completes;
         lock (result)
         {
@@ -405,6 +434,20 @@ public class PipelineRunner
         }
 
         progress?.Report(new FileProcessed(job) { CompletesOriginal = completes });
+    }
+
+    /// <summary>A failed delete keeps the original; the delivery still counts as succeeded.</summary>
+    private void DeleteMovedOriginal(FileJob job, string original)
+    {
+        try
+        {
+            File.Delete(original);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _logger.LogWarning(ex, "Move: could not delete original {Path}", original);
+            job.NodeLog.Add($"Move: could not delete original '{Path.GetFileName(original)}': {ex.Message}");
+        }
     }
 
     /// <summary>

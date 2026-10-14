@@ -69,17 +69,11 @@ public class RenameAddAffixNode : ITransformNode
         string extension = Path.GetExtension(job.CurrentPath);
 
         string newFileName = $"{_prefix}{nameWithoutExt}{_suffix}{extension}";
-        string oldPath = job.CurrentPath;
         string newPath = Path.Combine(directory, newFileName);
 
         PathGuard.EnsureWithinDirectory(newPath, directory);
 
-        if (!context.DryRun && !string.Equals(oldPath, newPath, StringComparison.Ordinal))
-        {
-            // .NET has no async File.Move/Copy API; sync call is acceptable for metadata-only operations
-            File.Move(oldPath, newPath, overwrite: false);
-        }
-
+        // The rename is logical: only the name changes; the output resolves name clashes.
         job.CurrentPath = newPath;
         job.NodeLog.Add($"RenameAddAffix: '{oldName}' → '{newFileName}'");
 

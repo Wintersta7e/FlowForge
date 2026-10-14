@@ -80,7 +80,7 @@ public class ImageCompressNode : ITransformNode
             return new[] { job };
         }
 
-        var fileInfo = new FileInfo(job.CurrentPath);
+        var fileInfo = new FileInfo(job.ContentPath);
         if (fileInfo.Length > MaxFileSizeBytes)
         {
             job.Status = FileJobStatus.Failed;
@@ -93,50 +93,50 @@ public class ImageCompressNode : ITransformNode
             return new[] { job };
         }
 
-        string tmpPath = job.CurrentPath + $".{Guid.NewGuid():N}.tmp";
+        string targetFormat = _format ?? job.Extension.TrimStart('.').ToLowerInvariant();
+        if (!SupportedFormats.Contains(targetFormat)
+            || !Configuration.Default.ImageFormatsManager.TryFindFormatByFileExtension(targetFormat, out IImageFormat? format))
+        {
+            _logger.LogWarning("ImageCompress: unsupported format {Format} for file {FilePath}", targetFormat, job.CurrentPath);
+            job.Status = FileJobStatus.Failed;
+            job.ErrorMessage = $"ImageCompress: unsupported format '{targetFormat}'. Supported: jpg, jpeg, png, webp.";
+            return new[] { job };
+        }
+
+        IImageEncoder encoder = GetEncoder(targetFormat);
+        string staged = context.NewStagingPath("." + format.FileExtensions.First());
+        bool referenced = false;
         try
         {
-            using Image image = await Image.LoadAsync(SafeDecoderOptions, job.CurrentPath, ct).ConfigureAwait(false);
+            using Image image = await Image.LoadAsync(SafeDecoderOptions, job.ContentPath, ct).ConfigureAwait(false);
+            await image.SaveAsync(staged, encoder, ct).ConfigureAwait(false);
 
-            string targetFormat = _format ?? job.Extension.TrimStart('.').ToLowerInvariant();
-            if (!SupportedFormats.Contains(targetFormat))
+            var stagedInfo = new FileInfo(staged);
+            if (!stagedInfo.Exists || stagedInfo.Length == 0)
             {
-                _logger.LogWarning("ImageCompress: unsupported format {Format} for file {FilePath}", targetFormat, job.CurrentPath);
-                job.Status = FileJobStatus.Failed;
-                job.ErrorMessage = $"ImageCompress: unsupported format '{targetFormat}'. Supported: jpg, jpeg, png, webp.";
-                return new[] { job };
-            }
-
-            IImageEncoder encoder = GetEncoder(targetFormat);
-
-            await image.SaveAsync(tmpPath, encoder, ct).ConfigureAwait(false);
-
-            var tmpInfo = new FileInfo(tmpPath);
-            if (!tmpInfo.Exists || tmpInfo.Length == 0)
-            {
-                _logger.LogWarning("ImageCompress: temp file {TmpPath} is missing or empty after save", tmpPath);
+                _logger.LogWarning("ImageCompress: staged file {StagedPath} is missing or empty after save", staged);
                 job.Status = FileJobStatus.Failed;
                 job.ErrorMessage = "ImageCompress: compressed output is missing or empty. Original preserved.";
                 return new[] { job };
             }
 
-            File.Move(tmpPath, job.CurrentPath, overwrite: true);
+            context.SetContent(job, staged);
+            referenced = true;
 
-            long newSize = new FileInfo(job.CurrentPath).Length;
-            job.NodeLog.Add($"ImageCompress: compressed to quality={_quality} ({newSize} bytes)");
+            job.NodeLog.Add($"ImageCompress: compressed to quality={_quality} ({stagedInfo.Length} bytes)");
             return new[] { job };
         }
         finally
         {
-            if (File.Exists(tmpPath))
+            if (!referenced)
             {
                 try
                 {
-                    File.Delete(tmpPath);
+                    File.Delete(staged);
                 }
                 catch (IOException ex)
                 {
-                    _logger.LogWarning(ex, "ImageCompress: failed to clean up temp file {TmpPath}", tmpPath);
+                    _logger.LogWarning(ex, "ImageCompress: failed to clean up staged file {StagedPath}", staged);
                 }
             }
         }

@@ -12,6 +12,13 @@ public sealed class DestinationRegistry
     private const int MaxSuffix = 10_000;
 
     private readonly HashSet<string> _claimed = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// One record per original, keyed ignoring case so that two originals differing only in case share
+    /// one: a doubtful delete is skipped rather than made.
+    /// </summary>
+    private readonly Dictionary<string, OriginalRecord> _originals = new(StringComparer.OrdinalIgnoreCase);
+
     private readonly Lock _gate = new();
 
     internal DestinationRegistry()
@@ -67,6 +74,88 @@ public sealed class DestinationRegistry
 
             Add(destinationPath);
             return new DestinationClaim(destinationPath, ClaimKind.New, BackupPath: null);
+        }
+    }
+
+    /// <summary>Starts tracking one discovered original: one live branch, nothing delivered yet.</summary>
+    internal void RegisterOriginal(string originalPath)
+    {
+        lock (_gate)
+        {
+            if (!_originals.TryGetValue(originalPath, out OriginalRecord? record))
+            {
+                record = new OriginalRecord();
+                _originals[originalPath] = record;
+            }
+
+            record.Paths.Add(originalPath);
+            record.Live++;
+        }
+    }
+
+    /// <summary>Counts one more live branch of the original.</summary>
+    internal void RegisterBranch(string originalPath)
+    {
+        lock (_gate)
+        {
+            if (_originals.TryGetValue(originalPath, out OriginalRecord? record))
+            {
+                record.Live++;
+            }
+        }
+    }
+
+    internal void RecordDelivery(string originalPath, string deliveredPath, bool byMove)
+    {
+        lock (_gate)
+        {
+            if (_originals.TryGetValue(originalPath, out OriginalRecord? record))
+            {
+                record.Delivered.Add(deliveredPath);
+                record.ByMove |= byMove;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Ends one branch of the original. When it was the last, returns the originals to delete: only after
+    /// some delivery by a move output, with no branch failed, and never one a delivery was made onto.
+    /// </summary>
+    internal IReadOnlyList<string> CompleteBranch(string originalPath, bool failed)
+    {
+        lock (_gate)
+        {
+            if (!_originals.TryGetValue(originalPath, out OriginalRecord? record))
+            {
+                return [];
+            }
+
+            record.Failed |= failed;
+            record.Live--;
+            if (record.Live > 0)
+            {
+                return [];
+            }
+
+            _originals.Remove(originalPath);
+            if (!record.ByMove || record.Failed)
+            {
+                return [];
+            }
+
+            return record.Paths.Where(original => !record.Delivered.Any(delivered => MayBeSameFile(original, delivered))).ToList();
+        }
+    }
+
+    private static bool MayBeSameFile(string original, string delivered)
+    {
+        try
+        {
+            return PathGuard.IsSameFile(original, delivered);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return true;
         }
     }
 
@@ -128,4 +217,17 @@ public sealed class DestinationRegistry
     private bool IsClaimed(string path) => _claimed.Contains(Path.GetFullPath(path));
 
     private void Add(string path) => _claimed.Add(Path.GetFullPath(path));
+
+    private sealed class OriginalRecord
+    {
+        public HashSet<string> Paths { get; } = new(StringComparer.Ordinal);
+
+        public List<string> Delivered { get; } = [];
+
+        public int Live { get; set; }
+
+        public bool Failed { get; set; }
+
+        public bool ByMove { get; set; }
+    }
 }

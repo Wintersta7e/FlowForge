@@ -87,19 +87,11 @@ public class ImageConvertNode : ITransformNode
             return new[] { job };
         }
 
-        var fileInfo = new FileInfo(job.CurrentPath);
+        var fileInfo = new FileInfo(job.ContentPath);
         if (fileInfo.Length > MaxFileSizeBytes)
         {
             job.Status = FileJobStatus.Failed;
             job.NodeLog.Add($"ImageConvert: File too large ({fileInfo.Length / (1024 * 1024)} MB, max 500 MB).");
-            return new[] { job };
-        }
-
-        if (Path.Exists(newPath) && !PathGuard.IsSameFile(job.CurrentPath, newPath))
-        {
-            job.Status = FileJobStatus.Failed;
-            job.ErrorMessage = $"ImageConvert: '{Path.GetFileName(newPath)}' already exists and is a different file; it was not replaced. Original preserved.";
-            job.NodeLog.Add(job.ErrorMessage);
             return new[] { job };
         }
 
@@ -108,28 +100,29 @@ public class ImageConvertNode : ITransformNode
             return new[] { job };
         }
 
-        return new[] { await ConvertImageAsync(job, newPath, ct).ConfigureAwait(false) };
+        return new[] { await ConvertImageAsync(job, newPath, context, ct).ConfigureAwait(false) };
     }
 
-    private async Task<FileJob> ConvertImageAsync(FileJob job, string newPath, CancellationToken ct)
+    private async Task<FileJob> ConvertImageAsync(FileJob job, string newPath, RunContext context, CancellationToken ct)
     {
-        string tmpPath = newPath + $".{Guid.NewGuid():N}.tmp";
+        string staged = context.NewStagingPath(Path.GetExtension(newPath));
+        bool referenced = false;
         try
         {
-            using Image image = await Image.LoadAsync(SafeDecoderOptions, job.CurrentPath, ct).ConfigureAwait(false);
-            await image.SaveAsync(tmpPath, _encoder, ct).ConfigureAwait(false);
+            using Image image = await Image.LoadAsync(SafeDecoderOptions, job.ContentPath, ct).ConfigureAwait(false);
+            await image.SaveAsync(staged, _encoder, ct).ConfigureAwait(false);
 
-            FileInfo outputInfo = new(tmpPath);
+            FileInfo outputInfo = new(staged);
             if (!outputInfo.Exists || outputInfo.Length == 0)
             {
-                _logger.LogWarning("ImageConvert: output file {OutputPath} is missing or empty after save", tmpPath);
+                _logger.LogWarning("ImageConvert: staged file {StagedPath} is missing or empty after save", staged);
                 job.Status = FileJobStatus.Failed;
                 job.ErrorMessage = "ImageConvert: output file is missing or empty after save. Original preserved.";
                 return job;
             }
 
-            File.Move(tmpPath, newPath, overwrite: true);
-            DeleteOriginalIfExtensionChanged(job, newPath);
+            context.SetContent(job, staged);
+            referenced = true;
 
             string oldName = job.FileName;
             job.CurrentPath = newPath;
@@ -138,7 +131,10 @@ public class ImageConvertNode : ITransformNode
         }
         finally
         {
-            CleanupTempFile(tmpPath);
+            if (!referenced)
+            {
+                CleanupStagedFile(staged);
+            }
         }
     }
 
@@ -158,39 +154,15 @@ public class ImageConvertNode : ITransformNode
         return Path.Combine(job.DirectoryName, nameWithoutExt + newExtension);
     }
 
-    private void DeleteOriginalIfExtensionChanged(FileJob job, string newPath)
+    private void CleanupStagedFile(string stagedPath)
     {
-        if (PathGuard.IsSameFile(job.CurrentPath, newPath) ||
-            !File.Exists(job.CurrentPath))
-        {
-            return;
-        }
-
         try
         {
-            File.Delete(job.CurrentPath);
+            File.Delete(stagedPath);
         }
         catch (IOException ex)
         {
-            _logger.LogWarning(ex, "ImageConvert: failed to delete original file {OriginalPath}", job.CurrentPath);
-            job.NodeLog.Add($"ImageConvert: Could not delete original '{Path.GetFileName(job.CurrentPath)}': {ex.Message}");
-        }
-    }
-
-    private void CleanupTempFile(string tmpPath)
-    {
-        if (!File.Exists(tmpPath))
-        {
-            return;
-        }
-
-        try
-        {
-            File.Delete(tmpPath);
-        }
-        catch (IOException ex)
-        {
-            _logger.LogWarning(ex, "ImageConvert: failed to clean up temp file {TmpPath}", tmpPath);
+            _logger.LogWarning(ex, "ImageConvert: failed to clean up staged file {StagedPath}", stagedPath);
         }
     }
 

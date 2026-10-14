@@ -74,9 +74,9 @@ public class SortNode : ITransformNode, IBufferedTransformNode
             {
                 "filename" => SortByKey(_buffer, j => j.FileName, descending, StringComparer.OrdinalIgnoreCase),
                 "extension" => SortByKey(_buffer, j => j.Extension, descending, StringComparer.OrdinalIgnoreCase),
-                "size" => SortByKey(_buffer, j => GetFileSize(j.CurrentPath, context), descending, Comparer<long>.Default),
-                "createdat" => SortByKey(_buffer, j => GetFileCreatedAt(j.CurrentPath, context), descending, Comparer<DateTime>.Default),
-                "modifiedat" => SortByKey(_buffer, j => GetFileModifiedAt(j.CurrentPath, context), descending, Comparer<DateTime>.Default),
+                "size" => SortByKey(_buffer, j => GetFileSize(j.ContentPath, context), descending, Comparer<long>.Default),
+                "createdat" => SortByKey(_buffer, j => GetFileCreatedAt(j.ContentPath, context), descending, Comparer<DateTime>.Default),
+                "modifiedat" => SortByKey(_buffer, j => GetFileModifiedAt(j.ContentPath, context), descending, Comparer<DateTime>.Default),
                 _ => throw new InvalidOperationException($"Unknown sort field: '{_field}'")
             };
 

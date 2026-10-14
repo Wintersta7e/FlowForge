@@ -43,7 +43,7 @@ public class FolderOutputDeliveryTests
         string destination = Path.Combine(output, Path.GetFileName(source));
         await File.WriteAllBytesAsync(destination, PreviousBytes);
         FolderOutputNode node = CreateNode(new { path = output, overwrite = true });
-        var job = new FileJob { OriginalPath = source, CurrentPath = source };
+        var job = new FileJob { OriginalPath = source, CurrentPath = source, ContentPath = source };
 
         cts.CancelAfter(TimeSpan.FromMilliseconds(300));
         Exception? thrown = await Record.ExceptionAsync(() => ClaimAndConsumeAsync(node, job, TestRunContext.Live(), cts.Token));
@@ -83,7 +83,7 @@ public class FolderOutputDeliveryTests
         string destination = Path.Combine(output, Path.GetFileName(source));
         await File.WriteAllBytesAsync(destination, PreviousBytes);
         FolderOutputNode node = CreateNode(new { path = output, overwrite = true });
-        var job = new FileJob { OriginalPath = source, CurrentPath = source };
+        var job = new FileJob { OriginalPath = source, CurrentPath = source, ContentPath = source };
 
         Exception? thrown = await Record.ExceptionAsync(() => ClaimAndConsumeAsync(node, job, TestRunContext.Live()));
 
@@ -107,7 +107,7 @@ public class FolderOutputDeliveryTests
         string link = Path.Combine(output, "victim.txt");
         LinkFactory.CreateFileSymlink(link, target);
 
-        ExecutionResult result = await RunAsync(input, new { path = output, mode = "copy", overwrite = true });
+        ExecutionResult result = await RunAsync(dir.StagingRoot, input, new { path = output, mode = "copy", overwrite = true });
 
         string outsideContent = await File.ReadAllTextAsync(target);
         string? linkTarget = new FileInfo(link).LinkTarget;
@@ -133,7 +133,7 @@ public class FolderOutputDeliveryTests
             string output = CreateFolder(dir, "out");
             await File.WriteAllTextAsync(Path.Combine(input, "f.txt"), "MOVED");
 
-            ExecutionResult result = await RunAsync(input, new { path = output, mode = "move" });
+            ExecutionResult result = await RunAsync(dir.StagingRoot, input, new { path = output, mode = "move" });
 
             string because = await DescribeFolderAsync("in to out", result, input, output);
             result.Succeeded.Should().Be(1, because);
@@ -147,7 +147,7 @@ public class FolderOutputDeliveryTests
             string data = CreateFolder(dir, "data");
             await File.WriteAllTextAsync(Path.Combine(data, "f.txt"), "IN PLACE");
 
-            ExecutionResult result = await RunAsync(data, new { path = data, mode = "move", overwrite = true });
+            ExecutionResult result = await RunAsync(dir.StagingRoot, data, new { path = data, mode = "move", overwrite = true });
 
             string because = await DescribeFolderAsync("same folder", result, data);
             result.Succeeded.Should().Be(1, because);
@@ -163,7 +163,7 @@ public class FolderOutputDeliveryTests
             await LinkFactory.CreateDirectoryLinkAsync(alias, data);
             await File.WriteAllTextAsync(Path.Combine(data, "f.txt"), "ALIASED");
 
-            ExecutionResult result = await RunAsync(alias, new { path = data, mode = "move", overwrite = true });
+            ExecutionResult result = await RunAsync(dir.StagingRoot, alias, new { path = data, mode = "move", overwrite = true });
 
             string because = await DescribeFolderAsync("linked folder", result, data);
             result.Succeeded.Should().Be(1, because);
@@ -185,7 +185,7 @@ public class FolderOutputDeliveryTests
         string backup = destination + ".bak";
         await File.WriteAllTextAsync(backup, "OLDER");
         FolderOutputNode node = CreateNode(new { path = output, overwrite = true, enableBackup = true });
-        var job = new FileJob { OriginalPath = source, CurrentPath = source };
+        var job = new FileJob { OriginalPath = source, CurrentPath = source, ContentPath = source };
 
         await ClaimAndConsumeAsync(node, job, TestRunContext.Live());
 
@@ -209,7 +209,7 @@ public class FolderOutputDeliveryTests
         await File.WriteAllTextAsync(Path.Combine(input, "sub", "f.txt"), "SUB");
         await LinkFactory.CreateDirectoryLinkAsync(Path.Combine(output, "sub"), outside);
 
-        ExecutionResult result = await RunAsync(
+        ExecutionResult result = await RunAsync(dir.StagingRoot,
             new { path = input, recursive = true },
             new { path = output, preserveStructure = true, sourceBasePath = input });
 
@@ -230,7 +230,7 @@ public class FolderOutputDeliveryTests
         string output = CreateFolder(dir, "out");
         await File.WriteAllTextAsync(Path.Combine(input, "g.txt"), "FLAT");
 
-        ExecutionResult result = await RunAsync(
+        ExecutionResult result = await RunAsync(dir.StagingRoot,
             new { path = input },
             new { path = output, preserveStructure = true, sourceBasePath = sourceBase });
 
@@ -283,10 +283,10 @@ public class FolderOutputDeliveryTests
         JsonSerializer.SerializeToElement(config).EnumerateObject()
             .ToDictionary(p => p.Name, p => p.Value.Clone(), StringComparer.Ordinal);
 
-    private static Task<ExecutionResult> RunAsync(string input, object outputConfig) =>
-        RunAsync(new { path = input }, outputConfig);
+    private static Task<ExecutionResult> RunAsync(string stagingRoot, string input, object outputConfig) =>
+        RunAsync(stagingRoot, new { path = input }, outputConfig);
 
-    private static Task<ExecutionResult> RunAsync(object inputConfig, object outputConfig)
+    private static Task<ExecutionResult> RunAsync(string stagingRoot, object inputConfig, object outputConfig)
     {
         var source = new NodeDefinition { TypeKey = "FolderInput", Config = Config(inputConfig) };
         var sink = new NodeDefinition { TypeKey = "FolderOutput", Config = Config(outputConfig) };
@@ -295,7 +295,7 @@ public class FolderOutputDeliveryTests
             Nodes = { source, sink },
             Connections = { new Connection { FromNode = source.Id, ToNode = sink.Id } },
         };
-        var runner = new PipelineRunner(NodeRegistry.CreateDefault(NullLoggerFactory.Instance), NullLogger<PipelineRunner>.Instance);
+        var runner = new PipelineRunner(NodeRegistry.CreateDefault(NullLoggerFactory.Instance), NullLogger<PipelineRunner>.Instance, stagingRoot: stagingRoot);
         return runner.RunAsync(graph);
     }
 

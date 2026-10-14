@@ -78,12 +78,12 @@ public class MetadataExtractNode : ITransformNode
         bool hasExifKeys = _keys.Any(k => k.StartsWith("EXIF:", StringComparison.OrdinalIgnoreCase));
         if (hasExifKeys)
         {
-            exifDirectories = ReadExifDirectories(job.CurrentPath);
+            exifDirectories = ReadExifDirectories(job.ContentPath);
         }
 
         foreach (string key in _keys)
         {
-            string? value = ExtractValue(key, job.CurrentPath, exifDirectories);
+            string? value = ExtractValue(key, job.ContentPath, exifDirectories);
             if (value != null)
             {
                 job.Metadata[key] = value;
