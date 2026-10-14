@@ -64,7 +64,7 @@ working tool you can build and run, not a finished, packaged consumer app.
 
 ## Features
 
-**Work on a copy.** Rename and image nodes change files in the input folder itself — they rename, resize, recompress or convert the originals before Folder Output delivers them — so point the input at a copy of your files.
+Rename and image nodes never change the input folder — they work on private copies, and only Folder Output writes to your folders. With `copy` the input files stay as they were; `move` deletes each one only after every delivery of it succeeded.
 
 ### Engine + CLI
 - Pipeline runner with dry-run mode (**writes, moves and deletes nothing**), full `CancellationToken`

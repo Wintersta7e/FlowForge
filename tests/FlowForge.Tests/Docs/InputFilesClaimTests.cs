@@ -8,20 +8,22 @@ using Xunit.Abstractions;
 namespace FlowForge.Tests.Docs;
 
 /// <summary>
-/// Rename and image nodes change files in the input folder itself, so copy mode cannot keep the originals and no
-/// write is confined to a target directory. The documents must say so and never promise otherwise.
-/// When sources become read-only during a run, the "keeps originals" wording can return and this check changes with it.
+/// Rename and image nodes work on private copies and only Folder Output writes to the user's folders, so a run in
+/// copy mode leaves the input files unchanged. The documents and Folder Output's mode description must say so, and
+/// never again warn that the nodes change files in the input folder.
 /// </summary>
 public class InputFilesClaimTests
 {
-    private const string Warning = "Work on a copy.";
+    private const string Claim = "Rename and image nodes never change the input folder";
+
+    private const string CopyModeClaim = "copy: leave the input files unchanged";
 
     private static readonly string[] Documents = ["README.md", "docs/USER_GUIDE.md", "samples/README.md"];
 
-    private static readonly Regex[] FalseClaims =
+    private static readonly Regex[] StaleClaims =
     [
-        new(@"keeps?\s+(the\s+)?originals", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, TimeSpan.FromSeconds(1)),
-        new(@"inside\s+(its|their|the|a)\s+target\s+director(y|ies)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, TimeSpan.FromSeconds(1)),
+        new(@"work\s+on\s+a\s+copy", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, TimeSpan.FromSeconds(1)),
+        new(@"change(s|d)?\s+(files\s+in\s+the\s+input\s+folder|it\s+there)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture, TimeSpan.FromSeconds(1)),
     ];
 
     private readonly ITestOutputHelper _output;
@@ -29,7 +31,7 @@ public class InputFilesClaimTests
     public InputFilesClaimTests(ITestOutputHelper output) => _output = output;
 
     [Fact]
-    public void Docs_warn_that_input_files_change_and_never_promise_kept_originals()
+    public void Docs_say_a_run_leaves_the_input_files_unchanged()
     {
         var mismatches = new List<string>();
         int scanned = 0;
@@ -38,15 +40,15 @@ public class InputFilesClaimTests
         {
             scanned++;
             string text = File.ReadAllText(RepoRoot.Combine(document.Split('/')));
-            foreach (Match match in FalseClaims.SelectMany(claim => claim.Matches(text)))
+            foreach (Match match in StaleClaims.SelectMany(claim => claim.Matches(text)))
             {
                 int line = text.AsSpan(0, match.Index).Count('\n') + 1;
-                mismatches.Add($"{document}:{line}: says '{match.Value}', but rename and image nodes change files in the input folder");
+                mismatches.Add($"{document}:{line}: says '{match.Value}', but rename and image nodes leave the input folder unchanged");
             }
 
-            if (!text.Contains(Warning, StringComparison.Ordinal))
+            if (!text.Contains(Claim, StringComparison.Ordinal))
             {
-                mismatches.Add($"{document}:1: no '{Warning}' warning");
+                mismatches.Add($"{document}:1: does not say '{Claim}'");
             }
         }
 
@@ -57,11 +59,17 @@ public class InputFilesClaimTests
             foreach (ConfigField field in registry.GetConfigSchema(typeKey).Where(f => !string.IsNullOrEmpty(f.Description)))
             {
                 scanned++;
-                foreach (Match match in FalseClaims.SelectMany(claim => claim.Matches(field.Description!)))
+                foreach (Match match in StaleClaims.SelectMany(claim => claim.Matches(field.Description!)))
                 {
-                    mismatches.Add($"{typeKey}.{field.Key}: description says '{match.Value}', but rename and image nodes change files in the input folder");
+                    mismatches.Add($"{typeKey}.{field.Key}: description says '{match.Value}', but rename and image nodes leave the input folder unchanged");
                 }
             }
+        }
+
+        string? mode = registry.GetConfigSchema("FolderOutput").Single(f => string.Equals(f.Key, "mode", StringComparison.Ordinal)).Description;
+        if (mode is null || !mode.StartsWith(CopyModeClaim, StringComparison.Ordinal))
+        {
+            mismatches.Add($"FolderOutput.mode: description '{mode}' does not start with '{CopyModeClaim}'");
         }
 
         ClaimCheck.Report(_output, "input-files", scanned, Documents.Length + typeKeys.Length, mismatches);

@@ -75,7 +75,7 @@ The bottom panel shows pipeline execution results:
 
 ## Nodes
 
-**Work on a copy.** Rename and image nodes change files in the input folder itself — they rename, resize, recompress or convert the originals before Folder Output delivers them — so point the input at a copy of your files.
+Rename and image nodes never change the input folder — they work on private copies, and only Folder Output writes to your folders. With `copy` the input files stay as they were; `move` deletes each one only after every delivery of it succeeded.
 
 ### Folder Input (Source)
 
@@ -207,7 +207,7 @@ Copies or moves processed files to a destination.
 | Field | Label | Required | Default | Options | Example | Description |
 |---|---|---|---|---|---|---|
 | `path` | Output Folder | yes | — | — | — | Destination folder for processed files |
-| `mode` | Mode | no | `copy` | `copy`, `move` | — | copy: leave each file in the input folder (rename and image nodes have already changed it there), move: delete it after transfer |
+| `mode` | Mode | no | `copy` | `copy`, `move` | — | copy: leave the input files unchanged, move: delete each input file once every delivery of it succeeded |
 | `overwrite` | Overwrite Existing | no | `false` | — | — | Replace existing files at destination |
 | `preserveStructure` | Preserve Folder Structure | no | `false` | — | — | Recreate source folder hierarchy in output |
 | `sourceBasePath` | Source Base Path | no | — | — | — | Root path for computing relative subdirectories |
