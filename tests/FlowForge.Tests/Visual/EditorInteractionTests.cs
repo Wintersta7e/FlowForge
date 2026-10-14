@@ -28,6 +28,7 @@ namespace FlowForge.Tests.Visual;
 public sealed class EditorInteractionTests
 {
     private const string EditedPattern = "{name}_edited{ext}";
+    private const string WebExportTemplate = "image-web-export";
 
     private readonly ITestOutputHelper _output;
 
@@ -206,6 +207,114 @@ public sealed class EditorInteractionTests
         }
     }
 
+    [AvaloniaFact]
+    public void Delete_and_undo_restore_the_selected_station()
+    {
+        using var session = VisualSession.Open(_output);
+        MainWindow window = session.Window;
+        EditorViewModel editor = session.ViewModel.Editor;
+        session.ViewModel.LoadTemplateCommand.Execute(WebExportTemplate);
+        PipelineNodeViewModel station = editor.Nodes[1];
+        int before = editor.Nodes.Count;
+
+        Click(window, CentreInWindow(WaitForStation(session, station)));
+        session.RenderUntil(() => editor.SelectedNode is not null, "a station selected");
+        PipelineNodeViewModel? selected = editor.SelectedNode;
+        window.KeyPress(Key.Delete, RawInputModifiers.None, PhysicalKey.Delete, keySymbol: null);
+        window.KeyRelease(Key.Delete, RawInputModifiers.None, PhysicalKey.Delete, keySymbol: null);
+        session.Pump();
+        int afterDelete = editor.Nodes.Count;
+        bool deletedThatStation = !editor.Nodes.Contains(station);
+        window.KeyPress(Key.Z, RawInputModifiers.Control, PhysicalKey.Z, "z");
+        window.KeyRelease(Key.Z, RawInputModifiers.Control, PhysicalKey.Z, "z");
+        session.Pump();
+        int afterUndo = editor.Nodes.Count;
+        using WriteableBitmap frame = session.Capture(VisualFrames.SelectDeleteUndo);
+
+        _output.WriteLine($"clicked={station.TypeKey} selected={selected?.TypeKey} nodes before={before} delete={afterDelete} undo={afterUndo}");
+        selected.Should().BeSameAs(station, "the click selects the station under the pointer");
+        afterDelete.Should().Be(before - 1);
+        deletedThatStation.Should().BeTrue("Delete removes the selected station");
+        afterUndo.Should().Be(before);
+        editor.Nodes.Should().Contain(station, "undo restores the deleted station");
+    }
+
+    [AvaloniaFact]
+    public void Dragging_a_station_moves_it_by_the_drag_over_zoom()
+    {
+        using var session = VisualSession.Open(_output);
+        MainWindow window = session.Window;
+        EditorViewModel editor = session.ViewModel.Editor;
+
+        // Grid-aligned start (cells are 40 wide), so grid snapping cannot shift the result.
+        var start = new Point(200, 160);
+        editor.AddNode("RenamePattern", start, session.ViewModel.Registry);
+        PipelineNodeViewModel node = editor.Nodes.Single();
+        NodifyEditor canvas = Editor(window);
+        Vector delta = new Vector(80, 40) * canvas.ViewportZoom;
+        Point from = CentreInWindow(WaitForStation(session, node));
+
+        // A real pointer reaches the station before pressing; the editor reads that last pointer
+        // event when a station drag begins, and has none if the press is the first event it sees.
+        window.MouseMove(from, RawInputModifiers.None);
+        window.MouseDown(from, MouseButton.Left, RawInputModifiers.None);
+        for (int step = 1; step <= 4; step++)
+        {
+            window.MouseMove(from + (delta * step / 4), RawInputModifiers.LeftMouseButton);
+            session.Pump();
+        }
+
+        window.MouseUp(from + delta, MouseButton.Left, RawInputModifiers.None);
+        session.Pump();
+        using WriteableBitmap frame = session.Capture(VisualFrames.MoveStation);
+
+        Point expected = start + (delta / canvas.ViewportZoom);
+        _output.WriteLine($"zoom={canvas.ViewportZoom} delta={delta} location measured={node.Location} expected={expected}");
+        node.Location.X.Should().BeApproximately(expected.X, 0.5);
+        node.Location.Y.Should().BeApproximately(expected.Y, 0.5);
+    }
+
+    [AvaloniaFact]
+    public void Template_stations_render_title_icon_and_connectors()
+    {
+        using var session = VisualSession.Open(_output);
+        EditorViewModel editor = session.ViewModel.Editor;
+        session.ViewModel.LoadTemplateCommand.Execute(WebExportTemplate);
+
+        // Fitting measures the laid-out stations, so they must exist first.
+        session.RenderUntil(() => Stations(session.Window).Count == editor.Nodes.Count, "template stations laid out");
+        editor.RequestFitToScreen();
+        NodifyEditor canvas = Editor(session.Window);
+        var visible = new Rect(canvas.Bounds.Size);
+
+        // Both corners go through the zoom transform; a station's own bounds are unscaled.
+        session.RenderUntil(
+            () => Stations(session.Window).All(s =>
+                visible.Contains(s.TranslatePoint(default, canvas)!.Value)
+                && visible.Contains(s.TranslatePoint(new Point(s.Bounds.Width, s.Bounds.Height), canvas)!.Value)),
+            "every template station fitted on screen");
+        using WriteableBitmap frame = session.Capture(VisualFrames.NodeRender);
+
+        List<ItemContainer> stations = Stations(session.Window);
+        foreach (ItemContainer station in stations)
+        {
+            var node = (PipelineNodeViewModel)station.DataContext!;
+            var parts = station.GetVisualDescendants().ToList();
+            int titles = parts.OfType<TextBlock>().Count(t => string.Equals(t.Text, node.Title, StringComparison.Ordinal));
+            int icons = parts.OfType<Avalonia.Controls.Shapes.Path>().Count(p => p.Data is not null && p.IsEffectivelyVisible);
+            int inputs = parts.OfType<Connector>().Count(c => c.DataContext is PipelineConnectorViewModel { IsInput: true });
+            int outputs = parts.OfType<Connector>().Count(c => c.DataContext is PipelineConnectorViewModel { IsInput: false });
+            _output.WriteLine($"{node.TypeKey} '{node.Title}': titles={titles} icons={icons} inputs={inputs}/{node.Input.Count} outputs={outputs}/{node.Output.Count}");
+            titles.Should().Be(1, $"{node.TypeKey} shows its title once");
+            icons.Should().BeGreaterThan(0, $"{node.TypeKey} shows its icon");
+            inputs.Should().Be(node.Input.Count, $"{node.TypeKey} shows an input port for each input");
+            outputs.Should().Be(node.Output.Count, $"{node.TypeKey} shows an output port for each output");
+        }
+
+        _output.WriteLine($"stations-checked={stations.Count}");
+        stations.Should().HaveCount(editor.Nodes.Count);
+    }
+
     private static NodifyEditor Editor(Window window) =>
         window.GetVisualDescendants().OfType<NodifyEditor>().Single(e => string.Equals(e.Name, "Editor", StringComparison.Ordinal));
 
@@ -248,13 +357,22 @@ public sealed class EditorInteractionTests
         session.Pump();
     }
 
+    private static List<ItemContainer> Stations(Window window) =>
+        window.GetVisualDescendants().OfType<ItemContainer>()
+            .Where(c => c.DataContext is PipelineNodeViewModel && c.Bounds.Width > 0)
+            .ToList();
+
+    private static ItemContainer WaitForStation(VisualSession session, PipelineNodeViewModel node)
+    {
+        ItemContainer? Find() => Stations(session.Window).SingleOrDefault(c => ReferenceEquals(c.DataContext, node));
+        session.RenderUntil(() => Find() is not null, $"{node.TypeKey} station shown");
+        return Find()!;
+    }
+
     // Clicks the station's body, away from its ports, and waits for the inspector to show its fields.
     private static void Select(VisualSession session, PipelineNodeViewModel node)
     {
-        ItemContainer? Find() => session.Window.GetVisualDescendants().OfType<ItemContainer>()
-            .SingleOrDefault(c => ReferenceEquals(c.DataContext, node) && c.Bounds.Width > 0);
-        session.RenderUntil(() => Find() is not null, $"{node.TypeKey} station shown");
-        Click(session.Window, CentreInWindow(Find()!));
+        Click(session.Window, CentreInWindow(WaitForStation(session, node)));
         session.RenderUntil(
             () => ReferenceEquals(session.ViewModel.Editor.SelectedNode, node) && InspectorReady(session),
             $"{node.TypeKey} selected and its fields shown");

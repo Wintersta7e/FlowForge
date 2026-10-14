@@ -21,6 +21,12 @@ internal static class VisualFrames
 
     public const string EditPersists = "c7-05-edit-persists";
 
+    public const string SelectDeleteUndo = "s93-select-delete-undo";
+
+    public const string MoveStation = "s93-move";
+
+    public const string NodeRender = "s93-node-render";
+
     internal const string InspectorPrefix = "c7-04-inspector-";
 
     public static IReadOnlyList<string> Ids { get; } = typeof(VisualFrames)
