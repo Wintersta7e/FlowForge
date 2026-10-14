@@ -84,7 +84,7 @@ Enumerates files from a directory.
 |---|---|---|---|---|---|
 | `path` | Source Folder | yes | — | — | Root folder to scan for files |
 | `recursive` | Include Subfolders | no | `false` | — | Search subdirectories recursively |
-| `filter` | File Filter | no | `*` | — | Semicolon-separated glob patterns (e.g. *.jpg;*.png) |
+| `filter` | File Filter | no | `*` | — | Semicolon-separated glob patterns (e.g. \*.jpg;\*.png) |
 <!-- /node-fields -->
 
 ### Rename (Pattern) (Transform)
@@ -115,7 +115,7 @@ Regex find-and-replace on filenames.
 <!-- node-fields:RenameRegex -->
 | Field | Label | Required | Default | Options | Description |
 |---|---|---|---|---|---|
-| `pattern` | Regex Pattern | yes | — | — | Regular expression to match against filename (e.g. \d+ or \.jpe?g$) |
+| `pattern` | Regex Pattern | yes | — | — | Regular expression to match against filename (e.g. \\d+ or \\.jpe?g$) |
 | `replacement` | Replacement | yes | — | — | Replacement string ($1, $2 for capture groups) |
 | `scope` | Scope | no | `filename` | `filename`, `fullpath` | filename: match name only, fullpath: match entire path |
 <!-- /node-fields -->

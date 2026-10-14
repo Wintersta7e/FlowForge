@@ -1,6 +1,7 @@
 using FlowForge.Core.Execution;
 using FlowForge.Core.Nodes.Base;
 using FlowForge.Tests.Helpers;
+using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit.Abstractions;
 
@@ -12,6 +13,8 @@ public class NodeFieldsClaimTests
     private const string BlockPrefix = "<!-- node-fields:";
     private const string EndMarker = "<!-- /node-fields -->";
     private const string None = "—";
+
+    private static readonly string[] MarkdownSpecials = ["\\", "`", "*", "_", "[", "]", "<", ">", "|"];
 
     private readonly ITestOutputHelper _output;
 
@@ -73,6 +76,21 @@ public class NodeFieldsClaimTests
         ClaimCheck.Report(_output, "node-fields", found, typeKeys.Length, mismatches);
     }
 
+    [Fact]
+    public void Text_cells_escape_markdown_and_code_cells_stay_literal()
+    {
+        var field = new ConfigField(
+            "pattern",
+            ConfigFieldType.String,
+            "Regex_Pattern",
+            DefaultValue: @"\d+|x",
+            Description: @"Match \.jpe?g$ or *.jpg;*.png or a_b");
+
+        IReadOnlyList<string> table = FieldTable([field]);
+
+        table[2].Should().Be(@"| `pattern` | Regex\_Pattern | no | `\d+\|x` | — | Match \\.jpe?g$ or \*.jpg;\*.png or a\_b |");
+    }
+
     // The table the user guide carries for one node: a header, a separator, and one row per field in schema order.
     private static IReadOnlyList<string> FieldTable(IReadOnlyList<ConfigField> schema)
     {
@@ -85,18 +103,25 @@ public class NodeFieldsClaimTests
         {
             string[] cells =
             [
-                $"`{field.Key}`",
-                field.Label,
+                CodeCell(field.Key),
+                TextCell(field.Label),
                 field.Required ? "yes" : "no",
-                string.IsNullOrEmpty(field.DefaultValue) ? None : $"`{field.DefaultValue}`",
-                field.Options is null || field.Options.Count == 0 ? None : string.Join(", ", field.Options.Select(o => $"`{o}`")),
-                string.IsNullOrEmpty(field.Description) ? None : field.Description,
+                string.IsNullOrEmpty(field.DefaultValue) ? None : CodeCell(field.DefaultValue),
+                field.Options is null || field.Options.Count == 0 ? None : string.Join(", ", field.Options.Select(CodeCell)),
+                string.IsNullOrEmpty(field.Description) ? None : TextCell(field.Description),
             ];
-            rows.Add($"| {string.Join(" | ", cells.Select(c => c.Replace("|", "\\|", StringComparison.Ordinal)))} |");
+            rows.Add($"| {string.Join(" | ", cells)} |");
         }
 
         return rows;
     }
+
+    // A backslash inside a code span is literal, so only the table's own separator needs escaping there.
+    private static string CodeCell(string text) => $"`{text.Replace("|", "\\|", StringComparison.Ordinal)}`";
+
+    // Plain text renders as Markdown: escape the backslash first, then every character Markdown would act on.
+    private static string TextCell(string text) =>
+        MarkdownSpecials.Aggregate(text, (escaped, special) => escaped.Replace(special, "\\" + special, StringComparison.Ordinal));
 
     // The index of the first line that differs (actual.Count, the end marker, when the block is short), or -1 when both are equal.
     private static int FirstDifference(IReadOnlyList<string> actual, IReadOnlyList<string> expected)
