@@ -79,13 +79,15 @@ The bottom panel shows pipeline execution results:
 
 Enumerates files from a directory.
 
-| Field | Description |
-|-------|-------------|
-| `path` | Directory to scan |
-| `recursive` | Include subdirectories |
-| `pattern` | Glob filter (e.g., `*.jpg`, `*.png`) |
+<!-- node-fields:FolderInput -->
+| Field | Label | Required | Default | Options | Description |
+|---|---|---|---|---|---|
+| `path` | Source Folder | yes | — | — | Root folder to scan for files |
+| `recursive` | Include Subfolders | no | `false` | — | Search subdirectories recursively |
+| `filter` | File Filter | no | `*` | — | Semicolon-separated glob patterns (e.g. *.jpg;*.png) |
+<!-- /node-fields -->
 
-### Rename Pattern (Transform)
+### Rename (Pattern) (Transform)
 
 Renames files using token-based patterns.
 
@@ -97,99 +99,119 @@ Renames files using token-based patterns.
 | `{date:FORMAT}` | Current date (e.g., `{date:yyyy-MM-dd}`) |
 | `{meta:KEY}` | Metadata value (requires upstream Metadata Extract node) |
 
-| Field | Description |
-|-------|-------------|
-| `pattern` | Rename pattern using tokens above |
-| `startIndex` | Starting value for `{counter}` (default: 1) |
+A `{meta:KEY}` token whose key the file does not carry expands to an empty string; the file is still processed.
 
-### Rename Regex (Transform)
+<!-- node-fields:RenamePattern -->
+| Field | Label | Required | Default | Options | Description |
+|---|---|---|---|---|---|
+| `pattern` | Rename Pattern | yes | — | — | Tokens: {name}, {ext}, {counter:000}, {date:yyyy-MM-dd}, {meta:KEY} |
+| `startIndex` | Counter Start | no | `1` | — | Starting number for {counter} token |
+<!-- /node-fields -->
+
+### Rename (Regex) (Transform)
 
 Regex find-and-replace on filenames.
 
-| Field | Description |
-|-------|-------------|
-| `pattern` | Regex pattern to match |
-| `replacement` | Replacement string (supports `$1`, `$2` capture groups) |
-| `scope` | Apply to `filename` (default) or `fullpath` |
+<!-- node-fields:RenameRegex -->
+| Field | Label | Required | Default | Options | Description |
+|---|---|---|---|---|---|
+| `pattern` | Regex Pattern | yes | — | — | Regular expression to match against filename (e.g. \d+ or \.jpe?g$) |
+| `replacement` | Replacement | yes | — | — | Replacement string ($1, $2 for capture groups) |
+| `scope` | Scope | no | `filename` | `filename`, `fullpath` | filename: match name only, fullpath: match entire path |
+<!-- /node-fields -->
 
-### Rename Add Affix (Transform)
+### Rename (Add Affix) (Transform)
 
 Adds a prefix and/or suffix to filenames.
 
-| Field | Description |
-|-------|-------------|
-| `prefix` | Text to prepend to filename |
-| `suffix` | Text to append before the extension |
+<!-- node-fields:RenameAddAffix -->
+| Field | Label | Required | Default | Options | Description |
+|---|---|---|---|---|---|
+| `prefix` | Prefix | no | — | — | Text to prepend before filename |
+| `suffix` | Suffix | no | — | — | Text to append after filename (before extension) |
+<!-- /node-fields -->
 
 ### Filter (Transform)
 
 Filters files by conditions. Files that don't match are either skipped or dropped.
 
-| Field | Description |
-|-------|-------------|
-| `field` | What to filter on: `extension`, `size`, `name`, `date` |
-| `operator` | Comparison: `equals`, `contains`, `startsWith`, `endsWith`, `greaterThan`, `lessThan`, `matches` (regex) |
-| `value` | Value to compare against |
-| `action` | `skip` (mark as skipped) or `drop` (remove from pipeline) |
+<!-- node-fields:Filter -->
+| Field | Label | Required | Default | Options | Description |
+|---|---|---|---|---|---|
+| `conditions` | Conditions (JSON) | yes | — | — | JSON array of conditions. Fields: extension, filename, size, createdAt, modifiedAt. Operators: equals, notequals, contains, startswith, endswith, greaterthan, lessthan, matches |
+<!-- /node-fields -->
 
 ### Sort (Transform)
 
 Reorders files in the pipeline.
 
-| Field | Description |
-|-------|-------------|
-| `sortBy` | Sort key: `name`, `extension`, `size` |
-| `descending` | Reverse sort order (default: false) |
+<!-- node-fields:Sort -->
+| Field | Label | Required | Default | Options | Description |
+|---|---|---|---|---|---|
+| `field` | Sort Field | no | `filename` | `filename`, `extension`, `size`, `createdAt`, `modifiedAt` | File property to sort by |
+| `direction` | Direction | no | `asc` | `asc`, `desc` | asc: smallest/oldest first, desc: largest/newest first |
+<!-- /node-fields -->
 
 ### Image Resize (Transform)
 
 Resizes image files.
 
-| Field | Description |
-|-------|-------------|
-| `width` | Target width in pixels |
-| `height` | Target height in pixels |
-| `mode` | Resize mode: `max` (fit within bounds), `exact` (stretch to exact size) |
-| `maintainAspect` | Preserve aspect ratio (default: true) |
-| `dpi` | Output DPI (default: 0 = keep original) |
+<!-- node-fields:ImageResize -->
+| Field | Label | Required | Default | Options | Description |
+|---|---|---|---|---|---|
+| `width` | Width (px) | no | — | — | Target width in pixels (leave blank to auto-calculate from height) |
+| `height` | Height (px) | no | — | — | Target height in pixels (leave blank to auto-calculate from width) |
+| `mode` | Resize Mode | no | `max` | `max`, `min`, `crop`, `pad`, `stretch` | max: fit within bounds, crop: fill and trim, pad: fit with margins, stretch: distort to exact size |
+| `maintainAspect` | Maintain Aspect Ratio | no | `true` | — | Preserve original width-to-height ratio |
+| `dpi` | DPI | no | — | — | Output resolution in dots per inch (leave blank to keep original) |
+<!-- /node-fields -->
 
 ### Image Convert (Transform)
 
 Converts images between formats.
 
-| Field | Description |
-|-------|-------------|
-| `format` | Target format: `jpg`, `png`, `webp`, `bmp`, `tiff` |
+<!-- node-fields:ImageConvert -->
+| Field | Label | Required | Default | Options | Description |
+|---|---|---|---|---|---|
+| `format` | Target Format | yes | — | `jpg`, `jpeg`, `png`, `webp`, `bmp`, `tiff` | Output image format |
+<!-- /node-fields -->
 
 ### Image Compress (Transform)
 
 Compresses images with quality control.
 
-| Field | Description |
-|-------|-------------|
-| `quality` | Compression quality 1-100 (default: 75) |
-| `format` | Target format (optional — defaults to original) |
+<!-- node-fields:ImageCompress -->
+| Field | Label | Required | Default | Options | Description |
+|---|---|---|---|---|---|
+| `quality` | Quality (1-100) | yes | — | — | JPEG/WebP quality level (1 = smallest file, 100 = best quality) |
+| `format` | Output Format | no | — | `jpg`, `jpeg`, `png`, `webp` | Override output format (leave blank to keep original format) |
+<!-- /node-fields -->
 
 ### Metadata Extract (Transform)
 
 Reads EXIF and file metadata into pipeline variables for use in downstream Rename Pattern nodes via `{meta:KEY}`.
 
-| Field | Description |
-|-------|-------------|
-| `keys` | Comma-separated metadata keys to extract (e.g., `DateTaken`, `CameraModel`) |
+<!-- node-fields:MetadataExtract -->
+| Field | Label | Required | Default | Options | Description |
+|---|---|---|---|---|---|
+| `keys` | Metadata Keys | yes | — | — | Comma-separated keys. File: SizeBytes, CreatedAt, ModifiedAt. EXIF: DateTaken, CameraModel, CameraMake, GPS, FocalLength, ISO |
+<!-- /node-fields -->
 
 ### Folder Output (Save To)
 
 Copies or moves processed files to a destination.
 
-| Field | Description |
-|-------|-------------|
-| `path` | Destination directory |
-| `mode` | `copy` or `move` |
-| `overwrite` | Overwrite existing files (default: false) |
-| `preserveStructure` | Maintain source directory hierarchy (default: false) |
-| `enableBackup` | Create backup of destination file before overwriting (default: false) |
-| `backupSuffix` | Backup file suffix (default: `.bak`) |
+<!-- node-fields:FolderOutput -->
+| Field | Label | Required | Default | Options | Description |
+|---|---|---|---|---|---|
+| `path` | Output Folder | yes | — | — | Destination folder for processed files |
+| `mode` | Mode | no | `copy` | `copy`, `move` | copy: keep originals, move: delete originals after transfer |
+| `overwrite` | Overwrite Existing | no | `false` | — | Replace existing files at destination |
+| `preserveStructure` | Preserve Folder Structure | no | `false` | — | Recreate source folder hierarchy in output |
+| `sourceBasePath` | Source Base Path | no | — | — | Root path for computing relative subdirectories |
+| `enableBackup` | Backup Before Overwrite | no | `false` | — | Create a backup copy of existing destination files before overwriting |
+| `backupSuffix` | Backup Suffix | no | `.bak` | — | File extension appended to backup copies (e.g. .bak, .orig) |
+<!-- /node-fields -->
 
 ## Running Pipelines
 

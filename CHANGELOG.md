@@ -24,6 +24,7 @@ All notable changes to this project will be documented in this file.
 - **CLI progress order** — the scan count now always prints before "Processing N files…"; the two lines could appear out of order.
 - **User guide JSON example** — lists the keys the CLI actually writes (`isDryRun`, `duration`, `jobs`); it showed `durationMs` and `files`.
 - **One Serilog version** — the CLI references Serilog 4.4.0 directly, the version the desktop app uses, so both can share one folder.
+- **User guide node reference** — field tables are generated from each node's schema; several listed fields the nodes never had (Filter, Sort, Folder Input).
 
 ## [2.0.0] - 2026-04-23
 
