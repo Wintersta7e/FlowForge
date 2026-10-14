@@ -12,9 +12,10 @@ Versions 1.0.0–2.0.0 were tagged and released at the time; those tags and rele
 - **CLI executable name** — the CLI builds and publishes as `flowforge` (`flowforge.exe` on Windows), as the docs say; it was `FlowForge.CLI`. `dotnet run --project src/FlowForge.CLI` is unchanged.
 - **README and user guide** — no download or release-zip text until a release exists; supported platforms narrowed to Windows and Linux (macOS untested); dry-run wording matches what the code guarantees; the test count and the ".ffpipe stable across 2.x" sentence are gone.
 - **Dependencies and CI** — Avalonia 11.3.16, MetadataExtractor 2.9.3 and Microsoft.Extensions.DependencyInjection 10.0.7; CI runs format, build-and-test, a Windows build-and-test leg and a dependency audit as parallel jobs, with NuGet caching and per-job timeouts; the README is restyled.
-- **Dependencies and analyzers** — Avalonia 11.3.18, Microsoft.Extensions.* 10.0.10, Serilog 4.4.0, System.CommandLine 2.0.10 and Microsoft.NET.Test.Sdk 18.8.1. Meziantou.Analyzer moves to 3.x and the issues it flagged are fixed, among them a filter-node test that never awaited its assertion and so always passed. The Tmds.DBus.Protocol advisory suppression is dropped because Avalonia now resolves a patched version.
+- **Dependencies and analyzers** — Avalonia 11.3.18, Microsoft.Extensions.* 10.0.13, Serilog 4.4.0, System.CommandLine 2.0.10 and Microsoft.NET.Test.Sdk 18.8.1. Meziantou.Analyzer moves to 3.x and the issues it flagged are fixed, among them a filter-node test that never awaited its assertion and so always passed. The Tmds.DBus.Protocol advisory suppression is dropped because Avalonia now resolves a patched version.
 - **Workflow actions** — the CI and release workflows use the current major versions of the checkout, .NET setup and cache actions; the old pins targeted a runtime the CI runners now deprecate, with a notice on every run.
-- **Avalonia 11.3.19** — all five Avalonia packages move to 11.3.19 in one change.
+- **Avalonia 11.3.20** — all five Avalonia packages move to 11.3.20 in one change.
+- **Dependency audit and CI** — the audit job passes the audit flags on the command line, so a setting in the build properties cannot silence it, and fails when it scanned no project or when an advisory suppression matches no reported advisory; both test jobs fail when no test ran; CI also runs weekly and on demand, and a scheduled or manual run no longer cancels a push run on the same branch.
 
 ### Removed
 
@@ -37,6 +38,13 @@ Versions 1.0.0–2.0.0 were tagged and released at the time; those tags and rele
 - **User guide node reference** — field tables are generated from each node's schema; several listed fields the nodes never had (Filter, Sort, Folder Input).
 - **Templates and samples docs** — the template table is generated from the template library (the Photo Import pattern was wrong); menu and button names match the toolbar (Open, Recent, DRY RUN, IGNITE); samples are no longer called ready-to-run while their nodes open stacked.
 - **Third-party notices** — the font licence is described where it ships (`Assets/Fonts/OFL.txt` in the published folder), not in a release zip that did not exist.
+- **Output failures show their reason** — when an output node fails, its message now becomes the file's error, so the CLI prints an error line for the file and the UI's error tab lists it; both were empty.
+
+### Security
+
+- **TIFF output is always LZW** — Image Convert and Image Resize write TIFF files with lossless LZW compression. A fax-compressed (CCITT T.4/T.6) source could be re-encoded with its own compression, and the CCITT encoders in SixLabors.ImageSharp 3.1.12 have out-of-bounds write advisories.
+- **BigTIFF input is refused** — Image Resize, Image Convert and Image Compress read the file header before decoding and fail a BigTIFF file with a reason; the pinned decoder loops on a crafted BigTIFF header and ignores cancellation. BigTIFF input fails until the image library is replaced.
+- **Known image-library advisories** — the five known SixLabors.ImageSharp 3.1.12 advisories are suppressed by advisory URL, so restore succeeds while any new advisory still fails it. The reachable ones, the CCITT encoders and the BigTIFF decoder, are closed by the two entries above.
 
 ## [2.0.0] - 2026-04-23
 
