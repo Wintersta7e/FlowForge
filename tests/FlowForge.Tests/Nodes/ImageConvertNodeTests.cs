@@ -1,16 +1,111 @@
 using System.Text.Json;
 using FluentAssertions;
+using FlowForge.Core.Execution;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Transforms;
 using FlowForge.Core.Nodes.Base;
+using FlowForge.Core.Pipeline;
 using FlowForge.Tests.Helpers;
+using MetadataExtractor.Formats.Jpeg;
+using MetadataExtractor.Formats.Png;
 using Microsoft.Extensions.Logging.Abstractions;
 using SixLabors.ImageSharp;
+using Xunit.Abstractions;
 
 namespace FlowForge.Tests.Nodes;
 
 public class ImageConvertNodeTests
 {
+    private readonly ITestOutputHelper _output;
+
+    public ImageConvertNodeTests(ITestOutputHelper output) => _output = output;
+
+    [Fact]
+    public async Task Convert_never_replaces_a_sibling()
+    {
+        using var dir = new TempDirectory();
+        string input = Path.Combine(dir.Path, "in");
+        string jpgPath = Path.Combine(input, "photo.jpg");
+        string pngPath = Path.Combine(input, "photo.png");
+        TestFileFactory.CreateTestImage(jpgPath, width: 10, height: 10);
+        TestFileFactory.CreateTestPng(pngPath, width: 20, height: 20);
+
+        ExecutionResult result = await CreateRunner().RunAsync(ConvertToJpegGraph(input, Path.Combine(dir.Path, "out")));
+
+        string jpg = Dimensions(jpgPath);
+        string png = Dimensions(pngPath);
+        _output.WriteLine($"photo.jpg {jpg}");
+        _output.WriteLine($"photo.png {png}");
+        string because = $"photo.jpg {jpg}, photo.png {png}";
+        jpg.Should().Be("10x10", because);
+        png.Should().Be("20x20", because);
+        result.Succeeded.Should().Be(1, because);
+        result.Failed.Should().Be(1, because);
+        result.Jobs.Should().ContainSingle(j => j.Status == FileJobStatus.Failed, because)
+            .Which.ErrorMessage.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task Case_only_extension_change_keeps_the_converted_file()
+    {
+        using var dir = new TempDirectory();
+        string input = Path.Combine(dir.Path, "in");
+        TestFileFactory.CreateTestImage(Path.Combine(input, "photo.JPG"), width: 10, height: 10);
+
+        ExecutionResult result = await CreateRunner().RunAsync(ConvertToJpegGraph(input, Path.Combine(dir.Path, "out")));
+
+        var names = Directory.GetFiles(input).Select(f => Path.GetFileName(f)).ToList();
+        string listing = "in: " + string.Join(", ", names);
+        _output.WriteLine(listing);
+        string? converted = names.Find(n => string.Equals(n, "photo.jpg", StringComparison.OrdinalIgnoreCase));
+        converted.Should().NotBeNull(listing);
+        byte[] bytes = await File.ReadAllBytesAsync(Path.Combine(input, converted!));
+        bytes.Take(2).Should().Equal(new byte[] { 0xFF, 0xD8 }, listing);
+        result.Jobs.Should().ContainSingle(listing).Which.Status.Should().Be(FileJobStatus.Succeeded, listing);
+    }
+
+    private static PipelineRunner CreateRunner() =>
+        new(NodeRegistry.CreateDefault(NullLoggerFactory.Instance), NullLogger<PipelineRunner>.Instance);
+
+    private static PipelineGraph ConvertToJpegGraph(string input, string output)
+    {
+        NodeDefinition source = Node("FolderInput", new { path = input });
+        NodeDefinition convert = Node("ImageConvert", new { format = "jpg" });
+        NodeDefinition sink = Node("FolderOutput", new { path = output });
+        return new PipelineGraph
+        {
+            Nodes = { source, convert, sink },
+            Connections = { Wire(source, convert), Wire(convert, sink) },
+        };
+    }
+
+    private static NodeDefinition Node(string typeKey, object config) => new()
+    {
+        TypeKey = typeKey,
+        Config = JsonSerializer.SerializeToElement(config).EnumerateObject()
+            .ToDictionary(p => p.Name, p => p.Value.Clone(), StringComparer.Ordinal),
+    };
+
+    private static Connection Wire(NodeDefinition from, NodeDefinition to) => new() { FromNode = from.Id, ToNode = to.Id };
+
+    /// <summary>Reads a JPEG's or PNG's dimensions with a library other than the one that wrote it.</summary>
+    private static string Dimensions(string path)
+    {
+        if (!File.Exists(path))
+        {
+            return "missing";
+        }
+
+        IReadOnlyList<MetadataExtractor.Directory> directories = MetadataExtractor.ImageMetadataReader.ReadMetadata(path);
+        JpegDirectory? jpeg = directories.OfType<JpegDirectory>().FirstOrDefault();
+        return jpeg != null
+            ? Size(jpeg, JpegDirectory.TagImageWidth, JpegDirectory.TagImageHeight)
+            : Size(directories.OfType<PngDirectory>().First(), PngDirectory.TagImageWidth, PngDirectory.TagImageHeight);
+
+        static string Size(MetadataExtractor.Directory directory, int widthTag, int heightTag) =>
+            $"{MetadataExtractor.DirectoryExtensions.GetInt32(directory, widthTag)}x{MetadataExtractor.DirectoryExtensions.GetInt32(directory, heightTag)}";
+    }
+
     private static Dictionary<string, JsonElement> MakeConfig(object config)
     {
         string json = JsonSerializer.Serialize(config);

@@ -94,6 +94,14 @@ public class ImageConvertNode : ITransformNode
             return new[] { job };
         }
 
+        if (Path.Exists(newPath) && !PathGuard.IsSameFile(job.CurrentPath, newPath))
+        {
+            job.Status = FileJobStatus.Failed;
+            job.ErrorMessage = $"ImageConvert: '{Path.GetFileName(newPath)}' already exists and is a different file; it was not replaced. Original preserved.";
+            job.NodeLog.Add(job.ErrorMessage);
+            return new[] { job };
+        }
+
         if (await BigTiffGuard.RejectIfBigTiffAsync(job, TypeKey, _logger, ct).ConfigureAwait(false))
         {
             return new[] { job };
@@ -151,7 +159,7 @@ public class ImageConvertNode : ITransformNode
 
     private void DeleteOriginalIfExtensionChanged(FileJob job, string newPath)
     {
-        if (string.Equals(job.CurrentPath, newPath, StringComparison.OrdinalIgnoreCase) ||
+        if (PathGuard.IsSameFile(job.CurrentPath, newPath) ||
             !File.Exists(job.CurrentPath))
         {
             return;
