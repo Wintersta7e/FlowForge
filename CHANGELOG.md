@@ -39,6 +39,7 @@ Versions 1.0.0–2.0.0 were tagged and released at the time; those tags and rele
 - **Output failures show their reason** — when an output node fails, its message now becomes the file's error, so the CLI prints an error line for the file and the UI's error tab lists it; both were empty.
 - **Copy mode no longer claims to keep originals** — rename and image nodes change files in the input folder itself, so Folder Output's `copy` description, the README and the user guide no longer say that copy keeps the originals or that path guards keep every write inside its target directory; the README, the user guide and the samples README warn to point the input at a copy of your files.
 - **Settings with a null recent list** — a settings file whose `recentPipelines` is `null` now loads as an empty list instead of failing and being overwritten with defaults.
+- **Sort keeps ties in order** — Sort keeps the input order of files whose sort keys are equal, in both directions.
 
 ### Security
 

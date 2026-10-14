@@ -295,4 +295,33 @@ public class SortNodeTests
         resultList[0].FileName.Should().Be("newer.txt");
         resultList[1].FileName.Should().Be("older.txt");
     }
+
+    [Fact]
+    public async Task Ties_keep_input_order_ascending()
+    {
+        await AssertTiesKeepInputOrderAsync("asc");
+    }
+
+    [Fact]
+    public async Task Ties_keep_input_order_descending()
+    {
+        await AssertTiesKeepInputOrderAsync("desc");
+    }
+
+    // 40 equal keys: up to 16 elements the sort uses insertion sort, which keeps ties in order anyway.
+    private static async Task AssertTiesKeepInputOrderAsync(string direction)
+    {
+        var node = new SortNode(NullLogger<SortNode>.Instance);
+        node.Configure(MakeConfig(new { field = "extension", direction }));
+        string[] names = Enumerable.Range(0, 40).Select(i => $"f{i:00}.txt").ToArray();
+
+        foreach (string name in names)
+        {
+            await node.TransformAsync(MakeJob(Path.Combine(Path.GetTempPath(), name)), dryRun: true);
+        }
+
+        IEnumerable<FileJob> result = await node.FlushAsync(dryRun: true);
+
+        result.Select(j => j.FileName).Should().Equal(names);
+    }
 }
