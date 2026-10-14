@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.CommandLine.Parsing;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
@@ -64,13 +65,24 @@ runCommand.SetAction(async (parseResult, cancellationToken) =>
     bool verbose = parseResult.GetValue(verboseOption);
     string format = parseResult.GetValue(formatOption)!;
 
-    int exitCode = await RunPipelineAsync(pipelineFile, inputDir, outputDir, dryRun, verbose, format, cancellationToken).ConfigureAwait(false);
-    Environment.ExitCode = exitCode;
+    return await RunPipelineAsync(pipelineFile, inputDir, outputDir, dryRun, verbose, format, cancellationToken).ConfigureAwait(false);
 });
 
 rootCommand.Subcommands.Add(runCommand);
 
-return rootCommand.Parse(args).Invoke();
+// Parse errors exit with Failure: the library's default error exit is 1, which means "partial".
+ParseResult parseResult = rootCommand.Parse(args);
+if (parseResult.Errors.Count > 0)
+{
+    foreach (ParseError error in parseResult.Errors)
+    {
+        Console.Error.WriteLine(error.Message);
+    }
+
+    return CliExitCode.Failure;
+}
+
+return await parseResult.InvokeAsync().ConfigureAwait(false);
 
 static async Task<int> RunPipelineAsync(
     FileInfo pipelineFile,
