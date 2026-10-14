@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
 using Avalonia.Headless;
@@ -237,6 +238,12 @@ internal sealed class VisualSession : IDisposable
         topLevel.MouseDown(centre, MouseButton.Left, RawInputModifiers.None);
         topLevel.MouseUp(centre, MouseButton.Left, RawInputModifiers.None);
     }
+
+    // The one control of type T in the window that carries this automation id.
+    public T ById<T>(string automationId)
+        where T : Control =>
+        Window.GetVisualDescendants().OfType<T>()
+            .Single(control => string.Equals(AutomationProperties.GetAutomationId(control), automationId, StringComparison.Ordinal));
 
     public List<ItemContainer> Stations() =>
         Window.GetVisualDescendants().OfType<ItemContainer>()

@@ -43,6 +43,7 @@ Versions 1.0.0–2.0.0 were tagged and released at the time; those tags and rele
 - **Copy mode no longer claims to keep originals** — rename and image nodes change files in the input folder itself, so Folder Output's `copy` description, the README and the user guide no longer say that copy keeps the originals or that path guards keep every write inside its target directory; the README, the user guide and the samples README warn to point the input at a copy of your files.
 - **Settings with a null recent list** — a settings file whose `recentPipelines` is `null` now loads as an empty list instead of failing and being overwritten with defaults.
 - **Sort keeps ties in order** — Sort keeps the input order of files whose sort keys are equal, in both directions.
+- **Toolbar icon buttons have accessible names** — New Pipeline, Open Pipeline, Save, Recent Pipelines, Undo, Redo, Fit to Screen and Keyboard Shortcuts are named for screen readers; their automation names were the icon's type name (`Avalonia.Controls.PathIcon`) or `?`, and the tooltip is only help text.
 
 ### Security
 

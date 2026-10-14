@@ -59,9 +59,9 @@ public sealed class ExecutionLogVisualTests
             }
 
             ExecutionLogView view = LogView(session.Window);
-            TextBlock succeeded = TabCount(view, "0");
-            TextBlock failed = TabCount(view, "1");
-            TextBlock currentFile = CurrentFileText(view);
+            TextBlock succeeded = session.ById<TextBlock>("SucceededCount");
+            TextBlock failed = session.ById<TextBlock>("FailedCount");
+            TextBlock currentFile = session.ById<TextBlock>("CurrentFile");
             session.Pump();
             ProgressBar bar = view.GetVisualDescendants().OfType<ProgressBar>().Single(p => !p.IsIndeterminate);
             session.RenderUntil(
@@ -144,7 +144,7 @@ public sealed class ExecutionLogVisualTests
         session.RenderUntil(() => !log.IsRunning, TimeSpan.FromSeconds(10), "real run finished");
         ExecutionLogView view = LogView(session.Window);
         ItemsControl rows = RowList(view, log);
-        TextBlock summary = SummaryText(view);
+        TextBlock summary = session.ById<TextBlock>("RunSummary");
         session.RenderUntil(() => RowsShown(rows, 3) && summary.IsEffectivelyVisible && summary.Bounds.Width > 0, "run rows and summary shown");
         using WriteableBitmap frame = session.Capture(VisualFrames.RealRun);
 
@@ -168,21 +168,6 @@ public sealed class ExecutionLogVisualTests
     // The tab strip's toggles, by the tab index each one selects.
     private static ToggleButton Tab(ExecutionLogView view, string index) =>
         view.GetVisualDescendants().OfType<ToggleButton>().Single(b => b.CommandParameter is string p && string.Equals(p, index, StringComparison.Ordinal));
-
-    // A tab's count badge: the one text inside a border, beside the tab's label.
-    private static TextBlock TabCount(ExecutionLogView view, string index) =>
-        Tab(view, index).GetVisualDescendants().OfType<TextBlock>().Single(t => t.Parent is Border);
-
-    // The text after the strip's "Processing" label.
-    private static TextBlock CurrentFileText(ExecutionLogView view)
-    {
-        TextBlock label = view.GetVisualDescendants().OfType<TextBlock>().Single(t => string.Equals(t.Text, "Processing", StringComparison.Ordinal));
-        return (TextBlock)((StackPanel)label.Parent!).Children[1];
-    }
-
-    // The tab strip's one text of its own, right of the tabs.
-    private static TextBlock SummaryText(ExecutionLogView view) =>
-        ((Grid)Tab(view, "0").Parent!).Children.OfType<TextBlock>().Single();
 
     private static ItemsControl RowList(ExecutionLogView view, ExecutionLogViewModel log) =>
         view.GetVisualDescendants().OfType<ItemsControl>().Single(list => ReferenceEquals(list.ItemsSource, log.Entries));

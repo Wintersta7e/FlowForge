@@ -1034,7 +1034,8 @@
         </Border>
 
         <!-- ═══ Empty state: Mw "Build your pipeline from raw ore" ═══ -->
-        <Border IsVisible="{Binding !HasNodes}"
+        <Border AutomationProperties.AutomationId="EmptyState"
+                IsVisible="{Binding !HasNodes}"
                 IsHitTestVisible="True"
                 DragDrop.AllowDrop="True">
             <Border.Background>

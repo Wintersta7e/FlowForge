@@ -192,6 +192,7 @@
                         <Border Background="#265ce0a0" CornerRadius="8" Padding="6,1"
                                 IsVisible="{Binding !!TotalFiles}">
                             <TextBlock Text="{Binding Succeeded}"
+                                       AutomationProperties.AutomationId="SucceededCount"
                                        Foreground="{DynamicResource ForgeSuccess}"
                                        FontSize="10" FontWeight="Bold" />
                         </Border>
@@ -209,6 +210,7 @@
                         <Border Background="#26f2716a" CornerRadius="8" Padding="6,1"
                                 IsVisible="{Binding !!Failed}">
                             <TextBlock Text="{Binding Failed}"
+                                       AutomationProperties.AutomationId="FailedCount"
                                        Foreground="{DynamicResource ForgeError}"
                                        FontSize="10" FontWeight="Bold" />
                         </Border>
@@ -226,6 +228,7 @@
                         <Border Background="#26f5c842" CornerRadius="8" Padding="6,1"
                                 IsVisible="{Binding !!Skipped}">
                             <TextBlock Text="{Binding Skipped}"
+                                       AutomationProperties.AutomationId="SkippedCount"
                                        Foreground="{DynamicResource ForgeWarning}"
                                        FontSize="10" FontWeight="Bold" />
                         </Border>
@@ -234,6 +237,7 @@
 
                 <!-- Summary text (right-aligned, when not running) -->
                 <TextBlock Grid.Column="4"
+                           AutomationProperties.AutomationId="RunSummary"
                            Text="{Binding Summary}"
                            TextTrimming="CharacterEllipsis"
                            VerticalAlignment="Center"
@@ -263,6 +267,7 @@
                                    Foreground="{DynamicResource ForgeAccent}"
                                    FontWeight="SemiBold" FontSize="12" />
                         <TextBlock Text="{Binding CurrentFile}"
+                                   AutomationProperties.AutomationId="CurrentFile"
                                    TextTrimming="CharacterEllipsis"
                                    Foreground="{DynamicResource ForgeTextSecondary}"
                                    FontSize="12" />
