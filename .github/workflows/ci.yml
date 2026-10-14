@@ -68,7 +68,7 @@ jobs:
         shell: bash
         run: |
           dotnet test -c Release --no-build --logger "console;verbosity=normal" --logger "trx;LogFileName=ci.trx" --results-directory TestResults/ci
-          bash scripts/check-trx.sh TestResults/ci
+          bash scripts/check-trx.sh TestResults/ci --require-prefix FlowForge.Tests.Visual.
 
   # Mirror of build-and-test on the actual release target (win-x64).
   build-and-test-windows:
@@ -93,7 +93,7 @@ jobs:
         shell: bash
         run: |
           dotnet test -c Release --no-build --logger "console;verbosity=normal" --logger "trx;LogFileName=ci.trx" --results-directory TestResults/ci
-          bash scripts/check-trx.sh TestResults/ci
+          bash scripts/check-trx.sh TestResults/ci --require-prefix FlowForge.Tests.Visual.
 
   audit:
     name: dependency-audit
