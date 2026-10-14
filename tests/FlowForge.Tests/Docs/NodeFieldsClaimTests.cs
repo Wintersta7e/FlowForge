@@ -84,11 +84,12 @@ public class NodeFieldsClaimTests
             ConfigFieldType.String,
             "Regex_Pattern",
             DefaultValue: @"\d+|x",
+            Placeholder: @"y|\d",
             Description: @"Match \.jpe?g$ or *.jpg;*.png or a_b");
 
         IReadOnlyList<string> table = FieldTable([field]);
 
-        table[2].Should().Be(@"| `pattern` | Regex\_Pattern | no | `\d+\|x` | — | Match \\.jpe?g$ or \*.jpg;\*.png or a\_b |");
+        table[2].Should().Be(@"| `pattern` | Regex\_Pattern | no | `\d+\|x` | — | `y\|\d` | Match \\.jpe?g$ or \*.jpg;\*.png or a\_b |");
     }
 
     // The table the user guide carries for one node: a header, a separator, and one row per field in schema order.
@@ -96,8 +97,8 @@ public class NodeFieldsClaimTests
     {
         var rows = new List<string>
         {
-            "| Field | Label | Required | Default | Options | Description |",
-            "|---|---|---|---|---|---|",
+            "| Field | Label | Required | Default | Options | Example | Description |",
+            "|---|---|---|---|---|---|---|",
         };
         foreach (ConfigField field in schema)
         {
@@ -108,6 +109,7 @@ public class NodeFieldsClaimTests
                 field.Required ? "yes" : "no",
                 string.IsNullOrEmpty(field.DefaultValue) ? None : CodeCell(field.DefaultValue),
                 field.Options is null || field.Options.Count == 0 ? None : string.Join(", ", field.Options.Select(CodeCell)),
+                string.IsNullOrEmpty(field.Placeholder) ? None : CodeCell(field.Placeholder),
                 string.IsNullOrEmpty(field.Description) ? None : TextCell(field.Description),
             ];
             rows.Add($"| {string.Join(" | ", cells)} |");

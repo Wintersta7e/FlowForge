@@ -82,11 +82,11 @@ The bottom panel shows pipeline execution results:
 Enumerates files from a directory.
 
 <!-- node-fields:FolderInput -->
-| Field | Label | Required | Default | Options | Description |
-|---|---|---|---|---|---|
-| `path` | Source Folder | yes | — | — | Root folder to scan for files |
-| `recursive` | Include Subfolders | no | `false` | — | Search subdirectories recursively |
-| `filter` | File Filter | no | `*` | — | Semicolon-separated glob patterns (e.g. \*.jpg;\*.png) |
+| Field | Label | Required | Default | Options | Example | Description |
+|---|---|---|---|---|---|---|
+| `path` | Source Folder | yes | — | — | — | Root folder to scan for files |
+| `recursive` | Include Subfolders | no | `false` | — | — | Search subdirectories recursively |
+| `filter` | File Filter | no | `*` | — | `*.jpg;*.png` | Semicolon-separated glob patterns (e.g. \*.jpg;\*.png) |
 <!-- /node-fields -->
 
 ### Rename (Pattern) (Transform)
@@ -104,10 +104,10 @@ Renames files using token-based patterns.
 A `{meta:KEY}` token whose key the file does not carry expands to an empty string; the file is still processed.
 
 <!-- node-fields:RenamePattern -->
-| Field | Label | Required | Default | Options | Description |
-|---|---|---|---|---|---|
-| `pattern` | Rename Pattern | yes | — | — | Tokens: {name}, {ext}, {counter:000}, {date:yyyy-MM-dd}, {meta:KEY} |
-| `startIndex` | Counter Start | no | `1` | — | Starting number for {counter} token |
+| Field | Label | Required | Default | Options | Example | Description |
+|---|---|---|---|---|---|---|
+| `pattern` | Rename Pattern | yes | — | — | `{name}_{counter:000}{ext}` | Tokens: {name}, {ext}, {counter:000}, {date:yyyy-MM-dd}, {meta:KEY} |
+| `startIndex` | Counter Start | no | `1` | — | — | Starting number for {counter} token |
 <!-- /node-fields -->
 
 ### Rename (Regex) (Transform)
@@ -115,11 +115,11 @@ A `{meta:KEY}` token whose key the file does not carry expands to an empty strin
 Regex find-and-replace on filenames.
 
 <!-- node-fields:RenameRegex -->
-| Field | Label | Required | Default | Options | Description |
-|---|---|---|---|---|---|
-| `pattern` | Regex Pattern | yes | — | — | Regular expression to match against filename (e.g. \\d+ or \\.jpe?g$) |
-| `replacement` | Replacement | yes | — | — | Replacement string ($1, $2 for capture groups) |
-| `scope` | Scope | no | `filename` | `filename`, `fullpath` | filename: match name only, fullpath: match entire path |
+| Field | Label | Required | Default | Options | Example | Description |
+|---|---|---|---|---|---|---|
+| `pattern` | Regex Pattern | yes | — | — | `\d+` | Regular expression to match against filename (e.g. \\d+ or \\.jpe?g$) |
+| `replacement` | Replacement | yes | — | — | — | Replacement string ($1, $2 for capture groups) |
+| `scope` | Scope | no | `filename` | `filename`, `fullpath` | — | filename: match name only, fullpath: match entire path |
 <!-- /node-fields -->
 
 ### Rename (Add Affix) (Transform)
@@ -127,10 +127,10 @@ Regex find-and-replace on filenames.
 Adds a prefix and/or suffix to filenames.
 
 <!-- node-fields:RenameAddAffix -->
-| Field | Label | Required | Default | Options | Description |
-|---|---|---|---|---|---|
-| `prefix` | Prefix | no | — | — | Text to prepend before filename |
-| `suffix` | Suffix | no | — | — | Text to append after filename (before extension) |
+| Field | Label | Required | Default | Options | Example | Description |
+|---|---|---|---|---|---|---|
+| `prefix` | Prefix | no | — | — | — | Text to prepend before filename |
+| `suffix` | Suffix | no | — | — | — | Text to append after filename (before extension) |
 <!-- /node-fields -->
 
 ### Filter (Transform)
@@ -138,9 +138,9 @@ Adds a prefix and/or suffix to filenames.
 Filters files by conditions. Files that don't match are either skipped or dropped.
 
 <!-- node-fields:Filter -->
-| Field | Label | Required | Default | Options | Description |
-|---|---|---|---|---|---|
-| `conditions` | Conditions (JSON) | yes | — | — | JSON array of conditions. Fields: extension, filename, size, createdAt, modifiedAt. Operators: equals, notequals, contains, startswith, endswith, greaterthan, lessthan, matches |
+| Field | Label | Required | Default | Options | Example | Description |
+|---|---|---|---|---|---|---|
+| `conditions` | Conditions (JSON) | yes | — | — | `[{"field":"extension","operator":"equals","value":".jpg"}]` | JSON array of conditions. Fields: extension, filename, size, createdAt, modifiedAt. Operators: equals, notequals, contains, startswith, endswith, greaterthan, lessthan, matches |
 <!-- /node-fields -->
 
 ### Sort (Transform)
@@ -148,10 +148,10 @@ Filters files by conditions. Files that don't match are either skipped or droppe
 Reorders files in the pipeline.
 
 <!-- node-fields:Sort -->
-| Field | Label | Required | Default | Options | Description |
-|---|---|---|---|---|---|
-| `field` | Sort Field | no | `filename` | `filename`, `extension`, `size`, `createdAt`, `modifiedAt` | File property to sort by |
-| `direction` | Direction | no | `asc` | `asc`, `desc` | asc: smallest/oldest first, desc: largest/newest first |
+| Field | Label | Required | Default | Options | Example | Description |
+|---|---|---|---|---|---|---|
+| `field` | Sort Field | no | `filename` | `filename`, `extension`, `size`, `createdAt`, `modifiedAt` | — | File property to sort by |
+| `direction` | Direction | no | `asc` | `asc`, `desc` | — | asc: smallest/oldest first, desc: largest/newest first |
 <!-- /node-fields -->
 
 ### Image Resize (Transform)
@@ -159,13 +159,13 @@ Reorders files in the pipeline.
 Resizes image files.
 
 <!-- node-fields:ImageResize -->
-| Field | Label | Required | Default | Options | Description |
-|---|---|---|---|---|---|
-| `width` | Width (px) | no | — | — | Target width in pixels (leave blank to auto-calculate from height) |
-| `height` | Height (px) | no | — | — | Target height in pixels (leave blank to auto-calculate from width) |
-| `mode` | Resize Mode | no | `max` | `max`, `min`, `crop`, `pad`, `stretch` | max: fit within bounds, crop: fill and trim, pad: fit with margins, stretch: distort to exact size |
-| `maintainAspect` | Maintain Aspect Ratio | no | `true` | — | Preserve original width-to-height ratio |
-| `dpi` | DPI | no | — | — | Output resolution in dots per inch (leave blank to keep original) |
+| Field | Label | Required | Default | Options | Example | Description |
+|---|---|---|---|---|---|---|
+| `width` | Width (px) | no | — | — | — | Target width in pixels (leave blank to auto-calculate from height) |
+| `height` | Height (px) | no | — | — | — | Target height in pixels (leave blank to auto-calculate from width) |
+| `mode` | Resize Mode | no | `max` | `max`, `min`, `crop`, `pad`, `stretch` | — | max: fit within bounds, crop: fill and trim, pad: fit with margins, stretch: distort to exact size |
+| `maintainAspect` | Maintain Aspect Ratio | no | `true` | — | — | Preserve original width-to-height ratio |
+| `dpi` | DPI | no | — | — | — | Output resolution in dots per inch (leave blank to keep original) |
 <!-- /node-fields -->
 
 ### Image Convert (Transform)
@@ -173,9 +173,9 @@ Resizes image files.
 Converts images between formats.
 
 <!-- node-fields:ImageConvert -->
-| Field | Label | Required | Default | Options | Description |
-|---|---|---|---|---|---|
-| `format` | Target Format | yes | — | `jpg`, `jpeg`, `png`, `webp`, `bmp`, `tiff` | Output image format |
+| Field | Label | Required | Default | Options | Example | Description |
+|---|---|---|---|---|---|---|
+| `format` | Target Format | yes | — | `jpg`, `jpeg`, `png`, `webp`, `bmp`, `tiff` | — | Output image format |
 <!-- /node-fields -->
 
 ### Image Compress (Transform)
@@ -183,20 +183,20 @@ Converts images between formats.
 Compresses images with quality control.
 
 <!-- node-fields:ImageCompress -->
-| Field | Label | Required | Default | Options | Description |
-|---|---|---|---|---|---|
-| `quality` | Quality (1-100) | yes | — | — | JPEG/WebP quality level (1 = smallest file, 100 = best quality) |
-| `format` | Output Format | no | — | `jpg`, `jpeg`, `png`, `webp` | Override output format (leave blank to keep original format) |
+| Field | Label | Required | Default | Options | Example | Description |
+|---|---|---|---|---|---|---|
+| `quality` | Quality (1-100) | yes | — | — | `1-100` | JPEG/WebP quality level (1 = smallest file, 100 = best quality) |
+| `format` | Output Format | no | — | `jpg`, `jpeg`, `png`, `webp` | — | Override output format (leave blank to keep original format) |
 <!-- /node-fields -->
 
 ### Metadata Extract (Transform)
 
-Reads EXIF and file metadata into pipeline variables for use in downstream Rename Pattern nodes via `{meta:KEY}`.
+Reads EXIF and file metadata into pipeline variables for use in downstream Rename Pattern nodes via `{meta:KEY}`. A `{meta:KEY}` token takes the full key as written in `keys`, for example `{meta:EXIF:DateTaken}`.
 
 <!-- node-fields:MetadataExtract -->
-| Field | Label | Required | Default | Options | Description |
-|---|---|---|---|---|---|
-| `keys` | Metadata Keys | yes | — | — | Comma-separated keys. File: SizeBytes, CreatedAt, ModifiedAt. EXIF: DateTaken, CameraModel, CameraMake, GPS, FocalLength, ISO |
+| Field | Label | Required | Default | Options | Example | Description |
+|---|---|---|---|---|---|---|
+| `keys` | Metadata Keys | yes | — | — | `EXIF:DateTaken, File:SizeBytes` | Comma-separated keys. File: SizeBytes, CreatedAt, ModifiedAt. EXIF: DateTaken, CameraModel, CameraMake, GPS, FocalLength, ISO |
 <!-- /node-fields -->
 
 ### Folder Output (Save To)
@@ -204,15 +204,15 @@ Reads EXIF and file metadata into pipeline variables for use in downstream Renam
 Copies or moves processed files to a destination.
 
 <!-- node-fields:FolderOutput -->
-| Field | Label | Required | Default | Options | Description |
-|---|---|---|---|---|---|
-| `path` | Output Folder | yes | — | — | Destination folder for processed files |
-| `mode` | Mode | no | `copy` | `copy`, `move` | copy: leave each file in the input folder (rename and image nodes have already changed it there), move: delete it after transfer |
-| `overwrite` | Overwrite Existing | no | `false` | — | Replace existing files at destination |
-| `preserveStructure` | Preserve Folder Structure | no | `false` | — | Recreate source folder hierarchy in output |
-| `sourceBasePath` | Source Base Path | no | — | — | Root path for computing relative subdirectories |
-| `enableBackup` | Backup Before Overwrite | no | `false` | — | Create a backup copy of existing destination files before overwriting |
-| `backupSuffix` | Backup Suffix | no | `.bak` | — | File extension appended to backup copies (e.g. .bak, .orig) |
+| Field | Label | Required | Default | Options | Example | Description |
+|---|---|---|---|---|---|---|
+| `path` | Output Folder | yes | — | — | — | Destination folder for processed files |
+| `mode` | Mode | no | `copy` | `copy`, `move` | — | copy: leave each file in the input folder (rename and image nodes have already changed it there), move: delete it after transfer |
+| `overwrite` | Overwrite Existing | no | `false` | — | — | Replace existing files at destination |
+| `preserveStructure` | Preserve Folder Structure | no | `false` | — | — | Recreate source folder hierarchy in output |
+| `sourceBasePath` | Source Base Path | no | — | — | — | Root path for computing relative subdirectories |
+| `enableBackup` | Backup Before Overwrite | no | `false` | — | — | Create a backup copy of existing destination files before overwriting |
+| `backupSuffix` | Backup Suffix | no | `.bak` | — | — | File extension appended to backup copies (e.g. .bak, .orig) |
 <!-- /node-fields -->
 
 ## Running Pipelines
