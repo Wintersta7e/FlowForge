@@ -98,10 +98,12 @@ public class RenamePatternNodeTests
         node.Configure(MakeConfig("{date}_{name}{ext}"));
 
         FileJob job = MakeJob(Path.Combine(Path.GetTempPath(), "photo.jpg"));
+        DateTime before = DateTime.Today;
         IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: true);
+        DateTime after = DateTime.Today;
 
-        string expected = $"{DateTime.Today:yyyy-MM-dd}_photo.jpg";
-        result.Single().FileName.Should().Be(expected);
+        // A run that crosses midnight may stamp either date.
+        result.Single().FileName.Should().BeOneOf($"{before:yyyy-MM-dd}_photo.jpg", $"{after:yyyy-MM-dd}_photo.jpg");
     }
 
     [Fact]
