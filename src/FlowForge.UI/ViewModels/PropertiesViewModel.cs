@@ -17,12 +17,6 @@ public partial class PropertiesViewModel : ViewModelBase
     [ObservableProperty]
     private bool _hasSelection;
 
-    [ObservableProperty]
-    private IBrush? _badgeForeground;
-
-    [ObservableProperty]
-    private IBrush? _badgeBackground;
-
     /// <summary>Molten Works metadata for the selected node (header row).</summary>
     [ObservableProperty]
     private string? _mwCode;
@@ -49,8 +43,6 @@ public partial class PropertiesViewModel : ViewModelBase
         {
             SelectedNodeTitle = null;
             HasSelection = false;
-            BadgeForeground = null;
-            BadgeBackground = null;
             MwCode = null;
             MwSub = null;
             MwIconGeometry = null;
@@ -61,15 +53,6 @@ public partial class PropertiesViewModel : ViewModelBase
 
         SelectedNodeTitle = node.Title;
         HasSelection = true;
-        BadgeForeground = node.HeaderBrush;
-        BadgeBackground = node.Category switch
-        {
-            NodeCategory.Source => ThemeHelper.GetBrush("ForgeSourceDim", "#265bb8f5"),
-            NodeCategory.Transform => ThemeHelper.GetBrush("ForgeTransformDim", "#265ce0a0"),
-            NodeCategory.Output => ThemeHelper.GetBrush("ForgeOutputDim", "#26e8932f"),
-            _ => ThemeHelper.GetBrush("ForgeElevated", "#252029")
-        };
-
         MwCode = node.MwCode;
         MwSub = node.MwSub;
         MwIconGeometry = node.MwIconGeometry;

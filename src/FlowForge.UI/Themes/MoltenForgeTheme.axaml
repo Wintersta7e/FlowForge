@@ -78,10 +78,6 @@
                     <Color x:Key="ForgeTextMutedColor">#5a4e42</Color>
                     <Color x:Key="ForgeAccentColor">#ff7a1a</Color>
                     <Color x:Key="ForgeAccentBrightColor">#ffd080</Color>
-                    <!-- Category remap: Source=molten, Transform=lime (generic), Output=cyan -->
-                    <Color x:Key="ForgeSourceColor">#ff7a1a</Color>
-                    <Color x:Key="ForgeTransformColor">#c3ff3e</Color>
-                    <Color x:Key="ForgeOutputColor">#2ef0ff</Color>
                     <Color x:Key="ForgeSuccessColor">#c3ff3e</Color>
                     <Color x:Key="ForgeErrorColor">#ff2e88</Color>
                     <Color x:Key="ForgeWarningColor">#ffd080</Color>
@@ -199,17 +195,11 @@
                     <SolidColorBrush x:Key="ForgeTextMuted" Color="{StaticResource ForgeTextMutedColor}" />
                     <SolidColorBrush x:Key="ForgeAccent" Color="{StaticResource ForgeAccentColor}" />
                     <SolidColorBrush x:Key="ForgeAccentBright" Color="{StaticResource ForgeAccentBrightColor}" />
-                    <SolidColorBrush x:Key="ForgeSource" Color="{StaticResource ForgeSourceColor}" />
-                    <SolidColorBrush x:Key="ForgeTransform" Color="{StaticResource ForgeTransformColor}" />
-                    <SolidColorBrush x:Key="ForgeOutput" Color="{StaticResource ForgeOutputColor}" />
                     <SolidColorBrush x:Key="ForgeSuccess" Color="{StaticResource ForgeSuccessColor}" />
                     <SolidColorBrush x:Key="ForgeError" Color="{StaticResource ForgeErrorColor}" />
                     <SolidColorBrush x:Key="ForgeWarning" Color="{StaticResource ForgeWarningColor}" />
                     <SolidColorBrush x:Key="ForgeMoltenFrom" Color="{StaticResource ForgeMoltenFromColor}" />
                     <SolidColorBrush x:Key="ForgeMoltenTo" Color="{StaticResource ForgeMoltenToColor}" />
-                    <SolidColorBrush x:Key="ForgeSourceDim" Color="#26ff7a1a" />
-                    <SolidColorBrush x:Key="ForgeTransformDim" Color="#26c3ff3e" />
-                    <SolidColorBrush x:Key="ForgeOutputDim" Color="#262ef0ff" />
                     <SolidColorBrush x:Key="ForgeSuccessDim" Color="#26c3ff3e" />
                     <SolidColorBrush x:Key="ForgeErrorDim" Color="#26ff2e88" />
                     <SolidColorBrush x:Key="ForgeWarningDim" Color="#26ffd080" />

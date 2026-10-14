@@ -35,11 +35,6 @@ public partial class PipelineNodeViewModel : ViewModelBase
     /// <summary>Molten Works subtitle, e.g. "folder · input".</summary>
     public string MwSub => _meta.Sub;
 
-    public IBrush CategoryBrush { get; }
-    public IBrush HeaderBrush { get; }
-    public IBrush NodeBorderBrush { get; }
-    public IBrush NodeBackground { get; }
-
     /// <summary>Mw icon-well base fill brush.</summary>
     public IBrush MwBaseBrush { get; }
 
@@ -76,15 +71,9 @@ public partial class PipelineNodeViewModel : ViewModelBase
         _location = new Point(definition.Position.X, definition.Position.Y);
         _meta = MwOpsMap.Get(definition.TypeKey);
 
-        Color categoryColor = GetCategoryColor(Category);
-        Color surfaceColor = ThemeHelper.GetColor("ForgeSurfaceColor", "#1c1820");
         MwOpsMap.CategoryKeys keys = MwOpsMap.KeysFor(_meta.Category);
         Color glowColor = ThemeHelper.GetColor(keys.GlowColor, "#ffd080");
 
-        CategoryBrush = GetCategoryBrush(Category);
-        HeaderBrush = BuildHeaderBrush(Category, categoryColor);
-        NodeBorderBrush = new SolidColorBrush(Color.FromArgb(0x33, categoryColor.R, categoryColor.G, categoryColor.B));
-        NodeBackground = BuildNodeBackground(Category, categoryColor, surfaceColor);
         MwBaseBrush = ThemeHelper.GetBrush(keys.Base, "#3a1808");
         MwNeonBrush = ThemeHelper.GetBrush(keys.Neon, "#ff7a1a");
         MwGlowBrush = ThemeHelper.GetBrush(keys.Glow, "#ffd080");
@@ -102,50 +91,6 @@ public partial class PipelineNodeViewModel : ViewModelBase
         {
             Output.Add(new PipelineConnectorViewModel("Out", isInput: false, this));
         }
-    }
-
-    private static Color GetCategoryColor(NodeCategory category) => category switch
-    {
-        NodeCategory.Source => ThemeHelper.GetColor("ForgeSourceColor", "#5bb8f5"),
-        NodeCategory.Output => ThemeHelper.GetColor("ForgeOutputColor", "#e8932f"),
-        _ => ThemeHelper.GetColor("ForgeTransformColor", "#5ce0a0"),
-    };
-
-    private static IBrush GetCategoryBrush(NodeCategory category) => category switch
-    {
-        NodeCategory.Source => ThemeHelper.GetBrush("ForgeSource", "#5bb8f5"),
-        NodeCategory.Output => ThemeHelper.GetBrush("ForgeOutput", "#e8932f"),
-        _ => ThemeHelper.GetBrush("ForgeTransform", "#5ce0a0"),
-    };
-
-    private static IBrush BuildHeaderBrush(NodeCategory category, Color categoryColor)
-    {
-        byte alpha = (byte)(category == NodeCategory.Output ? 0x0E : 0x0D);
-        return new LinearGradientBrush
-        {
-            StartPoint = new RelativePoint(0, 0.5, RelativeUnit.Relative),
-            EndPoint = new RelativePoint(1, 0.5, RelativeUnit.Relative),
-            GradientStops =
-            {
-                new GradientStop(Color.FromArgb(alpha, categoryColor.R, categoryColor.G, categoryColor.B), 0),
-                new GradientStop(Colors.Transparent, 1),
-            },
-        };
-    }
-
-    private static IBrush BuildNodeBackground(NodeCategory category, Color categoryColor, Color surfaceColor)
-    {
-        byte alpha = (byte)(category == NodeCategory.Output ? 0x14 : 0x0F);
-        return new LinearGradientBrush
-        {
-            StartPoint = new RelativePoint(0.5, 0, RelativeUnit.Relative),
-            EndPoint = new RelativePoint(0.5, 1, RelativeUnit.Relative),
-            GradientStops =
-            {
-                new GradientStop(Color.FromArgb(alpha, categoryColor.R, categoryColor.G, categoryColor.B), 0),
-                new GradientStop(surfaceColor, 0.5),
-            },
-        };
     }
 
     private static IBrush BuildHeatPulseBrush(Color glowColor)
