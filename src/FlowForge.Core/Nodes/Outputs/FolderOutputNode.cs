@@ -21,7 +21,7 @@ public class FolderOutputNode : IOutputNode
     {
         new ConfigField("path", ConfigFieldType.FolderPath, Label: "Output Folder", Required: true, Description: "Destination folder for processed files"),
         new ConfigField("mode", ConfigFieldType.Select, Label: "Mode", DefaultValue: "copy",
-            Options: new[] { "copy", "move" }, Description: "copy: keep originals, move: delete originals after transfer"),
+            Options: new[] { "copy", "move" }, Description: "copy: leave each file in the input folder (rename and image nodes have already changed it there), move: delete it after transfer"),
         new ConfigField("overwrite", ConfigFieldType.Bool, Label: "Overwrite Existing", DefaultValue: "false", Description: "Replace existing files at destination"),
         new ConfigField("preserveStructure", ConfigFieldType.Bool, Label: "Preserve Folder Structure", DefaultValue: "false", Description: "Recreate source folder hierarchy in output"),
         new ConfigField("sourceBasePath", ConfigFieldType.FolderPath, Label: "Source Base Path", Description: "Root path for computing relative subdirectories"),

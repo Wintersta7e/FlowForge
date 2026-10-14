@@ -61,6 +61,8 @@ working tool you can build and run, not a finished, packaged consumer app.
 
 ## Features
 
+**Work on a copy.** Rename and image nodes change files in the input folder itself — they rename, resize, recompress or convert the originals before Folder Output delivers them — so point the input at a copy of your files.
+
 ### Engine + CLI
 - Pipeline runner with dry-run mode (**writes, moves and deletes nothing**), full `CancellationToken`
   support, and structured progress events
@@ -72,8 +74,8 @@ working tool you can build and run, not a finished, packaged consumer app.
   - *metadata:* `MetadataExtract`
 - Token-based renaming (`{name}`, `{date}`, `{counter}`, `{meta}`), regex
   find/replace with capture groups, and EXIF / file-metadata reads
-- Atomic `.ffpipe` writes (write-to-`.tmp`-then-rename); path guards keep every
-  write inside its target directory
+- Atomic `.ffpipe` writes (write-to-`.tmp`-then-rename); path guards stop a
+  rename or a delivery from escaping its folder
 - Workflows are plain `.ffpipe` JSON — git-trackable, diffable, shareable
 - `flowforge` CLI mirrors the GUI: per-run input/output overrides, dry-run,
   `--format json` for machine-readable output, exit codes (`0` success,
@@ -148,7 +150,7 @@ FlowForge/
 1. **Local-first.** No network calls, no telemetry, no account — everything runs on your machine.
 2. **Layered and testable.** `FlowForge.Core` is pure logic with no UI references; the UI and CLI are thin composition roots over the same engine.
 3. **CLI is first-class.** Anything a pipeline does in the GUI runs headless from the CLI, with JSON output and a clear exit-code contract for scripting.
-4. **Safe by default.** Dry-run writes, moves and deletes nothing, path guards keep writes inside their target directory, and overwrite-with-backup is opt-in.
+4. **Safe by default.** Dry-run writes, moves and deletes nothing, path guards stop a rename or a delivery from escaping its folder, and overwrite-with-backup is opt-in.
 5. **Inspectable and reusable.** Pipelines are plain `.ffpipe` JSON — save them, diff them, re-run them.
 6. **Strict from commit one.** TreatWarningsAsErrors, StyleCop + Meziantou analyzers, and a `dotnet format` gate enforced in CI.
 

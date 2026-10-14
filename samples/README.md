@@ -2,6 +2,8 @@
 
 Example pipelines for FlowForge. Their nodes open stacked on the canvas, so drag them apart to see the wiring. Edit the input/output paths before running.
 
+**Work on a copy.** Rename and image nodes change files in the input folder itself — they rename, resize, recompress or convert the originals before Folder Output delivers them — so point the input at a copy of your files.
+
 ## Pipelines
 
 ### photo-import-by-date.ffpipe
