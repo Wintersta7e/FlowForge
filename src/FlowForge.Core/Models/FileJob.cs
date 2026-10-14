@@ -42,4 +42,17 @@ public class FileJob
 
     /// <summary>Cached — recomputed lazily when <see cref="CurrentPath"/> changes.</summary>
     public string DirectoryName => _cachedDirectoryName ??= Path.GetDirectoryName(_currentPath) ?? string.Empty;
+
+    /// <summary>
+    /// A copy for one more outgoing connection: same paths and status, its own id, and its own
+    /// metadata and log so one branch's changes never reach another.
+    /// </summary>
+    internal FileJob CloneForBranch() => new()
+    {
+        OriginalPath = OriginalPath,
+        CurrentPath = CurrentPath,
+        Status = Status,
+        Metadata = new Dictionary<string, string>(Metadata, StringComparer.Ordinal),
+        NodeLog = new List<string>(NodeLog),
+    };
 }

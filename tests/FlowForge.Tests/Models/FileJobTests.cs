@@ -92,4 +92,32 @@ public class FileJobTests
 
         job1.Id.Should().NotBe(job2.Id);
     }
+
+    [Fact]
+    public void CloneForBranch_copies_paths_and_status_and_deep_copies_metadata_and_log()
+    {
+        var job = new FileJob
+        {
+            OriginalPath = Path.Combine(Path.GetTempPath(), "original.jpg"),
+            CurrentPath = Path.Combine(Path.GetTempPath(), "renamed.jpg"),
+            Status = FileJobStatus.Processing,
+        };
+        job.Metadata["Camera"] = "Model X";
+        job.NodeLog.Add("renamed");
+
+        FileJob clone = job.CloneForBranch();
+
+        clone.Id.Should().NotBe(job.Id);
+        clone.OriginalPath.Should().Be(job.OriginalPath);
+        clone.CurrentPath.Should().Be(job.CurrentPath);
+        clone.Status.Should().Be(job.Status);
+        clone.Metadata.Should().BeEquivalentTo(job.Metadata);
+        clone.NodeLog.Should().Equal(job.NodeLog);
+        clone.Metadata["Branch"] = "second";
+        clone.NodeLog.Add("branched");
+        job.Metadata.Should().NotContainKey("Branch");
+        job.NodeLog.Should().NotContain("branched");
+        clone.Metadata.Should().BeOfType<Dictionary<string, string>>()
+            .Which.Comparer.Should().BeSameAs(StringComparer.Ordinal);
+    }
 }

@@ -42,27 +42,22 @@ public class PipelineRunner
             }
 
             EnsureSingleChain(graph, validation.Connections);
-            (List<NodeDefinition> sourceNodeDefs, List<NodeDefinition> transformNodeDefs, List<NodeDefinition> outputNodeDefs) = ClassifyNodes(graph, validation.Order);
+            (List<(Guid Id, ISourceNode Node)> sources, List<(Guid Id, ITransformNode Node)> transforms, Dictionary<Guid, IOutputNode> outputs) =
+                CreateNodes(graph, validation.Order);
 
-            List<NodeDefinition> orderedTransforms = BuildTransformChain(graph, validation.Order, transformNodeDefs);
-
-            var sourceNodes = sourceNodeDefs.Select(d => _registry.GetSource(d)).ToList();
-            var transformNodes = orderedTransforms.Select(d => _registry.GetTransform(d)).ToList();
-            var outputNodes = outputNodeDefs.Select(d => _registry.GetOutput(d)).ToList();
-
+            IReadOnlyList<Connection> connections = validation.Connections;
             var lineages = new LineageCounter();
-            List<FileJob> allJobs = await CollectSourceJobsAsync(sourceNodes, lineages, progress, ct).ConfigureAwait(false);
-            result.TotalFiles = allJobs.Count;
+            var router = new JobRouter(connections, lineages);
+            result.TotalFiles = await DiscoverJobsAsync(sources, router, lineages, progress, ct).ConfigureAwait(false);
 
             progress?.Report(new PhaseChanged(ExecutionPhase.Processing));
 
-            IReadOnlyList<FileJob> currentJobs = allJobs;
-            foreach (ITransformNode transform in transformNodes)
+            foreach ((Guid id, ITransformNode transform) in transforms)
             {
-                currentJobs = await ApplyTransformAsync(transform, currentJobs, dryRun, result, lineages, progress, ct).ConfigureAwait(false);
+                await ApplyTransformAsync(id, transform, router, dryRun, result, lineages, progress, ct).ConfigureAwait(false);
             }
 
-            await DispatchOutputJobsAsync(currentJobs, outputNodes, dryRun, result, lineages, progress, ct).ConfigureAwait(false);
+            await DispatchOutputJobsAsync(connections, outputs, router, dryRun, result, lineages, progress, ct).ConfigureAwait(false);
 
             succeeded = true;
         }
@@ -85,72 +80,72 @@ public class PipelineRunner
         return result;
     }
 
-    private (List<NodeDefinition> Sources, List<NodeDefinition> Transforms, List<NodeDefinition> Outputs) ClassifyNodes(
+    /// <summary>One node per definition, in topological order: every source, then every transform, then every output.</summary>
+    private (List<(Guid Id, ISourceNode Node)> Sources, List<(Guid Id, ITransformNode Node)> Transforms, Dictionary<Guid, IOutputNode> Outputs) CreateNodes(
         PipelineGraph graph,
-        IReadOnlyList<Guid> sortedNodeIds)
+        IReadOnlyList<Guid> order)
     {
-        var sourceNodeDefs = new List<NodeDefinition>();
-        var transformNodeDefs = new List<NodeDefinition>();
-        var outputNodeDefs = new List<NodeDefinition>();
-        var nodeMap = graph.Nodes.ToDictionary(n => n.Id);
+        var definitions = graph.Nodes.ToDictionary(n => n.Id);
+        var ordered = order.Select(id => definitions[id]).ToList();
 
-        foreach (Guid nodeId in sortedNodeIds)
-        {
-            NodeDefinition def = nodeMap[nodeId];
-            NodeCategory category = _registry.GetCategoryForTypeKey(def.TypeKey);
-            switch (category)
-            {
-                case NodeCategory.Source:
-                    sourceNodeDefs.Add(def);
-                    break;
-                case NodeCategory.Transform:
-                    transformNodeDefs.Add(def);
-                    break;
-                case NodeCategory.Output:
-                    outputNodeDefs.Add(def);
-                    break;
-            }
-        }
+        var sources = ordered
+            .Where(d => _registry.GetCategoryForTypeKey(d.TypeKey) == NodeCategory.Source)
+            .Select(d => (d.Id, Node: _registry.GetSource(d)))
+            .ToList();
+        var transforms = ordered
+            .Where(d => _registry.GetCategoryForTypeKey(d.TypeKey) == NodeCategory.Transform)
+            .Select(d => (d.Id, Node: _registry.GetTransform(d)))
+            .ToList();
+        var outputs = ordered
+            .Where(d => _registry.GetCategoryForTypeKey(d.TypeKey) == NodeCategory.Output)
+            .ToDictionary(d => d.Id, d => _registry.GetOutput(d));
 
-        return (sourceNodeDefs, transformNodeDefs, outputNodeDefs);
+        return (sources, transforms, outputs);
     }
 
-    private static async Task<List<FileJob>> CollectSourceJobsAsync(
-        List<ISourceNode> sourceNodes,
+    private static async Task<int> DiscoverJobsAsync(
+        List<(Guid Id, ISourceNode Node)> sources,
+        JobRouter router,
         LineageCounter lineages,
         IProgress<PipelineProgressEvent>? progress,
         CancellationToken ct)
     {
-        var allJobs = new List<FileJob>();
+        int discovered = 0;
         int lastReportedCount = 0;
 
-        foreach (ISourceNode source in sourceNodes)
+        foreach ((Guid id, ISourceNode source) in sources)
         {
             await foreach (FileJob job in source.ProduceAsync(ct).ConfigureAwait(false))
             {
                 ct.ThrowIfCancellationRequested();
-                allJobs.Add(job);
+                discovered++;
                 lineages.AddOriginal(job);
+                router.Emit(job, id);
 
-                if (allJobs.Count == 1 || allJobs.Count - lastReportedCount >= 100)
+                if (discovered == 1 || discovered - lastReportedCount >= 100)
                 {
-                    lastReportedCount = allJobs.Count;
-                    progress?.Report(new FilesDiscovered(allJobs.Count));
+                    lastReportedCount = discovered;
+                    progress?.Report(new FilesDiscovered(discovered));
                 }
             }
         }
 
-        if (allJobs.Count != lastReportedCount)
+        if (discovered != lastReportedCount)
         {
-            progress?.Report(new FilesDiscovered(allJobs.Count));
+            progress?.Report(new FilesDiscovered(discovered));
         }
 
-        return allJobs;
+        return discovered;
     }
 
+    /// <summary>
+    /// Hands each job carried on a connection into an output to that output alone, walking those
+    /// connections in graph order and each one's jobs in emission order.
+    /// </summary>
     private async Task DispatchOutputJobsAsync(
-        IReadOnlyList<FileJob> jobs,
-        List<IOutputNode> outputNodes,
+        IReadOnlyList<Connection> connections,
+        Dictionary<Guid, IOutputNode> outputs,
+        JobRouter router,
         bool dryRun,
         ExecutionResult result,
         LineageCounter lineages,
@@ -162,19 +157,16 @@ public class PipelineRunner
 
         try
         {
-            foreach (FileJob job in jobs)
+            foreach (Connection connection in connections.Where(c => outputs.ContainsKey(c.ToNode)))
             {
-                ct.ThrowIfCancellationRequested();
-
-                if (job.Status == FileJobStatus.Skipped)
+                IOutputNode output = outputs[connection.ToNode];
+                foreach (FileJob job in router.CarriedOn(connection))
                 {
-                    RecordTerminal(job, lineages, result, progress);
-                    continue;
+                    ct.ThrowIfCancellationRequested();
+                    await semaphore.WaitAsync(ct).ConfigureAwait(false);
+                    Task task = ConsumeJobAsync(job, output, dryRun, result, lineages, progress, semaphore, ct);
+                    outputTasks.Add(task);
                 }
-
-                await semaphore.WaitAsync(ct).ConfigureAwait(false);
-                Task task = ConsumeJobAsync(job, outputNodes, dryRun, result, lineages, progress, semaphore, ct);
-                outputTasks.Add(task);
             }
 
             await Task.WhenAll(outputTasks).ConfigureAwait(false);
@@ -204,18 +196,17 @@ public class PipelineRunner
         }
     }
 
-    private async Task<IReadOnlyList<FileJob>> ApplyTransformAsync(
+    private async Task ApplyTransformAsync(
+        Guid nodeId,
         ITransformNode transform,
-        IReadOnlyList<FileJob> jobs,
+        JobRouter router,
         bool dryRun,
         ExecutionResult result,
         LineageCounter lineages,
         IProgress<PipelineProgressEvent>? progress,
         CancellationToken ct)
     {
-        var nextJobs = new List<FileJob>();
-
-        foreach (FileJob job in jobs)
+        foreach (FileJob job in router.InputOf(nodeId))
         {
             ct.ThrowIfCancellationRequested();
             try
@@ -227,7 +218,7 @@ public class PipelineRunner
                 if (transformedList.Count == 0)
                 {
                     // Buffered nodes intentionally return empty from TransformAsync;
-                    // their jobs will be counted after FlushAsync.
+                    // their jobs are routed after FlushAsync.
                     if (transform is not IBufferedTransformNode)
                     {
                         HandleEmptyTransformResult(transform, job, result, lineages, progress);
@@ -236,7 +227,7 @@ public class PipelineRunner
                 else
                 {
                     lineages.Join(job, transformedList);
-                    PartitionTransformResults(transform, transformedList, nextJobs, result, lineages, progress);
+                    RouteEmitted(transform.TypeKey, nodeId, transformedList, router, result, lineages, progress);
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -250,10 +241,9 @@ public class PipelineRunner
 
         if (transform is IBufferedTransformNode buffered)
         {
-            await FlushBufferedTransformAsync(buffered, transform.TypeKey, nextJobs, result, lineages, progress, dryRun, ct).ConfigureAwait(false);
+            IEnumerable<FileJob> flushed = await buffered.FlushAsync(dryRun: dryRun, ct: ct).ConfigureAwait(false);
+            RouteEmitted(transform.TypeKey, nodeId, flushed, router, result, lineages, progress);
         }
-
-        return nextJobs;
     }
 
     private void HandleEmptyTransformResult(
@@ -279,56 +269,37 @@ public class PipelineRunner
         RecordTerminal(job, lineages, result, progress);
     }
 
-    private void PartitionTransformResults(
-        ITransformNode transform,
-        List<FileJob> transformedList,
-        List<FileJob> nextJobs,
+    /// <summary>A failed or skipped job ends at the node that emitted it; every other job travels on.</summary>
+    private void RouteEmitted(
+        string typeKey,
+        Guid nodeId,
+        IEnumerable<FileJob> emitted,
+        JobRouter router,
         ExecutionResult result,
         LineageCounter lineages,
         IProgress<PipelineProgressEvent>? progress)
     {
-        foreach (FileJob tj in transformedList)
+        foreach (FileJob job in emitted)
         {
-            if (tj.Status == FileJobStatus.Failed)
+            if (job.Status == FileJobStatus.Failed)
             {
-                _logger.LogError("Transform {NodeType} set Failed for {File}", transform.TypeKey, tj.OriginalPath);
-                RecordTerminal(tj, lineages, result, progress);
+                _logger.LogError("Transform {NodeType} set Failed for {File}: {ErrorMessage}", typeKey, job.OriginalPath, job.ErrorMessage);
+                RecordTerminal(job, lineages, result, progress);
+            }
+            else if (job.Status == FileJobStatus.Skipped)
+            {
+                RecordTerminal(job, lineages, result, progress);
             }
             else
             {
-                nextJobs.Add(tj);
-            }
-        }
-    }
-
-    private async Task FlushBufferedTransformAsync(
-        IBufferedTransformNode buffered,
-        string typeKey,
-        List<FileJob> nextJobs,
-        ExecutionResult result,
-        LineageCounter lineages,
-        IProgress<PipelineProgressEvent>? progress,
-        bool dryRun,
-        CancellationToken ct)
-    {
-        IEnumerable<FileJob> flushed = await buffered.FlushAsync(dryRun: dryRun, ct: ct).ConfigureAwait(false);
-        foreach (FileJob fj in flushed)
-        {
-            if (fj.Status == FileJobStatus.Failed)
-            {
-                _logger.LogError("Transform {NodeType} flush set Failed for {File}: {ErrorMessage}", typeKey, fj.OriginalPath, fj.ErrorMessage);
-                RecordTerminal(fj, lineages, result, progress);
-            }
-            else
-            {
-                nextJobs.Add(fj);
+                router.Emit(job, nodeId);
             }
         }
     }
 
     private async Task ConsumeJobAsync(
         FileJob job,
-        List<IOutputNode> outputs,
+        IOutputNode output,
         bool dryRun,
         ExecutionResult result,
         LineageCounter lineages,
@@ -338,35 +309,21 @@ public class PipelineRunner
     {
         try
         {
-            bool anyFailed = false;
-
-            foreach (IOutputNode output in outputs)
+            try
             {
-                try
-                {
-                    await output.ConsumeAsync(job, dryRun, ct).ConfigureAwait(false);
-                }
-                catch (Exception ex) when (ex is not OperationCanceledException)
-                {
-                    anyFailed = true;
-                    job.Status = FileJobStatus.Failed;
-                    string reason = $"Output '{output.TypeKey}' failed: {ex.Message}";
-                    job.NodeLog.Add(reason);
-                    job.ErrorMessage ??= reason;
-                    _logger.LogError(ex, "Output node {Node} failed for {File}", output.TypeKey, job.FileName);
-                }
-            }
-
-            if (!anyFailed)
-            {
+                await output.ConsumeAsync(job, dryRun, ct).ConfigureAwait(false);
                 job.Status = FileJobStatus.Succeeded;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                job.Status = FileJobStatus.Failed;
+                string reason = $"Output '{output.TypeKey}' failed: {ex.Message}";
+                job.NodeLog.Add(reason);
+                job.ErrorMessage ??= reason;
+                _logger.LogError(ex, "Output node {Node} failed for {File}", output.TypeKey, job.FileName);
             }
 
             RecordTerminal(job, lineages, result, progress);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
         }
         finally
         {
@@ -497,24 +454,5 @@ public class PipelineRunner
         {
             reasons.Add(reason);
         }
-    }
-
-    private static List<NodeDefinition> BuildTransformChain(
-        PipelineGraph graph,
-        IReadOnlyList<Guid> sortedNodeIds,
-        List<NodeDefinition> transformNodeDefs)
-    {
-        var transformMap = transformNodeDefs.ToDictionary(n => n.Id);
-        var ordered = new List<NodeDefinition>();
-
-        foreach (Guid nodeId in sortedNodeIds)
-        {
-            if (transformMap.TryGetValue(nodeId, out NodeDefinition? def))
-            {
-                ordered.Add(def);
-            }
-        }
-
-        return ordered;
     }
 }
