@@ -25,6 +25,7 @@ All notable changes to this project will be documented in this file.
 - **User guide JSON example** — lists the keys the CLI actually writes (`isDryRun`, `duration`, `jobs`); it showed `durationMs` and `files`.
 - **One Serilog version** — the CLI references Serilog 4.4.0 directly, the version the desktop app uses, so both can share one folder.
 - **User guide node reference** — field tables are generated from each node's schema; several listed fields the nodes never had (Filter, Sort, Folder Input).
+- **Templates and samples docs** — the template table is generated from the template library (the Photo Import pattern was wrong); menu and button names match the toolbar (Open, Recent, DRY RUN, IGNITE); samples are no longer called ready-to-run while their nodes open stacked.
 
 ## [2.0.0] - 2026-04-23
 

@@ -1,7 +1,9 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using FlowForge.Core.Execution;
 using FlowForge.Core.Pipeline;
 using FlowForge.Core.Pipeline.Templates;
+using FlowForge.Tests.Docs;
 using FlowForge.Tests.Helpers;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -9,8 +11,11 @@ using Xunit.Abstractions;
 
 namespace FlowForge.Tests.Pipeline;
 
-public class SamplePipelineTests
+public partial class SamplePipelineTests
 {
+    private const string SamplesReadme = "samples/README.md";
+    private const string NodesPrefix = "- **Nodes:** ";
+
     private readonly ITestOutputHelper _output;
 
     public SamplePipelineTests(ITestOutputHelper output) => _output = output;
@@ -73,6 +78,9 @@ public class SamplePipelineTests
 
         var registry = NodeRegistry.CreateDefault(NullLoggerFactory.Instance);
         List<string> failures = [];
+        Dictionary<string, (int Line, string[] Chain)> documented =
+            DocumentedChains(File.ReadAllLines(RepoRoot.Combine("samples", "README.md")));
+        int chainMismatches = 0;
         foreach (string file in files)
         {
             string name = Path.GetFileName(file);
@@ -85,6 +93,18 @@ public class SamplePipelineTests
             {
                 failures.Add($"{name}: {ex.Message}");
                 continue;
+            }
+
+            IReadOnlyList<string> chain = ClaimCheck.TopologicalTypeKeys(graph);
+            if (!documented.TryGetValue(name, out (int Line, string[] Chain) doc))
+            {
+                failures.Add($"{SamplesReadme}: {name}: no heading");
+                chainMismatches++;
+            }
+            else if (!doc.Chain.SequenceEqual(chain, StringComparer.Ordinal))
+            {
+                failures.Add($"{SamplesReadme}:{doc.Line}: {name}: documented {string.Join(" -> ", doc.Chain)}, graph {string.Join(" -> ", chain)}");
+                chainMismatches++;
             }
 
             if (graph.Nodes.Count == 0)
@@ -107,6 +127,17 @@ public class SamplePipelineTests
             }
         }
 
+        var enumerated = files.Select(Path.GetFileName).ToHashSet(StringComparer.Ordinal);
+        foreach ((string name, (int line, string[] _)) in documented)
+        {
+            if (!enumerated.Contains(name))
+            {
+                failures.Add($"{SamplesReadme}:{line}: {name}: documented, but no such sample file");
+                chainMismatches++;
+            }
+        }
+
+        _output.WriteLine($"[claims] sample-chains scanned={documented.Count} mismatches={chainMismatches}");
         failures.Should().BeEmpty();
     }
 
@@ -181,4 +212,38 @@ public class SamplePipelineTests
             return ex.Message;
         }
     }
+
+    /// <summary>
+    /// Reads each <c>### &lt;file&gt;.ffpipe</c> heading of the samples README and the <c>- **Nodes:**</c> chain
+    /// below it, keyed by file name, with the 1-based line of the chain (of the heading when it has none).
+    /// </summary>
+    private static Dictionary<string, (int Line, string[] Chain)> DocumentedChains(string[] lines)
+    {
+        var chains = new Dictionary<string, (int Line, string[] Chain)>(StringComparer.Ordinal);
+        for (int i = 0; i < lines.Length; i++)
+        {
+            Match heading = SampleHeading().Match(lines[i]);
+            if (!heading.Success)
+            {
+                continue;
+            }
+
+            (int Line, string[] Chain) entry = (i + 1, []);
+            for (int j = i + 1; j < lines.Length && !lines[j].StartsWith('#'); j++)
+            {
+                if (lines[j].StartsWith(NodesPrefix, StringComparison.Ordinal))
+                {
+                    entry = (j + 1, lines[j][NodesPrefix.Length..].Trim().Split(" -> "));
+                    break;
+                }
+            }
+
+            chains.TryAdd(heading.Groups["file"].Value, entry);
+        }
+
+        return chains;
+    }
+
+    [GeneratedRegex(@"^### (?<file>\S+\.ffpipe)$", RegexOptions.ExplicitCapture, matchTimeoutMilliseconds: 1000)]
+    private static partial Regex SampleHeading();
 }

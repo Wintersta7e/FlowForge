@@ -1,6 +1,6 @@
 # FlowForge Sample Pipelines
 
-Ready-to-run example pipelines for FlowForge. Edit the input/output paths before running.
+Example pipelines for FlowForge. Their nodes open stacked on the canvas, so drag them apart to see the wiring. Edit the input/output paths before running.
 
 ## Pipelines
 
@@ -30,6 +30,6 @@ dotnet run --project src/FlowForge.CLI -- run samples/photo-import-by-date.ffpip
 
 ### UI
 1. Open FlowForge
-2. File -> Open -> select a `.ffpipe` file from this directory
+2. Click Open in the toolbar and select a `.ffpipe` file from this directory
 3. Edit the Source Folder and Output Folder in the Properties panel
-4. Click Preview to simulate, then Run to execute
+4. Click DRY RUN to simulate, then IGNITE to run

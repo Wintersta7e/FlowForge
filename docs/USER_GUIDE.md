@@ -238,7 +238,7 @@ The **Demo** button on the toolbar toggles the "forge lit" running visuals (stat
 - **Save** (Ctrl+S) — save the current pipeline to a `.ffpipe` file
 - **Save As** (Ctrl+Shift+S) — save to a new file
 - **Open** (Ctrl+O) — load a pipeline from a `.ffpipe` file
-- **Recent Pipelines** — the File menu lists recently opened pipelines for quick access
+- **Recent Pipelines** — the toolbar's Recent flyout lists recently opened pipelines for quick access
 
 Pipeline files are human-readable JSON and can be version-controlled or shared.
 
@@ -291,18 +291,20 @@ With `--format json`, the CLI writes structured JSON to stdout (logs go to stder
 
 ## Templates
 
-FlowForge includes 4 pipeline templates:
+FlowForge includes these pipeline templates:
 
-| Template | What it does |
-|----------|-------------|
-| **Photo Import** | Folder Input + Metadata Extract + Rename Pattern (`{date:yyyy-MM-dd}_{name}`) + Folder Output |
-| **Batch Rename** | Folder Input + Rename Pattern (`{counter}_{name}`) + Folder Output |
-| **Web Export** | Folder Input + Image Resize (1920px) + Image Convert (WebP) + Folder Output |
-| **Compress** | Folder Input + Image Compress (quality 75) + Folder Output |
+<!-- templates -->
+| Template | Nodes |
+|---|---|
+| Photo Import — Rename by EXIF Date | Folder Input → Metadata Extract → Rename (Pattern) → Folder Output |
+| Batch Sequential Rename | Folder Input → Rename (Pattern) → Folder Output |
+| Image Web Export (Resize + Convert to WebP) | Folder Input → Filter → Image Resize → Image Convert → Folder Output |
+| Bulk Image Compress | Folder Input → Filter → Image Compress → Folder Output |
+<!-- /templates -->
 
 ## Sample Pipelines
 
-The `samples/` directory contains ready-to-run `.ffpipe` files demonstrating common workflows. Open them from the File menu or run them via CLI.
+The `samples/` directory contains example `.ffpipe` files demonstrating common workflows. Open them with the toolbar's Open button, or run them through the CLI.
 
 ## Logging
 
