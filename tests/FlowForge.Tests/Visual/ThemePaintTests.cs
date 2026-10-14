@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Text;
+using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
 using Avalonia;
@@ -8,7 +10,9 @@ using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Avalonia.Media;
+using Avalonia.Media.Fonts;
 using Avalonia.Media.Imaging;
+using Avalonia.Platform;
 using Avalonia.Styling;
 using Avalonia.Themes.Fluent;
 using Avalonia.VisualTree;
@@ -29,6 +33,12 @@ public sealed class ThemePaintTests
 {
     // Per channel, on a band's mean colour.
     private const int ColourTolerance = 8;
+
+    // A string literal handed to a FontFamily in C#: assigned, parsed or constructed from.
+    private static readonly Regex LiteralFontFamilyInCode = new(
+        @"\bFontFamily\s*(=|\.Parse\s*\()\s*\$?@?""|\bnew\s+FontFamily\s*\(\s*\$?@?""",
+        RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture,
+        TimeSpan.FromSeconds(1));
 
     private readonly ITestOutputHelper _output;
 
@@ -149,33 +159,8 @@ public sealed class ThemePaintTests
         _output.WriteLine($"source sites={sites.Count} tight={sites.Count(site => site.Tight)}");
 
         using var session = VisualSession.Open(_output);
-        MainWindowViewModel vm = session.ViewModel;
-        var states = new List<(string State, int Found, int Compliant, string Clipped)> { TightTextIn(session, "empty") };
-        session.LoadTemplate(VisualSession.WebExportTemplate);
-        states.Add(TightTextIn(session, "template-loaded"));
-
-        vm.ExecutionLog.IsRunning = true;
-        try
-        {
-            session.RenderUntil(() => vm.Editor.Nodes.All(node => node.IsRunning), "stations running");
-            states.Add(TightTextIn(session, "running"));
-        }
-        finally
-        {
-            vm.ExecutionLog.IsRunning = false;
-        }
-
-        vm.IsDemoMode = true;
-        try
-        {
-            session.RenderUntil(() => vm.Editor.Nodes.All(node => node.IsRunning), "stations running in DEMO mode");
-            states.Add(TightTextIn(session, "demo"));
-        }
-        finally
-        {
-            // The beads animate for as long as DEMO mode is on; stop it before the window closes.
-            vm.IsDemoMode = false;
-        }
+        var states = new List<(string State, int Found, int Compliant, string Clipped)>();
+        InEveryState(session, state => states.Add(TightTextIn(session, state)));
 
         foreach ((string state, int found, int compliant, string clipped) in states)
         {
@@ -191,6 +176,91 @@ public sealed class ThemePaintTests
         }
     }
 
+    [AvaloniaFact]
+    public void EveryTextBlock_HasBundledGlyphs()
+    {
+        List<string> bundled = BundledFamilies(_output);
+
+        using var session = VisualSession.Open(_output);
+        var walks = new List<(string State, int TextBlocks, int Characters, List<string> Misses)>();
+        InEveryState(session, state => walks.Add(GlyphsIn(session.Window, state, bundled)));
+
+        Window window = session.Window;
+        window.KeyPress(Key.F1, RawInputModifiers.None, PhysicalKey.F1, keySymbol: null);
+        window.KeyRelease(Key.F1, RawInputModifiers.None, PhysicalKey.F1, keySymbol: null);
+        session.RenderUntil(
+            () => window.OwnedWindows.OfType<ShortcutsWindow>().Any(dialog => dialog.IsVisible && dialog.Bounds.Width > 0),
+            "shortcuts dialog shown");
+        ShortcutsWindow shortcuts = window.OwnedWindows.OfType<ShortcutsWindow>().Single();
+        try
+        {
+            walks.Add(GlyphsIn(shortcuts, "shortcuts", bundled));
+        }
+        finally
+        {
+            shortcuts.Close();
+            session.RenderUntil(() => window.OwnedWindows.Count == 0, "shortcuts dialog closed");
+        }
+
+        foreach ((string state, int textBlocks, int characters, List<string> misses) in walks)
+        {
+            _output.WriteLine($"state={state} textblocks={textBlocks} characters={characters} misses={misses.Count}");
+            misses.ForEach(miss => _output.WriteLine($"  miss {miss}"));
+        }
+
+        bundled.Should().Contain("Inter", "the body font is the bundled Inter");
+        foreach ((string state, int textBlocks, int characters, List<string> misses) in walks)
+        {
+            textBlocks.Should().BePositive($"the {state} window shows text");
+            misses.Should().BeEmpty($"every text in the {state} window is drawn by a bundled font that has each of its characters");
+        }
+    }
+
+    [AvaloniaFact]
+    public void UiSources_NameNoLiteralFontFamily()
+    {
+        string uiRoot = RepoRoot.Combine("src", "FlowForge.UI");
+        var files = UiSources(uiRoot, "*.axaml").Concat(UiSources(uiRoot, "*.cs")).ToList();
+        var hits = files.SelectMany(relative => LiteralFontFamilies(uiRoot, relative)).ToList();
+
+        hits.ForEach(hit => _output.WriteLine($"hit {hit}"));
+        _output.WriteLine($"files scanned={files.Count} hits={hits.Count}");
+        files.Should().NotBeEmpty("the scan reads the UI's sources");
+        hits.Should().BeEmpty("the UI names fonts only through the theme's bundled font resources");
+    }
+
+    // Empty, a template loaded, running, and DEMO mode: the states the text checks walk.
+    private static void InEveryState(VisualSession session, Action<string> visit)
+    {
+        MainWindowViewModel vm = session.ViewModel;
+        visit("empty");
+        session.LoadTemplate(VisualSession.WebExportTemplate);
+        visit("template-loaded");
+
+        vm.ExecutionLog.IsRunning = true;
+        try
+        {
+            session.RenderUntil(() => vm.Editor.Nodes.All(node => node.IsRunning), "stations running");
+            visit("running");
+        }
+        finally
+        {
+            vm.ExecutionLog.IsRunning = false;
+        }
+
+        vm.IsDemoMode = true;
+        try
+        {
+            session.RenderUntil(() => vm.Editor.Nodes.All(node => node.IsRunning), "stations running in DEMO mode");
+            visit("demo");
+        }
+        finally
+        {
+            // The beads animate for as long as DEMO mode is on; stop it before the window closes.
+            vm.IsDemoMode = false;
+        }
+    }
+
     // Text whose line box is no taller than its font: how many the window holds, how many
     // draw past their bounds, and the text of those that do not.
     private static (string State, int Found, int Compliant, string Clipped) TightTextIn(VisualSession session, string state)
@@ -202,28 +272,135 @@ public sealed class ThemePaintTests
         return (state, tight.Count, tight.Count(block => !block.ClipToBounds), clipped);
     }
 
+    // Every TextBlock with text under the root, hidden ones included: the typeface its font
+    // resolves to must be a bundled family and hold a glyph for each character it shows.
+    private static (string State, int TextBlocks, int Characters, List<string> Misses) GlyphsIn(
+        Avalonia.Visual root, string state, List<string> bundled)
+    {
+        var blocks = root.GetVisualDescendants().OfType<TextBlock>().Where(block => !string.IsNullOrEmpty(block.Text)).ToList();
+        int characters = 0;
+        var misses = new List<string>();
+        foreach (TextBlock block in blocks)
+        {
+            var typeface = new Typeface(block.FontFamily, block.FontStyle, block.FontWeight, block.FontStretch);
+            string family = ResolvedFamily(typeface);
+            if (!bundled.Contains(family, StringComparer.Ordinal))
+            {
+                misses.Add($"'{block.Text}' font='{block.FontFamily}' resolves={family} (not bundled)");
+                continue;
+            }
+
+            FontManager.Current.TryGetGlyphTypeface(typeface, out IGlyphTypeface? glyphs);
+            foreach (Rune rune in block.Text!.EnumerateRunes().Where(rune => !Rune.IsControl(rune)))
+            {
+                characters++;
+                if (!glyphs!.TryGetGlyph((uint)rune.Value, out ushort glyph) || glyph == 0)
+                {
+                    misses.Add($"'{rune}' U+{rune.Value:X4} in '{block.Text}' resolves={family} (no glyph)");
+                }
+            }
+        }
+
+        return (state, blocks.Count, characters, misses);
+    }
+
+    // The families of the fonts the app ships: its own embedded fonts and the Inter package's,
+    // read from the font assets themselves (Inter's heavier weights name their own family).
+    private static List<string> BundledFamilies(ITestOutputHelper output) =>
+        FamiliesIn(output, new Uri("avares://FlowForge.UI/Assets/Fonts"))
+            .Concat(FamiliesIn(output, new Uri("avares://Avalonia.Fonts.Inter/Assets")))
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+    // A font collection under its own key reads the folder's assets; it is removed again so
+    // the app's font lookup is left as it was.
+    private static List<string> FamiliesIn(ITestOutputHelper output, Uri folder)
+    {
+        var assets = AssetLoader.GetAssets(folder, null).Select(asset => asset.AbsolutePath).Order(StringComparer.Ordinal).ToList();
+        var key = new Uri("fonts:BundledFontCheck");
+        var collection = new EmbeddedFontCollection(key, folder);
+        FontManager.Current.AddFontCollection(collection);
+        try
+        {
+            var families = collection.Select(family => family.Name).Order(StringComparer.Ordinal).ToList();
+            output.WriteLine($"folder={folder} assets=[{string.Join(", ", assets)}] families=[{string.Join(", ", families)}]");
+            families.Should().NotBeEmpty($"{folder} holds the fonts the app ships");
+            return families;
+        }
+        finally
+        {
+            FontManager.Current.RemoveFontCollection(key);
+        }
+    }
+
     // Every TextBlock in the UI's AXAML whose LineHeight is no taller than its FontSize,
     // as "file:line", and whether it carries the tight class.
     private static List<(string Site, bool Tight)> TightSourceSites()
     {
         string uiRoot = RepoRoot.Combine("src", "FlowForge.UI");
-        return Directory.EnumerateFiles(uiRoot, "*.axaml", SearchOption.AllDirectories)
-            .Select(file => Path.GetRelativePath(uiRoot, file))
-            .Where(relative => !relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-                .Any(segment => segment is "bin" or "obj"))
-            .Order(StringComparer.Ordinal)
+        return UiSources(uiRoot, "*.axaml")
             .SelectMany(relative => XDocument.Load(Path.Combine(uiRoot, relative), LoadOptions.SetLineInfo).Descendants()
                 .Where(element => string.Equals(element.Name.LocalName, "TextBlock", StringComparison.Ordinal)
                     && Number(element, "LineHeight") is double lineHeight
                     && Number(element, "FontSize") is double fontSize
                     && lineHeight <= fontSize)
                 .Select(element => (
-                    $"{relative.Replace('\\', '/')}:{((IXmlLineInfo)element).LineNumber}",
+                    Site(relative, element),
                     ((string?)element.Attribute("Classes") ?? string.Empty)
                         .Split(' ', StringSplitOptions.RemoveEmptyEntries)
                         .Contains("tight", StringComparer.Ordinal))))
             .ToList();
     }
+
+    // The UI project's source files matching the pattern, relative to its folder, build output skipped.
+    private static List<string> UiSources(string uiRoot, string pattern) =>
+        Directory.EnumerateFiles(uiRoot, pattern, SearchOption.AllDirectories)
+            .Select(file => Path.GetRelativePath(uiRoot, file))
+            .Where(relative => !relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                .Any(segment => segment is "bin" or "obj"))
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+    // A font named by its family rather than through a resource: in AXAML a FontFamily
+    // attribute, setter or property element whose value is not a markup extension, or a
+    // FontFamily element that is not a keyed resource; in C# a string handed to a FontFamily.
+    private static IEnumerable<string> LiteralFontFamilies(string uiRoot, string relative)
+    {
+        string path = Path.Combine(uiRoot, relative);
+        if (string.Equals(Path.GetExtension(relative), ".cs", StringComparison.Ordinal))
+        {
+            return File.ReadLines(path)
+                .Select((text, index) => (Text: text, Line: index + 1))
+                .Where(line => LiteralFontFamilyInCode.IsMatch(line.Text))
+                .Select(line => $"{relative.Replace('\\', '/')}:{line.Line} {line.Text.Trim()}");
+        }
+
+        XNamespace xaml = "http://schemas.microsoft.com/winfx/2006/xaml";
+        return XDocument.Load(path, LoadOptions.SetLineInfo).Descendants()
+            .SelectMany(element => element.Attributes()
+                .Where(attribute => NamesFontFamily(attribute.Name.LocalName) && IsLiteral(attribute.Value))
+                .Select(attribute => $"{Site(relative, element)} {attribute.Name.LocalName}=\"{attribute.Value}\"")
+                .Concat(string.Equals(element.Name.LocalName, "Setter", StringComparison.Ordinal)
+                    && NamesFontFamily((string?)element.Attribute("Property") ?? string.Empty)
+                    && element.Attribute("Value") is { } value && IsLiteral(value.Value)
+                        ? [$"{Site(relative, element)} Setter Value=\"{value.Value}\""]
+                        : [])
+                .Concat(NamesFontFamily(element.Name.LocalName)
+                    && element.Attribute(xaml + "Key") is null
+                    && !element.HasElements && IsLiteral(element.Value)
+                        ? [$"{Site(relative, element)} <{element.Name.LocalName}>{element.Value}"]
+                        : []));
+    }
+
+    private static bool NamesFontFamily(string name) =>
+        string.Equals(name, "FontFamily", StringComparison.Ordinal) || name.EndsWith(".FontFamily", StringComparison.Ordinal);
+
+    private static bool IsLiteral(string value) =>
+        !string.IsNullOrWhiteSpace(value) && !value.TrimStart().StartsWith('{');
+
+    private static string Site(string relative, XElement element) =>
+        $"{relative.Replace('\\', '/')}:{((IXmlLineInfo)element).LineNumber}";
 
     private static double? Number(XElement element, string attribute) =>
         double.TryParse((string?)element.Attribute(attribute), NumberStyles.Float, CultureInfo.InvariantCulture, out double value)

@@ -244,7 +244,9 @@
                         Classes="ghost"
                         ToolTip.Tip="Preview — simulate run without changing files">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="◐" FontSize="13" VerticalAlignment="Center" />
+                        <PathIcon Data="{StaticResource MwIcon.HalfDisc}"
+                                  Width="11" Height="11"
+                                  VerticalAlignment="Center" />
                         <TextBlock Text="DRY RUN" VerticalAlignment="Center" LetterSpacing="1.3" />
                     </StackPanel>
                 </Button>
@@ -304,7 +306,7 @@
                         IsVisible="{Binding !ExecutionLog.IsRunning}"
                         ToolTip.Tip="Ignite — run the pipeline">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="▶" FontSize="11" VerticalAlignment="Center" />
+                        <TextBlock Text="▶" FontFamily="{DynamicResource MwMono}" FontSize="11" VerticalAlignment="Center" />
                         <TextBlock Text="IGNITE" VerticalAlignment="Center" LetterSpacing="1.3" />
                     </StackPanel>
                 </Button>
@@ -315,7 +317,7 @@
                         IsVisible="{Binding ExecutionLog.IsRunning}"
                         ToolTip.Tip="Quench — stop execution">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="■" FontSize="11" VerticalAlignment="Center" />
+                        <TextBlock Text="■" FontFamily="{DynamicResource MwMono}" FontSize="11" VerticalAlignment="Center" />
                         <TextBlock Text="QUENCH" VerticalAlignment="Center" LetterSpacing="1.3" />
                     </StackPanel>
                 </Button>

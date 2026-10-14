@@ -21,7 +21,7 @@
             <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
                 <Grid.Styles>
                     <Style Selector="TextBlock.key">
-                        <Setter Property="FontFamily" Value="Cascadia Mono,Consolas,monospace" />
+                        <Setter Property="FontFamily" Value="{DynamicResource MwMono}" />
                         <Setter Property="FontSize" Value="12" />
                         <Setter Property="Foreground" Value="{DynamicResource ForgeAccent}" />
                         <Setter Property="Background" Value="{DynamicResource ForgeElevated}" />
