@@ -10,6 +10,7 @@ using FlowForge.UI;
 using FlowForge.UI.ViewModels;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit.Abstractions;
 
@@ -30,7 +31,13 @@ public sealed class LaunchTests
         var services = new ServiceCollection();
         App.ConfigureServices(services);
         services.AddLogging();
+
+        // Removed, not just overridden: the default manager writes the user's real settings file.
+        services.RemoveAll<AppSettingsManager>();
         services.AddSingleton(new AppSettingsManager(settingsPath, NullLogger<AppSettingsManager>.Instance));
+        int settingsRegistrations = services.Count(d => d.ServiceType == typeof(AppSettingsManager));
+        _output.WriteLine($"settings-registrations={settingsRegistrations}");
+        settingsRegistrations.Should().Be(1, "only the temp-path settings manager may be resolvable");
 
         await using (ServiceProvider provider = services.BuildServiceProvider(
             new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true }))
