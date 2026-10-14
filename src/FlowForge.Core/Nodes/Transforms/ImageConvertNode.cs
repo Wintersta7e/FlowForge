@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FlowForge.Core.Execution;
+using FlowForge.Core.Imaging;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
 using Microsoft.Extensions.Logging;
@@ -140,18 +141,8 @@ public class ImageConvertNode : ITransformNode
 
     private string BuildTargetPath(FileJob job)
     {
-        string newExtension = _format switch
-        {
-            "jpg" or "jpeg" => ".jpg",
-            "png" => ".png",
-            "webp" => ".webp",
-            "bmp" => ".bmp",
-            "tiff" => ".tiff",
-            _ => $".{_format}"
-        };
-
         string nameWithoutExt = Path.GetFileNameWithoutExtension(job.CurrentPath);
-        return Path.Combine(job.DirectoryName, nameWithoutExt + newExtension);
+        return Path.Combine(job.DirectoryName, nameWithoutExt + ImageFormatNames.CanonicalExtension(_format));
     }
 
     private void CleanupStagedFile(string stagedPath)

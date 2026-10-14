@@ -13,6 +13,7 @@ public class PipelineCompatTests
     private const string ResizeId = "0c000000-0000-0000-0000-000000000003";
     private const string OutputId = "0c000000-0000-0000-0000-000000000004";
     private const string RenameId = "0c000000-0000-0000-0000-000000000005";
+    private const string CompressId = "0c000000-0000-0000-0000-000000000006";
 
     private const string ResizeVersion1 = $$"""
         {
@@ -105,6 +106,22 @@ public class PipelineCompatTests
         }
         """;
 
+    private const string CompressToWebpVersion1 = $$"""
+        {
+          "name": "Compress to WebP",
+          "version": "1.0",
+          "nodes": [
+            { "id": "{{InputId}}", "typeKey": "FolderInput", "config": { "path": "in" } },
+            { "id": "{{CompressId}}", "typeKey": "ImageCompress", "config": { "quality": 80, "format": "webp" } },
+            { "id": "{{OutputId}}", "typeKey": "FolderOutput", "config": { "path": "out" } }
+          ],
+          "connections": [
+            { "fromNode": "{{InputId}}", "toNode": "{{CompressId}}" },
+            { "fromNode": "{{CompressId}}", "toNode": "{{OutputId}}" }
+          ]
+        }
+        """;
+
     private readonly ITestOutputHelper _output;
 
     public PipelineCompatTests(ITestOutputHelper output) => _output = output;
@@ -118,6 +135,7 @@ public class PipelineCompatTests
         ["source-files-unchanged|graph"] = ResizeVersion1,
         ["rename-collision-at-output|graph"] = RenameVersion1,
         ["move-after-all-deliveries|FolderOutput"] = MoveVersion1,
+        ["compress-override-renames|ImageCompress"] = CompressToWebpVersion1,
     };
 
     [Fact]

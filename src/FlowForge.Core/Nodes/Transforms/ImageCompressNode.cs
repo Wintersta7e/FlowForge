@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FlowForge.Core.Execution;
+using FlowForge.Core.Imaging;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
 using Microsoft.Extensions.Logging;
@@ -69,13 +70,9 @@ public class ImageCompressNode : ITransformNode
     {
         ct.ThrowIfCancellationRequested();
 
-        if (RejectIfCrossFormatOverride(job))
-        {
-            return new[] { job };
-        }
-
         if (context.DryRun)
         {
+            NameByFormat(job);
             job.NodeLog.Add($"ImageCompress: would compress to quality={_quality}");
             return new[] { job };
         }
@@ -122,6 +119,7 @@ public class ImageCompressNode : ITransformNode
 
             context.SetContent(job, staged);
             referenced = true;
+            NameByFormat(job);
 
             job.NodeLog.Add($"ImageCompress: compressed to quality={_quality} ({stagedInfo.Length} bytes)");
             return new[] { job };
@@ -143,24 +141,18 @@ public class ImageCompressNode : ITransformNode
     }
 
     /// <summary>
-    /// Fails the job when the format override belongs to another format than the file's extension, so
-    /// a file is never left holding one format's bytes under another format's name. Reads no file.
+    /// With a format override, gives the file the extension of the format it is encoded in, so a name never
+    /// promises one format while holding another's bytes.
     /// </summary>
-    private bool RejectIfCrossFormatOverride(FileJob job)
+    private void NameByFormat(FileJob job)
     {
-        if (string.IsNullOrEmpty(_format)
-            || string.Equals(FormatFamily(_format), FormatFamily(job.Extension.TrimStart('.')), StringComparison.Ordinal))
+        if (!string.IsNullOrEmpty(_format))
         {
-            return false;
+            job.CurrentPath = Path.Combine(
+                job.DirectoryName,
+                Path.GetFileNameWithoutExtension(job.CurrentPath) + ImageFormatNames.CanonicalExtension(_format));
         }
-
-        job.Status = FileJobStatus.Failed;
-        job.ErrorMessage = $"ImageCompress: format '{_format}' differs from the file's extension '{job.Extension}'; the file was not re-encoded.";
-        job.NodeLog.Add(job.ErrorMessage);
-        return true;
     }
-
-    private static string FormatFamily(string format) => format is "jpg" or "jpeg" ? "jpeg" : format;
 
     private IImageEncoder GetEncoder(string format)
     {

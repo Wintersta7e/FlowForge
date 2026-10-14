@@ -159,39 +159,39 @@ public class ImageCompressNodeTests
     }
 
     [Fact]
-    public async Task Format_override_uses_different_encoder()
+    public async Task Format_override_delivers_bytes_matching_the_new_extension()
     {
         using var dir = new TempDirectory();
-        using RunContext ctx = TestRunContext.Live(dir.StagingRoot);
-        string filePath = Path.Combine(dir.Path, "override.jpg");
-        TestFileFactory.CreateTestImage(filePath, width: 100, height: 100);
-        byte[] before = await File.ReadAllBytesAsync(filePath);
+        string input = Path.Combine(dir.Path, "input");
+        Directory.CreateDirectory(input);
+        TestFileFactory.CreateTestPng(Path.Combine(input, "x.png"), width: 100, height: 100);
+        var runner = new PipelineRunner(NodeRegistry.CreateDefault(NullLoggerFactory.Instance), NullLogger<PipelineRunner>.Instance, stagingRoot: dir.StagingRoot);
 
-        var node = new ImageCompressNode(NullLogger<ImageCompressNode>.Instance);
-        node.Configure(MakeConfig(new { quality = 75, format = "webp" }));
+        ExecutionResult result = await runner.RunAsync(PipelineBuilder.New()
+            .AddSource("FolderInput", new { path = input })
+            .AddTransform("ImageCompress", new { quality = 75, format = "webp" })
+            .AddOutput("FolderOutput", new { path = dir.OutputPath })
+            .Build());
 
-        var job = new FileJob
-        {
-            OriginalPath = filePath,
-            CurrentPath = filePath,
-            ContentPath = filePath
-        };
+        (int scanned, IReadOnlyList<string> mismatches, string because) =
+            await ScanMagicAsync(Directory.EnumerateFiles(dir.OutputPath).Select(path => (path, path)));
+        because = string.Join("; ", [because, .. result.Jobs.Select(j => j.ErrorMessage)]);
 
-        IEnumerable<FileJob> result = await node.TransformAsync(job, ctx);
-        byte[] after = await File.ReadAllBytesAsync(filePath);
-        string magic = Magic(after);
-
-        result.Should().ContainSingle().Which.Status.Should().Be(FileJobStatus.Failed, magic);
-        job.ErrorMessage.Should().NotBeNullOrEmpty(magic);
-        after.Should().Equal(before, magic);
-        after.Take(2).Should().Equal(new byte[] { 0xFF, 0xD8 }, magic);
+        result.Succeeded.Should().Be(1, because);
+        dir.OutputFiles.Should().Equal(["x.webp"], because);
+        byte[] delivered = await File.ReadAllBytesAsync(Path.Combine(dir.OutputPath, "x.webp"));
+        delivered.Take(4).Should().Equal("RIFF"u8.ToArray(), because);
+        delivered.Skip(8).Take(4).Should().Equal("WEBP"u8.ToArray(), because);
+        scanned.Should().BePositive(because);
+        mismatches.Should().BeEmpty(because);
     }
 
     [Fact]
-    public async Task Cross_format_override_fails_without_writing()
+    public async Task Cross_format_override_delivers_matching_magic()
     {
         using var dir = new TempDirectory();
         using RunContext ctx = TestRunContext.Live(dir.StagingRoot);
+        using RunContext dry = TestRunContext.Dry();
         string filePath = Path.Combine(dir.Path, "pic.png");
         TestFileFactory.CreateTestPng(filePath, width: 40, height: 40);
 
@@ -200,22 +200,42 @@ public class ImageCompressNodeTests
 
         var job = new FileJob { OriginalPath = filePath, CurrentPath = filePath, ContentPath = filePath };
         await node.TransformAsync(job, ctx);
-        byte[] bytes = await File.ReadAllBytesAsync(filePath);
         var dryJob = new FileJob { OriginalPath = filePath, CurrentPath = filePath, ContentPath = filePath };
-        await node.TransformAsync(dryJob, TestRunContext.Dry());
+        await node.TransformAsync(dryJob, dry);
 
+        (int scanned, IReadOnlyList<string> mismatches, string because) =
+            await ScanMagicAsync([(job.CurrentPath, job.ContentPath), (filePath, filePath)]);
+        because = string.Join("; ", because, job.ErrorMessage, dryJob.ErrorMessage);
+
+        job.Status.Should().NotBe(FileJobStatus.Failed, because);
+        Path.GetFileName(job.CurrentPath).Should().Be("pic.jpg", because);
+        (await File.ReadAllBytesAsync(job.ContentPath)).Take(2).Should().Equal(new byte[] { 0xFF, 0xD8 }, because);
+        (await File.ReadAllBytesAsync(filePath)).Take(4).Should().Equal(new byte[] { 0x89, 0x50, 0x4E, 0x47 }, because);
+        dryJob.Status.Should().NotBe(FileJobStatus.Failed, because);
+        Path.GetFileName(dryJob.CurrentPath).Should().Be("pic.jpg", because);
+        scanned.Should().Be(2, because);
+        mismatches.Should().BeEmpty(because);
+    }
+
+    /// <summary>
+    /// Pairs each name's image extension with the magic bytes of its content and prints
+    /// <c>scanned=n mismatches=m</c>; the returned reason carries the same line and every mismatch.
+    /// </summary>
+    private async Task<(int Scanned, IReadOnlyList<string> Mismatches, string Because)> ScanMagicAsync(
+        IEnumerable<(string Name, string ContentPath)> files)
+    {
         int scanned = 0;
         var mismatches = new List<string>();
-        foreach (string path in Directory.EnumerateFiles(dir.Path))
+        foreach ((string name, string contentPath) in files)
         {
-            string extension = Path.GetExtension(path).ToLowerInvariant();
+            string extension = Path.GetExtension(name).ToLowerInvariant();
             if (extension is not (".png" or ".jpg" or ".jpeg" or ".webp"))
             {
                 continue;
             }
 
             scanned++;
-            byte[] content = await File.ReadAllBytesAsync(path);
+            byte[] content = await File.ReadAllBytesAsync(contentPath);
             bool matches = extension switch
             {
                 ".png" => content.AsSpan().StartsWith(new byte[] { 0x89, 0x50, 0x4E, 0x47 }),
@@ -224,21 +244,14 @@ public class ImageCompressNodeTests
             };
             if (!matches)
             {
-                mismatches.Add($"{Path.GetFileName(path)} magic {Magic(content)}");
+                mismatches.Add($"{Path.GetFileName(name)} magic {Magic(content)}");
             }
         }
 
-        string because = $"scanned={scanned} mismatches={mismatches.Count}";
-        _output.WriteLine(because);
+        string summary = $"scanned={scanned} mismatches={mismatches.Count}";
+        _output.WriteLine(summary);
         mismatches.ForEach(_output.WriteLine);
-        because = string.Join("; ", [because, .. mismatches]);
-
-        job.Status.Should().Be(FileJobStatus.Failed, because);
-        job.ErrorMessage.Should().NotBeNullOrEmpty(because);
-        bytes.Take(4).Should().Equal(new byte[] { 0x89, 0x50, 0x4E, 0x47 }, because);
-        dryJob.Status.Should().Be(FileJobStatus.Failed, because);
-        scanned.Should().BePositive(because);
-        mismatches.Should().BeEmpty(because);
+        return (scanned, mismatches, string.Join("; ", [summary, .. mismatches]));
     }
 
     private static string Magic(byte[] content) => BitConverter.ToString(content, 0, Math.Min(4, content.Length)).Replace('-', ' ');

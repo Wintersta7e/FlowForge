@@ -27,6 +27,10 @@ internal static class CompatTable
     private const string MoveAfterDeliveriesMessage =
         "'move' now copies the result and deletes the original only after every delivery of it has succeeded.";
 
+    private const string CompressRenameMessage =
+        "A set 'format' now also changes the file's extension to match the encoded bytes "
+        + "(photo.png saved as WebP becomes photo.webp) instead of keeping the old name.";
+
     /// <summary>The built-in node types, for entries that apply to every node of a category.</summary>
     private static readonly NodeRegistry BuiltInNodes = NodeRegistry.CreateDefault(NullLoggerFactory.Instance);
 
@@ -44,6 +48,7 @@ internal static class CompatTable
             null,
             RenameAtOutputMessage),
         new("move-after-all-deliveries", "1.0", "FolderOutput", null, IsMove, MoveAfterDeliveriesMessage),
+        new("compress-override-renames", "1.0", "ImageCompress", null, config => HasText(config, "format"), CompressRenameMessage),
     ];
 
     /// <summary>
@@ -106,6 +111,11 @@ internal static class CompatTable
         config.TryGetValue("mode", out JsonElement element)
         && element.ValueKind == JsonValueKind.String
         && string.Equals(element.GetString(), "move", StringComparison.Ordinal);
+
+    private static bool HasText(IDictionary<string, JsonElement> config, string key) =>
+        config.TryGetValue(key, out JsonElement element)
+        && element.ValueKind == JsonValueKind.String
+        && !string.IsNullOrEmpty(element.GetString());
 
     private static bool HasValue(IDictionary<string, JsonElement> config, string key, string value) =>
         config.TryGetValue(key, out JsonElement element)
