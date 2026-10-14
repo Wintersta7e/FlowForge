@@ -71,6 +71,7 @@ public partial class ExecutionLogViewModel : ViewModelBase
 
     private static readonly string RunningProcessId = "0x" + Environment.ProcessId.ToString("x", CultureInfo.InvariantCulture);
 
+    private readonly NodeRegistry _registry;
     private readonly Stopwatch _processingStopwatch = new();
     private readonly List<FileJob> _pendingJobs = new();
 
@@ -78,6 +79,13 @@ public partial class ExecutionLogViewModel : ViewModelBase
     private int _completedOriginals;
     private bool _sourceCounted;
     private TimeSpan _elapsedAtLastTerminal;
+    private StageProgress? _stage;
+
+    public ExecutionLogViewModel(NodeRegistry registry)
+    {
+        ArgumentNullException.ThrowIfNull(registry);
+        _registry = registry;
+    }
 
     public bool IsOutputTabSelected => SelectedTabIndex == 0;
     public bool IsErrorsTabSelected => SelectedTabIndex == 1;
@@ -129,6 +137,7 @@ public partial class ExecutionLogViewModel : ViewModelBase
         _completedOriginals = 0;
         _sourceCounted = false;
         _elapsedAtLastTerminal = TimeSpan.Zero;
+        _stage = null;
         Entries.Clear();
         ErrorEntries.Clear();
         WarningEntries.Clear();
@@ -185,6 +194,11 @@ public partial class ExecutionLogViewModel : ViewModelBase
                 DiscoveredFiles = discovered.TotalCount;
                 OnPropertyChanged(nameof(SourceCountText));
                 PhaseLabel = $"Scanning... {discovered.TotalCount} files found";
+                break;
+
+            case StageProgress stage:
+                _stage = stage;
+                UpdatePhaseLabel();
                 break;
 
             case FileProcessed processed:
@@ -262,6 +276,13 @@ public partial class ExecutionLogViewModel : ViewModelBase
 
     private void UpdatePhaseLabel()
     {
+        // While a transform step still has inputs to take, the label names that step.
+        if (_stage is { } stage && stage.Done < stage.Total)
+        {
+            PhaseLabel = $"Stage {stage.Stage} of {stage.StageCount} \u00b7 {_registry.GetDisplayName(stage.TypeKey)} {stage.Done}/{stage.Total}";
+            return;
+        }
+
         int processed = Succeeded + Failed + Skipped;
         string fileInfo = CurrentFile is not null ? $" \u2014 {CurrentFile}" : string.Empty;
         PhaseLabel = $"Processing {processed} of {TotalFiles} files{fileInfo}";

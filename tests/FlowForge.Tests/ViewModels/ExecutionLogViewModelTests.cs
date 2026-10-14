@@ -2,12 +2,13 @@ using FlowForge.Core.Execution;
 using FlowForge.Core.Models;
 using FlowForge.UI.ViewModels;
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlowForge.Tests.ViewModels;
 
 public class ExecutionLogViewModelTests
 {
-    private readonly ExecutionLogViewModel _vm = new();
+    private readonly ExecutionLogViewModel _vm = new(NodeRegistry.CreateDefault(NullLoggerFactory.Instance));
 
     [Fact]
     public void ReportProgressEvent_PhaseChanged_Enumerating_SetsIndeterminate()
@@ -159,6 +160,29 @@ public class ExecutionLogViewModelTests
 
         _vm.ReportProgressEvent(new FileProcessed(job2));
         _vm.ProgressText.Should().Be("2/5");
+    }
+
+    [Fact]
+    public void StageProgress_names_the_step_and_leaves_progress_on_finished_files()
+    {
+        _vm.ReportProgressEvent(new PhaseChanged(ExecutionPhase.Enumerating));
+        _vm.ReportProgressEvent(new FilesDiscovered(1000));
+        _vm.ReportProgressEvent(new PhaseChanged(ExecutionPhase.Processing));
+
+        _vm.ReportProgressEvent(new StageProgress("ImageResize", 2, 4, 312, 1000));
+        _vm.PhaseLabel.Should().Be("Stage 2 of 4 \u00b7 Image Resize 312/1000");
+        _vm.Progress.Should().Be(0, "no file has finished");
+        _vm.ProgressText.Should().Be("0/1000");
+
+        // A file the step drops is finished; the label still names the step.
+        var dropped = new FileJob { OriginalPath = "/a.txt", CurrentPath = "/a.txt", Status = FileJobStatus.Skipped };
+        _vm.ReportProgressEvent(new FileProcessed(dropped));
+        _vm.PhaseLabel.Should().Be("Stage 2 of 4 \u00b7 Image Resize 312/1000");
+        _vm.Progress.Should().BeApproximately(0.1, 1e-9);
+
+        // Once the step has taken every input, the label counts finished files again.
+        _vm.ReportProgressEvent(new StageProgress("ImageResize", 2, 4, 1000, 1000));
+        _vm.PhaseLabel.Should().StartWith("Processing ");
     }
 
     [Fact]

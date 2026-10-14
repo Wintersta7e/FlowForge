@@ -91,6 +91,42 @@ public class PipelineReportingTests
             .And.BeEquivalentTo(events.Select(e => e.Job.OriginalPath).Distinct(StringComparer.Ordinal));
     }
 
+    [Fact]
+    public async Task Each_transform_step_reports_its_progress_before_any_output()
+    {
+        using var dir = new TempDirectory();
+        string[] names = Enumerable.Range(1, 30).Select(i => $"f{i:00}.txt").ToArray();
+        dir.CreateFiles(names);
+        PipelineGraph graph = PipelineBuilder.New()
+            .AddSource("FolderInput", new { path = dir.Path, recursive = false, filter = "*.txt" })
+            .AddTransform("RenameAddAffix", new { prefix = "a_" })
+            .AddTransform("RenameAddAffix", new { suffix = "_b" })
+            .AddOutput("FolderOutput", new { path = dir.OutputPath, mode = "copy" })
+            .Build();
+        var progress = new SyncProgress<PipelineProgressEvent>();
+
+        await CreateRunner(NodeRegistry.CreateDefault(NullLoggerFactory.Instance)).RunAsync(graph, dryRun: true, progress);
+
+        var events = progress.Events.ToList();
+        int firstOutput = events.FindIndex(e => e is FileProcessed);
+        var stages = events.OfType<StageProgress>().GroupBy(s => s.Stage).OrderBy(g => g.Key).ToList();
+        foreach (IGrouping<int, StageProgress> stage in stages)
+        {
+            _output.WriteLine(
+                $"[stage] {stage.Key} of {stage.First().StageCount} {stage.First().TypeKey} " +
+                $"done={string.Join(",", stage.Select(s => s.Done))} total={string.Join(",", stage.Select(s => s.Total).Distinct())}");
+        }
+
+        _output.WriteLine($"[stage] events={events.Count} first-output-index={firstOutput}");
+        stages.Select(g => g.Key).Should().Equal(1, 2);
+        foreach (IGrouping<int, StageProgress> stage in stages)
+        {
+            stage.Should().OnlyContain(s => s.StageCount == 2 && s.Total == 30 && string.Equals(s.TypeKey, "RenameAddAffix", StringComparison.Ordinal));
+            stage.Select(s => s.Done).Should().Equal(0, 25, 30);
+            events.LastIndexOf(stage.Last()).Should().BeLessThan(firstOutput, "each step finishes before the output receives a file");
+        }
+    }
+
     private static PipelineRunner CreateRunner(NodeRegistry registry) =>
         new(registry, NullLogger<PipelineRunner>.Instance, maxConcurrency: 2);
 

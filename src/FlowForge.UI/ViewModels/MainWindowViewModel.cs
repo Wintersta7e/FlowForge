@@ -79,7 +79,7 @@ public partial class MainWindowViewModel : ViewModelBase
         Editor = editor;
         NodeLibrary = new NodeLibraryViewModel();
         Properties = new PropertiesViewModel();
-        ExecutionLog = new ExecutionLogViewModel();
+        ExecutionLog = new ExecutionLogViewModel(_registry);
 
         NodeLibrary.Initialize(_registry);
 

@@ -8,6 +8,9 @@ namespace FlowForge.Core.Execution;
 
 public class PipelineRunner
 {
+    // A transform step reports its progress at its start, after every this many jobs and at its end.
+    private const int StageReportInterval = 25;
+
     private readonly NodeRegistry _registry;
     private readonly ILogger<PipelineRunner> _logger;
     private readonly int _maxConcurrency;
@@ -53,9 +56,11 @@ public class PipelineRunner
 
             progress?.Report(new PhaseChanged(ExecutionPhase.Processing));
 
+            int stage = 0;
             foreach ((Guid id, ITransformNode transform) in transforms)
             {
-                await ApplyTransformAsync(id, transform, router, dryRun, result, lineages, progress, ct).ConfigureAwait(false);
+                stage++;
+                await ApplyTransformAsync(id, transform, stage, transforms.Count, router, dryRun, result, lineages, progress, ct).ConfigureAwait(false);
             }
 
             await DispatchOutputJobsAsync(connections, outputs, router, dryRun, result, lineages, progress, ct).ConfigureAwait(false);
@@ -200,6 +205,8 @@ public class PipelineRunner
     private async Task ApplyTransformAsync(
         Guid nodeId,
         ITransformNode transform,
+        int stage,
+        int stageCount,
         JobRouter router,
         bool dryRun,
         ExecutionResult result,
@@ -207,9 +214,19 @@ public class PipelineRunner
         IProgress<PipelineProgressEvent>? progress,
         CancellationToken ct)
     {
-        foreach (FileJob job in router.InputOf(nodeId))
+        IReadOnlyList<FileJob> inputs = router.InputOf(nodeId);
+        int done = 0;
+        void ReportStage() => progress?.Report(new StageProgress(transform.TypeKey, stage, stageCount, done, inputs.Count));
+
+        foreach (FileJob job in inputs)
         {
             ct.ThrowIfCancellationRequested();
+            if (done % StageReportInterval == 0)
+            {
+                ReportStage();
+            }
+
+            done++;
             try
             {
                 job.Status = FileJobStatus.Processing;
@@ -245,6 +262,8 @@ public class PipelineRunner
             IEnumerable<FileJob> flushed = await buffered.FlushAsync(dryRun: dryRun, ct: ct).ConfigureAwait(false);
             RouteEmitted(transform.TypeKey, nodeId, flushed, router, result, lineages, progress);
         }
+
+        ReportStage();
     }
 
     private void HandleEmptyTransformResult(
