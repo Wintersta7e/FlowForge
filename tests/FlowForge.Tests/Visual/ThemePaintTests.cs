@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
 using Avalonia;
+using Avalonia.Animation;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
 using Avalonia.Headless;
@@ -20,6 +21,7 @@ using FlowForge.Tests.Helpers;
 using FlowForge.UI.ViewModels;
 using FlowForge.UI.Views;
 using FluentAssertions;
+using Nodify.Avalonia;
 using Xunit.Abstractions;
 
 namespace FlowForge.Tests.Visual;
@@ -34,11 +36,28 @@ public sealed class ThemePaintTests
     // Per channel, on a band's mean colour.
     private const int ColourTolerance = 8;
 
+    // WCAG AA for body-size text.
+    private const double MinimumContrast = 4.5;
+
+    // A subtitle pixel this far (RGB distance) from the body behind it is glyph ink.
+    private const double GlyphDistance = 40;
+
+    // How far inside a heat-pulse phase a capture starts, so the render step it takes stays inside.
+    private const double PhaseMargin = 0.05;
+
     // A string literal handed to a FontFamily in C#: assigned, parsed or constructed from.
     private static readonly Regex LiteralFontFamilyInCode = new(
         @"\bFontFamily\s*(=|\.Parse\s*\()\s*\$?@?""|\bnew\s+FontFamily\s*\(\s*\$?@?""",
         RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture,
         TimeSpan.FromSeconds(1));
+
+    // The heat pulse's opacity normalised to its keyframe range: below 0.35, above 0.65, and between.
+    private static readonly (string Frame, string Phase, double From, double To)[] HeatPulsePhases =
+    [
+        (VisualFrames.RunningSubtitlesDim, "dim", double.NegativeInfinity, 0.35),
+        (VisualFrames.RunningSubtitlesBright, "bright", 0.65, double.PositiveInfinity),
+        (VisualFrames.RunningSubtitlesMid, "mid", 0.35, 0.65),
+    ];
 
     private readonly ITestOutputHelper _output;
 
@@ -229,6 +248,88 @@ public sealed class ThemePaintTests
         hits.Should().BeEmpty("the UI names fonts only through the theme's bundled font resources");
     }
 
+    [AvaloniaFact]
+    public void RunningSubtitle_MeetsContrastInEveryCategory()
+    {
+        using var session = VisualSession.Open(_output);
+        MainWindowViewModel vm = session.ViewModel;
+        EditorViewModel editor = vm.Editor;
+
+        // One station per category: the first registered type of each.
+        var typeKeys = vm.Registry.GetRegisteredTypeKeys()
+            .GroupBy(key => MwOpsMap.Get(key).Category, StringComparer.Ordinal)
+            .Select(category => category.First())
+            .ToList();
+        for (int i = 0; i < typeKeys.Count; i++)
+        {
+            editor.AddNode(typeKeys[i], new Point(40 + ((i % 3) * 260), 40 + ((i / 3) * 190)), vm.Registry);
+        }
+
+        // Fitting measures the laid-out stations, so they must exist first.
+        session.RenderUntil(() => session.Stations().Count == typeKeys.Count, "one station per category laid out");
+        editor.RequestFitToScreen();
+        NodifyEditor canvas = session.Window.GetVisualDescendants().OfType<NodifyEditor>()
+            .Single(e => string.Equals(e.Name, "Editor", StringComparison.Ordinal));
+        var visible = new Rect(canvas.Bounds.Size);
+        session.RenderUntil(
+            () => session.Stations().All(station =>
+                visible.Contains(station.TranslatePoint(default, canvas)!.Value)
+                && visible.Contains(station.TranslatePoint(new Point(station.Bounds.Width, station.Bounds.Height), canvas)!.Value)),
+            "every station fitted on screen");
+
+        var ratios = new List<(string Category, double Ratio)>();
+        var phases = new List<(string Phase, double From, double To, List<double> Reached)>();
+        vm.IsDemoMode = true;
+        try
+        {
+            session.RenderUntil(() => editor.Nodes.All(node => node.IsRunning), "stations running in DEMO mode");
+            var pulses = session.Stations()
+                .Select(station => station.GetVisualDescendants().OfType<Border>().Single(border => border.Classes.Contains("heat-pulse")))
+                .ToList();
+            (double low, double high) = OpacityKeyFrameRange(pulses[0]);
+            double Phase(Border pulse) => (pulse.Opacity - low) / (high - low);
+            _output.WriteLine($"heat-pulse opacity keyframes low={low} high={high}");
+
+            foreach ((string frameId, string phase, double from, double to) in HeatPulsePhases)
+            {
+                session.RenderUntil(
+                    () => pulses.All(pulse => Phase(pulse) > from + PhaseMargin && Phase(pulse) < to - PhaseMargin),
+                    $"heat pulse {phase}");
+                using WriteableBitmap frame = session.Capture(frameId);
+                var reached = pulses.Select(Phase).ToList();
+                phases.Add((phase, from, to, reached));
+                _output.WriteLine($"frame={frameId} phase={phase} from={from} to={to} reached=[{string.Join(", ", reached.Select(t => t.ToString("F2", CultureInfo.InvariantCulture)))}]");
+                foreach ((string category, double ratio, string line) in SubtitleContrasts(session, frame))
+                {
+                    ratios.Add((category, ratio));
+                    _output.WriteLine($"  {line}");
+                }
+            }
+        }
+        finally
+        {
+            // Every running station animates for as long as DEMO mode is on; stop it before the window closes.
+            vm.IsDemoMode = false;
+        }
+
+        var worst = ratios.GroupBy(sample => sample.Category, StringComparer.Ordinal)
+            .Select(category => (Category: category.Key, Captures: category.Count(), Worst: category.Min(sample => sample.Ratio)))
+            .ToList();
+        worst.ForEach(category => _output.WriteLine($"category={category.Category} captures={category.Captures} worst={category.Worst:F2} minimum={MinimumContrast}"));
+
+        foreach ((string phase, double from, double to, List<double> reached) in phases)
+        {
+            reached.Should().OnlyContain(t => t > from && t < to, $"the {phase} frame is captured inside its heat-pulse phase");
+        }
+
+        worst.Select(category => category.Category).Should().BeEquivalentTo(["src", "snk", "shp", "flt", "hea", "met"]);
+        foreach ((string category, int captures, double ratio) in worst)
+        {
+            captures.Should().Be(HeatPulsePhases.Length, $"every frame measures the {category} subtitle");
+            ratio.Should().BeGreaterThanOrEqualTo(MinimumContrast, $"the running {category} subtitle stands out from its station in every heat-pulse phase");
+        }
+    }
+
     // Empty, a template loaded, running, and DEMO mode: the states the text checks walk.
     private static void InEveryState(VisualSession session, Action<string> visit)
     {
@@ -411,6 +512,90 @@ public sealed class ThemePaintTests
     {
         FontManager.Current.TryGetGlyphTypeface(typeface, out IGlyphTypeface? glyphs).Should().BeTrue($"'{typeface.FontFamily}' resolves to a typeface");
         return glyphs!.FamilyName;
+    }
+
+    // The smallest and largest opacity the running pulse's keyframes set, read from its style.
+    private static (double Low, double High) OpacityKeyFrameRange(Border pulse)
+    {
+        var opacities = pulse.Styles.OfType<Style>().Single(style => style.Animations.Count > 0)
+            .Animations.OfType<Animation>()
+            .SelectMany(animation => animation.Children)
+            .SelectMany(keyFrame => keyFrame.Setters.OfType<Setter>())
+            .Where(setter => setter.Property == Avalonia.Visual.OpacityProperty)
+            .Select(setter => Convert.ToDouble(setter.Value, CultureInfo.InvariantCulture))
+            .ToList();
+        opacities.Should().NotBeEmpty("the running heat pulse animates its opacity");
+        return (opacities.Min(), opacities.Max());
+    }
+
+    // Per station, the subtitle's glyph pixels against the station behind them. The heat pulse
+    // lights the body unevenly, so what lies behind each pixel of the text area is read from the
+    // rows directly above and below the text in that column (body, or a plate where one is drawn),
+    // blended by height. Glyph pixels are those far from it; the ratio is the WCAG contrast of
+    // their mean against the mean of what lies behind them.
+    private static List<(string Category, double Ratio, string Line)> SubtitleContrasts(VisualSession session, WriteableBitmap frame)
+    {
+        var contrasts = new List<(string Category, double Ratio, string Line)>();
+        foreach (ItemContainer station in session.Stations())
+        {
+            var node = (PipelineNodeViewModel)station.DataContext!;
+            TextBlock subtitle = station.GetVisualDescendants().OfType<TextBlock>()
+                .Single(block => string.Equals(block.Text, node.MwSub, StringComparison.Ordinal));
+            PixelRect bounds = session.BoundsInWindow(subtitle);
+            double scale = bounds.Height / subtitle.Bounds.Height;
+            int width = Math.Min(bounds.Width, (int)Math.Ceiling(subtitle.TextLayout.WidthIncludingTrailingWhitespace * scale));
+            var text = new PixelRect(bounds.X, bounds.Y, width, bounds.Height);
+            List<Color> above = session.Pixels(frame, new PixelRect(text.X, text.Y - 1, width, 1));
+            List<Color> below = session.Pixels(frame, new PixelRect(text.X, text.Bottom, width, 1));
+            List<Color> pixels = session.Pixels(frame, text);
+            var ink = new List<Color>();
+            var behind = new List<Color>();
+            for (int i = 0; i < pixels.Count; i++)
+            {
+                Color body = Blend(above[i % width], below[i % width], ((i / width) + 1.0) / (text.Height + 1));
+                if (Distance(pixels[i], body) >= GlyphDistance)
+                {
+                    ink.Add(pixels[i]);
+                    behind.Add(body);
+                }
+            }
+
+            Color glyph = ink.Count > 0 ? Mean(ink) : Mean(above);
+            Color back = ink.Count > 0 ? Mean(behind) : Mean(above);
+            double ratio = ContrastRatio(glyph, back);
+            string category = MwOpsMap.Get(node.TypeKey).Category;
+            contrasts.Add((category, ratio, $"category={category} type={node.TypeKey} subtitle='{node.MwSub}' foreground={subtitle.Foreground} text={text} above={Mean(above)} below={Mean(below)} glyph-pixels={ink.Count} glyph={glyph} behind={back} ratio={ratio:F2}"));
+        }
+
+        return contrasts;
+    }
+
+    private static Color Blend(Color from, Color to, double t) =>
+        Color.FromRgb(Lerp(from.R, to.R, t), Lerp(from.G, to.G, t), Lerp(from.B, to.B, t));
+
+    private static double Distance(Color a, Color b) =>
+        Math.Sqrt(Math.Pow(a.R - b.R, 2) + Math.Pow(a.G - b.G, 2) + Math.Pow(a.B - b.B, 2));
+
+    private static Color Mean(List<Color> pixels) =>
+        Color.FromRgb(
+            (byte)Math.Round(pixels.Average(pixel => pixel.R)),
+            (byte)Math.Round(pixels.Average(pixel => pixel.G)),
+            (byte)Math.Round(pixels.Average(pixel => pixel.B)));
+
+    private static double ContrastRatio(Color a, Color b)
+    {
+        double lighter = Math.Max(RelativeLuminance(a), RelativeLuminance(b));
+        double darker = Math.Min(RelativeLuminance(a), RelativeLuminance(b));
+        return (lighter + 0.05) / (darker + 0.05);
+    }
+
+    private static double RelativeLuminance(Color colour) =>
+        (0.2126 * Linear(colour.R)) + (0.7152 * Linear(colour.G)) + (0.0722 * Linear(colour.B));
+
+    private static double Linear(byte channel)
+    {
+        double value = channel / 255.0;
+        return value <= 0.03928 ? value / 12.92 : Math.Pow((value + 0.055) / 1.055, 2.4);
     }
 
     // One state's frame: whether the presenter shows the theme's brush, the band's mean colour,

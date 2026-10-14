@@ -207,6 +207,13 @@ internal sealed class VisualSession : IDisposable
         return Color.FromArgb((byte)(a / count), (byte)(r / count), (byte)(g / count), (byte)(b / count));
     }
 
+    public List<Color> Pixels(WriteableBitmap frame, PixelRect band)
+    {
+        var pixels = new List<Color>(band.Width * band.Height);
+        ForEachPixel(frame, band, pixels.Add);
+        return pixels;
+    }
+
     public int CountDistinctColours(WriteableBitmap frame)
     {
         var colours = new HashSet<uint>();

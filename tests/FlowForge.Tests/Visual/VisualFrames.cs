@@ -67,6 +67,12 @@ internal static class VisualFrames
 
     public const string AccentCheckBox = "accent-checkbox";
 
+    public const string RunningSubtitlesDim = "running-subtitles-a";
+
+    public const string RunningSubtitlesBright = "running-subtitles-b";
+
+    public const string RunningSubtitlesMid = "running-subtitles-c";
+
     internal const string InspectorPrefix = "inspector-";
 
     public static IReadOnlyList<string> Ids { get; } = typeof(VisualFrames)

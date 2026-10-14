@@ -219,6 +219,18 @@
         <Setter Property="ClipToBounds" Value="False" />
     </Style>
 
+    <!-- Station subtitle: dim iron while idle; while running the heat pulse lights the body
+         behind it, so it turns bone on a dark plate -->
+    <Style Selector="TextBlock.mw-sub">
+        <Setter Property="Foreground" Value="{DynamicResource MwIronLite}" />
+    </Style>
+    <Style Selector="TextBlock.mw-sub.running">
+        <Setter Property="Foreground" Value="{DynamicResource MwBone}" />
+    </Style>
+    <Style Selector="Border.mw-sub-plate.running">
+        <Setter Property="Background" Value="{DynamicResource MwInkA85}" />
+    </Style>
+
     <!-- Button: forge surface bg, border, rounded 2px (squared cast-iron feel) -->
     <Style Selector="Button">
         <Setter Property="Background" Value="{DynamicResource MwPanel}" />

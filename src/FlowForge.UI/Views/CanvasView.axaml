@@ -620,12 +620,21 @@
                                            LineHeight="18"
                                            Foreground="{DynamicResource MwBone}"
                                            TextTrimming="CharacterEllipsis" />
-                                <TextBlock Text="{Binding MwSub}"
-                                           FontFamily="{DynamicResource MwMono}"
-                                           FontSize="9"
-                                           LetterSpacing="1"
-                                           Foreground="{DynamicResource MwIronLite}"
-                                           TextTrimming="CharacterEllipsis" />
+                                <!-- Subtitle plate: the margin cancels the padding, so the
+                                     plate reaches past the text without moving anything -->
+                                <Border Classes="mw-sub-plate"
+                                        Classes.running="{Binding IsRunning}"
+                                        Margin="-3,-2"
+                                        Padding="3,2"
+                                        CornerRadius="2">
+                                    <TextBlock Text="{Binding MwSub}"
+                                               Classes="mw-sub"
+                                               Classes.running="{Binding IsRunning}"
+                                               FontFamily="{DynamicResource MwMono}"
+                                               FontSize="9"
+                                               LetterSpacing="1"
+                                               TextTrimming="CharacterEllipsis" />
+                                </Border>
                                 <!-- Config preview -->
                                 <Border Padding="6,3"
                                         Background="{DynamicResource MwInkA45}"
