@@ -15,6 +15,9 @@ public class PipelineBuilder
 
     public static PipelineBuilder New(string name = "Test Pipeline") => new(name);
 
+    /// <summary>Creates a node for graphs whose connections <see cref="Build"/>'s linear wiring cannot express.</summary>
+    public static NodeDefinition Node(string typeKey, object config) => CreateNode(typeKey, config);
+
     public PipelineBuilder AddSource(string typeKey, object config)
     {
         NodeDefinition node = CreateNode(typeKey, config);

@@ -35,12 +35,16 @@ public class PipelineRunner
         {
             progress?.Report(new PhaseChanged(ExecutionPhase.Enumerating));
 
-            ValidateGraph(graph);
-            List<Guid> sortedNodeIds = TopologicalSort(graph);
-            EnsureSingleChain(graph);
-            (List<NodeDefinition> sourceNodeDefs, List<NodeDefinition> transformNodeDefs, List<NodeDefinition> outputNodeDefs) = ClassifyNodes(graph, sortedNodeIds);
+            GraphValidationResult validation = PipelineGraphValidator.Validate(graph, _registry);
+            if (!validation.IsValid)
+            {
+                throw new InvalidOperationException(string.Join(Environment.NewLine, validation.Refusals.Select(i => i.Message)));
+            }
 
-            List<NodeDefinition> orderedTransforms = BuildTransformChain(graph, sortedNodeIds, transformNodeDefs);
+            EnsureSingleChain(graph, validation.Connections);
+            (List<NodeDefinition> sourceNodeDefs, List<NodeDefinition> transformNodeDefs, List<NodeDefinition> outputNodeDefs) = ClassifyNodes(graph, validation.Order);
+
+            List<NodeDefinition> orderedTransforms = BuildTransformChain(graph, validation.Order, transformNodeDefs);
 
             var sourceNodes = sourceNodeDefs.Select(d => _registry.GetSource(d)).ToList();
             var transformNodes = orderedTransforms.Select(d => _registry.GetTransform(d)).ToList();
@@ -82,7 +86,7 @@ public class PipelineRunner
 
     private (List<NodeDefinition> Sources, List<NodeDefinition> Transforms, List<NodeDefinition> Outputs) ClassifyNodes(
         PipelineGraph graph,
-        List<Guid> sortedNodeIds)
+        IReadOnlyList<Guid> sortedNodeIds)
     {
         var sourceNodeDefs = new List<NodeDefinition>();
         var transformNodeDefs = new List<NodeDefinition>();
@@ -400,87 +404,15 @@ public class PipelineRunner
         }
     }
 
-    private void ValidateGraph(PipelineGraph graph)
-    {
-        if (graph.Nodes.Count == 0)
-        {
-            throw new InvalidOperationException("Pipeline has no nodes.");
-        }
-
-        foreach (NodeDefinition node in graph.Nodes)
-        {
-            if (!_registry.IsRegistered(node.TypeKey))
-            {
-                throw new InvalidOperationException($"Unknown node type: '{node.TypeKey}'");
-            }
-        }
-
-        var nodeIds = graph.Nodes.Select(n => n.Id).ToHashSet();
-        foreach (Connection conn in graph.Connections)
-        {
-            if (!nodeIds.Contains(conn.FromNode))
-            {
-                throw new InvalidOperationException($"Connection references unknown source node: {conn.FromNode}");
-            }
-            if (!nodeIds.Contains(conn.ToNode))
-            {
-                throw new InvalidOperationException($"Connection references unknown target node: {conn.ToNode}");
-            }
-        }
-    }
-
-    private static List<Guid> TopologicalSort(PipelineGraph graph)
-    {
-        var inDegree = new Dictionary<Guid, int>();
-        var adjacency = new Dictionary<Guid, List<Guid>>();
-
-        foreach (NodeDefinition node in graph.Nodes)
-        {
-            inDegree[node.Id] = 0;
-            adjacency[node.Id] = new List<Guid>();
-        }
-
-        foreach (Connection conn in graph.Connections)
-        {
-            adjacency[conn.FromNode].Add(conn.ToNode);
-            inDegree[conn.ToNode]++;
-        }
-
-        var queue = new Queue<Guid>(inDegree.Where(kv => kv.Value == 0).Select(kv => kv.Key));
-        var sorted = new List<Guid>();
-
-        while (queue.Count > 0)
-        {
-            Guid current = queue.Dequeue();
-            sorted.Add(current);
-
-            foreach (Guid neighbor in adjacency[current])
-            {
-                inDegree[neighbor]--;
-                if (inDegree[neighbor] == 0)
-                {
-                    queue.Enqueue(neighbor);
-                }
-            }
-        }
-
-        if (sorted.Count != graph.Nodes.Count)
-        {
-            throw new InvalidOperationException("Pipeline graph contains a cycle.");
-        }
-
-        return sorted;
-    }
-
     /// <summary>
     /// Refuses any graph that is not one chain from a single source to a single output, naming
     /// every offending node. Repeated connections between the same two nodes count once.
     /// </summary>
-    private void EnsureSingleChain(PipelineGraph graph)
+    private void EnsureSingleChain(PipelineGraph graph, IReadOnlyList<Connection> connections)
     {
         var incoming = graph.Nodes.ToDictionary(n => n.Id, _ => 0);
         var outgoing = graph.Nodes.ToDictionary(n => n.Id, _ => new List<Guid>());
-        foreach ((Guid from, Guid to) in graph.Connections.Select(c => (c.FromNode, c.ToNode)).Distinct())
+        foreach ((Guid from, Guid to) in connections.Select(c => (c.FromNode, c.ToNode)).Distinct())
         {
             outgoing[from].Add(to);
             incoming[to]++;
@@ -564,7 +496,7 @@ public class PipelineRunner
 
     private static List<NodeDefinition> BuildTransformChain(
         PipelineGraph graph,
-        List<Guid> sortedNodeIds,
+        IReadOnlyList<Guid> sortedNodeIds,
         List<NodeDefinition> transformNodeDefs)
     {
         var transformMap = transformNodeDefs.ToDictionary(n => n.Id);
