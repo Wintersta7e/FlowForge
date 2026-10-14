@@ -90,13 +90,17 @@ public class ExecutionLogViewModelTests
     }
 
     [Fact]
-    public void ReportProgress_CalculatesProgressPercentage()
+    public void Progress_counts_finished_originals_only()
     {
         _vm.TotalFiles = 4;
         var job1 = new FileJob { OriginalPath = "/a.txt", CurrentPath = "/a.txt", Status = FileJobStatus.Succeeded };
         var job2 = new FileJob { OriginalPath = "/b.txt", CurrentPath = "/b.txt", Status = FileJobStatus.Succeeded };
 
         _vm.ReportProgressEvent(new FileProcessed(job1));
+        _vm.Progress.Should().Be(25.0);
+
+        // One branch of an original ends while another branch of it is still live.
+        _vm.ReportProgressEvent(new FileProcessed(job2) { CompletesOriginal = false });
         _vm.Progress.Should().Be(25.0);
 
         _vm.ReportProgressEvent(new FileProcessed(job2));
@@ -111,6 +115,9 @@ public class ExecutionLogViewModelTests
         _vm.ReportProgressEvent(new PhaseChanged(ExecutionPhase.Processing));
         var job = new FileJob { OriginalPath = "/x.txt", CurrentPath = "/x.txt", Status = FileJobStatus.Succeeded };
         _vm.ReportProgressEvent(new FileProcessed(job));
+        _vm.SourceCountText.Should().Be("5");
+        _vm.ProgressText.Should().Be("1/5");
+        _vm.LatencyText.Should().EndWith("ms");
 
         _vm.Clear();
 
@@ -129,20 +136,29 @@ public class ExecutionLogViewModelTests
         _vm.PhaseLabel.Should().BeEmpty();
         _vm.IsIndeterminate.Should().BeFalse();
         _vm.ThroughputRate.Should().BeEmpty();
+        _vm.ProgressText.Should().Be("—");
+        _vm.SourceCountText.Should().Be("—");
+        _vm.LatencyText.Should().Be("—");
+        _vm.ProcessIdHex.Should().Be("—");
     }
 
     [Fact]
-    public void ProgressText_ReturnsCorrectPluralization()
+    public void ProgressText_reads_finished_originals_over_total()
     {
+        _vm.ProgressText.Should().Be("—", "no total is known before a run is processing");
         _vm.TotalFiles = 5;
+        _vm.ProgressText.Should().Be("0/5");
         var job1 = new FileJob { OriginalPath = "/a.txt", CurrentPath = "/a.txt", Status = FileJobStatus.Succeeded };
 
         _vm.ReportProgressEvent(new FileProcessed(job1));
-        _vm.ProgressText.Should().Be("1 file");
+        _vm.ProgressText.Should().Be("1/5");
 
         var job2 = new FileJob { OriginalPath = "/b.txt", CurrentPath = "/b.txt", Status = FileJobStatus.Failed };
+        _vm.ReportProgressEvent(new FileProcessed(job2) { CompletesOriginal = false });
+        _vm.ProgressText.Should().Be("1/5");
+
         _vm.ReportProgressEvent(new FileProcessed(job2));
-        _vm.ProgressText.Should().Be("2 files");
+        _vm.ProgressText.Should().Be("2/5");
     }
 
     [Fact]

@@ -53,6 +53,9 @@ public sealed class ExecutionLogVisualTests
             log.ReportProgressEvent(new PhaseChanged(ExecutionPhase.Enumerating));
             log.ReportProgressEvent(new FilesDiscovered(4));
             log.ReportProgressEvent(new PhaseChanged(ExecutionPhase.Processing));
+
+            // A branch of the second file ends first; the file counts toward progress only when its last branch does.
+            log.ReportProgressEvent(new FileProcessed(Job(session, "second.png", FileJobStatus.Succeeded)) { CompletesOriginal = false });
             foreach (FileJob job in jobs)
             {
                 log.ReportProgressEvent(new FileProcessed(job));
@@ -62,6 +65,7 @@ public sealed class ExecutionLogVisualTests
             TextBlock succeeded = session.ById<TextBlock>("SucceededCount");
             TextBlock failed = session.ById<TextBlock>("FailedCount");
             TextBlock currentFile = session.ById<TextBlock>("CurrentFile");
+            TextBlock count = session.ById<TextBlock>("ConsoleCount");
             session.Pump();
             ProgressBar bar = view.GetVisualDescendants().OfType<ProgressBar>().Single(p => !p.IsIndeterminate);
             session.RenderUntil(
@@ -69,10 +73,11 @@ public sealed class ExecutionLogVisualTests
                 "log strip shows the fed counts");
             using WriteableBitmap frame = session.Capture(VisualFrames.LogProgress);
 
-            _output.WriteLine($"succeeded={succeeded.Text} failed={failed.Text} progress={bar.Value} current={currentFile.Text}");
-            succeeded.Text.Should().Be("2");
+            _output.WriteLine($"succeeded={succeeded.Text} failed={failed.Text} count={count.Text} progress={bar.Value} current={currentFile.Text}");
+            succeeded.Text.Should().Be("3");
             failed.Text.Should().Be("1");
-            bar.Value.Should().BeApproximately(75, 0.001, "three of four discovered files are processed");
+            count.Text.Should().Be("3/4", "three of four discovered files are finished");
+            bar.Value.Should().BeApproximately(75, 0.001, "three of four discovered files are finished");
             currentFile.Text.Should().Be(jobs[^1].FileName);
         }
         finally

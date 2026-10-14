@@ -67,17 +67,21 @@
                                FontSize="10"
                                LetterSpacing="0.9"
                                Foreground="{DynamicResource MwFaint}" />
-                    <TextBlock Text="0x4f7a2c"
-                               IsVisible="{Binding IsRunning}"
+                    <TextBlock Text="{Binding ProcessIdHex}"
+                               AutomationProperties.AutomationId="ConsolePid"
+                               Classes.running="{Binding IsRunning}"
                                FontFamily="{DynamicResource MwMono}"
                                FontSize="10"
-                               LetterSpacing="0.9"
-                               Foreground="{DynamicResource MwCyan}" />
-                    <TextBlock Text="—"
-                               IsVisible="{Binding !IsRunning}"
-                               FontFamily="{DynamicResource MwMono}"
-                               FontSize="10"
-                               Foreground="{DynamicResource MwFaint}" />
+                               LetterSpacing="0.9">
+                        <TextBlock.Styles>
+                            <Style Selector="TextBlock">
+                                <Setter Property="Foreground" Value="{DynamicResource MwFaint}" />
+                            </Style>
+                            <Style Selector="TextBlock.running">
+                                <Setter Property="Foreground" Value="{DynamicResource MwCyan}" />
+                            </Style>
+                        </TextBlock.Styles>
+                    </TextBlock>
                 </StackPanel>
 
                 <Border Grid.Column="3"
@@ -93,6 +97,7 @@
                       ColumnDefinitions="Auto,*,Auto"
                       VerticalAlignment="Center">
                     <TextBlock Grid.Column="0"
+                               AutomationProperties.AutomationId="ConsoleCount"
                                Text="{Binding ProgressText}"
                                FontFamily="{DynamicResource MwMono}"
                                FontSize="11"

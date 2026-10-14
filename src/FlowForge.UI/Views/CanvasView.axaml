@@ -676,12 +676,14 @@
                                            FontFamily="{DynamicResource MwMono}"
                                            FontSize="7"
                                            Foreground="{DynamicResource MwFaint}" />
-                                <TextBlock Grid.Column="1" Text="86"
+                                <TextBlock Grid.Column="1" Text="—"
+                                           AutomationProperties.AutomationId="GaugeT"
                                            FontFamily="{DynamicResource MwMono}"
                                            FontSize="7"
                                            IsVisible="{Binding !IsRunning}"
                                            Foreground="{DynamicResource MwIronLite}" />
-                                <TextBlock Grid.Column="1" Text="86"
+                                <TextBlock Grid.Column="1" Text="—"
+                                           AutomationProperties.AutomationId="GaugeT"
                                            FontFamily="{DynamicResource MwMono}"
                                            FontSize="7"
                                            IsVisible="{Binding IsRunning}"
@@ -694,12 +696,14 @@
                                            FontFamily="{DynamicResource MwMono}"
                                            FontSize="7"
                                            Foreground="{DynamicResource MwFaint}" />
-                                <TextBlock Grid.Column="1" Text="72"
+                                <TextBlock Grid.Column="1" Text="—"
+                                           AutomationProperties.AutomationId="GaugeP"
                                            FontFamily="{DynamicResource MwMono}"
                                            FontSize="7"
                                            IsVisible="{Binding !IsRunning}"
                                            Foreground="{DynamicResource MwIronLite}" />
-                                <TextBlock Grid.Column="1" Text="72"
+                                <TextBlock Grid.Column="1" Text="—"
+                                           AutomationProperties.AutomationId="GaugeP"
                                            FontFamily="{DynamicResource MwMono}"
                                            FontSize="7"
                                            IsVisible="{Binding IsRunning}"
@@ -712,12 +716,14 @@
                                            FontFamily="{DynamicResource MwMono}"
                                            FontSize="7"
                                            Foreground="{DynamicResource MwFaint}" />
-                                <TextBlock Grid.Column="1" Text="43"
+                                <TextBlock Grid.Column="1" Text="—"
+                                           AutomationProperties.AutomationId="GaugeD"
                                            FontFamily="{DynamicResource MwMono}"
                                            FontSize="7"
                                            IsVisible="{Binding !IsRunning}"
                                            Foreground="{DynamicResource MwIronLite}" />
-                                <TextBlock Grid.Column="1" Text="43"
+                                <TextBlock Grid.Column="1" Text="—"
+                                           AutomationProperties.AutomationId="GaugeD"
                                            FontFamily="{DynamicResource MwMono}"
                                            FontSize="7"
                                            IsVisible="{Binding IsRunning}"
@@ -1029,15 +1035,15 @@
                 <StackPanel Orientation="Horizontal" Spacing="12">
                     <StackPanel Orientation="Horizontal" Spacing="3">
                         <TextBlock Text="lat:" FontFamily="{DynamicResource MwMono}" FontSize="10" Foreground="{DynamicResource MwFaint}" />
-                        <TextBlock Text="6.2ms" FontFamily="{DynamicResource MwMono}" FontSize="10" Foreground="{DynamicResource MwCyan}" />
+                        <TextBlock Text="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ExecutionLog.LatencyText}" AutomationProperties.AutomationId="HudLatency" FontFamily="{DynamicResource MwMono}" FontSize="10" Foreground="{DynamicResource MwCyan}" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="3">
                         <TextBlock Text="mem:" FontFamily="{DynamicResource MwMono}" FontSize="10" Foreground="{DynamicResource MwFaint}" />
-                        <TextBlock Text="142MB" FontFamily="{DynamicResource MwMono}" FontSize="10" Foreground="{DynamicResource MwLime}" />
+                        <TextBlock Text="—" AutomationProperties.AutomationId="HudMemory" FontFamily="{DynamicResource MwMono}" FontSize="10" Foreground="{DynamicResource MwLime}" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="3">
                         <TextBlock Text="err:" FontFamily="{DynamicResource MwMono}" FontSize="10" Foreground="{DynamicResource MwFaint}" />
-                        <TextBlock Text="0" FontFamily="{DynamicResource MwMono}" FontSize="10" Foreground="{DynamicResource MwLime}" />
+                        <TextBlock Text="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ExecutionLog.Failed}" AutomationProperties.AutomationId="HudErrors" FontFamily="{DynamicResource MwMono}" FontSize="10" Foreground="{DynamicResource MwLime}" />
                     </StackPanel>
                 </StackPanel>
             </StackPanel>

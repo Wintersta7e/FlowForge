@@ -1,6 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FlowForge.Core.Execution;
@@ -11,6 +13,7 @@ namespace FlowForge.UI.ViewModels;
 public partial class ExecutionLogViewModel : ViewModelBase
 {
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ProgressText))]
     private int _totalFiles;
 
     [ObservableProperty]
@@ -29,6 +32,7 @@ public partial class ExecutionLogViewModel : ViewModelBase
     private string? _currentFile;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ProcessIdHex))]
     private bool _isRunning;
 
     [ObservableProperty]
@@ -57,20 +61,33 @@ public partial class ExecutionLogViewModel : ViewModelBase
 
     private const double MinElapsedSecondsForThroughput = 0.1;
     private const int MaxLogEntries = 5000;
+
+    // Shown by any slot that has no reading to show.
+    private const string NoReading = "\u2014";
+
+    private static readonly string RunningProcessId = "0x" + Environment.ProcessId.ToString("x", CultureInfo.InvariantCulture);
+
     private readonly Stopwatch _processingStopwatch = new();
     private readonly List<FileJob> _pendingJobs = new();
+
+    // Originals whose last live branch has ended: the one progress count, so it never passes TotalFiles.
+    private int _completedOriginals;
+    private bool _sourceCounted;
+    private TimeSpan _elapsedAtLastTerminal;
 
     public bool IsOutputTabSelected => SelectedTabIndex == 0;
     public bool IsErrorsTabSelected => SelectedTabIndex == 1;
     public bool IsWarningsTabSelected => SelectedTabIndex == 2;
-    public string ProgressText
-    {
-        get
-        {
-            int processed = Succeeded + Failed + Skipped;
-            return processed == 1 ? "1 file" : $"{processed} files";
-        }
-    }
+    public string ProgressText => TotalFiles > 0 ? $"{_completedOriginals}/{TotalFiles}" : NoReading;
+
+    public string ProcessIdHex => IsRunning ? RunningProcessId : NoReading;
+
+    public string SourceCountText => _sourceCounted ? DiscoveredFiles.ToString(CultureInfo.InvariantCulture) : NoReading;
+
+    // Mean processing time per finished original, for the current or last run.
+    public string LatencyText => _completedOriginals == 0
+        ? NoReading
+        : (_elapsedAtLastTerminal.TotalMilliseconds / _completedOriginals).ToString("F1", CultureInfo.InvariantCulture) + "ms";
 
     partial void OnSelectedTabIndexChanged(int value)
     {
@@ -105,6 +122,9 @@ public partial class ExecutionLogViewModel : ViewModelBase
     public void Clear()
     {
         _pendingJobs.Clear();
+        _completedOriginals = 0;
+        _sourceCounted = false;
+        _elapsedAtLastTerminal = TimeSpan.Zero;
         Entries.Clear();
         ErrorEntries.Clear();
         WarningEntries.Clear();
@@ -122,6 +142,9 @@ public partial class ExecutionLogViewModel : ViewModelBase
         IsIndeterminate = false;
         ThroughputRate = string.Empty;
         _processingStopwatch.Reset();
+        OnPropertyChanged(nameof(ProgressText));
+        OnPropertyChanged(nameof(SourceCountText));
+        OnPropertyChanged(nameof(LatencyText));
     }
 
     public void ReportProgressEvent(PipelineProgressEvent evt)
@@ -154,11 +177,19 @@ public partial class ExecutionLogViewModel : ViewModelBase
                 break;
 
             case FilesDiscovered discovered:
+                _sourceCounted = true;
                 DiscoveredFiles = discovered.TotalCount;
+                OnPropertyChanged(nameof(SourceCountText));
                 PhaseLabel = $"Scanning... {discovered.TotalCount} files found";
                 break;
 
             case FileProcessed processed:
+                if (processed.CompletesOriginal)
+                {
+                    _completedOriginals++;
+                }
+
+                _elapsedAtLastTerminal = _processingStopwatch.Elapsed;
                 _pendingJobs.Add(processed.Job);
                 FlushPendingJobs();
                 break;
@@ -218,9 +249,9 @@ public partial class ExecutionLogViewModel : ViewModelBase
         Skipped += skippedDelta;
         CurrentFile = lastFileName;
 
-        int processed = Succeeded + Failed + Skipped;
-        Progress = TotalFiles > 0 ? (double)processed / TotalFiles * 100.0 : 0;
+        Progress = TotalFiles > 0 ? (double)_completedOriginals / TotalFiles * 100.0 : 0;
         OnPropertyChanged(nameof(ProgressText));
+        OnPropertyChanged(nameof(LatencyText));
         UpdateThroughput();
         UpdatePhaseLabel();
     }

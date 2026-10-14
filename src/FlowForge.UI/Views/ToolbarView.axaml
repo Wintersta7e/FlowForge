@@ -221,7 +221,8 @@
                                FontSize="9"
                                LetterSpacing="1.8"
                                Foreground="{DynamicResource MwFaint}" />
-                    <TextBlock Text="—"
+                    <TextBlock Text="{Binding ExecutionLog.SourceCountText}"
+                               AutomationProperties.AutomationId="ToolbarSourceCount"
                                FontFamily="{DynamicResource MwMono}"
                                FontSize="10" FontWeight="SemiBold"
                                Foreground="{DynamicResource MwBone}" />
