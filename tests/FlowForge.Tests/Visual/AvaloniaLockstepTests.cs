@@ -5,6 +5,7 @@ using Xunit.Abstractions;
 
 namespace FlowForge.Tests.Visual;
 
+[Collection(VisualCollection.Name)]
 public sealed class AvaloniaLockstepTests
 {
     private static readonly string[][] Projects =

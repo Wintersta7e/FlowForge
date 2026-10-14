@@ -42,10 +42,7 @@ public partial class App : Application
 
         var services = new ServiceCollection();
         services.AddLogging(builder => builder.AddSerilog(dispose: true));
-        services.AddFlowForgeCore();
-        services.AddSingleton<IDialogService, DialogService>();
-        services.AddSingleton<MainWindowViewModel>();
-        services.AddSingleton<EditorViewModel>();
+        ConfigureServices(services);
         _services = services.BuildServiceProvider();
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
@@ -78,6 +75,16 @@ public partial class App : Application
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    // The app's registrations without logging: the caller adds its own provider, so a
+    // test container never disposes the global Serilog logger.
+    internal static void ConfigureServices(IServiceCollection services)
+    {
+        services.AddFlowForgeCore();
+        services.AddSingleton<IDialogService, DialogService>();
+        services.AddSingleton<MainWindowViewModel>();
+        services.AddSingleton<EditorViewModel>();
     }
 
     private static async System.Threading.Tasks.Task InitializeViewModelAsync(MainWindowViewModel viewModel)
