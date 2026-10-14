@@ -2,6 +2,8 @@
 
 All notable changes to this project will be documented in this file.
 
+Versions 1.0.0–2.0.0 were tagged and released at the time; those tags and releases no longer exist, so these sections are a record only.
+
 ## [Unreleased]
 
 ### Changed
@@ -9,6 +11,14 @@ All notable changes to this project will be documented in this file.
 - **Pipeline shape is checked before a run** — a pipeline that is not one chain from a single source to a single output is refused, naming each offending node; before, an unconnected transform still ran on every file and every output received every file.
 - **CLI executable name** — the CLI builds and publishes as `flowforge` (`flowforge.exe` on Windows), as the docs say; it was `FlowForge.CLI`. `dotnet run --project src/FlowForge.CLI` is unchanged.
 - **README and user guide** — no download or release-zip text until a release exists; supported platforms narrowed to Windows and Linux (macOS untested); dry-run wording matches what the code guarantees; the test count and the ".ffpipe stable across 2.x" sentence are gone.
+- **Dependencies and CI** — Avalonia 11.3.16, MetadataExtractor 2.9.3 and Microsoft.Extensions.DependencyInjection 10.0.7; CI runs format, build-and-test, a Windows build-and-test leg and a dependency audit as parallel jobs, with NuGet caching and per-job timeouts; the README is restyled.
+- **Dependencies and analyzers** — Avalonia 11.3.18, Microsoft.Extensions.* 10.0.10, Serilog 4.4.0, System.CommandLine 2.0.10 and Microsoft.NET.Test.Sdk 18.8.1. Meziantou.Analyzer moves to 3.x and the issues it flagged are fixed, among them a filter-node test that never awaited its assertion and so always passed. The Tmds.DBus.Protocol advisory suppression is dropped because Avalonia now resolves a patched version.
+- **Workflow actions** — the CI and release workflows use the current major versions of the checkout, .NET setup and cache actions; the old pins targeted a runtime the CI runners now deprecate, with a notice on every run.
+- **Avalonia 11.3.19** — all five Avalonia packages move to 11.3.19 in one change.
+
+### Removed
+
+- **Concept-render screenshots** — `screenshots/empty-state.png` and `screenshots/stations-running.png` were design renders, not app screenshots, and nothing referenced them.
 
 ### Fixed
 
