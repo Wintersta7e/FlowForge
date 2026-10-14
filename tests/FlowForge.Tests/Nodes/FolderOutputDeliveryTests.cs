@@ -198,6 +198,50 @@ public class FolderOutputDeliveryTests
         Directory.GetFiles(output, "*.tmp").Should().BeEmpty(because);
     }
 
+    [Fact]
+    public async Task Linked_destination_directory_is_refused()
+    {
+        using var dir = new TempDirectory();
+        string input = CreateFolder(dir, "in");
+        string output = CreateFolder(dir, "out");
+        string outside = CreateFolder(dir, "outside");
+        Directory.CreateDirectory(Path.Combine(input, "sub"));
+        await File.WriteAllTextAsync(Path.Combine(input, "sub", "f.txt"), "SUB");
+        await LinkFactory.CreateDirectoryLinkAsync(Path.Combine(output, "sub"), outside);
+
+        ExecutionResult result = await RunAsync(
+            new { path = input, recursive = true },
+            new { path = output, preserveStructure = true, sourceBasePath = input });
+
+        string[] outsideEntries = Directory.GetFileSystemEntries(outside);
+        string because = Report(
+            $"jobs={result.Jobs.Count} failed={result.Failed} errors={string.Join(" | ", result.Jobs.Select(j => j.ErrorMessage))}",
+            $"outside entries={outsideEntries.Length}: {string.Join(", ", outsideEntries.Select(Path.GetFileName))}");
+        result.Jobs.Should().ContainSingle(because).Which.Status.Should().Be(FileJobStatus.Failed, because);
+        outsideEntries.Should().BeEmpty(because);
+    }
+
+    [Fact]
+    public async Task File_outside_the_base_is_delivered_flat()
+    {
+        using var dir = new TempDirectory();
+        string sourceBase = CreateFolder(dir, "in");
+        string input = CreateFolder(dir, "input2");
+        string output = CreateFolder(dir, "out");
+        await File.WriteAllTextAsync(Path.Combine(input, "g.txt"), "FLAT");
+
+        ExecutionResult result = await RunAsync(
+            new { path = input },
+            new { path = output, preserveStructure = true, sourceBasePath = sourceBase });
+
+        string[] delivered = Directory.GetFiles(output, "*", SearchOption.AllDirectories);
+        string because = Report(
+            $"succeeded={result.Succeeded} failed={result.Failed} errors={string.Join(" | ", result.Jobs.Select(j => j.ErrorMessage))}",
+            $"out files: {string.Join(", ", delivered.Select(f => Path.GetRelativePath(output, f)))}");
+        result.Succeeded.Should().Be(1, because);
+        File.Exists(Path.Combine(output, "g.txt")).Should().BeTrue(because);
+    }
+
     private static async Task WriteZerosUntilCancelledAsync(NamedPipeServerStream pipe, CancellationToken ct)
     {
         byte[] block = new byte[64 * 1024];
@@ -233,9 +277,12 @@ public class FolderOutputDeliveryTests
         JsonSerializer.SerializeToElement(config).EnumerateObject()
             .ToDictionary(p => p.Name, p => p.Value.Clone(), StringComparer.Ordinal);
 
-    private static Task<ExecutionResult> RunAsync(string input, object outputConfig)
+    private static Task<ExecutionResult> RunAsync(string input, object outputConfig) =>
+        RunAsync(new { path = input }, outputConfig);
+
+    private static Task<ExecutionResult> RunAsync(object inputConfig, object outputConfig)
     {
-        var source = new NodeDefinition { TypeKey = "FolderInput", Config = Config(new { path = input }) };
+        var source = new NodeDefinition { TypeKey = "FolderInput", Config = Config(inputConfig) };
         var sink = new NodeDefinition { TypeKey = "FolderOutput", Config = Config(outputConfig) };
         var graph = new PipelineGraph
         {

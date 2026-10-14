@@ -115,17 +115,22 @@ public class FolderOutputNode : IOutputNode
         if (_preserveStructure && !string.IsNullOrEmpty(_sourceBasePath))
         {
             string? originalDir = Path.GetDirectoryName(job.OriginalPath);
-            if (originalDir != null && originalDir.StartsWith(_sourceBasePath, StringComparison.OrdinalIgnoreCase))
+            if (originalDir != null)
             {
-                string relativePath = Path.GetRelativePath(_sourceBasePath, originalDir);
-                destinationDir = Path.Combine(_path, relativePath);
+                // A file outside the base folder is delivered flat.
+                string resolvedDir = Path.TrimEndingDirectorySeparator(Path.GetFullPath(originalDir));
+                string resolvedBase = Path.TrimEndingDirectorySeparator(Path.GetFullPath(_sourceBasePath));
+                if (PathGuard.IsWithinResolvedDirectory(resolvedDir, resolvedBase))
+                {
+                    destinationDir = Path.Combine(_path, Path.GetRelativePath(resolvedBase, resolvedDir));
+                }
             }
         }
 
         string destinationPath = Path.Combine(destinationDir, fileName);
 
         PathGuard.EnsureWithinDirectory(destinationPath, _path);
-        RefuseLink(destinationPath);
+        RefuseLinkedComponents(destinationPath);
 
         if (dryRun)
         {
@@ -152,10 +157,28 @@ public class FolderOutputNode : IOutputNode
     }
 
     /// <summary>
-    /// Throws when an entry at <paramref name="path"/> is a link. Only the entry's attributes are
-    /// read, so a dry run reports the same refusal.
+    /// Refuses the destination when it, or any existing folder between the output folder and it, is a
+    /// link: a folder or file created under a linked folder lands outside the output folder. The output
+    /// folder itself may be a link. Only attributes are read, so a dry run reports the same refusal.
     /// </summary>
-    private static void RefuseLink(string path)
+    private void RefuseLinkedComponents(string destinationPath)
+    {
+        string root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(_path));
+        string current = root;
+        foreach (string component in Path.GetRelativePath(root, Path.GetFullPath(destinationPath)).Split(Path.DirectorySeparatorChar))
+        {
+            current = Path.Combine(current, component);
+            if (!RefuseLink(current))
+            {
+                return;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Throws when the entry at <paramref name="path"/> is a link; returns whether an entry exists there.
+    /// </summary>
+    private static bool RefuseLink(string path)
     {
         var directory = new DirectoryInfo(path);
         FileSystemInfo entry = directory.Exists ? directory : new FileInfo(path);
@@ -163,6 +186,8 @@ public class FolderOutputNode : IOutputNode
         {
             throw new InvalidOperationException($"FolderOutput: '{path}' is a link; refusing to deliver through it.");
         }
+
+        return entry.Exists;
     }
 
     /// <summary>
