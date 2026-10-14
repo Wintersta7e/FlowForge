@@ -48,6 +48,8 @@ public sealed class AppSettings
     /// <summary>Clamp settings values to safe ranges after deserialization.</summary>
     public void Validate()
     {
+        RecentPipelines ??= new List<string>();
+
         if (MaxConcurrency <= 0 || MaxConcurrency > MaxAllowedConcurrency)
         {
             MaxConcurrency = Environment.ProcessorCount;

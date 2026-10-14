@@ -63,6 +63,18 @@ public class AppSettingsManagerTests
     }
 
     [Fact]
+    public async Task Load_null_recent_pipelines_returns_empty_list()
+    {
+        using var dir = new TempDirectory();
+        string settingsPath = Path.Combine(dir.Path, "settings.json");
+        await File.WriteAllTextAsync(settingsPath, """{"recentPipelines": null}""");
+
+        AppSettings settings = await new AppSettingsManager(settingsPath, NullLogger<AppSettingsManager>.Instance).LoadAsync();
+
+        settings.RecentPipelines.Should().NotBeNull().And.BeEmpty();
+    }
+
+    [Fact]
     public async Task Save_creates_parent_directory_if_missing()
     {
         using var dir = new TempDirectory();
