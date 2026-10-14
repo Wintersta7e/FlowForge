@@ -36,7 +36,27 @@ public sealed class TempDirectory : IDisposable
     {
         if (Directory.Exists(Path))
         {
+            DeleteDirectoryLinks(Path);
             Directory.Delete(Path, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Removes every directory link under <paramref name="directory"/> without descending into one:
+    /// a recursive delete throws on a junction on Windows. Deleting a link never touches its target.
+    /// </summary>
+    private static void DeleteDirectoryLinks(string directory)
+    {
+        foreach (string child in Directory.GetDirectories(directory))
+        {
+            if (new DirectoryInfo(child).LinkTarget != null)
+            {
+                Directory.Delete(child);
+            }
+            else
+            {
+                DeleteDirectoryLinks(child);
+            }
         }
     }
 }
