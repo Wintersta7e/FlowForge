@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FlowForge.Core.Execution;
+using FlowForge.Core.Imaging;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
 using Microsoft.Extensions.Logging;
@@ -17,8 +18,6 @@ public class ImageResizeNode : ITransformNode
     {
         MaxFrames = 1
     };
-
-    private const long MaxFileSizeBytes = 500 * 1024 * 1024; // 500 MB
 
     private readonly ILogger<ImageResizeNode> _logger;
 
@@ -110,18 +109,16 @@ public class ImageResizeNode : ITransformNode
         int targetWidth = _width ?? 0;
         int targetHeight = _height ?? 0;
 
-        if (context.DryRun)
+        IImageFormat? format = OutputFormat(job);
+        if (PreDecodeChecks.FailIfTargetUnresolved(job, TypeKey, format?.Name, $"no output format matches the extension '{job.Extension}'.", _logger)
+            || PreDecodeChecks.FailIfTooLarge(job, TypeKey, _logger))
         {
-            job.NodeLog.Add($"ImageResize: would resize to {targetWidth}x{targetHeight} ({_resizeMode})");
             return new[] { job };
         }
 
-        var fileInfo = new FileInfo(job.ContentPath);
-        if (fileInfo.Length > MaxFileSizeBytes)
+        if (context.DryRun)
         {
-            job.Status = FileJobStatus.Failed;
-            job.ErrorMessage = $"ImageResize: File too large ({fileInfo.Length / (1024 * 1024)} MB, max 500 MB).";
-            job.NodeLog.Add(job.ErrorMessage);
+            job.NodeLog.Add($"ImageResize: would resize to {targetWidth}x{targetHeight} ({_resizeMode})");
             return new[] { job };
         }
 
@@ -130,8 +127,10 @@ public class ImageResizeNode : ITransformNode
             return new[] { job };
         }
 
-        IImageEncoder encoder = EncoderFor(job, out IImageFormat format);
-        string staged = context.NewStagingPath("." + format.FileExtensions.First());
+        // Not null: an unresolved format failed the job above.
+        IImageFormat outputFormat = format!;
+        IImageEncoder encoder = EncoderFor(outputFormat);
+        string staged = context.NewStagingPath("." + outputFormat.FileExtensions.First());
         bool referenced = false;
         try
         {
@@ -177,15 +176,14 @@ public class ImageResizeNode : ITransformNode
         }
     }
 
-    /// <summary>The encoder follows the file's name, never the staged file's.</summary>
-    private static IImageEncoder EncoderFor(FileJob job, out IImageFormat format)
-    {
-        if (!Configuration.Default.ImageFormatsManager.TryFindFormatByFileExtension(job.Extension.TrimStart('.'), out IImageFormat? found))
-        {
-            throw new UnknownImageFormatException($"ImageResize: no image format is known for the extension '{job.Extension}'.");
-        }
+    /// <summary>The format the file's name asks for, never the staged file's; null when none matches.</summary>
+    private static IImageFormat? OutputFormat(FileJob job) =>
+        Configuration.Default.ImageFormatsManager.TryFindFormatByFileExtension(job.Extension.TrimStart('.'), out IImageFormat? format)
+            ? format
+            : null;
 
-        format = found;
+    private static IImageEncoder EncoderFor(IImageFormat format)
+    {
         IImageEncoder encoder = Configuration.Default.ImageFormatsManager.GetEncoder(format);
 
         // The image library's CCITT fax encoders are unsafe, so TIFF output is always LZW.

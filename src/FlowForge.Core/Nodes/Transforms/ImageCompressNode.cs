@@ -21,8 +21,6 @@ public class ImageCompressNode : ITransformNode
         MaxFrames = 1
     };
 
-    private const long MaxFileSizeBytes = 500 * 1024 * 1024; // 500 MB
-
     private readonly ILogger<ImageCompressNode> _logger;
 
     public ImageCompressNode(ILogger<ImageCompressNode> logger)
@@ -70,18 +68,22 @@ public class ImageCompressNode : ITransformNode
     {
         ct.ThrowIfCancellationRequested();
 
+        string targetFormat = _format ?? job.Extension.TrimStart('.').ToLowerInvariant();
+        if (PreDecodeChecks.FailIfTargetUnresolved(
+                job,
+                TypeKey,
+                SupportedFormats.Contains(targetFormat) ? targetFormat : null,
+                $"unsupported format '{targetFormat}'. Supported: jpg, jpeg, png, webp.",
+                _logger)
+            || PreDecodeChecks.FailIfTooLarge(job, TypeKey, _logger))
+        {
+            return new[] { job };
+        }
+
         if (context.DryRun)
         {
             NameByFormat(job);
             job.NodeLog.Add($"ImageCompress: would compress to quality={_quality}");
-            return new[] { job };
-        }
-
-        var fileInfo = new FileInfo(job.ContentPath);
-        if (fileInfo.Length > MaxFileSizeBytes)
-        {
-            job.Status = FileJobStatus.Failed;
-            job.NodeLog.Add($"ImageCompress: File too large ({fileInfo.Length / (1024 * 1024)} MB, max 500 MB).");
             return new[] { job };
         }
 
@@ -90,18 +92,8 @@ public class ImageCompressNode : ITransformNode
             return new[] { job };
         }
 
-        string targetFormat = _format ?? job.Extension.TrimStart('.').ToLowerInvariant();
-        if (!SupportedFormats.Contains(targetFormat)
-            || !Configuration.Default.ImageFormatsManager.TryFindFormatByFileExtension(targetFormat, out IImageFormat? format))
-        {
-            _logger.LogWarning("ImageCompress: unsupported format {Format} for file {FilePath}", targetFormat, job.CurrentPath);
-            job.Status = FileJobStatus.Failed;
-            job.ErrorMessage = $"ImageCompress: unsupported format '{targetFormat}'. Supported: jpg, jpeg, png, webp.";
-            return new[] { job };
-        }
-
         IImageEncoder encoder = GetEncoder(targetFormat);
-        string staged = context.NewStagingPath("." + format.FileExtensions.First());
+        string staged = context.NewStagingPath(ImageFormatNames.CanonicalExtension(targetFormat));
         bool referenced = false;
         try
         {

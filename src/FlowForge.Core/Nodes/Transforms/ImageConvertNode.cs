@@ -27,8 +27,6 @@ public class ImageConvertNode : ITransformNode
         "jpg", "jpeg", "png", "webp", "bmp", "tiff"
     };
 
-    private const long MaxFileSizeBytes = 500 * 1024 * 1024; // 500 MB
-
     private readonly ILogger<ImageConvertNode> _logger;
 
     public ImageConvertNode(ILogger<ImageConvertNode> logger)
@@ -79,20 +77,18 @@ public class ImageConvertNode : ITransformNode
     {
         ct.ThrowIfCancellationRequested();
 
+        // Configure refused every format without an encoder, so the target always resolves.
+        if (PreDecodeChecks.FailIfTooLarge(job, TypeKey, _logger))
+        {
+            return new[] { job };
+        }
+
         string newPath = BuildTargetPath(job);
 
         if (context.DryRun)
         {
             job.CurrentPath = newPath;
             job.NodeLog.Add($"ImageConvert: would convert to {_format}");
-            return new[] { job };
-        }
-
-        var fileInfo = new FileInfo(job.ContentPath);
-        if (fileInfo.Length > MaxFileSizeBytes)
-        {
-            job.Status = FileJobStatus.Failed;
-            job.NodeLog.Add($"ImageConvert: File too large ({fileInfo.Length / (1024 * 1024)} MB, max 500 MB).");
             return new[] { job };
         }
 
