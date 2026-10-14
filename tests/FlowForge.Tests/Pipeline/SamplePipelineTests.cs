@@ -1,7 +1,10 @@
 using System.Text.Json;
+using FlowForge.Core.Execution;
 using FlowForge.Core.Pipeline;
 using FlowForge.Core.Pipeline.Templates;
+using FlowForge.Tests.Helpers;
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit.Abstractions;
 
 namespace FlowForge.Tests.Pipeline;
@@ -58,37 +61,86 @@ public class SamplePipelineTests
         }
     }
 
-    [Theory]
-    [InlineData("samples/photo-import-by-date.ffpipe")]
-    [InlineData("samples/batch-sequential-rename.ffpipe")]
-    [InlineData("samples/image-web-export.ffpipe")]
-    [InlineData("samples/bulk-image-compress.ffpipe")]
-    public async Task Sample_ffpipe_files_load_successfully(string relativePath)
+    [Fact]
+    public async Task Every_sample_loads_and_configures_cleanly()
     {
-        // Find the samples directory relative to the test assembly
-        string basePath = AppContext.BaseDirectory;
-        string samplePath = Path.GetFullPath(Path.Combine(basePath, "..", "..", "..", "..", "..", relativePath));
+        string samplesDir = RepoRoot.Combine("samples");
+        string[] files = Directory.Exists(samplesDir)
+            ? Directory.GetFiles(samplesDir, "*.ffpipe").OrderBy(f => f, StringComparer.Ordinal).ToArray()
+            : [];
+        _output.WriteLine($"[samples] scanned={files.Length}");
+        files.Should().NotBeEmpty("the samples directory must hold at least one .ffpipe file");
 
-        if (!File.Exists(samplePath))
+        var registry = NodeRegistry.CreateDefault(NullLoggerFactory.Instance);
+        List<string> failures = [];
+        foreach (string file in files)
         {
-            _output.WriteLine($"SKIPPED: Sample file not found at {samplePath}");
-            return;
+            string name = Path.GetFileName(file);
+            PipelineGraph graph;
+            try
+            {
+                graph = await PipelineSerializer.LoadAsync(file);
+            }
+            catch (PipelineLoadException ex)
+            {
+                failures.Add($"{name}: {ex.Message}");
+                continue;
+            }
+
+            if (graph.Nodes.Count == 0)
+            {
+                failures.Add($"{name}: no nodes");
+            }
+
+            if (graph.Connections.Count == 0)
+            {
+                failures.Add($"{name}: no connections");
+            }
+
+            foreach (NodeDefinition node in graph.Nodes)
+            {
+                string? error = ConfigureNode(registry, node);
+                if (error != null)
+                {
+                    failures.Add($"{name}: node {node.Id} ({node.TypeKey}): {error}");
+                }
+            }
         }
 
-        PipelineGraph graph = await PipelineSerializer.LoadAsync(samplePath);
-
-        graph.Nodes.Should().NotBeEmpty();
-        graph.Connections.Should().NotBeEmpty();
-        graph.Nodes.Should().AllSatisfy(n => n.TypeKey.Should().NotBeNullOrWhiteSpace());
+        failures.Should().BeEmpty();
     }
 
-    [Fact]
-    public void At_least_one_sample_file_exists()
+    /// <summary>
+    /// Creates the node through the registry, which runs its Configure; returns the
+    /// failure text, or null when the node configured cleanly.
+    /// </summary>
+    private static string? ConfigureNode(NodeRegistry registry, NodeDefinition node)
     {
-        string basePath = AppContext.BaseDirectory;
-        string samplesDir = Path.GetFullPath(Path.Combine(basePath, "..", "..", "..", "..", "..", "samples"));
+        if (!registry.IsRegistered(node.TypeKey))
+        {
+            return "type is not registered";
+        }
 
-        Directory.Exists(samplesDir).Should().BeTrue("samples directory should exist at repo root");
-        Directory.GetFiles(samplesDir, "*.ffpipe").Should().NotBeEmpty("at least one .ffpipe sample should exist");
+        try
+        {
+            switch (registry.GetCategoryForTypeKey(node.TypeKey))
+            {
+                case NodeCategory.Source:
+                    _ = registry.GetSource(node);
+                    break;
+                case NodeCategory.Transform:
+                    _ = registry.GetTransform(node);
+                    break;
+                case NodeCategory.Output:
+                    _ = registry.GetOutput(node);
+                    break;
+            }
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return ex.Message;
+        }
     }
 }
