@@ -45,6 +45,11 @@ public partial class RemovedMembersTests
         "ForgeSourceColor",
         "ForgeTransformColor",
         "ForgeOutputColor",
+        "SourceOffset",
+        "TargetOffset",
+        "SourceOffsetProperty",
+        "TargetOffsetProperty",
+        "ApplyOffset",
     ];
 
     // Text that must not come back in one file; other files may still use it.

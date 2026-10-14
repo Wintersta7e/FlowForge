@@ -12,8 +12,6 @@ internal static class MwGeometry
 
     public static bool IsFinite(Point value) => double.IsFinite(value.X) && double.IsFinite(value.Y);
 
-    public static bool IsFinite(Size value) => double.IsFinite(value.Width) && double.IsFinite(value.Height);
-
     /// <summary>
     /// Control points for the simple midpoint cubic between source and target:
     /// cp1 sits horizontally midway, vertically aligned with source; cp2 the
