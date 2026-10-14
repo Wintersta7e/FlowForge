@@ -17,12 +17,19 @@ public partial class RemovedMembersTests
         "DefaultOutputFolder",
         "SettingsFilePath",
         "GetCategory",
+        "ReportProgress",
+        "FlushInterval",
+        "_flushTimer",
+        "EnsureFlushTimerRunning",
+        "StopFlushTimer",
+        "OnFlushTimerTick",
     ];
 
     // Text that must not come back in one file; other files may still use it.
     private static readonly (string Path, string Text)[] RemovedText =
     [
         ("src/FlowForge.Core/Execution/NodeRegistry.cs", "bool configure"),
+        ("src/FlowForge.UI/ViewModels/ExecutionLogViewModel.cs", "DispatcherTimer"),
     ];
 
     private readonly ITestOutputHelper _output;
