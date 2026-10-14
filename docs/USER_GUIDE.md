@@ -255,14 +255,17 @@ With `--format json`, the CLI writes structured JSON to stdout (logs go to stder
 
 ```json
 {
+  "isDryRun": false,
   "totalFiles": 10,
   "succeeded": 9,
   "failed": 1,
   "skipped": 0,
-  "durationMs": 1234,
-  "files": [ ... ]
+  "duration": "00:00:01.2340000",
+  "jobs": []
 }
 ```
+
+`duration` is a `TimeSpan` string, and `jobs` holds one entry per processed file (empty here).
 
 ## Templates
 
