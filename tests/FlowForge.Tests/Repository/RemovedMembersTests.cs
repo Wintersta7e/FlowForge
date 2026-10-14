@@ -58,6 +58,7 @@ public partial class RemovedMembersTests
         ("src/FlowForge.Core/Execution/NodeRegistry.cs", "bool configure"),
         ("src/FlowForge.UI/ViewModels/ExecutionLogViewModel.cs", "DispatcherTimer"),
         ("tests/FlowForge.Tests/FlowForge.Tests.csproj", "\"Bogus\""),
+        ("src/FlowForge.UI/FlowForge.UI.csproj", "Avalonia.Diagnostics"),
     ];
 
     private readonly ITestOutputHelper _output;
