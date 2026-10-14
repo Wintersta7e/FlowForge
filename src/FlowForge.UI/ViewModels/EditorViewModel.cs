@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
+using System.Text.Json;
 using Avalonia;
 using CommunityToolkit.Mvvm.Input;
 using FlowForge.Core.Execution;
@@ -205,7 +206,9 @@ public partial class EditorViewModel : ViewModelBase
                 Id = nodeVm.Id,
                 TypeKey = nodeVm.TypeKey,
                 Position = new CanvasPosition(nodeVm.Location.X, nodeVm.Location.Y),
-                Config = nodeVm.Config
+                // A copy: the run configures nodes off the UI thread while the inspector can
+                // still edit the node's own dictionary.
+                Config = new Dictionary<string, JsonElement>(nodeVm.Config, StringComparer.Ordinal)
             };
             graph.Nodes.Add(nodeDef);
         }

@@ -55,4 +55,19 @@ public class EditorViewModelLoadGraphTests
         dropped.Should().Be(1);
         editor.Connections.Should().HaveCount(2);
     }
+
+    // The runner configures nodes off the UI thread while the inspector stays editable.
+    [Fact]
+    public void BuildGraph_snapshots_node_config()
+    {
+        var editor = new EditorViewModel(NullLogger<EditorViewModel>.Instance);
+        editor.LoadGraph(CreateChain(), NodeRegistry.CreateDefault(NullLoggerFactory.Instance));
+        PipelineNodeViewModel rename = editor.Nodes.Single(n => string.Equals(n.TypeKey, "RenamePattern", StringComparison.Ordinal));
+
+        PipelineGraph built = editor.BuildGraph();
+        rename.Config["pattern"] = JsonSerializer.SerializeToElement("{name}_edited{ext}");
+
+        built.Nodes.Single(n => n.Id == rename.Id).Config["pattern"].GetString()
+            .Should().Be("{counter:000}_{name}{ext}", "a run uses the settings it started with, not later edits");
+    }
 }
