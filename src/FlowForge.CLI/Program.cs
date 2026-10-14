@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using FlowForge.CLI;
 using FlowForge.Core.DependencyInjection;
 using FlowForge.Core.Execution;
 using FlowForge.Core.Models;
@@ -102,7 +103,7 @@ static async Task<int> RunPipelineAsync(
         if (!pipelineFile.Exists)
         {
             Console.Error.WriteLine($"Pipeline file not found: '{pipelineFile.FullName}'");
-            return 2;
+            return CliExitCode.Failure;
         }
 
         PipelineGraph? graph = await LoadAndConfigurePipelineAsync(
@@ -110,7 +111,7 @@ static async Task<int> RunPipelineAsync(
 
         if (graph is null)
         {
-            return 2;
+            return CliExitCode.Failure;
         }
 
         IProgress<PipelineProgressEvent> progress = CreateProgressReporter(statusWriter, verbose);
@@ -119,39 +120,39 @@ static async Task<int> RunPipelineAsync(
 
         PrintSummary(result, statusWriter, jsonMode);
 
-        return ToExitCode(result);
+        return CliExitCode.FromResult(result);
     }
     catch (OperationCanceledException)
     {
         Console.Error.WriteLine("Pipeline execution was cancelled.");
-        return 2;
+        return CliExitCode.Failure;
     }
     catch (PipelineLoadException ex)
     {
         Console.Error.WriteLine($"Failed to load pipeline: {ex.Message}");
-        return 2;
+        return CliExitCode.Failure;
     }
     catch (FileNotFoundException ex)
     {
         Console.Error.WriteLine($"File not found: {ex.Message}");
-        return 2;
+        return CliExitCode.Failure;
     }
     catch (DirectoryNotFoundException ex)
     {
         Console.Error.WriteLine($"Directory not found: {ex.Message}");
-        return 2;
+        return CliExitCode.Failure;
     }
     catch (NodeConfigurationException ex)
     {
         Console.Error.WriteLine($"Configuration error: {ex.Message}");
-        return 2;
+        return CliExitCode.Failure;
     }
     catch (InvalidOperationException ex)
     {
         // Pipeline validation errors (e.g. missing connections, invalid config).
         // DI resolution failures won't reach here — GetRequiredService is called above the try block.
         Console.Error.WriteLine($"Pipeline error: {ex.Message}");
-        return 2;
+        return CliExitCode.Failure;
     }
 }
 
@@ -346,22 +347,6 @@ static void PrintSummary(ExecutionResult result, TextWriter statusWriter, bool j
     {
         Console.WriteLine(JsonSerializer.Serialize(result, JsonOutputOptions));
     }
-}
-
-// Map execution result to CLI exit code: 0 = success, 1 = partial, 2 = total failure.
-static int ToExitCode(ExecutionResult result)
-{
-    if (result.Failed > 0 && result.Succeeded > 0)
-    {
-        return 1; // partial failure
-    }
-
-    if (result.Failed > 0 && result.Succeeded == 0)
-    {
-        return 2; // total failure
-    }
-
-    return 0; // success
 }
 
 /// <summary>Partial class to hold cached static members for the top-level Program.</summary>
