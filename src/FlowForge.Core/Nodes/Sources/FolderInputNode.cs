@@ -1,3 +1,4 @@
+using System.IO.Enumeration;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using FlowForge.Core.Models;
@@ -8,6 +9,12 @@ namespace FlowForge.Core.Nodes.Sources;
 
 public class FolderInputNode : ISourceNode
 {
+    private static readonly IComparer<string> DiscoveryOrder = Comparer<string>.Create(static (a, b) =>
+    {
+        int byIgnoreCase = StringComparer.OrdinalIgnoreCase.Compare(a, b);
+        return byIgnoreCase != 0 ? byIgnoreCase : StringComparer.Ordinal.Compare(a, b);
+    });
+
     private readonly ILogger<FolderInputNode> _logger;
 
     public FolderInputNode(ILogger<FolderInputNode> logger)
@@ -68,48 +75,26 @@ public class FolderInputNode : ISourceNode
             throw new DirectoryNotFoundException($"Source folder not found: '{_path}'");
         }
 
-        SearchOption searchOption = _recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
         string[] patterns = _filter.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
         string resolvedRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(_path));
-        var files = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+        var files = new SortedSet<string>(DiscoveryOrder);
         foreach (string pattern in patterns)
         {
-            try
+            foreach (string file in EnumerateMatches(pattern))
             {
-                foreach (string file in Directory.EnumerateFiles(_path, pattern, searchOption))
+                // Filter out files that resolve outside the source root (e.g. a pattern starting with "..").
+                string resolvedFile = Path.GetFullPath(file);
+                if (!PathGuard.IsWithinResolvedDirectory(resolvedFile, resolvedRoot))
                 {
-                    // Filter out files that resolve outside the source root (e.g. via symlinks).
-                    string resolvedFile = Path.GetFullPath(file);
-                    if (!PathGuard.IsWithinResolvedDirectory(resolvedFile, resolvedRoot))
-                    {
-                        _logger.LogWarning(
-                            "FolderInput: skipping '{FilePath}' — resolves outside source root '{Root}'",
-                            file,
-                            resolvedRoot);
-                        continue;
-                    }
+                    _logger.LogWarning(
+                        "FolderInput: skipping '{FilePath}' — resolves outside source root '{Root}'",
+                        file,
+                        resolvedRoot);
+                    continue;
+                }
 
-                    files.Add(file);
-                }
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                _logger.LogWarning(ex, "FolderInput: access denied enumerating '{Path}' with pattern '{Pattern}', falling back to top-level", _path, pattern);
-                if (searchOption == SearchOption.AllDirectories)
-                {
-                    try
-                    {
-                        foreach (string file in Directory.EnumerateFiles(_path, pattern, SearchOption.TopDirectoryOnly))
-                        {
-                            files.Add(file);
-                        }
-                    }
-                    catch (UnauthorizedAccessException ex2)
-                    {
-                        _logger.LogWarning(ex2, "FolderInput: access denied even at top-level for '{Path}' with pattern '{Pattern}'", _path, pattern);
-                    }
-                }
+                files.Add(file);
             }
         }
 
@@ -125,5 +110,33 @@ public class FolderInputNode : ISourceNode
         }
 
         await Task.CompletedTask.ConfigureAwait(false); // Satisfy async requirement
+    }
+
+    /// <summary>
+    /// Lists the files one pattern matches as <see cref="Directory.EnumerateFiles(string, string, SearchOption)"/>
+    /// does, with the platform's casing, except that links are never yielded, linked folders are never
+    /// scanned, hidden and system files are kept, and an unreadable folder is skipped.
+    /// </summary>
+    private FileSystemEnumerable<string> EnumerateMatches(string pattern)
+    {
+        string? patternDirectory = Path.GetDirectoryName(pattern);
+        string directory = string.IsNullOrEmpty(patternDirectory) ? _path : Path.Join(_path, patternDirectory);
+        string namePattern = Path.GetFileName(pattern);
+        string expression = namePattern is "" or "." or "*.*" ? "*" : FileSystemName.TranslateWin32Expression(namePattern);
+        bool ignoreCase = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS();
+        var options = new EnumerationOptions
+        {
+            RecurseSubdirectories = _recursive,
+            AttributesToSkip = FileAttributes.None,
+            IgnoreInaccessible = true,
+        };
+
+        return new FileSystemEnumerable<string>(directory, static (ref FileSystemEntry e) => e.ToSpecifiedFullPath(), options)
+        {
+            ShouldIncludePredicate = (ref FileSystemEntry e) => !e.IsDirectory
+                && FileSystemName.MatchesWin32Expression(expression, e.FileName, ignoreCase)
+                && !PathGuard.IsLink(e.ToFileSystemInfo()),
+            ShouldRecursePredicate = static (ref FileSystemEntry e) => !PathGuard.IsLink(e.ToFileSystemInfo()),
+        };
     }
 }

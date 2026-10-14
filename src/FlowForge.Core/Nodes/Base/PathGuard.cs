@@ -45,4 +45,14 @@ internal static class PathGuard
 
         return resolvedRoot + Path.DirectorySeparatorChar;
     }
+
+    /// <summary>
+    /// True when <paramref name="entry"/> is a symbolic link or a junction. Cloud placeholders and
+    /// other reparse points are not links. The attribute is read first, so the link target is read
+    /// only for reparse points; a path that does not exist is not a link.
+    /// </summary>
+    public static bool IsLink(FileSystemInfo entry)
+    {
+        return (entry.Attributes & FileAttributes.ReparsePoint) != FileAttributes.None && entry.LinkTarget != null;
+    }
 }

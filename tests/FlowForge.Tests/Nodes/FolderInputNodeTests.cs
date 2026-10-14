@@ -5,11 +5,16 @@ using FlowForge.Core.Nodes.Sources;
 using FlowForge.Core.Nodes.Base;
 using FlowForge.Tests.Helpers;
 using Microsoft.Extensions.Logging.Abstractions;
+using Xunit.Abstractions;
 
 namespace FlowForge.Tests.Nodes;
 
 public class FolderInputNodeTests
 {
+    private readonly ITestOutputHelper _output;
+
+    public FolderInputNodeTests(ITestOutputHelper output) => _output = output;
+
     private static Dictionary<string, JsonElement> MakeConfig(object config)
     {
         string json = JsonSerializer.Serialize(config);
@@ -203,6 +208,37 @@ public class FolderInputNodeTests
         var fileNames = jobs.Select(j => Path.GetFileName(j.OriginalPath)).ToList();
         fileNames.Should().BeInAscendingOrder(StringComparer.OrdinalIgnoreCase);
         fileNames.Should().HaveCount(4);
+    }
+
+    [Fact]
+    public async Task Case_only_siblings_are_both_discovered()
+    {
+        using var dir = new TempDirectory();
+        bool caseSensitive = CaseSensitivityProbe.IsCaseSensitive(dir.Path);
+        if (caseSensitive)
+        {
+            dir.CreateFiles("a.jpg", "A.jpg");
+        }
+        else
+        {
+            dir.CreateFiles("a.jpg");
+        }
+
+        var node = new FolderInputNode(NullLogger<FolderInputNode>.Instance);
+        node.Configure(MakeConfig(new { path = dir.Path, filter = "*.jpg;a.*" }));
+
+        List<FileJob> jobs = await CollectJobsAsync(node);
+
+        _output.WriteLine($"case_sensitive={caseSensitive} jobs={jobs.Count}");
+        var fileNames = jobs.Select(j => Path.GetFileName(j.OriginalPath)).ToList();
+        if (caseSensitive)
+        {
+            fileNames.Should().Equal("A.jpg", "a.jpg");
+        }
+        else
+        {
+            fileNames.Should().Equal("a.jpg");
+        }
     }
 
     [Fact]
