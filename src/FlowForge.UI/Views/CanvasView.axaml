@@ -353,7 +353,7 @@
             <nodify:NodifyEditor.ItemTemplate>
                 <DataTemplate x:DataType="vm:PipelineNodeViewModel">
                     <!-- ═══ Molten Works cast-iron station ═══ -->
-                    <Grid Width="200" Height="130" ClipToBounds="False">
+                    <Grid Width="200" Height="130" ClipToBounds="False" Classes="mw-station">
 
                         <!-- ═══ Running aura: soft rectangular-aspect cloud behind iron ═══
                              Border margin is asymmetric so the aura element is
