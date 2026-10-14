@@ -1,8 +1,6 @@
-using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
-using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FlowForge.Core.Execution;
@@ -59,10 +57,8 @@ public partial class ExecutionLogViewModel : ViewModelBase
 
     private const double MinElapsedSecondsForThroughput = 0.1;
     private const int MaxLogEntries = 5000;
-    private static readonly TimeSpan FlushInterval = TimeSpan.FromMilliseconds(50);
     private readonly Stopwatch _processingStopwatch = new();
     private readonly List<FileJob> _pendingJobs = new();
-    private DispatcherTimer? _flushTimer;
 
     public bool IsOutputTabSelected => SelectedTabIndex == 0;
     public bool IsErrorsTabSelected => SelectedTabIndex == 1;
@@ -108,7 +104,6 @@ public partial class ExecutionLogViewModel : ViewModelBase
 
     public void Clear()
     {
-        StopFlushTimer();
         _pendingJobs.Clear();
         Entries.Clear();
         ErrorEntries.Clear();
@@ -146,11 +141,9 @@ public partial class ExecutionLogViewModel : ViewModelBase
                         IsIndeterminate = false;
                         TotalFiles = DiscoveredFiles;
                         _processingStopwatch.Restart();
-                        EnsureFlushTimerRunning();
                         UpdatePhaseLabel();
                         break;
                     case ExecutionPhase.Complete:
-                        StopFlushTimer();
                         _processingStopwatch.Stop();
                         IsIndeterminate = false;
                         Progress = 100.0;
@@ -170,12 +163,6 @@ public partial class ExecutionLogViewModel : ViewModelBase
                 FlushPendingJobs();
                 break;
         }
-    }
-
-    public void ReportProgress(FileJob job)
-    {
-        _pendingJobs.Add(job);
-        FlushPendingJobs();
     }
 
     private void FlushPendingJobs()
@@ -236,35 +223,6 @@ public partial class ExecutionLogViewModel : ViewModelBase
         OnPropertyChanged(nameof(ProgressText));
         UpdateThroughput();
         UpdatePhaseLabel();
-    }
-
-    private void EnsureFlushTimerRunning()
-    {
-        if (_flushTimer is not null)
-        {
-            return;
-        }
-
-        _flushTimer = new DispatcherTimer { Interval = FlushInterval };
-        _flushTimer.Tick += OnFlushTimerTick;
-        _flushTimer.Start();
-    }
-
-    private void StopFlushTimer()
-    {
-        if (_flushTimer is null)
-        {
-            return;
-        }
-
-        _flushTimer.Stop();
-        _flushTimer.Tick -= OnFlushTimerTick;
-        _flushTimer = null;
-    }
-
-    private void OnFlushTimerTick(object? sender, EventArgs e)
-    {
-        FlushPendingJobs();
     }
 
     private void UpdatePhaseLabel()

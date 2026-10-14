@@ -5,3 +5,19 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    groups:
+      avalonia:
+        patterns: ["Avalonia*"]
+      microsoft-extensions:
+        patterns: ["Microsoft.Extensions.*"]
+    ignore:
+      - dependency-name: "Avalonia*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "Nodify.Avalonia"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "SixLabors.ImageSharp"
+        versions: [">= 3.2.0"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

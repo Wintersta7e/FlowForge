@@ -1,8 +1,10 @@
 using System.Text.Json;
 using FluentAssertions;
+using FlowForge.Core.Execution;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Transforms;
 using FlowForge.Core.Nodes.Base;
+using FlowForge.Core.Pipeline;
 using FlowForge.Tests.Helpers;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -116,6 +118,27 @@ public class MetadataExtractNodeTests
         FileJob resultJob = result.First();
         resultJob.Metadata.Should().NotContainKey("EXIF:DateTaken");
         resultJob.NodeLog.Should().Contain(l => l.Contains("WARNING") && l.Contains("EXIF:DateTaken"));
+    }
+
+    [Fact]
+    public async Task Truncated_jpeg_fails_the_job_with_a_reason_through_the_runner()
+    {
+        using var dir = new TempDirectory();
+        await File.WriteAllBytesAsync(Path.Combine(dir.Path, "x.jpg"), new byte[] { 0xFF, 0xD8, 0x01, 0x02, 0x03 });
+
+        PipelineGraph pipeline = PipelineBuilder
+            .New("Truncated JPEG Test")
+            .AddSource("FolderInput", new { path = dir.Path, recursive = false, filter = "*.jpg" })
+            .AddTransform("MetadataExtract", new { keys = new[] { "EXIF:DateTaken" } })
+            .AddOutput("FolderOutput", new { path = dir.OutputPath, mode = "copy" })
+            .Build();
+
+        var runner = new PipelineRunner(
+            NodeRegistry.CreateDefault(NullLoggerFactory.Instance), NullLogger<PipelineRunner>.Instance, maxConcurrency: 2);
+        ExecutionResult result = await runner.RunAsync(pipeline, dryRun: false);
+
+        result.Failed.Should().Be(1);
+        result.Jobs.Single().ErrorMessage.Should().NotBeNullOrEmpty();
     }
 
     [Fact]

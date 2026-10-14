@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FluentAssertions;
 using FlowForge.Core.Settings;
 using FlowForge.Tests.Helpers;
@@ -17,9 +18,6 @@ public class AppSettingsManagerTests
 
         AppSettings settings = await manager.LoadAsync();
 
-        settings.DefaultInputFolder.Should().BeEmpty();
-        settings.DefaultOutputFolder.Should().BeEmpty();
-        settings.MaxConcurrency.Should().Be(Environment.ProcessorCount);
         settings.RecentPipelines.Should().BeEmpty();
     }
 
@@ -32,18 +30,12 @@ public class AppSettingsManagerTests
         var manager = new AppSettingsManager(settingsPath, NullLogger<AppSettingsManager>.Instance);
         var original = new AppSettings
         {
-            DefaultInputFolder = "/home/user/input",
-            DefaultOutputFolder = "/home/user/output",
-            MaxConcurrency = 4,
             RecentPipelines = new List<string> { Path.Combine(dir.Path, "pipelines", "test.ffpipe") },
         };
 
         await manager.SaveAsync(original);
         AppSettings loaded = await manager.LoadAsync();
 
-        loaded.DefaultInputFolder.Should().Be(original.DefaultInputFolder);
-        loaded.DefaultOutputFolder.Should().Be(original.DefaultOutputFolder);
-        loaded.MaxConcurrency.Should().Be(original.MaxConcurrency);
         loaded.RecentPipelines.Should().Equal(original.RecentPipelines);
     }
 
@@ -58,8 +50,43 @@ public class AppSettingsManagerTests
 
         AppSettings settings = await manager.LoadAsync();
 
-        settings.DefaultInputFolder.Should().BeEmpty();
-        settings.MaxConcurrency.Should().Be(Environment.ProcessorCount);
+        settings.RecentPipelines.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Load_null_recent_pipelines_returns_empty_list()
+    {
+        using var dir = new TempDirectory();
+        string settingsPath = Path.Combine(dir.Path, "settings.json");
+        await File.WriteAllTextAsync(settingsPath, """{"recentPipelines": null}""");
+
+        AppSettings settings = await new AppSettingsManager(settingsPath, NullLogger<AppSettingsManager>.Instance).LoadAsync();
+
+        settings.RecentPipelines.Should().NotBeNull().And.BeEmpty();
+    }
+
+    [Fact]
+    public async Task Load_ignores_retired_keys_and_next_save_omits_them()
+    {
+        using var dir = new TempDirectory();
+        string settingsPath = Path.Combine(dir.Path, "settings.json");
+        string recent = Path.Combine(dir.Path, "a.ffpipe");
+        string json = JsonSerializer.Serialize(new
+        {
+            maxConcurrency = 8,
+            defaultInputFolder = dir.Path,
+            defaultOutputFolder = dir.OutputPath,
+            recentPipelines = new[] { recent },
+        });
+        await File.WriteAllTextAsync(settingsPath, json);
+        var manager = new AppSettingsManager(settingsPath, NullLogger<AppSettingsManager>.Instance);
+
+        AppSettings settings = await manager.LoadAsync();
+        settings.RecentPipelines.Should().Equal(recent);
+        await manager.SaveAsync(settings);
+
+        using var saved = JsonDocument.Parse(await File.ReadAllTextAsync(settingsPath));
+        saved.RootElement.EnumerateObject().Select(p => p.Name).Should().Equal("recentPipelines");
     }
 
     [Fact]

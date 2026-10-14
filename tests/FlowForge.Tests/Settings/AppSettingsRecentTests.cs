@@ -76,33 +76,6 @@ public class AppSettingsRecentTests
     }
 
     [Fact]
-    public void Validate_clamps_invalid_MaxConcurrency()
-    {
-        var settings = new AppSettings { MaxConcurrency = int.MaxValue };
-        settings.Validate();
-
-        settings.MaxConcurrency.Should().Be(Environment.ProcessorCount);
-    }
-
-    [Fact]
-    public void Validate_clamps_zero_MaxConcurrency()
-    {
-        var settings = new AppSettings { MaxConcurrency = 0 };
-        settings.Validate();
-
-        settings.MaxConcurrency.Should().Be(Environment.ProcessorCount);
-    }
-
-    [Fact]
-    public void Validate_keeps_valid_MaxConcurrency()
-    {
-        var settings = new AppSettings { MaxConcurrency = 4 };
-        settings.Validate();
-
-        settings.MaxConcurrency.Should().Be(4);
-    }
-
-    [Fact]
     public void Validate_removes_relative_path_from_RecentPipelines()
     {
         var settings = new AppSettings

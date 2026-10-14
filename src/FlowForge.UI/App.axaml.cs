@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.IO;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
@@ -32,12 +33,13 @@ public partial class App : Application
                 outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
                 formatProvider: CultureInfo.InvariantCulture)
             .WriteTo.File(
-                path: "logs/flowforge.log",
+                path: Path.Combine(AppContext.BaseDirectory, "logs", "flowforge.log"),
                 outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff} {Level:u3}] {Message:lj}{NewLine}{Exception}",
                 formatProvider: CultureInfo.InvariantCulture,
                 rollingInterval: RollingInterval.Day,
                 retainedFileCountLimit: 7,
-                fileSizeLimitBytes: 10_485_760)
+                fileSizeLimitBytes: 10_485_760,
+                rollOnFileSizeLimit: true)
             .CreateLogger();
 
         var services = new ServiceCollection();

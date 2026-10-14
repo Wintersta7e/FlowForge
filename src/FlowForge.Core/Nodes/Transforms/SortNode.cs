@@ -122,10 +122,11 @@ public class SortNode : ITransformNode, IBufferedTransformNode
             indices[i] = i;
         }
 
+        // Array.Sort is not stable: ties fall back to the input index so equal keys keep their order.
         Array.Sort(indices, (a, b) =>
         {
             int cmp = comparer.Compare(keys[a], keys[b]);
-            return descending ? -cmp : cmp;
+            return cmp != 0 ? (descending ? -cmp : cmp) : a.CompareTo(b);
         });
 
         var result = new List<FileJob>(jobs.Count);

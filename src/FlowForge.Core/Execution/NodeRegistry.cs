@@ -58,11 +58,6 @@ public class NodeRegistry
 
     public bool IsRegistered(string typeKey) => _factories.ContainsKey(typeKey);
 
-    public NodeCategory GetCategory(NodeDefinition def)
-    {
-        return GetCategoryForTypeKey(def.TypeKey);
-    }
-
     /// <summary>
     /// Returns the config schema for a registered type key without creating a node instance.
     /// </summary>
@@ -107,7 +102,7 @@ public class NodeRegistry
         return _registrations.Keys;
     }
 
-    private object CreateInstance(NodeDefinition def, bool configure = true)
+    private object CreateInstance(NodeDefinition def)
     {
         if (!_factories.TryGetValue(def.TypeKey, out Func<object>? factory))
         {
@@ -116,20 +111,17 @@ public class NodeRegistry
 
         object instance = factory();
 
-        if (configure)
+        if (instance is ISourceNode source)
         {
-            if (instance is ISourceNode source)
-            {
-                source.Configure(def.Config);
-            }
-            else if (instance is ITransformNode transform)
-            {
-                transform.Configure(def.Config);
-            }
-            else if (instance is IOutputNode output)
-            {
-                output.Configure(def.Config);
-            }
+            source.Configure(def.Config);
+        }
+        else if (instance is ITransformNode transform)
+        {
+            transform.Configure(def.Config);
+        }
+        else if (instance is IOutputNode output)
+        {
+            output.Configure(def.Config);
         }
 
         return instance;

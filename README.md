@@ -107,7 +107,7 @@ working tool you can build and run, not a finished, packaged consumer app.
 | Logging | `Microsoft.Extensions.Logging` + `Serilog` | `ILogger<T>` everywhere; console + rolling file |
 | DI | `Microsoft.Extensions.DependencyInjection` | `AddFlowForgeCore()` composition root |
 | CLI | `System.CommandLine` | `run` command |
-| Tests | xUnit + FluentAssertions + Bogus | Linux and Windows CI legs |
+| Tests | xUnit + FluentAssertions | Linux and Windows CI legs |
 
 ## Quick Start
 
@@ -139,7 +139,7 @@ FlowForge/
 │   ├── FlowForge.UI/      # Avalonia desktop app (MVVM)
 │   └── FlowForge.CLI/     # flowforge CLI (System.CommandLine)
 ├── tests/
-│   └── FlowForge.Tests/   # xUnit + FluentAssertions + Bogus
+│   └── FlowForge.Tests/   # xUnit + FluentAssertions
 ├── samples/               # example .ffpipe pipelines
 ├── FlowForge.sln
 ├── Directory.Build.props  # .NET 10, analyzers, warnings-as-errors

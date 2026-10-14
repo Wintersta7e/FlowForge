@@ -96,10 +96,10 @@ public class ExecutionLogViewModelTests
         var job1 = new FileJob { OriginalPath = "/a.txt", CurrentPath = "/a.txt", Status = FileJobStatus.Succeeded };
         var job2 = new FileJob { OriginalPath = "/b.txt", CurrentPath = "/b.txt", Status = FileJobStatus.Succeeded };
 
-        _vm.ReportProgress(job1);
+        _vm.ReportProgressEvent(new FileProcessed(job1));
         _vm.Progress.Should().Be(25.0);
 
-        _vm.ReportProgress(job2);
+        _vm.ReportProgressEvent(new FileProcessed(job2));
         _vm.Progress.Should().Be(50.0);
     }
 
@@ -137,11 +137,11 @@ public class ExecutionLogViewModelTests
         _vm.TotalFiles = 5;
         var job1 = new FileJob { OriginalPath = "/a.txt", CurrentPath = "/a.txt", Status = FileJobStatus.Succeeded };
 
-        _vm.ReportProgress(job1);
+        _vm.ReportProgressEvent(new FileProcessed(job1));
         _vm.ProgressText.Should().Be("1 file");
 
         var job2 = new FileJob { OriginalPath = "/b.txt", CurrentPath = "/b.txt", Status = FileJobStatus.Failed };
-        _vm.ReportProgress(job2);
+        _vm.ReportProgressEvent(new FileProcessed(job2));
         _vm.ProgressText.Should().Be("2 files");
     }
 
@@ -164,5 +164,23 @@ public class ExecutionLogViewModelTests
         _vm.SelectTabCommand.Execute("1");
         _vm.SelectedTabIndex.Should().Be(1);
         _vm.IsPanelExpanded.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Entries_cap_at_5000_while_counters_keep_counting()
+    {
+        _vm.ReportProgressEvent(new PhaseChanged(ExecutionPhase.Enumerating));
+        _vm.ReportProgressEvent(new FilesDiscovered(5001));
+        _vm.ReportProgressEvent(new PhaseChanged(ExecutionPhase.Processing));
+
+        for (int i = 0; i < 5001; i++)
+        {
+            string path = Path.Combine(Path.GetTempPath(), $"f{i}.txt");
+            var job = new FileJob { OriginalPath = path, CurrentPath = path, Status = FileJobStatus.Succeeded };
+            _vm.ReportProgressEvent(new FileProcessed(job));
+        }
+
+        _vm.Entries.Should().HaveCount(5000);
+        _vm.Succeeded.Should().Be(5001);
     }
 }

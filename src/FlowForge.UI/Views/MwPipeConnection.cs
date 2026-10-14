@@ -19,19 +19,9 @@ public sealed class MwPipeConnection : Shape
     public static readonly StyledProperty<Point> TargetProperty =
         AvaloniaProperty.Register<MwPipeConnection, Point>(nameof(Target), validate: MwGeometry.IsFinite);
 
-    public static readonly StyledProperty<Size> SourceOffsetProperty =
-        AvaloniaProperty.Register<MwPipeConnection, Size>(nameof(SourceOffset), validate: MwGeometry.IsFinite);
-
-    public static readonly StyledProperty<Size> TargetOffsetProperty =
-        AvaloniaProperty.Register<MwPipeConnection, Size>(nameof(TargetOffset), validate: MwGeometry.IsFinite);
-
     static MwPipeConnection()
     {
-        AffectsGeometry<MwPipeConnection>(
-            SourceProperty,
-            TargetProperty,
-            SourceOffsetProperty,
-            TargetOffsetProperty);
+        AffectsGeometry<MwPipeConnection>(SourceProperty, TargetProperty);
     }
 
     public Point Source
@@ -46,22 +36,10 @@ public sealed class MwPipeConnection : Shape
         set => SetValue(TargetProperty, value);
     }
 
-    public Size SourceOffset
-    {
-        get => GetValue(SourceOffsetProperty);
-        set => SetValue(SourceOffsetProperty, value);
-    }
-
-    public Size TargetOffset
-    {
-        get => GetValue(TargetOffsetProperty);
-        set => SetValue(TargetOffsetProperty, value);
-    }
-
     protected override Geometry? CreateDefiningGeometry()
     {
-        Point source = ApplyOffset(Source, SourceOffset);
-        Point target = ApplyOffset(Target, TargetOffset);
+        Point source = Source;
+        Point target = Target;
         (Point cp1, Point cp2) = MwGeometry.GetMidpointControls(source, target);
 
         var geometry = new StreamGeometry();
@@ -73,7 +51,4 @@ public sealed class MwPipeConnection : Shape
 
         return geometry;
     }
-
-    private static Point ApplyOffset(Point point, Size offset) =>
-        new(point.X + offset.Width, point.Y + offset.Height);
 }
