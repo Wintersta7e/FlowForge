@@ -8,14 +8,22 @@ namespace FlowForge.Core.Execution;
 
 public class PipelineRunner
 {
-    private static readonly string DefaultStagingRoot = Path.Combine(Path.GetTempPath(), "FlowForge", "runs");
+    /// <summary>
+    /// The user's own temp folder on Windows. Elsewhere the temp folder is shared and nothing can tell who owns
+    /// a folder in it, so staged copies go to the user's data folder; null when the user has none.
+    /// </summary>
+    internal static readonly string? DefaultStagingRoot = OperatingSystem.IsWindows()
+        ? Path.Combine(Path.GetTempPath(), "FlowForge", "runs")
+        : Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) is { Length: > 0 } dataFolder
+            ? Path.Combine(dataFolder, "FlowForge", "runs")
+            : null;
 
     private readonly NodeRegistry _registry;
     private readonly ILogger<PipelineRunner> _logger;
     private readonly int _maxConcurrency;
 
-    /// <summary>Where runs keep staged copies of the files a transform rewrote.</summary>
-    private readonly string _stagingRoot;
+    /// <summary>Where runs keep staged copies of the files a transform rewrote; null when there is no safe place.</summary>
+    private readonly string? _stagingRoot;
 
     public PipelineRunner(NodeRegistry registry, ILogger<PipelineRunner> logger, int maxConcurrency = 0, string? stagingRoot = null)
     {
@@ -53,7 +61,7 @@ public class PipelineRunner
             (List<(Guid Id, ISourceNode Node)> sources, List<(Guid Id, ITransformNode Node)> transforms, Dictionary<Guid, IOutputNode> outputs) =
                 CreateNodes(graph, validation.Order);
 
-            if (!dryRun)
+            if (!dryRun && _stagingRoot is not null)
             {
                 RunContext.SweepStaleRuns(_stagingRoot, _logger);
             }

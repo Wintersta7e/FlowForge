@@ -13,7 +13,17 @@ public sealed class TempDirectory : IDisposable
         Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "FlowForge_Test_" + Guid.NewGuid().ToString("N"));
         OutputPath = System.IO.Path.Combine(Path, "output");
         StagingRoot = System.IO.Path.Combine(Path, ".staging");
-        Directory.CreateDirectory(Path);
+
+        // Private whatever the umask: staging refuses a root whose parent other users can write.
+        if (OperatingSystem.IsWindows())
+        {
+            Directory.CreateDirectory(Path);
+        }
+        else
+        {
+            Directory.CreateDirectory(Path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        }
+
         Directory.CreateDirectory(OutputPath);
     }
 

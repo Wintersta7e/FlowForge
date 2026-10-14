@@ -9,6 +9,8 @@ public sealed class RunContext : IDisposable
 {
     private const string LockFileName = ".lock";
 
+    private const UnixFileMode PrivateFolderMode = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
+
     private readonly Lock _gate = new();
 
     /// <summary>Live jobs whose content is each staged file; only paths this run handed out are tracked.</summary>
@@ -17,10 +19,9 @@ public sealed class RunContext : IDisposable
     private string? _runDirectory;
     private FileStream? _lock;
 
-    public RunContext(bool dryRun, string stagingRoot)
+    public RunContext(bool dryRun, string? stagingRoot)
     {
-        ArgumentNullException.ThrowIfNull(stagingRoot);
-        if (!Path.IsPathFullyQualified(stagingRoot))
+        if (stagingRoot is not null && !Path.IsPathFullyQualified(stagingRoot))
         {
             throw new ArgumentException($"The staging root must be a fully qualified path: '{stagingRoot}'.", nameof(stagingRoot));
         }
@@ -38,12 +39,14 @@ public sealed class RunContext : IDisposable
     /// <summary>Every destination this run has claimed, across all its outputs.</summary>
     public DestinationRegistry Destinations { get; } = new();
 
-    internal string StagingRoot { get; }
+    /// <summary>Null when the user has no folder of their own to stage in.</summary>
+    internal string? StagingRoot { get; }
 
     /// <summary>
     /// A fresh path for a staged file, in this run's private folder under the staging root. The first call
     /// creates the folder and locks it until <see cref="Dispose"/>. Throws <see cref="InvalidOperationException"/>
-    /// in a dry run and <see cref="IOException"/> when the staging root or its parent is a link.
+    /// in a dry run and <see cref="IOException"/> when there is no staging root, or the root or its parent is a
+    /// link or, outside Windows, writable by other users.
     /// </summary>
     public string NewStagingPath(string extension)
     {
@@ -90,13 +93,14 @@ public sealed class RunContext : IDisposable
     /// <summary>
     /// Deletes the staging folders of runs that ended without cleaning up: direct children of
     /// <paramref name="stagingRoot"/> named like a run id whose lock can be taken. A folder whose lock is
-    /// held belongs to a live run. Does nothing when the root or its parent is a link; never throws.
+    /// held belongs to a live run. Does nothing when the root or its parent is a link or, outside Windows,
+    /// writable by other users; never throws.
     /// </summary>
     internal static void SweepStaleRuns(string stagingRoot, ILogger logger)
     {
         try
         {
-            if (LinkedRootComponent(stagingRoot) is not null || !Directory.Exists(stagingRoot))
+            if (!Directory.Exists(stagingRoot) || UnsafeRootReason(stagingRoot) is not null)
             {
                 return;
             }
@@ -166,14 +170,28 @@ public sealed class RunContext : IDisposable
         }
     }
 
-    private static string? LinkedRootComponent(string stagingRoot)
+    /// <summary>
+    /// Why no file may be staged under <paramref name="stagingRoot"/>: the root or its parent is a link or,
+    /// outside Windows, other users can write in it. Null when both are safe.
+    /// </summary>
+    private static string? UnsafeRootReason(string stagingRoot)
     {
         string root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(stagingRoot));
         foreach (string? path in new[] { root, Path.GetDirectoryName(root) })
         {
-            if (path is not null && PathGuard.IsLink(new DirectoryInfo(path)))
+            if (path is null)
             {
-                return path;
+                continue;
+            }
+
+            if (PathGuard.IsLink(new DirectoryInfo(path)))
+            {
+                return $"The staging folder '{path}' is a link; refusing to write through it.";
+            }
+
+            if (!OperatingSystem.IsWindows() && (File.GetUnixFileMode(path) & (UnixFileMode.GroupWrite | UnixFileMode.OtherWrite)) != UnixFileMode.None)
+            {
+                return $"The staging folder '{path}' is writable by other users; refusing to write in it.";
             }
         }
 
@@ -182,21 +200,38 @@ public sealed class RunContext : IDisposable
 
     private string CreateRunDirectory()
     {
-        if (LinkedRootComponent(StagingRoot) is { } link)
+        if (StagingRoot is null)
         {
-            throw new IOException($"The staging folder '{link}' is a link; refusing to write through it.");
+            throw new IOException("No per-user data folder was found to keep staged copies in; the shared temp folder is not used instead.");
+        }
+
+        // Staged files are copies of user content, and an injected root may sit in a folder other users can
+        // write. Outside Windows the folders are created private first, so the check below refuses only a folder
+        // someone else made or opened up.
+        if (!OperatingSystem.IsWindows())
+        {
+            string root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(StagingRoot));
+            if (Path.GetDirectoryName(root) is { } parent)
+            {
+                Directory.CreateDirectory(parent, PrivateFolderMode);
+            }
+
+            Directory.CreateDirectory(root, PrivateFolderMode);
+        }
+
+        if (UnsafeRootReason(StagingRoot) is { } reason)
+        {
+            throw new IOException(reason);
         }
 
         string runDirectory = Path.Combine(StagingRoot, RunId);
-
-        // Staged files are copies of user content under a shared temp folder.
         if (OperatingSystem.IsWindows())
         {
             Directory.CreateDirectory(runDirectory);
         }
         else
         {
-            Directory.CreateDirectory(runDirectory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            Directory.CreateDirectory(runDirectory, PrivateFolderMode);
         }
 
         _lock = new FileStream(Path.Combine(runDirectory, LockFileName), FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None);

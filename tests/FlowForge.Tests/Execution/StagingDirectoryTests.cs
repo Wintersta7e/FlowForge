@@ -9,6 +9,11 @@ namespace FlowForge.Tests.Execution;
 
 public class StagingDirectoryTests
 {
+    private const UnixFileMode EveryoneMayWrite =
+        UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute
+        | UnixFileMode.GroupRead | UnixFileMode.GroupWrite | UnixFileMode.GroupExecute
+        | UnixFileMode.OtherRead | UnixFileMode.OtherWrite | UnixFileMode.OtherExecute;
+
     private static readonly TimeSpan HangGuard = TimeSpan.FromSeconds(60);
 
     private readonly ITestOutputHelper _output;
@@ -96,6 +101,81 @@ public class StagingDirectoryTests
         ExecutionResult resultA = await runA.WaitAsync(HangGuard);
         resultA.Succeeded.Should().Be(1);
         Directory.Exists(runDirectoryA).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Default_staging_root_is_the_users_data_folder_where_the_temp_folder_is_shared()
+    {
+        string expected = OperatingSystem.IsWindows()
+            ? Path.Combine(Path.GetTempPath(), "FlowForge", "runs")
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FlowForge", "runs");
+
+        _output.WriteLine($"[staging] default={PipelineRunner.DefaultStagingRoot}");
+        PipelineRunner.DefaultStagingRoot.Should().Be(expected);
+        if (!OperatingSystem.IsWindows())
+        {
+            PipelineRunner.DefaultStagingRoot.Should().NotStartWith(Path.GetTempPath());
+        }
+    }
+
+    [Fact]
+    public void Staging_without_a_per_user_folder_is_refused()
+    {
+        using var context = new RunContext(dryRun: false, stagingRoot: null);
+
+        Action stage = () => context.NewStagingPath(".txt");
+
+        stage.Should().Throw<IOException>().WithMessage("No per-user data folder*");
+    }
+
+    [Fact]
+    public async Task Missing_staging_folders_are_created_private()
+    {
+        using var dir = new TempDirectory();
+        dir.CreateFiles("a.txt");
+        string stagingRoot = Path.Combine(dir.Path, "FlowForge", "runs");
+
+        ExecutionResult result = await CreateRunner(stagingRoot, new StagingProbeNode()).RunAsync(ProbeGraph(dir));
+
+        result.Succeeded.Should().Be(1);
+        if (!OperatingSystem.IsWindows())
+        {
+            UnixFileMode parentMode = File.GetUnixFileMode(Path.GetDirectoryName(stagingRoot)!);
+            UnixFileMode rootMode = File.GetUnixFileMode(stagingRoot);
+            _output.WriteLine($"[staging] parent={parentMode} root={rootMode}");
+            parentMode.Should().Be(UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            rootMode.Should().Be(UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        }
+    }
+
+    [Fact]
+    public async Task Staging_refuses_a_root_that_other_users_can_write()
+    {
+        using var dir = new TempDirectory();
+        dir.CreateFiles("a.txt", "b.txt");
+        string stale = Path.Combine(dir.StagingRoot, Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(stale);
+        await File.WriteAllBytesAsync(Path.Combine(stale, ".lock"), []);
+        if (!OperatingSystem.IsWindows())
+        {
+            File.SetUnixFileMode(dir.StagingRoot, EveryoneMayWrite);
+        }
+
+        var before = TreeSnapshot.Take(dir.Path, "output", ".staging");
+        ExecutionResult result = await CreateRunner(dir.StagingRoot, new StagingProbeNode()).RunAsync(ProbeGraph(dir));
+
+        string listing = string.Join(", ", Directory.GetFileSystemEntries(dir.StagingRoot).Select(Path.GetFileName));
+        _output.WriteLine($"[staging] failed={result.Failed} entries={listing}");
+        TreeSnapshot.AssertUnchanged(before, TreeSnapshot.Take(dir.Path, "output", ".staging"), _output, "input");
+        if (!OperatingSystem.IsWindows())
+        {
+            string refusal = $"The staging folder '{dir.StagingRoot}' is writable by other users";
+            result.Failed.Should().Be(2, listing);
+            result.Jobs.Select(j => j.ErrorMessage).Should().AllSatisfy(m => m.Should().StartWith(refusal), listing);
+            Directory.GetFileSystemEntries(dir.StagingRoot).Should().Equal([stale], "nothing is staged and the sweep deletes nothing");
+            File.Exists(Path.Combine(stale, ".lock")).Should().BeTrue();
+            dir.OutputFiles.Should().BeEmpty();
+        }
     }
 
     private static PipelineGraph ProbeGraph(TempDirectory dir) =>

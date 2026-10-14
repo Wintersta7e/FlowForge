@@ -13,6 +13,7 @@ public static class TestRunContext
 
     public static RunContext Dry() => new(dryRun: true, FreshRoot());
 
+    // One level below the temp folder: staging refuses a root whose parent other users can write.
     private static string FreshRoot() =>
-        Path.Combine(Path.GetTempPath(), "FlowForge_TestStaging_" + Guid.NewGuid().ToString("N"));
+        Path.Combine(Path.GetTempPath(), "FlowForge_TestStaging_" + Guid.NewGuid().ToString("N"), "runs");
 }
