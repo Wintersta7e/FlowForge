@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - **Pipeline shape is checked before a run** — a pipeline that is not one chain from a single source to a single output is refused, naming each offending node; before, an unconnected transform still ran on every file and every output received every file.
+- **CLI executable name** — the CLI builds and publishes as `flowforge` (`flowforge.exe` on Windows), as the docs say; it was `FlowForge.CLI`. `dotnet run --project src/FlowForge.CLI` is unchanged.
 
 ### Fixed
 
@@ -21,6 +22,7 @@ All notable changes to this project will be documented in this file.
 - **CLI exit codes** — the CLI now exits 0 on success, 1 when some files failed and 2 on failure or invalid arguments, as documented. Every run used to exit 0 and argument errors exited 1.
 - **CLI progress order** — the scan count now always prints before "Processing N files…"; the two lines could appear out of order.
 - **User guide JSON example** — lists the keys the CLI actually writes (`isDryRun`, `duration`, `jobs`); it showed `durationMs` and `files`.
+- **One Serilog version** — the CLI references Serilog 4.4.0 directly, the version the desktop app uses, so both can share one folder.
 
 ## [2.0.0] - 2026-04-23
 
