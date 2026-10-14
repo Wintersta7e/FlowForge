@@ -65,41 +65,23 @@ total=$(printf '%s\n' "$trx_out" | grep -o '^total=[0-9]*' | grep -o '[0-9][0-9]
 
 echo "== 6 frames"
 # The visual tests write one PNG per declared frame plus the manifest of
-# declared ids; a full run fails unless the two sets are equal.
+# declared ids; a full run fails unless the two sets are equal. A filtered run
+# only counts what it wrote.
 frame_dir="$PWD/TestResults/visual"
-manifest="$frame_dir/expected-frames.txt"
-found_ids=""
-if [ -d "$frame_dir" ]; then
-    found_ids=$(find "$frame_dir" -maxdepth 1 -type f -name '*.png' -exec basename {} .png \; | LC_ALL=C sort)
-fi
-found=$(printf '%s\n' "$found_ids" | grep -c . || true)
 if [ -n "$filter" ]; then
+    found=0
+    if [ -d "$frame_dir" ]; then
+        found=$(find "$frame_dir" -maxdepth 1 -type f -name '*.png' | grep -c . || true)
+    fi
     echo "frames=$found"
 else
-    if [ ! -f "$manifest" ]; then
-        echo "frames=$found"
-        echo "FAIL: no frame manifest at $manifest" >&2
+    frames_rc=0
+    frames_out=$(bash scripts/check-frames.sh "$frame_dir" 2>&1) || frames_rc=$?
+    printf '%s\n' "$frames_out"
+    if [ "$frames_rc" -ne 0 ]; then
         exit 1
     fi
-    expected_ids=$(LC_ALL=C sort "$manifest")
-    expected=$(printf '%s\n' "$expected_ids" | grep -c . || true)
-    echo "frames=$found/$expected"
-    if [ "$expected" -eq 0 ]; then
-        echo "FAIL: the frame manifest lists no frames: $manifest" >&2
-        exit 1
-    fi
-    missing=$(LC_ALL=C comm -23 <(printf '%s\n' "$expected_ids") <(printf '%s\n' "$found_ids") | grep . || true)
-    extra=$(LC_ALL=C comm -13 <(printf '%s\n' "$expected_ids") <(printf '%s\n' "$found_ids") | grep . || true)
-    if [ -n "$missing" ]; then
-        printf '%s\n' "$missing" | sed 's/^/missing /'
-    fi
-    if [ -n "$extra" ]; then
-        printf '%s\n' "$extra" | sed 's/^/extra /'
-    fi
-    if [ -n "$missing" ] || [ -n "$extra" ]; then
-        echo "FAIL: written frames differ from the manifest" >&2
-        exit 1
-    fi
+    found=$(printf '%s\n' "$frames_out" | grep -o '^frames=[0-9]*' | grep -o '[0-9][0-9]*')
 fi
 
 echo "== 7 format"
