@@ -5,6 +5,8 @@ using Microsoft.Extensions.Logging;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Advanced;
 using SixLabors.ImageSharp.Formats;
+using SixLabors.ImageSharp.Formats.Tiff;
+using SixLabors.ImageSharp.Formats.Tiff.Constants;
 using SixLabors.ImageSharp.Processing;
 
 namespace FlowForge.Core.Nodes.Transforms;
@@ -146,6 +148,13 @@ public class ImageResizeNode : ITransformNode
             }
 
             IImageEncoder encoder = image.DetectEncoder(job.CurrentPath);
+
+            // The image library's CCITT fax encoders are unsafe, so TIFF output is always LZW.
+            if (encoder is TiffEncoder)
+            {
+                encoder = new TiffEncoder { Compression = TiffCompression.Lzw };
+            }
+
             await image.SaveAsync(tmpPath, encoder, ct).ConfigureAwait(false);
 
             File.Move(tmpPath, job.CurrentPath, overwrite: true);

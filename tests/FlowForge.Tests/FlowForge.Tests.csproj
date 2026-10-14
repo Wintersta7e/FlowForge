@@ -31,4 +31,8 @@
     <ProjectReference Include="..\..\src\FlowForge.UI\FlowForge.UI.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="../fixtures/images/**/*" LinkBase="fixtures/images" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

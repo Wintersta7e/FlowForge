@@ -8,6 +8,7 @@ using SixLabors.ImageSharp.Formats.Bmp;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.Formats.Tiff;
+using SixLabors.ImageSharp.Formats.Tiff.Constants;
 using SixLabors.ImageSharp.Formats.Webp;
 
 namespace FlowForge.Core.Nodes.Transforms;
@@ -187,7 +188,7 @@ public class ImageConvertNode : ITransformNode
             "png" => new PngEncoder(),
             "webp" => new WebpEncoder(),
             "bmp" => new BmpEncoder(),
-            "tiff" => new TiffEncoder(),
+            "tiff" => new TiffEncoder { Compression = TiffCompression.Lzw },
             _ => throw new InvalidOperationException($"No encoder for format '{format}'")
         };
     }

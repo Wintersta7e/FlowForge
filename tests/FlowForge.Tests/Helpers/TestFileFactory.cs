@@ -62,4 +62,16 @@ public static class TestFileFactory
             }
         }
     }
+
+    /// <summary>Returns the path of a committed image fixture copied to the test output; throws when it is absent.</summary>
+    public static string ImageFixturePath(string fileName)
+    {
+        string path = Path.Combine(AppContext.BaseDirectory, "fixtures", "images", fileName);
+        if (!File.Exists(path))
+        {
+            throw new FileNotFoundException($"Image fixture not found: {path}", path);
+        }
+
+        return path;
+    }
 }

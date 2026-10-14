@@ -170,4 +170,28 @@ public class ImageResizeNodeTests
         image.Width.Should().Be(50);
         image.Height.Should().Be(50);
     }
+
+    [Theory]
+    [InlineData("ccitt-g3.tiff")]
+    [InlineData("ccitt-g4.tiff")]
+    public async Task Resize_of_ccitt_tiff_writes_lzw(string fixture)
+    {
+        using var dir = new TempDirectory();
+        string filePath = Path.Combine(dir.Path, fixture);
+        File.Copy(TestFileFactory.ImageFixturePath(fixture), filePath);
+
+        var node = new ImageResizeNode(NullLogger<ImageResizeNode>.Instance);
+        node.Configure(MakeConfig(new { width = 32, mode = "max" }));
+
+        var job = new FileJob
+        {
+            OriginalPath = filePath,
+            CurrentPath = filePath
+        };
+
+        await node.TransformAsync(job, dryRun: false);
+
+        job.Status.Should().NotBe(FileJobStatus.Failed);
+        TiffTagReader.ReadCompression(job.CurrentPath).Should().Be(5, "TIFF output is written as LZW");
+    }
 }

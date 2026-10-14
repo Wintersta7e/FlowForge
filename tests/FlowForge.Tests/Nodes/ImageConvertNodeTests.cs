@@ -224,4 +224,28 @@ public class ImageConvertNodeTests
         Func<Task> act = () => node.TransformAsync(job, dryRun: false, ct: cts.Token);
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
+
+    [Theory]
+    [InlineData("ccitt-g3.tiff")]
+    [InlineData("ccitt-g4.tiff")]
+    public async Task Convert_to_tiff_writes_lzw_for_ccitt_input(string fixture)
+    {
+        using var dir = new TempDirectory();
+        string inputPath = Path.Combine(dir.Path, fixture);
+        File.Copy(TestFileFactory.ImageFixturePath(fixture), inputPath);
+
+        var node = new ImageConvertNode(NullLogger<ImageConvertNode>.Instance);
+        node.Configure(MakeConfig(new { format = "tiff" }));
+
+        var job = new FileJob
+        {
+            OriginalPath = inputPath,
+            CurrentPath = inputPath
+        };
+
+        await node.TransformAsync(job, dryRun: false);
+
+        job.Status.Should().NotBe(FileJobStatus.Failed);
+        TiffTagReader.ReadCompression(job.CurrentPath).Should().Be(5, "TIFF output is written as LZW");
+    }
 }
