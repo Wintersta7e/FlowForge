@@ -1,0 +1,323 @@
+using System.Text.Json;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
+using Avalonia.Headless;
+using Avalonia.Headless.XUnit;
+using Avalonia.Input;
+using Avalonia.Media.Imaging;
+using Avalonia.VisualTree;
+using FlowForge.Core.Execution;
+using FlowForge.Core.Nodes.Base;
+using FlowForge.Core.Pipeline;
+using FlowForge.UI;
+using FlowForge.UI.ViewModels;
+using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
+using Nodify.Avalonia;
+using Nodify.Avalonia.Connections;
+using Xunit.Abstractions;
+
+namespace FlowForge.Tests.Visual;
+
+/// <summary>
+/// The editor's core gestures, driven by pointer and keyboard input against the real window:
+/// drag from the library, connect two ports, select a station, edit its fields.
+/// </summary>
+[Collection(VisualCollection.Name)]
+public sealed class EditorInteractionTests
+{
+    private const string EditedPattern = "{name}_edited{ext}";
+
+    private readonly ITestOutputHelper _output;
+
+    public EditorInteractionTests(ITestOutputHelper output) => _output = output;
+
+    public static TheoryData<string> RegisteredTypeKeys { get; } = new(
+        NodeRegistry.CreateDefault(NullLoggerFactory.Instance).GetRegisteredTypeKeys().Order(StringComparer.Ordinal));
+
+    [AvaloniaFact]
+    public void Library_drag_adds_node_at_drop_point()
+    {
+        using var session = VisualSession.Open(_output);
+        MainWindow window = session.Window;
+        foreach (TreeViewItem group in window.GetVisualDescendants().OfType<TreeViewItem>().ToList())
+        {
+            group.IsExpanded = true;
+        }
+
+        session.RenderUntil(() => LibraryRows(window).Any(row => row.Bounds.Height > 0), "library rows shown");
+        TreeViewItem row = LibraryRows(window).First();
+        string typeKey = ((NodeLibraryItemViewModel)row.DataContext!).TypeKey;
+        NodifyEditor editor = Editor(window);
+        Point start = CentreInWindow(row);
+        Point drop = InWindow(editor, new Point(editor.Bounds.Width * 0.4, editor.Bounds.Height * 0.3));
+
+        window.MouseDown(start, MouseButton.Left, RawInputModifiers.None);
+        window.MouseMove(start + new Vector(12, 0), RawInputModifiers.LeftMouseButton);
+        session.Pump();
+        window.MouseMove(drop, RawInputModifiers.LeftMouseButton);
+        session.Pump();
+        window.MouseUp(drop, MouseButton.Left, RawInputModifiers.None);
+        session.RenderUntil(() => session.ViewModel.Editor.Nodes.Count == 1, "library drop adds a node");
+        using WriteableBitmap frame = session.Capture(VisualFrames.LibraryDrag);
+
+        // The drop handler's own mapping: the point in editor coordinates over the zoom, plus the viewport origin.
+        Point inEditor = window.TranslatePoint(drop, editor)!.Value;
+        var expected = new Point(
+            (inEditor.X / editor.ViewportZoom) + editor.ViewportLocation.X,
+            (inEditor.Y / editor.ViewportZoom) + editor.ViewportLocation.Y);
+        PipelineNodeViewModel node = session.ViewModel.Editor.Nodes.Single();
+        _output.WriteLine($"row={typeKey} drop={drop} zoom={editor.ViewportZoom} viewport={editor.ViewportLocation}");
+        _output.WriteLine($"location measured={node.Location} expected={expected}");
+        node.TypeKey.Should().Be(typeKey);
+        node.Location.X.Should().BeApproximately(expected.X, 0.5);
+        node.Location.Y.Should().BeApproximately(expected.Y, 0.5);
+    }
+
+    [AvaloniaFact]
+    public void Connector_drag_connects_and_refuses_same_direction_self_and_duplicate()
+    {
+        using var session = VisualSession.Open(_output);
+        EditorViewModel editor = session.ViewModel.Editor;
+        editor.AddNode("RenamePattern", new Point(80, 120), session.ViewModel.Registry);
+        editor.AddNode("Sort", new Point(440, 120), session.ViewModel.Registry);
+        PipelineNodeViewModel a = editor.Nodes[0];
+        PipelineNodeViewModel b = editor.Nodes[1];
+        Connector aOut = WaitForPort(session, a.Output[0]);
+        Connector aIn = WaitForPort(session, a.Input[0]);
+        Connector bOut = WaitForPort(session, b.Output[0]);
+        Connector bIn = WaitForPort(session, b.Input[0]);
+
+        DragBetween(session, aOut, bIn, () =>
+        {
+            using WriteableBitmap pending = session.Capture(VisualFrames.ConnectPending);
+            _output.WriteLine($"pending visible={editor.PendingConnection.IsVisible} source={editor.PendingConnection.Source?.Title}");
+            editor.PendingConnection.IsVisible.Should().BeTrue("a drag from an output port shows the pending wire");
+            editor.PendingConnection.Source.Should().BeSameAs(a.Output[0]);
+        });
+        using (WriteableBitmap connected = session.Capture(VisualFrames.ConnectDone))
+        {
+            editor.Connections.Should().ContainSingle();
+            editor.Connections[0].Source.Should().BeSameAs(a.Output[0]);
+            editor.Connections[0].Target.Should().BeSameAs(b.Input[0]);
+        }
+
+        int refusals = 0;
+        foreach ((string attempt, Connector from, Connector to) in new[]
+        {
+            ("same-direction", aOut, bOut),
+            ("self", aOut, aIn),
+            ("duplicate", aOut, bIn),
+        })
+        {
+            // The wire must be live mid-drag, so an unchanged count is a refusal, not a drag that never started.
+            bool started = false;
+            DragBetween(session, from, to, () =>
+                started = editor.PendingConnection.IsVisible && ReferenceEquals(editor.PendingConnection.Source, from.DataContext));
+            _output.WriteLine($"{attempt}: started={started} connections={editor.Connections.Count} pending={editor.PendingConnection.IsVisible}");
+            started.Should().BeTrue($"the {attempt} drag starts a pending wire");
+            editor.Connections.Should().HaveCount(1, $"the {attempt} connection is refused");
+            editor.PendingConnection.IsVisible.Should().BeFalse();
+            refusals++;
+        }
+
+        _output.WriteLine($"refusals={refusals}");
+    }
+
+    [AvaloniaTheory]
+    [MemberData(nameof(RegisteredTypeKeys))]
+    public void Selecting_each_node_type_shows_one_labelled_editor_per_field(string typeKey)
+    {
+        using var session = VisualSession.Open(_output);
+        NodeRegistry registry = session.ViewModel.Registry;
+        session.ViewModel.Editor.AddNode(typeKey, new Point(200, 160), registry);
+        Select(session, session.ViewModel.Editor.Nodes.Single());
+        using WriteableBitmap frame = session.Capture(VisualFrames.Inspector(typeKey));
+
+        IReadOnlyList<ConfigField> schema = registry.GetConfigSchema(typeKey);
+        List<ContentPresenter> cards = InspectorCards(session);
+        _output.WriteLine($"type-keys={RegisteredTypeKeys.Count}");
+        session.ViewModel.Editor.SelectedNode!.TypeKey.Should().Be(typeKey);
+        cards.Should().HaveCount(schema.Count, "the inspector shows one card per schema field");
+        for (int i = 0; i < schema.Count; i++)
+        {
+            ConfigField field = schema[i];
+            Control[] parts = ((cards[i].Child as Border)?.Child as StackPanel)?.Children.ToArray() ?? [];
+            string expectedLabel = field.Required ? field.Label + " *" : field.Label;
+            _output.WriteLine($"field {field.Key} {field.Type}: {string.Join(" | ", parts.Select(Describe))}");
+            parts.Should().HaveCount(2, $"the {field.Key} card holds its label and one editor");
+            parts[0].Should().BeOfType<TextBlock>().Which.Text.Should().Be(expectedLabel);
+            parts[1].Should().BeOfType(EditorTypeFor(field.Type), $"{field.Key} is a {field.Type} field");
+        }
+
+        _output.WriteLine($"fields-checked={schema.Count}");
+    }
+
+    [AvaloniaFact]
+    public async Task Edited_fields_survive_save_and_reload()
+    {
+        using var session = VisualSession.Open(_output);
+        MainWindow window = session.Window;
+        EditorViewModel editor = session.ViewModel.Editor;
+        editor.AddNode("RenamePattern", new Point(80, 120), session.ViewModel.Registry);
+        editor.AddNode("FolderOutput", new Point(440, 120), session.ViewModel.Registry);
+        PipelineNodeViewModel rename = editor.Nodes[0];
+        PipelineNodeViewModel output = editor.Nodes[1];
+
+        Select(session, rename);
+        EditField(session, "pattern", () =>
+        {
+            Click(window, CentreInWindow(FieldEditor<TextBox>(session, "pattern")));
+            window.KeyTextInput(EditedPattern);
+        });
+        EditField(session, "startIndex", () =>
+        {
+            Click(window, CentreInWindow(FieldEditor<TextBox>(session, "startIndex")));
+            window.KeyPress(Key.A, RawInputModifiers.Control, PhysicalKey.A, "a");
+            window.KeyRelease(Key.A, RawInputModifiers.Control, PhysicalKey.A, "a");
+            window.KeyTextInput("7");
+        });
+        Select(session, output);
+        EditField(session, "overwrite", () => Click(window, CentreInWindow(FieldEditor<CheckBox>(session, "overwrite"))));
+        EditField(session, "mode", () => PickOption(session, FieldEditor<ComboBox>(session, "mode"), "move"));
+        using WriteableBitmap frame = session.Capture(VisualFrames.EditPersists);
+
+        (PipelineNodeViewModel Node, string Key, string Expected)[] edits =
+        [
+            (rename, "pattern", EditedPattern),
+            (rename, "startIndex", "7"),
+            (output, "overwrite", "true"),
+            (output, "mode", "move"),
+        ];
+        foreach ((PipelineNodeViewModel node, string key, string expected) in edits)
+        {
+            ValueText(node.Config, key).Should().Be(expected, $"typing into {key} updates the node's config");
+        }
+
+        string path = Path.Combine(session.Temp.Path, "edit.ffpipe");
+        await PipelineSerializer.SaveAsync(editor.BuildGraph(), path);
+        PipelineGraph reloaded = await PipelineSerializer.LoadAsync(path);
+        foreach ((PipelineNodeViewModel node, string key, string expected) in edits)
+        {
+            string? value = ValueText(reloaded.Nodes.Single(n => n.Id == node.Id).Config, key);
+            _output.WriteLine($"reloaded {node.TypeKey}.{key}={value}");
+            value.Should().Be(expected, $"{key} survives a save and reload");
+        }
+    }
+
+    private static NodifyEditor Editor(Window window) =>
+        window.GetVisualDescendants().OfType<NodifyEditor>().Single(e => string.Equals(e.Name, "Editor", StringComparison.Ordinal));
+
+    private static IEnumerable<TreeViewItem> LibraryRows(Window window) =>
+        window.GetVisualDescendants().OfType<TreeViewItem>().Where(item => item.DataContext is NodeLibraryItemViewModel);
+
+    private static Point InWindow(Avalonia.Visual visual, Point point) =>
+        visual.TranslatePoint(point, TopLevel.GetTopLevel(visual)!)
+            ?? throw new InvalidOperationException($"{visual.GetType().Name} has no transform to its window.");
+
+    private static Point CentreInWindow(Avalonia.Visual visual) =>
+        InWindow(visual, new Point(visual.Bounds.Width / 2, visual.Bounds.Height / 2));
+
+    private static void Click(TopLevel topLevel, Point point)
+    {
+        topLevel.MouseDown(point, MouseButton.Left, RawInputModifiers.None);
+        topLevel.MouseUp(point, MouseButton.Left, RawInputModifiers.None);
+    }
+
+    private static Connector WaitForPort(VisualSession session, PipelineConnectorViewModel port)
+    {
+        Connector? Find() => session.Window.GetVisualDescendants().OfType<Connector>()
+            .SingleOrDefault(c => ReferenceEquals(c.DataContext, port) && c.Bounds.Width > 0);
+        session.RenderUntil(() => Find() is not null, $"{port.Node.TypeKey} {(port.IsInput ? "input" : "output")} port shown");
+        return Find()!;
+    }
+
+    // Press on one port, move halfway (where midway runs), move onto the other port and release there.
+    private static void DragBetween(VisualSession session, Connector from, Connector to, Action? midway = null)
+    {
+        Point start = CentreInWindow(from);
+        Point end = CentreInWindow(to);
+        session.Window.MouseDown(start, MouseButton.Left, RawInputModifiers.None);
+        session.Window.MouseMove(start + ((end - start) / 2), RawInputModifiers.LeftMouseButton);
+        session.Pump();
+        midway?.Invoke();
+        session.Window.MouseMove(end, RawInputModifiers.LeftMouseButton);
+        session.Pump();
+        session.Window.MouseUp(end, MouseButton.Left, RawInputModifiers.None);
+        session.Pump();
+    }
+
+    // Clicks the station's body, away from its ports, and waits for the inspector to show its fields.
+    private static void Select(VisualSession session, PipelineNodeViewModel node)
+    {
+        ItemContainer? Find() => session.Window.GetVisualDescendants().OfType<ItemContainer>()
+            .SingleOrDefault(c => ReferenceEquals(c.DataContext, node) && c.Bounds.Width > 0);
+        session.RenderUntil(() => Find() is not null, $"{node.TypeKey} station shown");
+        Click(session.Window, CentreInWindow(Find()!));
+        session.RenderUntil(
+            () => ReferenceEquals(session.ViewModel.Editor.SelectedNode, node) && InspectorReady(session),
+            $"{node.TypeKey} selected and its fields shown");
+    }
+
+    private static ItemsControl InspectorList(VisualSession session) =>
+        session.Window.GetVisualDescendants().OfType<ItemsControl>()
+            .Single(list => ReferenceEquals(list.ItemsSource, session.ViewModel.Properties.Fields));
+
+    private static List<ContentPresenter> InspectorCards(VisualSession session) =>
+        InspectorList(session).GetRealizedContainers().OfType<ContentPresenter>().ToList();
+
+    // Every current field has a laid-out card, in field order.
+    private static bool InspectorReady(VisualSession session)
+    {
+        List<ContentPresenter> cards = InspectorCards(session);
+        return cards.Select(card => card.DataContext).SequenceEqual(session.ViewModel.Properties.Fields)
+            && cards.All(card => card.Child is { Bounds.Width: > 0 });
+    }
+
+    private static T FieldEditor<T>(VisualSession session, string key)
+        where T : Control =>
+        InspectorCards(session)
+            .Single(card => card.DataContext is ConfigFieldViewModel field && string.Equals(field.Key, key, StringComparison.Ordinal))
+            .GetVisualDescendants().OfType<T>().First();
+
+    // Each config edit rebuilds the inspector's fields; wait for the rebuilt cards before the next gesture.
+    private static void EditField(VisualSession session, string key, Action input)
+    {
+        ConfigFieldViewModel before = session.ViewModel.Properties.Fields[0];
+        input();
+        session.RenderUntil(
+            () => session.ViewModel.Properties.Fields.Count > 0
+                && !ReferenceEquals(session.ViewModel.Properties.Fields[0], before)
+                && InspectorReady(session),
+            $"inspector rebuilt after editing {key}");
+    }
+
+    // Opens the drop-down with a click and clicks the option in its popup.
+    private static void PickOption(VisualSession session, ComboBox comboBox, string option)
+    {
+        Click(session.Window, CentreInWindow(comboBox));
+        ComboBoxItem? Find() => comboBox.GetRealizedContainers().OfType<ComboBoxItem>()
+            .SingleOrDefault(item => string.Equals(item.Content as string, option, StringComparison.Ordinal) && item.Bounds.Width > 0);
+        session.RenderUntil(() => comboBox.IsDropDownOpen && Find() is not null, $"option '{option}' shown");
+        ComboBoxItem target = Find()!;
+        Click(TopLevel.GetTopLevel(target)!, CentreInWindow(target));
+    }
+
+    private static string? ValueText(IDictionary<string, JsonElement> config, string key) =>
+        !config.TryGetValue(key, out JsonElement value) ? null
+            : value.ValueKind == JsonValueKind.String ? value.GetString()
+            : value.GetRawText();
+
+    private static Type EditorTypeFor(ConfigFieldType type) => type switch
+    {
+        ConfigFieldType.String or ConfigFieldType.Int or ConfigFieldType.MultiLine => typeof(TextBox),
+        ConfigFieldType.Bool => typeof(CheckBox),
+        ConfigFieldType.Select => typeof(ComboBox),
+        ConfigFieldType.FilePath or ConfigFieldType.FolderPath => typeof(DockPanel),
+        _ => throw new ArgumentOutOfRangeException(nameof(type), type, "No editor is expected for this field type."),
+    };
+
+    private static string Describe(Control control) =>
+        control is TextBlock text ? $"{nameof(TextBlock)} '{text.Text}'" : control.GetType().Name;
+}
