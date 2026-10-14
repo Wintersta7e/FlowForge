@@ -50,17 +50,20 @@
                         Margin="10,0,0,0">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="FLOW"
+                               Classes="tight"
                                FontFamily="{DynamicResource MwDisplay}"
                                FontSize="17" FontWeight="Bold"
                                LetterSpacing="2.4"
                                Foreground="{DynamicResource MwBone}"
                                LineHeight="17" />
                     <TextBlock Text="·"
+                               Classes="tight"
                                FontFamily="{DynamicResource MwDisplay}"
                                FontSize="17" FontWeight="Bold"
                                Foreground="{DynamicResource MwCyan}"
                                LineHeight="17" />
                     <TextBlock Text="FORGE"
+                               Classes="tight"
                                FontFamily="{DynamicResource MwDisplay}"
                                FontSize="17" FontWeight="Bold"
                                LetterSpacing="2.4"

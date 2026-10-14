@@ -213,6 +213,12 @@
 
     <!-- ═══ Global Style Overrides ═══ -->
 
+    <!-- TextBlock.tight: a line box no taller than the font cuts off ascenders and descenders
+         unless the text may draw past its bounds; sets nothing that changes layout -->
+    <Style Selector="TextBlock.tight">
+        <Setter Property="ClipToBounds" Value="False" />
+    </Style>
+
     <!-- Button: forge surface bg, border, rounded 2px (squared cast-iron feel) -->
     <Style Selector="Button">
         <Setter Property="Background" Value="{DynamicResource MwPanel}" />

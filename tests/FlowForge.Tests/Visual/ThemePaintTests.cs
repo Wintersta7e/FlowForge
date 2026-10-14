@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Xml;
+using System.Xml.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
@@ -9,6 +12,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Styling;
 using Avalonia.Themes.Fluent;
 using Avalonia.VisualTree;
+using FlowForge.Tests.Helpers;
 using FlowForge.UI.ViewModels;
 using FlowForge.UI.Views;
 using FluentAssertions;
@@ -136,6 +140,95 @@ public sealed class ThemePaintTests
         bodyFamily.Should().Be("Inter", "the body font is the bundled Inter");
         textFamily.Should().Be("Inter", "window text without its own font uses the body font");
     }
+
+    [AvaloniaFact]
+    public void TightTextBlocks_DoNotClip()
+    {
+        List<(string Site, bool Tight)> sites = TightSourceSites();
+        sites.ForEach(site => _output.WriteLine($"source {site.Site} tight={site.Tight}"));
+        _output.WriteLine($"source sites={sites.Count} tight={sites.Count(site => site.Tight)}");
+
+        using var session = VisualSession.Open(_output);
+        MainWindowViewModel vm = session.ViewModel;
+        var states = new List<(string State, int Found, int Compliant, string Clipped)> { TightTextIn(session, "empty") };
+        session.LoadTemplate(VisualSession.WebExportTemplate);
+        states.Add(TightTextIn(session, "template-loaded"));
+
+        vm.ExecutionLog.IsRunning = true;
+        try
+        {
+            session.RenderUntil(() => vm.Editor.Nodes.All(node => node.IsRunning), "stations running");
+            states.Add(TightTextIn(session, "running"));
+        }
+        finally
+        {
+            vm.ExecutionLog.IsRunning = false;
+        }
+
+        vm.IsDemoMode = true;
+        try
+        {
+            session.RenderUntil(() => vm.Editor.Nodes.All(node => node.IsRunning), "stations running in DEMO mode");
+            states.Add(TightTextIn(session, "demo"));
+        }
+        finally
+        {
+            // The beads animate for as long as DEMO mode is on; stop it before the window closes.
+            vm.IsDemoMode = false;
+        }
+
+        foreach ((string state, int found, int compliant, string clipped) in states)
+        {
+            _output.WriteLine($"state={state} found={found} compliant={compliant} clipped=[{clipped}]");
+        }
+
+        sites.Should().NotBeEmpty("the scan reads the UI's AXAML files");
+        sites.Where(site => !site.Tight).Should().BeEmpty("text with a line box no taller than its font carries the tight class");
+        foreach ((string state, int found, int compliant, string clipped) in states)
+        {
+            found.Should().BePositive($"the {state} window shows tight-leaded text");
+            compliant.Should().Be(found, $"no tight-leaded text is clipped in the {state} window ({clipped})");
+        }
+    }
+
+    // Text whose line box is no taller than its font: how many the window holds, how many
+    // draw past their bounds, and the text of those that do not.
+    private static (string State, int Found, int Compliant, string Clipped) TightTextIn(VisualSession session, string state)
+    {
+        var tight = session.Window.GetVisualDescendants().OfType<TextBlock>()
+            .Where(block => !double.IsNaN(block.LineHeight) && block.LineHeight <= block.FontSize)
+            .ToList();
+        string clipped = string.Join(", ", tight.Where(block => block.ClipToBounds).Select(block => $"'{block.Text}'"));
+        return (state, tight.Count, tight.Count(block => !block.ClipToBounds), clipped);
+    }
+
+    // Every TextBlock in the UI's AXAML whose LineHeight is no taller than its FontSize,
+    // as "file:line", and whether it carries the tight class.
+    private static List<(string Site, bool Tight)> TightSourceSites()
+    {
+        string uiRoot = RepoRoot.Combine("src", "FlowForge.UI");
+        return Directory.EnumerateFiles(uiRoot, "*.axaml", SearchOption.AllDirectories)
+            .Select(file => Path.GetRelativePath(uiRoot, file))
+            .Where(relative => !relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                .Any(segment => segment is "bin" or "obj"))
+            .Order(StringComparer.Ordinal)
+            .SelectMany(relative => XDocument.Load(Path.Combine(uiRoot, relative), LoadOptions.SetLineInfo).Descendants()
+                .Where(element => string.Equals(element.Name.LocalName, "TextBlock", StringComparison.Ordinal)
+                    && Number(element, "LineHeight") is double lineHeight
+                    && Number(element, "FontSize") is double fontSize
+                    && lineHeight <= fontSize)
+                .Select(element => (
+                    $"{relative.Replace('\\', '/')}:{((IXmlLineInfo)element).LineNumber}",
+                    ((string?)element.Attribute("Classes") ?? string.Empty)
+                        .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                        .Contains("tight", StringComparer.Ordinal))))
+            .ToList();
+    }
+
+    private static double? Number(XElement element, string attribute) =>
+        double.TryParse((string?)element.Attribute(attribute), NumberStyles.Float, CultureInfo.InvariantCulture, out double value)
+            ? value
+            : null;
 
     private static string ResolvedFamily(Typeface typeface)
     {

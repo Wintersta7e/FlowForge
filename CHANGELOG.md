@@ -46,6 +46,7 @@ Versions 1.0.0–2.0.0 were tagged and released at the time; those tags and rele
 - **Toolbar icon buttons have accessible names** — New Pipeline, Open Pipeline, Save, Recent Pipelines, Undo, Redo, Fit to Screen and Keyboard Shortcuts are named for screen readers; their automation names were the icon's type name (`Avalonia.Controls.PathIcon`) or `?`, and the tooltip is only help text.
 - **IGNITE paints the forge palette** — IGNITE and the shortcuts dialog's Close button showed the base theme's blue instead of the molten gradient; they now show the gradient, a brighter one on hover and a darker one while pressed. Checked boxes and other controls the base theme draws in its accent colour are orange instead of blue.
 - **Body text uses the bundled Inter font** — the body font named Inter but not the copy the app ships, so body text fell back to whichever system font was installed; it now always uses the bundled Inter.
+- **Tightly set text keeps its full letters** — the FLOW · FORGE wordmark, the empty canvas headline, station titles and the inspector's station title are set with a line height equal to their font size, which cut off the tops and tails of their letters; they now draw in full, with no change to layout.
 
 ### Security
 

@@ -614,6 +614,7 @@
                                         Spacing="3"
                                         VerticalAlignment="Center">
                                 <TextBlock Text="{Binding Title}"
+                                           Classes="tight"
                                            FontFamily="{DynamicResource MwSerif}"
                                            FontSize="18"
                                            LineHeight="18"
@@ -1057,6 +1058,7 @@
                 <!-- Hero headline -->
                 <StackPanel HorizontalAlignment="Center" Spacing="2">
                     <TextBlock Text="Build your pipeline"
+                               Classes="tight"
                                FontFamily="{DynamicResource MwSerifRegular}"
                                FontSize="62"
                                FontWeight="Normal"
@@ -1064,6 +1066,7 @@
                                Foreground="{DynamicResource MwBone}"
                                HorizontalAlignment="Center" />
                     <TextBlock Text="from raw ore."
+                               Classes="tight"
                                FontFamily="{DynamicResource MwSerif}"
                                FontSize="62"
                                FontStyle="Italic"

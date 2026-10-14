@@ -56,6 +56,7 @@
                                     Spacing="2"
                                     VerticalAlignment="Center">
                             <TextBlock Text="{Binding SelectedNodeTitle}"
+                                       Classes="tight"
                                        FontFamily="{DynamicResource MwSerif}"
                                        FontSize="26"
                                        LineHeight="26"
