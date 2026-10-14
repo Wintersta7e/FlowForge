@@ -44,6 +44,7 @@ Versions 1.0.0–2.0.0 were tagged and released at the time; those tags and rele
 - **Settings with a null recent list** — a settings file whose `recentPipelines` is `null` now loads as an empty list instead of failing and being overwritten with defaults.
 - **Sort keeps ties in order** — Sort keeps the input order of files whose sort keys are equal, in both directions.
 - **Toolbar icon buttons have accessible names** — New Pipeline, Open Pipeline, Save, Recent Pipelines, Undo, Redo, Fit to Screen and Keyboard Shortcuts are named for screen readers; their automation names were the icon's type name (`Avalonia.Controls.PathIcon`) or `?`, and the tooltip is only help text.
+- **IGNITE paints the forge palette** — IGNITE and the shortcuts dialog's Close button showed the base theme's blue instead of the molten gradient; they now show the gradient, a brighter one on hover and a darker one while pressed. Checked boxes and other controls the base theme draws in its accent colour are orange instead of blue.
 
 ### Security
 

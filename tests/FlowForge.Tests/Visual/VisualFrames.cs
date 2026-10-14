@@ -59,6 +59,14 @@ internal static class VisualFrames
 
     public const string EyesRecentFlyout = "eyes-recent-flyout";
 
+    public const string IgniteDefault = "ignite-default";
+
+    public const string IgnitePointerOver = "ignite-pointerover";
+
+    public const string IgnitePressed = "ignite-pressed";
+
+    public const string AccentCheckBox = "accent-checkbox";
+
     internal const string InspectorPrefix = "inspector-";
 
     public static IReadOnlyList<string> Ids { get; } = typeof(VisualFrames)

@@ -239,8 +239,22 @@
         <Setter Property="FontSize" Value="13" />
         <Setter Property="Padding" Value="14,6" />
     </Style>
+    <!-- The base theme paints the accent button's presenter in its own accent; these part rules win over it. -->
+    <Style Selector="Button.accent /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource MwMoltenButton}" />
+        <Setter Property="Foreground" Value="#1a0a04" />
+    </Style>
     <Style Selector="Button.accent:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource MwMoltenHi}" />
+        <Setter Property="Foreground" Value="#1a0a04" />
+    </Style>
+    <Style Selector="Button.accent:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource MwMoltenLo}" />
+        <Setter Property="Foreground" Value="#1a0a04" />
+    </Style>
+    <Style Selector="Button.accent:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource MwIronDark}" />
+        <Setter Property="Foreground" Value="{DynamicResource MwIronLite}" />
     </Style>
 
     <!-- Button.quench: active-running state, cyan outline, dark fill -->
