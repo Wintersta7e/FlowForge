@@ -4,7 +4,7 @@
 
 ### Installation
 
-Download the latest release from [GitHub Releases](https://github.com/Wintersta7e/FlowForge/releases) or build from source:
+Build from source:
 
 ```bash
 git clone https://github.com/Wintersta7e/FlowForge.git
@@ -197,7 +197,7 @@ The top-right toolbar carries three run-related buttons — **Dry Run**, **Ignit
 
 ### Dry Run (Preview)
 
-Click **Dry Run** to simulate the pipeline without touching any files. The execution log shows what *would* happen — useful for verifying your pipeline before committing to changes.
+Click **Dry Run** to simulate the pipeline; a dry run writes, moves and deletes nothing. The execution log shows what *would* happen — useful for verifying your pipeline before committing to changes.
 
 ### Ignite (Run)
 

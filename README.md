@@ -17,6 +17,7 @@ resizing, converting, and filtering files. Run from a desktop GUI or the command
 <br>
 
 <img src="screenshots/editor-overview.png" alt="The FlowForge visual pipeline editor" width="900">
+<br><sub>Design concept render — not a screenshot of the app.</sub>
 
 </div>
 
@@ -40,10 +41,9 @@ The same pipelines run from a desktop GUI or the command line
 ## Status
 
 Actively developed personal tool. The engine, node library, desktop UI, and CLI
-are all implemented and covered by an extensive test suite (378 tests) under
-strict analyzers (StyleCop + Meziantou, warnings-as-errors). The `.ffpipe`
-format is stable across the 2.x line — treat it as a working tool you can build
-and run, not a finished, packaged consumer app.
+are all implemented and covered by an extensive test suite under
+strict analyzers (StyleCop + Meziantou, warnings-as-errors). Treat it as a
+working tool you can build and run, not a finished, packaged consumer app.
 
 **Implemented:**
 - Visual node editor — drag-and-drop canvas, pan/zoom, wiring, rubber-band
@@ -55,15 +55,14 @@ and run, not a finished, packaged consumer app.
 - Real-time progress — live scan count, per-file status, throughput reporting
 - "Molten Works" dark theme — cast-iron stations, chrome pipes, mercury beads
   that flow along the pipes while a pipeline runs
-- Cross-platform via Avalonia (Windows, macOS, Linux); self-contained Windows
-  x64 build on the [Releases page](https://github.com/Wintersta7e/FlowForge/releases)
+- Cross-platform via Avalonia: <!-- platforms -->Windows and Linux, built and tested in CI; macOS untested<!-- /platforms -->
 
-**Not done yet:** packaged / signed installers beyond the win-x64 release zip.
+**Not done yet:** packaged / signed installers.
 
 ## Features
 
 ### Engine + CLI
-- Pipeline runner with dry-run mode (**zero file I/O**), full `CancellationToken`
+- Pipeline runner with dry-run mode (**writes, moves and deletes nothing**), full `CancellationToken`
   support, and structured progress events
 - **11 built-in node types:**
   - *sources & outputs:* `FolderInput`, `FolderOutput`
@@ -105,7 +104,7 @@ and run, not a finished, packaged consumer app.
 | Logging | Microsoft.Extensions.Logging + Serilog | `ILogger<T>` everywhere; console + rolling file |
 | DI | Microsoft.Extensions.DependencyInjection | `AddFlowForgeCore()` composition root |
 | CLI | System.CommandLine | Subcommands + global flags |
-| Tests | xUnit + FluentAssertions + Bogus | 378 tests |
+| Tests | xUnit + FluentAssertions + Bogus | Linux and Windows CI legs |
 
 ## Quick Start
 
@@ -126,8 +125,7 @@ dotnet run --project src/FlowForge.CLI -- --help
 dotnet run --project src/FlowForge.CLI -- run pipeline.ffpipe --dry-run
 ```
 
-.NET 10 SDK required to build from source. Prefer a binary? The self-contained
-Windows x64 build is on the [Releases page](https://github.com/Wintersta7e/FlowForge/releases) — no SDK needed.
+.NET 10 SDK required to build from source.
 
 ## Layout
 
@@ -150,7 +148,7 @@ FlowForge/
 1. **Local-first.** No network calls, no telemetry, no account — everything runs on your machine.
 2. **Layered and testable.** `FlowForge.Core` is pure logic with no UI references; the UI and CLI are thin composition roots over the same engine.
 3. **CLI is first-class.** Anything a pipeline does in the GUI runs headless from the CLI, with JSON output and a clear exit-code contract for scripting.
-4. **Safe by default.** Dry-run does zero file I/O, path guards keep writes inside their target directory, and overwrite-with-backup is opt-in.
+4. **Safe by default.** Dry-run writes, moves and deletes nothing, path guards keep writes inside their target directory, and overwrite-with-backup is opt-in.
 5. **Inspectable and reusable.** Pipelines are plain `.ffpipe` JSON — save them, diff them, re-run them.
 6. **Strict from commit one.** TreatWarningsAsErrors, StyleCop + Meziantou analyzers, and a `dotnet format` gate enforced in CI.
 

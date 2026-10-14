@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 
 - **Pipeline shape is checked before a run** — a pipeline that is not one chain from a single source to a single output is refused, naming each offending node; before, an unconnected transform still ran on every file and every output received every file.
 - **CLI executable name** — the CLI builds and publishes as `flowforge` (`flowforge.exe` on Windows), as the docs say; it was `FlowForge.CLI`. `dotnet run --project src/FlowForge.CLI` is unchanged.
+- **README and user guide** — no download or release-zip text until a release exists; supported platforms narrowed to Windows and Linux (macOS untested); dry-run wording matches what the code guarantees; the test count and the ".ffpipe stable across 2.x" sentence are gone.
 
 ### Fixed
 
