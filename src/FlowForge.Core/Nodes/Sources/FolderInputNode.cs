@@ -122,6 +122,16 @@ public class FolderInputNode : ISourceNode
         string? patternDirectory = Path.GetDirectoryName(pattern);
         string directory = string.IsNullOrEmpty(patternDirectory) ? _path : Path.Join(_path, patternDirectory);
         string namePattern = Path.GetFileName(pattern);
+        if (Path.DirectorySeparatorChar != '\\' && namePattern.AsSpan().ContainsAny("\\\"<>"))
+        {
+            // The escape Directory.EnumerateFiles applies where '\' is not the separator: these match literally.
+            namePattern = namePattern
+                .Replace("\\", "\\\\", StringComparison.Ordinal)
+                .Replace("\"", "\\\"", StringComparison.Ordinal)
+                .Replace(">", "\\>", StringComparison.Ordinal)
+                .Replace("<", "\\<", StringComparison.Ordinal);
+        }
+
         string expression = namePattern is "" or "." or "*.*" ? "*" : FileSystemName.TranslateWin32Expression(namePattern);
         bool ignoreCase = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS();
         var options = new EnumerationOptions

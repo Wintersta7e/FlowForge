@@ -98,6 +98,38 @@ public class FolderInputNodeTests
     }
 
     [Fact]
+    public async Task Filter_matches_exactly_what_directory_enumeration_matches()
+    {
+        using var dir = new TempDirectory();
+        dir.CreateFiles("x1.txt", "xa.txt");
+        if (Path.DirectorySeparatorChar != '\\')
+        {
+            dir.CreateFiles("x>.txt", "x<1.txt", "x\"1.txt");
+        }
+
+        var mismatches = new List<string>();
+        foreach (string filter in new[] { "x>.txt", "x<.txt", "x\".txt", "x?.txt", "*.*" })
+        {
+            var node = new FolderInputNode(NullLogger<FolderInputNode>.Instance);
+            node.Configure(MakeConfig(new { path = dir.Path, filter }));
+            List<FileJob> jobs = await CollectJobsAsync(node);
+
+            var yielded = jobs.Select(j => Path.GetFileName(j.OriginalPath)).Order(StringComparer.Ordinal).ToList();
+            var listed = Directory.EnumerateFiles(dir.Path, filter)
+                .Select(f => Path.GetFileName(f))
+                .Order(StringComparer.Ordinal)
+                .ToList();
+            _output.WriteLine($"filter={filter} yielded=[{string.Join(", ", yielded)}] listed=[{string.Join(", ", listed)}]");
+            if (!yielded.SequenceEqual(listed, StringComparer.Ordinal))
+            {
+                mismatches.Add(filter);
+            }
+        }
+
+        mismatches.Should().BeEmpty("the folder filter must match what directory enumeration matches");
+    }
+
+    [Fact]
     public async Task Empty_directory_yields_nothing()
     {
         using var dir = new TempDirectory();
