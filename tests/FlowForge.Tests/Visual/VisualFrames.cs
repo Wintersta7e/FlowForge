@@ -33,6 +33,16 @@ internal static class VisualFrames
 
     public const string RealRun = "s96-real-run";
 
+    public const string MinEmpty = "w-min-empty";
+
+    public const string MinIdle = "w-min-idle";
+
+    public const string MinInspector = "w-min-inspector";
+
+    public const string RunDemo = "run-demo";
+
+    public const string BeadsOnPipe = "fx-beads";
+
     internal const string InspectorPrefix = "c7-04-inspector-";
 
     public static IReadOnlyList<string> Ids { get; } = typeof(VisualFrames)
