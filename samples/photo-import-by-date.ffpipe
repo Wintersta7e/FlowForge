@@ -1,7 +1,7 @@
 {
   "id": "ad3d8e53-051a-4b0d-8fb7-f03d88b01367",
   "name": "Photo Import \u2014 Rename by EXIF Date",
-  "version": "1.0",
+  "version": "2.0",
   "createdAt": "2026-02-28T01:02:39.0631307Z",
   "updatedAt": "2026-02-28T01:02:39.0636105Z",
   "nodes": [

@@ -95,6 +95,13 @@ public partial class SamplePipelineTests
                 continue;
             }
 
+            if (!string.Equals(graph.Version, KnownVersions.Current, StringComparison.Ordinal))
+            {
+                failures.Add($"{name}: version {graph.Version}");
+            }
+
+            failures.AddRange(graph.LoadNotices.Select(n => $"{name}: notice {n.Code}"));
+
             IReadOnlyList<string> chain = ClaimCheck.TopologicalTypeKeys(graph);
             if (!documented.TryGetValue(name, out (int Line, string[] Chain) doc))
             {

@@ -1,7 +1,7 @@
 {
   "id": "5a1e0a54-52e3-4855-9e7d-d1ebd036d676",
   "name": "Image Web Export (Resize \u002B Convert to WebP)",
-  "version": "1.0",
+  "version": "2.0",
   "createdAt": "2026-02-28T01:02:39.0781269Z",
   "updatedAt": "2026-02-28T01:02:39.0781762Z",
   "nodes": [

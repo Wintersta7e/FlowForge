@@ -192,7 +192,8 @@ static void ConfigureLogging(bool verbose, bool jsonMode)
 }
 
 // Load the pipeline graph and apply input/output/dry-run overrides.
-// Returns the configured graph, or null if a node override target was not found.
+// Returns the configured graph, or null when nothing may run: the file has load notices, or an
+// override directory or target was not found.
 static async Task<PipelineGraph?> LoadAndConfigurePipelineAsync(
     FileInfo pipelineFile,
     DirectoryInfo? inputDir,
@@ -205,6 +206,20 @@ static async Task<PipelineGraph?> LoadAndConfigurePipelineAsync(
     statusWriter.WriteLine($"Loading pipeline: {fullPath}");
 
     PipelineGraph graph = await PipelineSerializer.LoadAsync(fullPath, cancellationToken).ConfigureAwait(false);
+
+    // A file from an older version would run with behaviour it was not written for: list the changes and run nothing.
+    if (graph.LoadNotices.Count > 0)
+    {
+        foreach (CompatNotice notice in graph.LoadNotices)
+        {
+            Console.Error.WriteLine(notice.NodeId is null ? notice.Message : $"{notice.TypeKey} ({notice.NodeId}): {notice.Message}");
+        }
+
+        Console.Error.WriteLine(
+            $"Open and re-save this pipeline in FlowForge, or set its \"version\" to \"{KnownVersions.Current}\" by hand after reviewing the changes above.");
+        return null;
+    }
+
     statusWriter.WriteLine($"Pipeline '{graph.Name}' loaded ({graph.Nodes.Count} nodes, {graph.Connections.Count} connections)");
 
     if (inputDir is not null)
