@@ -1,5 +1,6 @@
 using FluentAssertions;
 using FlowForge.Core.Execution;
+using FlowForge.Core.Models;
 using FlowForge.Core.Pipeline;
 using FlowForge.Tests.Helpers;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -216,5 +217,35 @@ public class PipelineRunnerTests
         Func<Task> act = () => runner.RunAsync(pipeline, dryRun: false);
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage($"Connection references unknown target node: {missing}");
+    }
+
+    [Fact]
+    public async Task Output_failure_sets_job_error_message()
+    {
+        using var dir = new TempDirectory();
+        dir.CreateFiles("a.txt");
+
+        var registry = NodeRegistry.CreateDefault(NullLoggerFactory.Instance);
+        registry.Register<ThrowingOutputNode>(
+            ThrowingOutputNode.RegisteredTypeKey,
+            () => new ThrowingOutputNode(),
+            "Throwing Output",
+            NodeCategory.Output,
+            () => []);
+
+        PipelineGraph pipeline = PipelineBuilder
+            .New("Output Failure Test")
+            .AddSource("FolderInput", new { path = dir.Path, filter = "*.txt" })
+            .AddOutput(ThrowingOutputNode.RegisteredTypeKey, new { })
+            .Build();
+
+        var runner = new PipelineRunner(registry, NullLogger<PipelineRunner>.Instance, maxConcurrency: 2);
+        ExecutionResult result = await runner.RunAsync(pipeline, dryRun: false);
+
+        result.Failed.Should().Be(1);
+        FileJob job = result.Jobs.Single();
+        string expected = $"Output '{ThrowingOutputNode.RegisteredTypeKey}' failed: {ThrowingOutputNode.ThrownMessage}";
+        job.ErrorMessage.Should().Be(expected);
+        job.NodeLog.Should().Contain(expected);
     }
 }

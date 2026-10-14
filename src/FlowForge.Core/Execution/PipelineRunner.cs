@@ -361,7 +361,9 @@ public class PipelineRunner
                 {
                     anyFailed = true;
                     job.Status = FileJobStatus.Failed;
-                    job.NodeLog.Add($"Output '{output.TypeKey}' failed: {ex.Message}");
+                    string reason = $"Output '{output.TypeKey}' failed: {ex.Message}";
+                    job.NodeLog.Add(reason);
+                    job.ErrorMessage ??= reason;
                     _logger.LogError(ex, "Output node {Node} failed for {File}", output.TypeKey, job.FileName);
                 }
             }
