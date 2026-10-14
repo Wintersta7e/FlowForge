@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.RegularExpressions;
 using FlowForge.Core.Execution;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -7,7 +8,7 @@ using Xunit.Abstractions;
 namespace FlowForge.Tests.Visual;
 
 [Collection(VisualCollection.Name)]
-public sealed class FrameManifestTests
+public sealed partial class FrameManifestTests
 {
     private readonly ITestOutputHelper _output;
 
@@ -29,14 +30,20 @@ public sealed class FrameManifestTests
         var inspectorIds = VisualFrames.Ids
             .Where(id => id.StartsWith(VisualFrames.InspectorPrefix, StringComparison.Ordinal))
             .ToList();
+        var numberedIds = VisualFrames.Ids.Where(id => SectionNumberedId().IsMatch(id)).ToList();
         _output.WriteLine($"manifest={manifest}");
         _output.WriteLine($"frames-declared={VisualFrames.Ids.Count}");
         _output.WriteLine($"inspector-ids={inspectorIds.Count}");
         _output.WriteLine($"published={VisualFrames.Published.Count}");
+        _output.WriteLine($"numbered-ids={numberedIds.Count}");
 
         VisualFrames.Ids.Should().NotBeEmpty();
         inspectorIds.Select(id => id[VisualFrames.InspectorPrefix.Length..])
             .Should().OnlyContain(key => typeKeys.Contains(key), "an inspector frame names a registered node type");
         VisualFrames.Published.Should().OnlyContain(id => VisualFrames.IsDeclared(id), "a published frame must be declared");
+        numberedIds.Should().BeEmpty("a frame id names what the frame shows, not a document section");
     }
+
+    [GeneratedRegex(@"^(c|s)\d+-", RegexOptions.ExplicitCapture, matchTimeoutMilliseconds: 1000)]
+    private static partial Regex SectionNumberedId();
 }

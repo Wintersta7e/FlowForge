@@ -11,27 +11,27 @@ namespace FlowForge.Tests.Visual;
 /// </summary>
 internal static class VisualFrames
 {
-    public const string Launch = "c7-01-launch";
+    public const string Launch = "launch";
 
-    public const string LibraryDrag = "c7-02-library-drag";
+    public const string LibraryDrag = "library-drag";
 
-    public const string ConnectPending = "c7-03a-pending";
+    public const string ConnectPending = "connect-pending";
 
-    public const string ConnectDone = "c7-03b-connected";
+    public const string ConnectDone = "connect-done";
 
-    public const string EditPersists = "c7-05-edit-persists";
+    public const string EditPersists = "edit-persists";
 
-    public const string SelectDeleteUndo = "s93-select-delete-undo";
+    public const string SelectDeleteUndo = "select-delete-undo";
 
-    public const string MoveStation = "s93-move";
+    public const string MoveStation = "move-station";
 
-    public const string NodeRender = "s93-node-render";
+    public const string NodeRender = "node-render";
 
-    public const string LogProgress = "s96-log-progress";
+    public const string LogProgress = "log-progress";
 
-    public const string LogRows = "s96-log-rows";
+    public const string LogRows = "log-rows";
 
-    public const string RealRun = "s96-real-run";
+    public const string RealRun = "real-run";
 
     public const string MinEmpty = "w-min-empty";
 
@@ -59,7 +59,7 @@ internal static class VisualFrames
 
     public const string EyesRecentFlyout = "eyes-recent-flyout";
 
-    internal const string InspectorPrefix = "c7-04-inspector-";
+    internal const string InspectorPrefix = "inspector-";
 
     public static IReadOnlyList<string> Ids { get; } = typeof(VisualFrames)
         .GetFields(BindingFlags.Public | BindingFlags.Static)
