@@ -322,7 +322,7 @@ The `samples/` directory contains example `.ffpipe` files demonstrating common w
 
 FlowForge uses structured logging via `Microsoft.Extensions.Logging` with Serilog as the provider:
 
-- **UI app** — logs to console and rolling file (`logs/flowforge.log`, daily rotation, 7 files max, 10 MB limit)
+- **UI app** — logs to console and to rolling files in a `logs` folder beside the executable: a new file each day, named by date (for example `flowforge20261014.log`), and a new numbered file (`flowforge20261014_001.log`, …) whenever one reaches 10 MB; the 7 newest files are kept
 - **CLI** — logs to console (stderr in `--format json` mode)
 
 Log files are useful for diagnosing issues — include them when reporting bugs.
