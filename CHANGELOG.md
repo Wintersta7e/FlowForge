@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- **Pipeline shape is checked before a run** — a pipeline that is not one chain from a single source to a single output is refused, naming each offending node; before, an unconnected transform still ran on every file and every output received every file.
+
 ### Fixed
 
 - **Photo Import template runs as shipped** — its metadata step was saved without the EXIF date key, so every run stopped with "MetadataExtract: 'keys' is required."

@@ -37,6 +37,7 @@ public class PipelineRunner
 
             ValidateGraph(graph);
             List<Guid> sortedNodeIds = TopologicalSort(graph);
+            EnsureSingleChain(graph);
             (List<NodeDefinition> sourceNodeDefs, List<NodeDefinition> transformNodeDefs, List<NodeDefinition> outputNodeDefs) = ClassifyNodes(graph, sortedNodeIds);
 
             List<NodeDefinition> orderedTransforms = BuildTransformChain(graph, sortedNodeIds, transformNodeDefs);
@@ -469,6 +470,96 @@ public class PipelineRunner
         }
 
         return sorted;
+    }
+
+    /// <summary>
+    /// Refuses any graph that is not one chain from a single source to a single output, naming
+    /// every offending node. Repeated connections between the same two nodes count once.
+    /// </summary>
+    private void EnsureSingleChain(PipelineGraph graph)
+    {
+        var incoming = graph.Nodes.ToDictionary(n => n.Id, _ => 0);
+        var outgoing = graph.Nodes.ToDictionary(n => n.Id, _ => new List<Guid>());
+        foreach ((Guid from, Guid to) in graph.Connections.Select(c => (c.FromNode, c.ToNode)).Distinct())
+        {
+            outgoing[from].Add(to);
+            incoming[to]++;
+        }
+
+        var reasons = graph.Nodes.ToDictionary(n => n.Id, _ => new List<string>());
+        AddDegreeReasons(graph, incoming, outgoing, reasons);
+        AddOffPathReasons(graph, incoming, outgoing, reasons);
+
+        string[] offenders = graph.Nodes
+            .Where(n => reasons[n.Id].Count > 0)
+            .Select(n => $"{n.TypeKey} ({n.Id}): {string.Join("; ", reasons[n.Id])}")
+            .ToArray();
+        if (offenders.Length > 0)
+        {
+            throw new InvalidOperationException(
+                "Pipeline must be one chain from a single source to a single output. " + string.Join("; ", offenders));
+        }
+    }
+
+    private void AddDegreeReasons(
+        PipelineGraph graph,
+        Dictionary<Guid, int> incoming,
+        Dictionary<Guid, List<Guid>> outgoing,
+        Dictionary<Guid, List<string>> reasons)
+    {
+        var categories = graph.Nodes.ToDictionary(n => n.Id, n => _registry.GetCategoryForTypeKey(n.TypeKey));
+        int sources = categories.Values.Count(c => c == NodeCategory.Source);
+        int outputs = categories.Values.Count(c => c == NodeCategory.Output);
+
+        foreach (NodeDefinition node in graph.Nodes)
+        {
+            NodeCategory category = categories[node.Id];
+            int inDegree = incoming[node.Id];
+            int outDegree = outgoing[node.Id].Count;
+            List<string> nodeReasons = reasons[node.Id];
+
+            AddWhen(nodeReasons, inDegree > 1, "has more than one incoming connection");
+            AddWhen(nodeReasons, outDegree > 1, "has more than one outgoing connection");
+            AddWhen(nodeReasons, inDegree == 0 && category != NodeCategory.Source, "has no incoming connection but is not a source");
+            AddWhen(nodeReasons, inDegree > 0 && category == NodeCategory.Source, "is a source with an incoming connection");
+            AddWhen(nodeReasons, sources > 1 && category == NodeCategory.Source, $"is one of {sources} sources");
+            AddWhen(nodeReasons, outDegree == 0 && category != NodeCategory.Output, "has no outgoing connection but is not an output");
+            AddWhen(nodeReasons, outDegree > 0 && category == NodeCategory.Output, "is an output with an outgoing connection");
+            AddWhen(nodeReasons, outputs > 1 && category == NodeCategory.Output, $"is one of {outputs} outputs");
+        }
+    }
+
+    private static void AddOffPathReasons(
+        PipelineGraph graph,
+        Dictionary<Guid, int> incoming,
+        Dictionary<Guid, List<Guid>> outgoing,
+        Dictionary<Guid, List<string>> reasons)
+    {
+        var starts = graph.Nodes.Where(n => incoming[n.Id] == 0).Select(n => n.Id).ToList();
+        if (starts.Count != 1)
+        {
+            return;
+        }
+
+        // Walk the chain from its one start; the graph is acyclic here, so the walk ends.
+        var onPath = new HashSet<Guid>();
+        for (Guid? current = starts[0]; current is Guid id; current = outgoing[id].Count > 0 ? outgoing[id][0] : null)
+        {
+            onPath.Add(id);
+        }
+
+        foreach (NodeDefinition node in graph.Nodes.Where(n => !onPath.Contains(n.Id)))
+        {
+            reasons[node.Id].Add("is not on the source-to-output path");
+        }
+    }
+
+    private static void AddWhen(List<string> reasons, bool condition, string reason)
+    {
+        if (condition)
+        {
+            reasons.Add(reason);
+        }
     }
 
     private static List<NodeDefinition> BuildTransformChain(
