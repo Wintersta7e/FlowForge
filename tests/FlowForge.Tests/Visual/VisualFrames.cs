@@ -43,6 +43,22 @@ internal static class VisualFrames
 
     public const string BeadsOnPipe = "fx-beads";
 
+    public const string EyesSelectionGlow = "eyes-selection-glow";
+
+    public const string EyesEmptyInspector = "eyes-empty-inspector";
+
+    public const string EyesToolbarRunning = "eyes-toolbar-running";
+
+    public const string EyesLibrarySearch = "eyes-library-search";
+
+    public const string EyesLongTitle = "eyes-long-title";
+
+    public const string EyesFit = "eyes-fit";
+
+    public const string EyesShortcutsDialog = "eyes-shortcuts-dialog";
+
+    public const string EyesRecentFlyout = "eyes-recent-flyout";
+
     internal const string InspectorPrefix = "c7-04-inspector-";
 
     public static IReadOnlyList<string> Ids { get; } = typeof(VisualFrames)
