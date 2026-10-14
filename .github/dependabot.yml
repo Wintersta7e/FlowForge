@@ -10,6 +10,12 @@ updates:
         patterns: ["Avalonia*"]
       microsoft-extensions:
         patterns: ["Microsoft.Extensions.*"]
+      avalonia-security:
+        applies-to: security-updates
+        patterns: ["Avalonia*"]
+      microsoft-extensions-security:
+        applies-to: security-updates
+        patterns: ["Microsoft.Extensions.*"]
     ignore:
       - dependency-name: "Avalonia*"
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
