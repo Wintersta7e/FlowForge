@@ -60,6 +60,20 @@ public class PipelineCompatTests
         }
         """;
 
+    private const string CopyVersion1 = $$"""
+        {
+          "name": "Copy",
+          "version": "1.0",
+          "nodes": [
+            { "id": "{{InputId}}", "typeKey": "FolderInput", "config": { "path": "in" } },
+            { "id": "{{OutputId}}", "typeKey": "FolderOutput", "config": { "path": "out" } }
+          ],
+          "connections": [
+            { "fromNode": "{{InputId}}", "toNode": "{{OutputId}}" }
+          ]
+        }
+        """;
+
     private readonly ITestOutputHelper _output;
 
     public PipelineCompatTests(ITestOutputHelper output) => _output = output;
@@ -69,6 +83,7 @@ public class PipelineCompatTests
     {
         ["tiff-output-lzw|ImageConvert"] = ConvertToTiffVersion1,
         ["tiff-output-lzw|ImageResize"] = ResizeVersion1,
+        ["output-name-collision-suffix|graph"] = CopyVersion1,
     };
 
     [Fact]

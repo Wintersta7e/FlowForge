@@ -109,7 +109,7 @@ public class CliExitCodeTests
         _output.WriteLine($"[cli-notices] notices={notices.Count} stderr-lines={stderr.Length}");
         notices.Should().NotBeEmpty();
         run.ExitCode.Should().Be(2, "{0}", detail);
-        string[] expected = notices.Select(n => $"{n.TypeKey} ({n.NodeId}): {n.Message}").ToArray();
+        string[] expected = notices.Select(n => n.NodeId is null ? n.Message : $"{n.TypeKey} ({n.NodeId}): {n.Message}").ToArray();
         stderr.Should().HaveCount(expected.Length + 1, "each notice and then the re-save line{0}{1}", nl, detail);
         stderr.Take(expected.Length).Should().Equal(expected, "{0}", detail);
         TreeSnapshot.AssertUnchanged(before, TreeSnapshot.Take(output), _output, "output");

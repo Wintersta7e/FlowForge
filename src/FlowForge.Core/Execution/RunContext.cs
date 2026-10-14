@@ -21,6 +21,9 @@ public sealed class RunContext : IDisposable
     /// <summary>32 lowercase hex digits, unique to this run.</summary>
     public string RunId { get; }
 
+    /// <summary>Every destination this run has claimed, across all its outputs.</summary>
+    public DestinationRegistry Destinations { get; } = new();
+
     internal string StagingRoot { get; }
 
     public void Dispose()

@@ -127,28 +127,30 @@ public class FolderOutputNode : IOutputNode
         }
 
         string destinationPath = Path.Combine(destinationDir, fileName);
-
         PathGuard.EnsureWithinDirectory(destinationPath, _path);
-        RefuseLinkedComponents(destinationPath);
 
-        if (!File.Exists(destinationPath))
+        DestinationClaim claim;
+        try
         {
-            return new DestinationClaim(destinationPath, ClaimKind.New, BackupPath: null);
+            claim = context.Destinations.Claim(_path, destinationPath, _overwrite, _enableBackup ? _backupSuffix : null);
+        }
+        catch (IOException ex) when (!ex.Message.StartsWith("FolderOutput: ", StringComparison.Ordinal))
+        {
+            throw new IOException($"FolderOutput: {ex.Message}", ex);
         }
 
-        if (!_overwrite)
+        if (!string.Equals(claim.Path, destinationPath, StringComparison.Ordinal))
         {
-            throw new IOException($"FolderOutput: '{destinationPath}' already exists and 'overwrite' is off.");
+            job.NodeLog.Add($"FolderOutput: '{Path.GetFileName(destinationPath)}' is already delivered in this run; using '{Path.GetFileName(claim.Path)}'");
         }
 
-        if (!_enableBackup)
+        PathGuard.EnsureWithinDirectory(claim.Path, _path);
+        if (claim.BackupPath is not null)
         {
-            return new DestinationClaim(destinationPath, ClaimKind.Replace, BackupPath: null);
+            PathGuard.EnsureWithinDirectory(claim.BackupPath, _path);
         }
 
-        string backupPath = destinationPath + _backupSuffix;
-        PathGuard.EnsureWithinDirectory(backupPath, _path);
-        return new DestinationClaim(destinationPath, ClaimKind.ReplaceWithBackup, backupPath);
+        return claim;
     }
 
     public async Task ConsumeAsync(FileJob job, DestinationClaim? claim, RunContext context, CancellationToken ct = default)
@@ -183,40 +185,6 @@ public class FolderOutputNode : IOutputNode
 
         job.CurrentPath = claim.Path;
         job.NodeLog.Add($"FolderOutput: → '{claim.Path}' ({_mode})");
-    }
-
-    /// <summary>
-    /// Refuses the destination when it, or any existing folder between the output folder and it, is a
-    /// link: a folder or file created under a linked folder lands outside the output folder. The output
-    /// folder itself may be a link. Only attributes are read, so a dry run reports the same refusal.
-    /// </summary>
-    private void RefuseLinkedComponents(string destinationPath)
-    {
-        string root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(_path));
-        string current = root;
-        foreach (string component in Path.GetRelativePath(root, Path.GetFullPath(destinationPath)).Split(Path.DirectorySeparatorChar))
-        {
-            current = Path.Combine(current, component);
-            if (!RefuseLink(current))
-            {
-                return;
-            }
-        }
-    }
-
-    /// <summary>
-    /// Throws when the entry at <paramref name="path"/> is a link; returns whether an entry exists there.
-    /// </summary>
-    private static bool RefuseLink(string path)
-    {
-        var directory = new DirectoryInfo(path);
-        FileSystemInfo entry = directory.Exists ? directory : new FileInfo(path);
-        if (entry.Exists && PathGuard.IsLink(entry))
-        {
-            throw new InvalidOperationException($"FolderOutput: '{path}' is a link; refusing to deliver through it.");
-        }
-
-        return entry.Exists;
     }
 
     /// <summary>
