@@ -21,6 +21,7 @@
 
                 <!-- Status pill: dot + Cold / Forge Lit -->
                 <StackPanel Grid.Column="0"
+                            AutomationProperties.AutomationId="ConsoleState"
                             Orientation="Horizontal"
                             Spacing="8"
                             VerticalAlignment="Center">
@@ -44,12 +45,31 @@
                                Foreground="{DynamicResource MwMoltenHi}"
                                VerticalAlignment="Center" />
                     <TextBlock Text="COLD"
-                               IsVisible="{Binding !IsRunning}"
                                FontFamily="{DynamicResource MwDisplay}"
                                FontSize="11" FontWeight="SemiBold"
                                LetterSpacing="2.2"
                                Foreground="{DynamicResource MwIronLite}"
-                               VerticalAlignment="Center" />
+                               VerticalAlignment="Center">
+                        <TextBlock.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                <Binding Path="!IsRunning" />
+                                <Binding Path="!IsDemo" />
+                            </MultiBinding>
+                        </TextBlock.IsVisible>
+                    </TextBlock>
+                    <TextBlock Text="DEMO"
+                               FontFamily="{DynamicResource MwDisplay}"
+                               FontSize="11" FontWeight="SemiBold"
+                               LetterSpacing="2.2"
+                               Foreground="{DynamicResource MwCyan}"
+                               VerticalAlignment="Center">
+                        <TextBlock.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                <Binding Path="IsDemo" />
+                                <Binding Path="!IsRunning" />
+                            </MultiBinding>
+                        </TextBlock.IsVisible>
+                    </TextBlock>
                 </StackPanel>
 
                 <Border Grid.Column="1"
@@ -58,10 +78,16 @@
                         VerticalAlignment="Center"
                         Margin="16,0" />
 
-                <!-- PID -->
+                <!-- PID (hidden in the demo: no run, so no process to name) -->
                 <StackPanel Grid.Column="2"
                             Orientation="Horizontal"
                             VerticalAlignment="Center">
+                    <StackPanel.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                            <Binding Path="!IsDemo" />
+                            <Binding Path="IsRunning" />
+                        </MultiBinding>
+                    </StackPanel.IsVisible>
                     <TextBlock Text="pid/"
                                FontFamily="{DynamicResource MwMono}"
                                FontSize="10"
@@ -135,6 +161,7 @@
                         </Grid>
                     </Border>
                     <TextBlock Grid.Column="2"
+                               AutomationProperties.AutomationId="ConsoleThroughput"
                                Text="{Binding ThroughputRate}"
                                FontFamily="{DynamicResource MwMono}"
                                FontSize="11"
@@ -147,13 +174,35 @@
 
                 <!-- Idle caption -->
                 <TextBlock Grid.Column="4"
-                           IsVisible="{Binding !IsRunning}"
+                           AutomationProperties.AutomationId="ConsoleIdleCaption"
                            Text="// awaiting ignition signal"
                            FontFamily="{DynamicResource MwMono}"
                            FontSize="10"
                            LetterSpacing="0.5"
                            Foreground="{DynamicResource MwFaint}"
-                           VerticalAlignment="Center" />
+                           VerticalAlignment="Center">
+                    <TextBlock.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                            <Binding Path="!IsRunning" />
+                            <Binding Path="!IsDemo" />
+                        </MultiBinding>
+                    </TextBlock.IsVisible>
+                </TextBlock>
+                <TextBlock Grid.Column="4"
+                           AutomationProperties.AutomationId="ConsoleDemoCaption"
+                           Text="// demo — no files touched"
+                           FontFamily="{DynamicResource MwMono}"
+                           FontSize="10"
+                           LetterSpacing="0.5"
+                           Foreground="{DynamicResource MwFaint}"
+                           VerticalAlignment="Center">
+                    <TextBlock.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                            <Binding Path="IsDemo" />
+                            <Binding Path="!IsRunning" />
+                        </MultiBinding>
+                    </TextBlock.IsVisible>
+                </TextBlock>
 
                 <!-- Right: flavor quote when running -->
                 <TextBlock Grid.Column="5"

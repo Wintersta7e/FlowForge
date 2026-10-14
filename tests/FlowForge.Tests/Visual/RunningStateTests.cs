@@ -64,6 +64,16 @@ public sealed class RunningStateTests
             editor.Connections.Should().OnlyContain(c => c.IsRunning, "DEMO mode lights every pipe");
             auras.Should().HaveCount(editor.Nodes.Count).And.OnlyContain(a => a.IsEffectivelyVisible);
             beadCanvases.Should().HaveCount(editor.Connections.Count).And.OnlyContain(c => c.IsEffectivelyVisible);
+
+            // The console names the demo and shows none of a run's readings.
+            List<string> pill = session.ShownText(session.ById<StackPanel>("ConsoleState"));
+            TextBlock caption = session.ById<TextBlock>("ConsoleDemoCaption");
+            string[] readings = ["ConsolePid", "ConsoleCount", "ConsoleThroughput"];
+            _output.WriteLine($"console pill={string.Join("|", pill)} caption='{caption.Text}' visible={caption.IsEffectivelyVisible} "
+                + string.Join(" ", readings.Select(id => $"{id}={session.ById<TextBlock>(id).IsEffectivelyVisible}")));
+            pill.Should().Equal("DEMO");
+            caption.IsEffectivelyVisible.Should().BeTrue();
+            readings.Should().OnlyContain(id => !session.ById<TextBlock>(id).IsEffectivelyVisible, "a demo has no process, count or throughput");
         }
         finally
         {

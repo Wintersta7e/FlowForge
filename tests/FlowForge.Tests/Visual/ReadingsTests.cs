@@ -98,6 +98,39 @@ public sealed class ReadingsTests
         }
     }
 
+    [AvaloniaFact]
+    public void DemoConsole_ShowsDemoStateWithoutReadings()
+    {
+        using var session = VisualSession.Open(_output);
+        MainWindowViewModel vm = session.ViewModel;
+        session.LoadTemplate(VisualSession.WebExportTemplate);
+
+        vm.IsDemoMode = true;
+        try
+        {
+            session.Pump();
+            string pill = string.Join("|", session.ShownText(session.ById<StackPanel>("ConsoleState")));
+            _output.WriteLine($"[demo] pill={pill}");
+            pill.Should().Be("DEMO", "the console names the demo, not a cold or lit forge");
+
+            TextBlock caption = session.ById<TextBlock>("ConsoleDemoCaption");
+            TextBlock idleCaption = session.ById<TextBlock>("ConsoleIdleCaption");
+            Dictionary<string, bool> readings = new[] { "ConsolePid", "ConsoleCount", "ConsoleThroughput" }
+                .ToDictionary(id => id, id => session.ById<TextBlock>(id).IsEffectivelyVisible, StringComparer.Ordinal);
+            _output.WriteLine($"[demo] caption='{caption.Text}' visible={caption.IsEffectivelyVisible} idle-caption visible={idleCaption.IsEffectivelyVisible}");
+            _output.WriteLine("[demo] " + string.Join(" ", readings.Select(r => $"{r.Key} visible={r.Value}")));
+            caption.IsEffectivelyVisible.Should().BeTrue();
+            caption.Text.Should().Be("// demo — no files touched");
+            idleCaption.IsEffectivelyVisible.Should().BeFalse("the idle caption gives way to the demo caption");
+            readings.Should().OnlyContain(r => !r.Value, "a demo touches no files, so it has no process, count or throughput to show");
+        }
+        finally
+        {
+            // The beads animate for as long as DEMO mode is on; stop it before the window closes.
+            vm.IsDemoMode = false;
+        }
+    }
+
     private static string Slot(VisualSession session, string automationId) =>
         session.ById<TextBlock>(automationId).Text ?? string.Empty;
 

@@ -103,6 +103,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     partial void OnIsDemoModeChanged(bool value)
     {
+        ExecutionLog.IsDemo = value;
         UpdateRunningVisual();
     }
 

@@ -35,6 +35,10 @@ public partial class ExecutionLogViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(ProcessIdHex))]
     private bool _isRunning;
 
+    // The editor's DEMO mode: the canvas animates, but no run touches any file.
+    [ObservableProperty]
+    private bool _isDemo;
+
     [ObservableProperty]
     private string? _summary;
 

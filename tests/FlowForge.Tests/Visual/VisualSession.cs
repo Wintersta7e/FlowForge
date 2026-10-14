@@ -252,6 +252,13 @@ internal sealed class VisualSession : IDisposable
         Window.GetVisualDescendants().OfType<T>()
             .Single(control => string.Equals(AutomationProperties.GetAutomationId(control), automationId, StringComparison.Ordinal));
 
+    // The text a control shows: its effectively visible TextBlocks, in tree order.
+    public List<string> ShownText(Control container) =>
+        container.GetVisualDescendants().OfType<TextBlock>()
+            .Where(t => t.IsEffectivelyVisible)
+            .Select(t => t.Text ?? string.Empty)
+            .ToList();
+
     public List<ItemContainer> Stations() =>
         Window.GetVisualDescendants().OfType<ItemContainer>()
             .Where(c => c.DataContext is PipelineNodeViewModel && c.Bounds.Width > 0)
