@@ -177,4 +177,44 @@ public class PipelineRunnerTests
         Func<Task> act = () => runner.RunAsync(pipeline, ct: cts.Token);
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
+
+    [Fact]
+    public async Task Connection_from_an_unknown_source_node_is_refused()
+    {
+        using var dir = new TempDirectory();
+
+        PipelineGraph pipeline = PipelineBuilder
+            .New("Unknown Source Test")
+            .AddSource("FolderInput", new { path = dir.Path })
+            .AddOutput("FolderOutput", new { path = dir.OutputPath, mode = "copy" })
+            .Build();
+        Guid outputId = pipeline.Nodes[1].Id;
+        var missing = Guid.NewGuid();
+        pipeline.Connections.Add(new Connection { FromNode = missing, ToNode = outputId });
+
+        PipelineRunner runner = CreateRunner();
+        Func<Task> act = () => runner.RunAsync(pipeline, dryRun: false);
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage($"Connection references unknown source node: {missing}");
+    }
+
+    [Fact]
+    public async Task Connection_to_an_unknown_target_node_is_refused()
+    {
+        using var dir = new TempDirectory();
+
+        PipelineGraph pipeline = PipelineBuilder
+            .New("Unknown Target Test")
+            .AddSource("FolderInput", new { path = dir.Path })
+            .AddOutput("FolderOutput", new { path = dir.OutputPath, mode = "copy" })
+            .Build();
+        Guid inputId = pipeline.Nodes[0].Id;
+        var missing = Guid.NewGuid();
+        pipeline.Connections.Add(new Connection { FromNode = inputId, ToNode = missing });
+
+        PipelineRunner runner = CreateRunner();
+        Func<Task> act = () => runner.RunAsync(pipeline, dryRun: false);
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage($"Connection references unknown target node: {missing}");
+    }
 }
