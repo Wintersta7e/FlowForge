@@ -44,10 +44,9 @@ The same pipelines run from a desktop GUI or the command line
 Actively developed personal tool. The engine, node library, desktop UI, and CLI
 are all implemented and covered by an extensive test suite under
 strict analyzers (StyleCop + Meziantou, warnings-as-errors). FlowForge opens
-pipeline files saved by earlier versions; when a saved setting now behaves
-differently, the app lists the change before the first run and the CLI refuses
-to run the file until it is re-saved. Treat it as a working tool you can build
-and run, not a finished, packaged consumer app.
+pipeline files saved by earlier versions, and the CLI refuses to run a file
+whose saved settings now behave differently until it is re-saved. Treat it as a
+working tool you can build and run, not a finished, packaged consumer app.
 
 **Implemented:**
 - Visual node editor — drag-and-drop canvas, pan/zoom, wiring, rubber-band
