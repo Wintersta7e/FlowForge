@@ -4,7 +4,7 @@
 
 ### Installation
 
-Build from source:
+Build from source (requires the .NET 10 SDK):
 
 ```bash
 git clone https://github.com/Wintersta7e/FlowForge.git
@@ -246,7 +246,17 @@ Pipeline files are human-readable JSON and can be version-controlled or shared.
 
 ## CLI Runner
 
-Run pipelines from the command line for automation:
+Run pipelines from the command line for automation. From the source tree, run the CLI project directly:
+
+```bash
+dotnet run --project src/FlowForge.CLI -- run pipeline.ffpipe
+```
+
+Or publish it, which produces `flowforge` (`flowforge.exe` on Windows) in `<folder>`; the examples below call that command:
+
+```bash
+dotnet publish src/FlowForge.CLI -c Release -o <folder>
+```
 
 ```bash
 # Basic run

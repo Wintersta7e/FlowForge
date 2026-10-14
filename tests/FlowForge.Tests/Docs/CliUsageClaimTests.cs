@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 using FlowForge.Tests.Helpers;
 using FluentAssertions;
 using Xunit.Abstractions;
@@ -9,6 +10,7 @@ public partial class CliUsageClaimTests
 {
     private const string ProgramPrefix = "flowforge ";
     private const string ProjectMarker = "src/FlowForge.CLI --";
+    private const string PublishCommand = "dotnet publish src/FlowForge.CLI";
     private const string GuidePath = "docs/USER_GUIDE.md";
     private static readonly string[] DocumentPaths = ["README.md", GuidePath];
     private static readonly string[] HelpOptions = ["--help", "--version"];
@@ -67,30 +69,53 @@ public partial class CliUsageClaimTests
         ClaimCheck.Report(_output, "cli-usage", runOptions.Length, 5, mismatches);
     }
 
-    // Lines inside ``` fences that start "flowforge " or run the CLI project through "dotnet run".
-    private static IEnumerable<DocumentedLine> DocumentedLines(string path)
+    [Fact]
+    public void Docs_that_run_flowforge_say_how_to_build_it()
     {
-        string[] lines = File.ReadAllLines(RepoRoot.Combine(path.Split('/')));
-        bool inFence = false;
-        for (int i = 0; i < lines.Length; i++)
+        var mismatches = new List<string>();
+        int scanned = 0;
+        foreach (string path in DocumentPaths)
         {
-            string text = lines[i].Trim();
-            if (text.StartsWith("```", StringComparison.Ordinal))
+            var fenced = FencedLines(path).ToList();
+            int first = fenced.FindIndex(l => l.Text.StartsWith(ProgramPrefix, StringComparison.Ordinal));
+            if (first < 0)
             {
-                inFence = !inFence;
                 continue;
             }
 
+            scanned++;
+            if (!fenced.Exists(l => l.Text.StartsWith(PublishCommand, StringComparison.Ordinal)))
+            {
+                mismatches.Add($"{path}:{fenced[first].Line}: runs '{ProgramPrefix.Trim()}', but no fenced line starts '{PublishCommand}'");
+            }
+        }
+
+        string framework = XDocument.Load(RepoRoot.Combine("Directory.Build.props")).Descendants("TargetFramework").Single().Value;
+        string sdk = $".NET {framework["net".Length..].Split('.')[0]} SDK";
+        scanned++;
+        if (!File.ReadAllText(RepoRoot.Combine(GuidePath.Split('/'))).Contains(sdk, StringComparison.Ordinal))
+        {
+            mismatches.Add($"{GuidePath}:1: never names the {sdk} ({framework} in Directory.Build.props)");
+        }
+
+        ClaimCheck.Report(_output, "cli-build", scanned, 2, mismatches);
+    }
+
+    // Lines inside ``` fences that start "flowforge " or run the CLI project through "dotnet run".
+    private static IEnumerable<DocumentedLine> DocumentedLines(string path)
+    {
+        foreach ((int line, string text) in FencedLines(path))
+        {
             int marker = text.IndexOf(ProjectMarker, StringComparison.Ordinal);
             string? program = null;
             string[] tokens;
-            if (inFence && text.StartsWith(ProgramPrefix, StringComparison.Ordinal))
+            if (text.StartsWith(ProgramPrefix, StringComparison.Ordinal))
             {
                 tokens = Tokens(text);
                 program = tokens[0];
                 tokens = tokens[1..];
             }
-            else if (inFence && marker >= 0)
+            else if (marker >= 0)
             {
                 tokens = Tokens(text[(marker + ProjectMarker.Length)..]);
             }
@@ -101,7 +126,26 @@ public partial class CliUsageClaimTests
 
             string? command = tokens.Length > 0 && !tokens[0].StartsWith('-') ? tokens[0] : null;
             var options = tokens.Select(t => OptionToken().Match(t)).Where(m => m.Success && m.Index == 0).Select(m => m.Value).ToList();
-            yield return new DocumentedLine(path, i + 1, program, command, options);
+            yield return new DocumentedLine(path, line, program, command, options);
+        }
+    }
+
+    // The trimmed lines inside ``` fences, with their 1-based line numbers.
+    private static IEnumerable<(int Line, string Text)> FencedLines(string path)
+    {
+        string[] lines = File.ReadAllLines(RepoRoot.Combine(path.Split('/')));
+        bool inFence = false;
+        for (int i = 0; i < lines.Length; i++)
+        {
+            string text = lines[i].Trim();
+            if (text.StartsWith("```", StringComparison.Ordinal))
+            {
+                inFence = !inFence;
+            }
+            else if (inFence)
+            {
+                yield return (i + 1, text);
+            }
         }
     }
 
