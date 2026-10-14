@@ -94,17 +94,21 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
-      - run: dotnet restore
+      - run: dotnet restore -p:NuGetAudit=true -p:NuGetAuditMode=all -p:NuGetAuditLevel=low -p:TreatWarningsAsErrors=true
       - name: Report deprecated packages (informational)
         run: dotnet list package --deprecated --include-transitive || true
-      - name: Fail on vulnerable packages
+      - name: Report vulnerable packages (informational; suppressed advisories stay visible)
+        run: dotnet list package --vulnerable --include-transitive || true
+      - name: Every suppression must match a reported advisory
         shell: bash
         run: |
-          dotnet list package --vulnerable --include-transitive 2>&1 | tee vuln.txt
-          # Vulnerable entries are printed as table rows beginning with "> ".
-          if grep -qE '^\s*>\s' vuln.txt; then
-            echo "::error::Vulnerable package(s) detected:"
-            grep -E '^\s*>\s' vuln.txt
-            exit 1
-          fi
-          echo "No vulnerable packages."
+          dotnet list package --vulnerable --include-transitive --format json > vuln.json
+          jq -r '[.projects[].frameworks[]? | ((.topLevelPackages // []) + (.transitivePackages // []))[] | .vulnerabilities[]?.advisoryurl] | unique[]' vuln.json > found.txt
+          for p in $(jq -r '.projects[].path' vuln.json); do
+            dotnet msbuild "$p" -getItem:NuGetAuditSuppress | jq -r '.Items.NuGetAuditSuppress[]?.Identity'
+          done | sort -u > suppressed.txt
+          comm -13 found.txt suppressed.txt > stale.txt
+          projects=$(jq '.projects | length' vuln.json)
+          echo "projects: $projects; advisories: $(wc -l < found.txt); suppressed: $(wc -l < suppressed.txt); stale: $(wc -l < stale.txt)"
+          if [ "$projects" -eq 0 ]; then echo "::error::Audit scanned zero projects"; exit 1; fi
+          if [ -s stale.txt ]; then echo "::error::Suppression matches no reported advisory:"; cat stale.txt; exit 1; fi
