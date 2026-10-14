@@ -194,4 +194,30 @@ public class ImageResizeNodeTests
         job.Status.Should().NotBe(FileJobStatus.Failed);
         TiffTagReader.ReadCompression(job.CurrentPath).Should().Be(5, "TIFF output is written as LZW");
     }
+
+    [Fact(Timeout = 10000)]
+    public async Task BigTiff_input_fails_without_decoding()
+    {
+        using var dir = new TempDirectory();
+        string filePath = Path.Combine(dir.Path, "header.tiff");
+        TestFileFactory.CreateBigTiffHeader(filePath);
+        byte[] originalBytes = File.ReadAllBytes(filePath);
+
+        var node = new ImageResizeNode(NullLogger<ImageResizeNode>.Instance);
+        node.Configure(MakeConfig(new { width = 50 }));
+
+        var job = new FileJob
+        {
+            OriginalPath = filePath,
+            CurrentPath = filePath
+        };
+
+        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+
+        result.Should().ContainSingle().Which.Should().BeSameAs(job);
+        job.Status.Should().Be(FileJobStatus.Failed);
+        job.ErrorMessage.Should().MatchRegex("^ImageResize: .+");
+        Directory.GetFiles(dir.Path).Should().Equal(filePath);
+        File.ReadAllBytes(filePath).Should().Equal(originalBytes);
+    }
 }

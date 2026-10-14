@@ -82,6 +82,11 @@ public class ImageCompressNode : ITransformNode
             return new[] { job };
         }
 
+        if (await BigTiffGuard.RejectIfBigTiffAsync(job, TypeKey, _logger, ct).ConfigureAwait(false))
+        {
+            return new[] { job };
+        }
+
         string tmpPath = job.CurrentPath + $".{Guid.NewGuid():N}.tmp";
         try
         {

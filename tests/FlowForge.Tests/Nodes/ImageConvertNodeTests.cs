@@ -248,4 +248,56 @@ public class ImageConvertNodeTests
         job.Status.Should().NotBe(FileJobStatus.Failed);
         TiffTagReader.ReadCompression(job.CurrentPath).Should().Be(5, "TIFF output is written as LZW");
     }
+
+    [Fact(Timeout = 10000)]
+    public async Task BigTiff_input_fails_without_decoding()
+    {
+        using var dir = new TempDirectory();
+        string inputPath = Path.Combine(dir.Path, "header.tiff");
+        TestFileFactory.CreateBigTiffHeader(inputPath);
+        byte[] originalBytes = File.ReadAllBytes(inputPath);
+
+        var node = new ImageConvertNode(NullLogger<ImageConvertNode>.Instance);
+        node.Configure(MakeConfig(new { format = "png" }));
+
+        var job = new FileJob
+        {
+            OriginalPath = inputPath,
+            CurrentPath = inputPath
+        };
+
+        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+
+        result.Should().ContainSingle().Which.Should().BeSameAs(job);
+        job.Status.Should().Be(FileJobStatus.Failed);
+        job.ErrorMessage.Should().MatchRegex("^ImageConvert: .+");
+        Directory.GetFiles(dir.Path).Should().Equal(inputPath);
+        File.ReadAllBytes(inputPath).Should().Equal(originalBytes);
+    }
+
+    [Fact(Timeout = 10000)]
+    public async Task Big_endian_BigTiff_input_fails_without_decoding()
+    {
+        using var dir = new TempDirectory();
+        string inputPath = Path.Combine(dir.Path, "header.tiff");
+        TestFileFactory.CreateBigTiffHeader(inputPath, bigEndian: true);
+        byte[] originalBytes = File.ReadAllBytes(inputPath);
+
+        var node = new ImageConvertNode(NullLogger<ImageConvertNode>.Instance);
+        node.Configure(MakeConfig(new { format = "png" }));
+
+        var job = new FileJob
+        {
+            OriginalPath = inputPath,
+            CurrentPath = inputPath
+        };
+
+        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+
+        result.Should().ContainSingle().Which.Should().BeSameAs(job);
+        job.Status.Should().Be(FileJobStatus.Failed);
+        job.ErrorMessage.Should().MatchRegex("^ImageConvert: .+");
+        Directory.GetFiles(dir.Path).Should().Equal(inputPath);
+        File.ReadAllBytes(inputPath).Should().Equal(originalBytes);
+    }
 }

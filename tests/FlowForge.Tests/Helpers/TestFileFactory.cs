@@ -63,6 +63,21 @@ public static class TestFileFactory
         }
     }
 
+    /// <summary>Creates a 24-byte BigTIFF header whose first IFD claims 2^63-1 entries.</summary>
+    public static void CreateBigTiffHeader(string filePath, bool bigEndian = false)
+    {
+        string? dir = Path.GetDirectoryName(filePath);
+        if (dir != null)
+        {
+            Directory.CreateDirectory(dir);
+        }
+
+        byte[] header = bigEndian
+            ? new byte[] { 0x4D, 0x4D, 0x00, 0x2B, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x7F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF }
+            : new byte[] { 0x49, 0x49, 0x2B, 0x00, 0x08, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F };
+        File.WriteAllBytes(filePath, header);
+    }
+
     /// <summary>Returns the path of a committed image fixture copied to the test output; throws when it is absent.</summary>
     public static string ImageFixturePath(string fileName)
     {

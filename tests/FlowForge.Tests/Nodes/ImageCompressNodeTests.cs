@@ -245,4 +245,30 @@ public class ImageCompressNodeTests
         Func<Task> act = () => node.TransformAsync(job, dryRun: false, ct: cts.Token);
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
+
+    [Fact(Timeout = 10000)]
+    public async Task BigTiff_input_fails_without_decoding()
+    {
+        using var dir = new TempDirectory();
+        string filePath = Path.Combine(dir.Path, "header.tiff");
+        TestFileFactory.CreateBigTiffHeader(filePath);
+        byte[] originalBytes = File.ReadAllBytes(filePath);
+
+        var node = new ImageCompressNode(NullLogger<ImageCompressNode>.Instance);
+        node.Configure(MakeConfig(new { quality = 50 }));
+
+        var job = new FileJob
+        {
+            OriginalPath = filePath,
+            CurrentPath = filePath
+        };
+
+        IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
+
+        result.Should().ContainSingle().Which.Should().BeSameAs(job);
+        job.Status.Should().Be(FileJobStatus.Failed);
+        job.ErrorMessage.Should().MatchRegex("^ImageCompress: .+");
+        Directory.GetFiles(dir.Path).Should().Equal(filePath);
+        File.ReadAllBytes(filePath).Should().Equal(originalBytes);
+    }
 }

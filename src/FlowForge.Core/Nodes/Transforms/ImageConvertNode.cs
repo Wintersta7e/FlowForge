@@ -94,6 +94,11 @@ public class ImageConvertNode : ITransformNode
             return new[] { job };
         }
 
+        if (await BigTiffGuard.RejectIfBigTiffAsync(job, TypeKey, _logger, ct).ConfigureAwait(false))
+        {
+            return new[] { job };
+        }
+
         return new[] { await ConvertImageAsync(job, newPath, ct).ConfigureAwait(false) };
     }
 
