@@ -1,4 +1,7 @@
+using System.Text.Json;
 using FlowForge.Core.Execution;
+using FlowForge.Core.Models;
+using FlowForge.Core.Nodes.Base;
 using FlowForge.Core.Pipeline;
 using FlowForge.Tests.Helpers;
 using FluentAssertions;
@@ -147,6 +150,36 @@ public class PipelineRoutingTests
         names.Should().BePositive();
     }
 
+    [Fact]
+    public async Task Output_concurrency_never_exceeds_the_cap()
+    {
+        const int cap = 2;
+        using var dir = new TempDirectory();
+        dir.CreateFiles("a.txt", "b.txt", "c.txt", "d.txt", "e.txt", "f.txt");
+        var counter = new PeakCountingOutput(cap);
+        var registry = NodeRegistry.CreateDefault(NullLoggerFactory.Instance);
+        registry.Register<PeakCountingOutput>(
+            PeakCountingOutput.RegisteredTypeKey,
+            () => counter,
+            "Peak Counter",
+            NodeCategory.Output,
+            () => Array.Empty<ConfigField>());
+        PipelineGraph graph = PipelineBuilder.New()
+            .AddSource("FolderInput", new { path = dir.Path, recursive = false })
+            .AddOutput(PeakCountingOutput.RegisteredTypeKey, new { })
+            .Build();
+        var runner = new PipelineRunner(registry, NullLogger<PipelineRunner>.Instance, maxConcurrency: cap);
+
+        // A runner that never lets two calls overlap would leave the first call waiting; fail instead of hanging.
+        using var hangGuard = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        ExecutionResult result = await runner.RunAsync(graph, dryRun: false, ct: hangGuard.Token);
+
+        _output.WriteLine($"[concurrency] cap={cap} peak={counter.Peak} calls={counter.Calls}");
+        counter.Calls.Should().Be(6);
+        result.Succeeded.Should().Be(6);
+        counter.Peak.Should().Be(cap);
+    }
+
     private static PipelineRunner CreateRunner(int maxConcurrency = 2) =>
         new(NodeRegistry.CreateDefault(NullLoggerFactory.Instance), NullLogger<PipelineRunner>.Instance, maxConcurrency);
 
@@ -154,4 +187,73 @@ public class PipelineRoutingTests
         Directory.GetFiles(dir.Path).Select(f => Path.GetFileName(f)).ToArray();
 
     private static Connection Wire(NodeDefinition from, NodeDefinition to) => new() { FromNode = from.Id, ToNode = to.Id };
+
+    /// <summary>
+    /// Records the most consume calls in flight at once. Every call waits until the cap is in flight
+    /// together, so the peak reaches the cap whenever the runner allows that many.
+    /// </summary>
+    private sealed class PeakCountingOutput : IOutputNode
+    {
+        public const string RegisteredTypeKey = "PeakCounter";
+
+        private readonly int _cap;
+        private readonly Lock _sync = new();
+        private readonly TaskCompletionSource _capReached = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _inFlight;
+        private int _peak;
+        private int _calls;
+
+        public PeakCountingOutput(int cap) => _cap = cap;
+
+        public string TypeKey => RegisteredTypeKey;
+
+        public int Peak
+        {
+            get
+            {
+                lock (_sync)
+                {
+                    return _peak;
+                }
+            }
+        }
+
+        public int Calls
+        {
+            get
+            {
+                lock (_sync)
+                {
+                    return _calls;
+                }
+            }
+        }
+
+        public void Configure(IDictionary<string, JsonElement> config)
+        {
+        }
+
+        public async Task ConsumeAsync(FileJob job, bool dryRun, CancellationToken ct = default)
+        {
+            lock (_sync)
+            {
+                _calls++;
+                _inFlight++;
+                _peak = Math.Max(_peak, _inFlight);
+                if (_inFlight >= _cap)
+                {
+                    _capReached.TrySetResult();
+                }
+            }
+
+            await _capReached.Task.WaitAsync(ct);
+
+            // Leave asynchronously, so a loop without a cap would start the next call while this one still counts.
+            await Task.Yield();
+            lock (_sync)
+            {
+                _inFlight--;
+            }
+        }
+    }
 }
