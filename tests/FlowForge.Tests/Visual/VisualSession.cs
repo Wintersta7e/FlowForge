@@ -1,0 +1,292 @@
+using System.Diagnostics;
+using System.Runtime.InteropServices;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Headless;
+using Avalonia.Media;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform;
+using Avalonia.Threading;
+using FlowForge.Core.Execution;
+using FlowForge.Core.Settings;
+using FlowForge.Tests.Helpers;
+using FlowForge.UI;
+using FlowForge.UI.ViewModels;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Xunit.Abstractions;
+using Xunit.Sdk;
+
+namespace FlowForge.Tests.Visual;
+
+/// <summary>
+/// One real themed main window, rendered headless in-process, with every input the view
+/// model reads isolated in a temp directory. Tests reach a state by pumping the dispatcher
+/// and the render timer until a condition holds, never by waiting on the clock.
+/// </summary>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Pump and the frame readers are session members: tests reach every harness step through the session they opened.")]
+internal sealed class VisualSession : IDisposable
+{
+    private const string ConfigHomeVariable = "XDG_CONFIG_HOME";
+
+    private static readonly TimeSpan DefaultDeadline = TimeSpan.FromSeconds(3);
+    private static readonly Lazy<string> ClearedFrameDirectory = new(ClearFrameDirectory);
+    private static readonly Lock WrittenFramesLock = new();
+    private static readonly HashSet<string> WrittenFrames = new(StringComparer.Ordinal);
+
+    // Every window currently open in the process, kept by class handlers on the UI thread.
+    private static readonly HashSet<Window> OpenWindows = [];
+
+    private readonly ITestOutputHelper _output;
+    private readonly bool _configHomeSet;
+    private readonly string? _previousConfigHome;
+    private readonly ServiceProvider? _provider;
+    private bool _disposed;
+
+    static VisualSession()
+    {
+        Avalonia.Controls.Window.WindowOpenedEvent.AddClassHandler<Window>((window, _) => OpenWindows.Add(window));
+        Avalonia.Controls.Window.WindowClosedEvent.AddClassHandler<Window>((window, _) => OpenWindows.Remove(window));
+    }
+
+    private VisualSession(ITestOutputHelper output, Size? window, ILoggerProvider? loggerProvider)
+    {
+        _output = output;
+        Temp = new TempDirectory();
+        SettingsPath = Path.Combine(Temp.Path, "settings.json");
+        try
+        {
+            // Before anything reads the user's config folder: a directory that does not
+            // exist would make the folder lookup fall back to a relative path.
+            if (OperatingSystem.IsLinux())
+            {
+                string configHome = Path.Combine(Temp.Path, "xdg");
+                Directory.CreateDirectory(configHome);
+                _previousConfigHome = Environment.GetEnvironmentVariable(ConfigHomeVariable);
+                Environment.SetEnvironmentVariable(ConfigHomeVariable, configHome);
+                _configHomeSet = true;
+                _output.WriteLine($"{ConfigHomeVariable}={configHome}");
+            }
+
+            var services = new ServiceCollection();
+            services.AddLogging(builder =>
+            {
+                builder.SetMinimumLevel(LogLevel.Debug);
+                if (loggerProvider is not null)
+                {
+                    builder.AddProvider(loggerProvider);
+                }
+            });
+            services.AddSingleton(sp => NodeRegistry.CreateDefault(sp.GetRequiredService<ILoggerFactory>()));
+            services.AddTransient(sp => new PipelineRunner(
+                sp.GetRequiredService<NodeRegistry>(),
+                sp.GetRequiredService<ILogger<PipelineRunner>>()));
+            _provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
+
+            Dialogs = new StubDialogService();
+            ViewModel = new MainWindowViewModel(
+                _provider.GetRequiredService<ILogger<MainWindowViewModel>>(),
+                new AppSettingsManager(SettingsPath, _provider.GetRequiredService<ILogger<AppSettingsManager>>()),
+                _provider.GetRequiredService<NodeRegistry>(),
+                new EditorViewModel(_provider.GetRequiredService<ILogger<EditorViewModel>>()),
+                Dialogs,
+                _provider);
+            Window = new MainWindow { DataContext = ViewModel };
+            if (window is { } size)
+            {
+                Window.Width = size.Width;
+                Window.Height = size.Height;
+            }
+
+            Window.Show();
+
+            // Recent-pipeline tracking waits on this; without it a save never completes.
+            Task initialized = ViewModel.InitializeAsync();
+            RenderUntil(() => initialized.IsCompleted, "settings initialised");
+            initialized.GetAwaiter().GetResult();
+        }
+        catch
+        {
+            Dispose();
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Where frames are written. The first read in a test process clears the folder,
+    /// so a frame or manifest from an earlier run is never mistaken for this run's.
+    /// </summary>
+    public static string FrameDirectory => ClearedFrameDirectory.Value;
+
+    public MainWindow Window { get; }
+
+    public MainWindowViewModel ViewModel { get; }
+
+    public StubDialogService Dialogs { get; }
+
+    public string SettingsPath { get; }
+
+    public TempDirectory Temp { get; }
+
+    public static VisualSession Open(ITestOutputHelper output, Size? window = null, ILoggerProvider? loggerProvider = null) =>
+        new(output, window, loggerProvider);
+
+    public void Pump()
+    {
+        Dispatcher.UIThread.RunJobs();
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+    }
+
+    public void RenderUntil(Func<bool> condition, string what) => RenderUntil(condition, DefaultDeadline, what);
+
+    public void RenderUntil(Func<bool> condition, TimeSpan deadline, string what)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        int iterations = 0;
+        while (!condition())
+        {
+            if (stopwatch.Elapsed > deadline)
+            {
+                throw new XunitException(
+                    $"Not reached within {deadline.TotalMilliseconds} ms: {what} " +
+                    $"({stopwatch.ElapsedMilliseconds} ms, {iterations} iterations).");
+            }
+
+            Pump();
+            iterations++;
+        }
+
+        _output.WriteLine($"[render-until] {what}: {iterations} iterations, {stopwatch.ElapsedMilliseconds} ms");
+    }
+
+    public WriteableBitmap Capture(string frameId) => Capture(frameId, Window);
+
+    public WriteableBitmap Capture(string frameId, TopLevel source)
+    {
+        if (!VisualFrames.IsDeclared(frameId))
+        {
+            throw new XunitException($"Frame id '{frameId}' is not declared in {nameof(VisualFrames)}.");
+        }
+
+        string directory = FrameDirectory;
+        lock (WrittenFramesLock)
+        {
+            if (!WrittenFrames.Add(frameId))
+            {
+                throw new XunitException($"Frame '{frameId}' was already written in this test process.");
+            }
+        }
+
+        var stopwatch = Stopwatch.StartNew();
+        Pump();
+        WriteableBitmap frame = source.CaptureRenderedFrame()
+            ?? throw new XunitException($"Frame '{frameId}': nothing was rendered.");
+        frame.Save(Path.Combine(directory, frameId + ".png"));
+        _output.WriteLine($"[frame] {frameId} {frame.PixelSize.Width}x{frame.PixelSize.Height} {stopwatch.ElapsedMilliseconds} ms");
+        return frame;
+    }
+
+    public Color MeanColour(WriteableBitmap frame, PixelRect band)
+    {
+        long a = 0, r = 0, g = 0, b = 0;
+        ForEachPixel(frame, band, pixel =>
+        {
+            a += pixel.A;
+            r += pixel.R;
+            g += pixel.G;
+            b += pixel.B;
+        });
+        long count = (long)band.Width * band.Height;
+        return Color.FromArgb((byte)(a / count), (byte)(r / count), (byte)(g / count), (byte)(b / count));
+    }
+
+    public int CountDistinctColours(WriteableBitmap frame)
+    {
+        var colours = new HashSet<uint>();
+        ForEachPixel(frame, new PixelRect(frame.PixelSize), pixel => colours.Add(pixel.ToUInt32()));
+        return colours.Count;
+    }
+
+    // Headless rendering runs at scale 1, so these are also the pixel bounds in a captured frame.
+    public PixelRect BoundsInWindow(Avalonia.Visual visual)
+    {
+        TopLevel topLevel = TopLevel.GetTopLevel(visual)
+            ?? throw new InvalidOperationException($"{visual.GetType().Name} is not in a window.");
+        Matrix transform = visual.TransformToVisual(topLevel)
+            ?? throw new InvalidOperationException($"{visual.GetType().Name} has no transform to its window.");
+        return PixelRect.FromRect(new Rect(visual.Bounds.Size).TransformToAABB(transform), topLevel.RenderScaling);
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        try
+        {
+            // Owned and fixture windows first, the main window last.
+            var closing = OpenWindows.OrderBy(w => ReferenceEquals(w, Window)).ToList();
+            _output.WriteLine($"closing-windows={closing.Count}");
+            foreach (Window open in closing)
+            {
+                open.Close();
+            }
+
+            RenderUntil(() => OpenWindows.Count == 0, "every window closed");
+            _output.WriteLine($"open-windows={OpenWindows.Count}");
+        }
+        finally
+        {
+            _provider?.Dispose();
+            if (_configHomeSet)
+            {
+                Environment.SetEnvironmentVariable(ConfigHomeVariable, _previousConfigHome);
+            }
+
+            Temp.Dispose();
+        }
+    }
+
+    private static string ClearFrameDirectory()
+    {
+        string directory = RepoRoot.Combine("TestResults", "visual");
+        if (Directory.Exists(directory))
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+
+        Directory.CreateDirectory(directory);
+        return directory;
+    }
+
+    // Reads the band row by row through the locked framebuffer; the test project allows no unsafe code.
+    private static void ForEachPixel(WriteableBitmap frame, PixelRect band, Action<Color> visit)
+    {
+        using ILockedFramebuffer buffer = frame.Lock();
+        bool rgba = buffer.Format == PixelFormat.Rgba8888;
+        if (!rgba && buffer.Format != PixelFormat.Bgra8888)
+        {
+            throw new NotSupportedException($"Frame pixel format {buffer.Format} is neither Rgba8888 nor Bgra8888.");
+        }
+
+        if (band.Width <= 0 || band.Height <= 0 || !new PixelRect(buffer.Size).Contains(band))
+        {
+            throw new ArgumentOutOfRangeException(nameof(band), band, $"The band must be a non-empty part of the {buffer.Size} frame.");
+        }
+
+        byte[] row = new byte[band.Width * 4];
+        for (int y = band.Y; y < band.Bottom; y++)
+        {
+            Marshal.Copy(buffer.Address + (y * buffer.RowBytes) + (band.X * 4), row, 0, row.Length);
+            for (int i = 0; i < row.Length; i += 4)
+            {
+                visit(rgba
+                    ? Color.FromArgb(row[i + 3], row[i], row[i + 1], row[i + 2])
+                    : Color.FromArgb(row[i + 3], row[i + 2], row[i + 1], row[i]));
+            }
+        }
+    }
+}

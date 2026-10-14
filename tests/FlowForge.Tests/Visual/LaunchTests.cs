@@ -1,5 +1,9 @@
 using System.Text.Json;
+using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
+using Avalonia.Media.Imaging;
+using Avalonia.VisualTree;
 using FlowForge.Core.Settings;
 using FlowForge.Tests.Helpers;
 using FlowForge.UI;
@@ -46,6 +50,45 @@ public sealed class LaunchTests
         _output.WriteLine($"configure-services-call-sites={callSites.Count}");
         callSites.Should().ContainSingle().Which.Should().StartWith("App.axaml.cs:");
     }
+
+    [AvaloniaFact]
+    public void Launch_shows_themed_empty_editor()
+    {
+        using var session = VisualSession.Open(_output);
+        using WriteableBitmap frame = session.Capture(VisualFrames.Launch);
+
+        int colours = session.CountDistinctColours(frame);
+        string? configHome = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
+        _output.WriteLine($"Application = {Application.Current?.GetType().FullName}");
+        _output.WriteLine($"lifetime = {Application.Current?.ApplicationLifetime?.GetType().Name ?? "null"}");
+        _output.WriteLine($"frame = {frame.PixelSize.Width}x{frame.PixelSize.Height} colours={colours}");
+        _output.WriteLine($"settings = {session.SettingsPath}");
+        if (OperatingSystem.IsLinux())
+        {
+            _output.WriteLine($"XDG_CONFIG_HOME = {configHome}");
+        }
+
+        session.ViewModel.Editor.Nodes.Should().BeEmpty();
+        session.Window.IsVisible.Should().BeTrue();
+        EmptyStateOverlay(session.Window).IsEffectivelyVisible.Should().BeTrue();
+        frame.PixelSize.Should().Be(new PixelSize(1400, 820));
+        colours.Should().BeGreaterThanOrEqualTo(500, "the themed window paints far more than a blank surface");
+        Application.Current.Should().BeOfType<App>();
+        Application.Current!.ApplicationLifetime.Should().BeNull();
+        session.SettingsPath.Should().StartWith(session.Temp.Path + Path.DirectorySeparatorChar);
+        if (OperatingSystem.IsLinux())
+        {
+            Directory.Exists(configHome).Should().BeTrue("the session points XDG_CONFIG_HOME at a created directory");
+            Path.GetFullPath(configHome!).Should().StartWith(Path.GetTempPath());
+        }
+    }
+
+    // The canvas overlay shown while the editor has no nodes: the nearest border around its headline.
+    private static Border EmptyStateOverlay(Window window) =>
+        window.GetVisualDescendants().OfType<TextBlock>()
+            .Single(t => string.Equals(t.Text, "Build your pipeline", StringComparison.Ordinal))
+            .FindAncestorOfType<Border>()
+            ?? throw new InvalidOperationException("The empty-state headline has no border around it.");
 
     // Every line under src/FlowForge.UI (build output excluded) that calls ConfigureServices, as "file:line".
     private static List<string> ConfigureServicesCallSites()
