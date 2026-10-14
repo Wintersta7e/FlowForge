@@ -44,8 +44,14 @@ if [ -n "$filter" ]; then
 fi
 test_rc=0
 dotnet "${test_args[@]}" || test_rc=$?
+# A full run must also have executed the visual tests; a filtered run of
+# other tests legitimately runs none.
+trx_args=(TestResults/gate)
+if [ -z "$filter" ]; then
+    trx_args+=(--require-prefix FlowForge.Tests.Visual.)
+fi
 trx_rc=0
-trx_out=$(bash scripts/check-trx.sh TestResults/gate 2>&1) || trx_rc=$?
+trx_out=$(bash scripts/check-trx.sh "${trx_args[@]}" 2>&1) || trx_rc=$?
 printf '%s\n' "$trx_out"
 if [ "$test_rc" -ne 0 ]; then
     echo "FAIL: dotnet test exited $test_rc" >&2
@@ -57,14 +63,51 @@ fi
 passed=$(printf '%s\n' "$trx_out" | grep -o ' passed=[0-9]*' | grep -o '[0-9][0-9]*')
 total=$(printf '%s\n' "$trx_out" | grep -o '^total=[0-9]*' | grep -o '[0-9][0-9]*')
 
-# Step 6 (rendered-frame check) is added with the visual test harness.
+echo "== 6 frames"
+# The visual tests write one PNG per declared frame plus the manifest of
+# declared ids; a full run fails unless the two sets are equal.
+frame_dir="$PWD/TestResults/visual"
+manifest="$frame_dir/expected-frames.txt"
+found_ids=""
+if [ -d "$frame_dir" ]; then
+    found_ids=$(find "$frame_dir" -maxdepth 1 -type f -name '*.png' -exec basename {} .png \; | LC_ALL=C sort)
+fi
+found=$(printf '%s\n' "$found_ids" | grep -c . || true)
+if [ -n "$filter" ]; then
+    echo "frames=$found"
+else
+    if [ ! -f "$manifest" ]; then
+        echo "frames=$found"
+        echo "FAIL: no frame manifest at $manifest" >&2
+        exit 1
+    fi
+    expected_ids=$(LC_ALL=C sort "$manifest")
+    expected=$(printf '%s\n' "$expected_ids" | grep -c . || true)
+    echo "frames=$found/$expected"
+    if [ "$expected" -eq 0 ]; then
+        echo "FAIL: the frame manifest lists no frames: $manifest" >&2
+        exit 1
+    fi
+    missing=$(LC_ALL=C comm -23 <(printf '%s\n' "$expected_ids") <(printf '%s\n' "$found_ids") | grep . || true)
+    extra=$(LC_ALL=C comm -13 <(printf '%s\n' "$expected_ids") <(printf '%s\n' "$found_ids") | grep . || true)
+    if [ -n "$missing" ]; then
+        printf '%s\n' "$missing" | sed 's/^/missing /'
+    fi
+    if [ -n "$extra" ]; then
+        printf '%s\n' "$extra" | sed 's/^/extra /'
+    fi
+    if [ -n "$missing" ] || [ -n "$extra" ]; then
+        echo "FAIL: written frames differ from the manifest" >&2
+        exit 1
+    fi
+fi
 
 echo "== 7 format"
 dotnet format FlowForge.sln --verify-no-changes --no-restore
 
 echo "== 8 result"
 if [ -n "$filter" ]; then
-    echo "PARTIAL filter=$filter sha=$sha dirty=$dirty tests=$passed/$total"
+    echo "PARTIAL filter=$filter sha=$sha dirty=$dirty tests=$passed/$total frames=$found"
 else
-    echo "GATE PASS sha=$sha dirty=$dirty tests=$passed/$total"
+    echo "GATE PASS sha=$sha dirty=$dirty tests=$passed/$total frames=$found dir=$frame_dir"
 fi

@@ -3,7 +3,7 @@ using FluentAssertions;
 using FlowForge.Core.Execution;
 using FlowForge.Core.Pipeline;
 using FlowForge.Core.Settings;
-using FlowForge.UI.Services;
+using FlowForge.Tests.Helpers;
 using FlowForge.UI.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -162,14 +162,5 @@ public class MainWindowViewModelTests
             Config = new Dictionary<string, JsonElement>(StringComparer.Ordinal),
         };
         return new PipelineNodeViewModel(definition, vm.Registry);
-    }
-
-    private sealed class StubDialogService : IDialogService
-    {
-        public Task<string?> OpenFileAsync(string title, string filter) => Task.FromResult<string?>(null);
-
-        public Task<string?> SaveFileAsync(string title, string filter, string? defaultName) => Task.FromResult<string?>(null);
-
-        public Task<string?> OpenFolderAsync(string title) => Task.FromResult<string?>(null);
     }
 }
