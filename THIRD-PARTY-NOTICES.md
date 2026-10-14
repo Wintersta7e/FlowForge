@@ -4,7 +4,7 @@ FlowForge is distributed under the MIT License (see [`LICENSE`](./LICENSE)). It 
 
 ## Fonts
 
-The FlowForge desktop app embeds three open-source font families under the SIL Open Font License, Version 1.1. The full licence text and the per-font copyright notices are shipped alongside the font files at [`src/FlowForge.UI/Assets/Fonts/OFL.txt`](./src/FlowForge.UI/Assets/Fonts/OFL.txt) and are copied into the published binary next to the `.ttf` files in every release zip.
+The FlowForge desktop app embeds three open-source font families under the SIL Open Font License, Version 1.1. The full licence text and the per-font copyright notices are shipped alongside the font files at [`src/FlowForge.UI/Assets/Fonts/OFL.txt`](./src/FlowForge.UI/Assets/Fonts/OFL.txt) and are copied inside the published folder at `Assets/Fonts/OFL.txt`.
 
 | Font | Upstream | Licence |
 | --- | --- | --- |

@@ -97,13 +97,13 @@ working tool you can build and run, not a finished, packaged consumer app.
 | Layer | Choice | Notes |
 |---|---|---|
 | Core | .NET 10, C# 14 | Pure logic, no UI references; strict analyzers from commit one |
-| UI | Avalonia 11 (MVVM) | Cross-platform desktop; CommunityToolkit.Mvvm |
-| Node graph | Nodify.Avalonia | Canvas, pan/zoom, typed-port wiring |
-| Images | SixLabors.ImageSharp | Resize, convert, compress |
-| Metadata | MetadataExtractor | EXIF / file-metadata reads |
-| Logging | Microsoft.Extensions.Logging + Serilog | `ILogger<T>` everywhere; console + rolling file |
-| DI | Microsoft.Extensions.DependencyInjection | `AddFlowForgeCore()` composition root |
-| CLI | System.CommandLine | Subcommands + global flags |
+| UI | `Avalonia` 11 (MVVM), `CommunityToolkit.Mvvm` | Cross-platform desktop |
+| Node graph | `Nodify.Avalonia` | Canvas, pan/zoom, typed-port wiring |
+| Images | `SixLabors.ImageSharp` | Resize, convert, compress |
+| Metadata | `MetadataExtractor` | EXIF / file-metadata reads |
+| Logging | `Microsoft.Extensions.Logging` + `Serilog` | `ILogger<T>` everywhere; console + rolling file |
+| DI | `Microsoft.Extensions.DependencyInjection` | `AddFlowForgeCore()` composition root |
+| CLI | `System.CommandLine` | `run` command |
 | Tests | xUnit + FluentAssertions + Bogus | Linux and Windows CI legs |
 
 ## Quick Start
