@@ -110,6 +110,9 @@ internal sealed class TreeSnapshot
 
     private static Entry Record(FileSystemInfo info)
     {
+        // Enumeration data comes from the parent folder's index, which Windows updates lazily: a
+        // later listing of the folder moves it. Read each entry's times and size from the entry.
+        info.Refresh();
         if (info.LinkTarget is string target)
         {
             return new Entry("link", null, target, null, null);
