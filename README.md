@@ -29,7 +29,8 @@ I built FlowForge for myself — a repeatable way to run the same boring file
 chores (rename a folder of photos by date, resize a batch for the web, strip
 metadata before sharing) without hand-writing a throwaway script every time.
 It's **local-first**, **offline-capable**, and sends **no telemetry** — no
-account, no network call, nothing leaves your machine.
+account and no network calls of its own; a folder on a network share is reached
+through the operating system like any other path.
 
 It's a personal tool, not a product — but it's open source under MIT, and if it
 looks useful to you, you're welcome to clone it and give it a try. There's no
@@ -147,7 +148,7 @@ FlowForge/
 
 ## Design Principles
 
-1. **Local-first.** No network calls, no telemetry, no account — everything runs on your machine.
+1. **Local-first.** No network calls of its own, no telemetry, no account — everything runs on your machine, and a folder on a network share is reached through the operating system like any other path.
 2. **Layered and testable.** `FlowForge.Core` is pure logic with no UI references; the UI and CLI are thin composition roots over the same engine.
 3. **CLI is first-class.** Anything a pipeline does in the GUI runs headless from the CLI, with JSON output and a clear exit-code contract for scripting.
 4. **Safe by default.** Dry-run writes, moves and deletes nothing, path guards stop a rename or a delivery from escaping its folder, and overwrite-with-backup is opt-in.
@@ -160,4 +161,4 @@ FlowForge/
 
 ---
 
-FlowForge is a personal tool — built for everyday file chores, with no telemetry, analytics, or network calls.
+FlowForge is a personal tool — built for everyday file chores, with no telemetry or analytics and no network calls of its own (a folder on a network share is reached through the operating system like any other path).
