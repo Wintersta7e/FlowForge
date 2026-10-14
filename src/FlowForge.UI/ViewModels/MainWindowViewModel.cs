@@ -18,7 +18,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FlowForge.UI.ViewModels;
 
-[System.Diagnostics.CodeAnalysis.SuppressMessage("IDisposable", "CA1001", Justification = "CTS and event subscriptions are singleton-scoped; disposed on app shutdown via DI container")]
+[System.Diagnostics.CodeAnalysis.SuppressMessage("IDisposable", "CA1001", Justification = "The run CancellationTokenSource is disposed at the end of each run; the view model is an app-lifetime singleton and is not IDisposable")]
 public partial class MainWindowViewModel : ViewModelBase
 {
     private readonly NodeRegistry _registry;
@@ -270,14 +270,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 ExecutionLog.Summary = $"Loaded with {droppedConnections} dropped connection(s).";
             }
         }
-        catch (FileNotFoundException)
-        {
-            RemoveRecentPipeline(_appSettings.RecentPipelines, path);
-            RefreshRecentPipelines();
-            await _settingsManager.SaveAsync(_appSettings);
-            ExecutionLog.Summary = $"File not found: {Path.GetFileName(path)}";
-        }
-        catch (DirectoryNotFoundException)
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
         {
             RemoveRecentPipeline(_appSettings.RecentPipelines, path);
             RefreshRecentPipelines();
