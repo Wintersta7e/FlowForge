@@ -3,7 +3,7 @@ using FlowForge.Tests.Helpers;
 using FluentAssertions;
 using Xunit.Abstractions;
 
-namespace FlowForge.Tests.Repo;
+namespace FlowForge.Tests.Repository;
 
 // Members deleted because nothing read them. A whole-identifier scan of src/ keeps them from
 // coming back unnoticed.
