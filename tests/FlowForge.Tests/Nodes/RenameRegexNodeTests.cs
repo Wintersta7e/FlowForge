@@ -1,15 +1,22 @@
 using System.Text.Json;
 using FluentAssertions;
+using FlowForge.Core.Execution;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Transforms;
 using FlowForge.Core.Nodes.Base;
+using FlowForge.Core.Pipeline;
 using FlowForge.Tests.Helpers;
 using Microsoft.Extensions.Logging.Abstractions;
+using Xunit.Abstractions;
 
 namespace FlowForge.Tests.Nodes;
 
 public class RenameRegexNodeTests
 {
+    private readonly ITestOutputHelper _output;
+
+    public RenameRegexNodeTests(ITestOutputHelper output) => _output = output;
+
     private static Dictionary<string, JsonElement> MakeConfig(object obj)
     {
         string json = JsonSerializer.Serialize(obj);
@@ -247,4 +254,68 @@ public class RenameRegexNodeTests
         job.Status.Should().Be(FileJobStatus.Failed);
         job.ErrorMessage.Should().Contain("path-like filename");
     }
+
+    [Fact]
+    public async Task Case_only_rename_never_delivers_a_sibling()
+    {
+        using var dir = new TempDirectory();
+        string input = Path.Combine(dir.Path, "in");
+        string output = Path.Combine(dir.Path, "out");
+        Directory.CreateDirectory(input);
+        bool caseSensitive = CaseSensitivityProbe.IsCaseSensitive(input);
+        string upper = Path.Combine(input, "Photo.txt");
+        string lower = Path.Combine(input, "photo.txt");
+        await File.WriteAllTextAsync(upper, "UPPER");
+        if (caseSensitive)
+        {
+            await File.WriteAllTextAsync(lower, "LOWER");
+        }
+
+        NodeDefinition source = Node("FolderInput", new { path = input, filter = "Photo.txt" });
+        NodeDefinition rename = Node("RenameRegex", new { pattern = "^P", replacement = "p" });
+        NodeDefinition sink = Node("FolderOutput", new { path = output });
+        var graph = new PipelineGraph
+        {
+            Nodes = { source, rename, sink },
+            Connections = { Wire(source, rename), Wire(rename, sink) },
+        };
+
+        ExecutionResult result = await CreateRunner().RunAsync(graph);
+
+        var contents = new List<string>();
+        var lines = new List<string> { $"caseSensitive={caseSensitive}" };
+        string[] delivered = Directory.Exists(output) ? Directory.GetFiles(output, "*", SearchOption.AllDirectories) : [];
+        foreach (string file in delivered)
+        {
+            string content = await File.ReadAllTextAsync(file);
+            contents.Add(content);
+            lines.Add($"out/{Path.GetRelativePath(output, file)} = {content}");
+        }
+
+        lines.ForEach(_output.WriteLine);
+        string because = string.Join("; ", lines);
+        if (caseSensitive)
+        {
+            result.Jobs.Should().ContainSingle(because).Which.Status.Should().Be(FileJobStatus.Failed, because);
+            contents.Should().NotContain("LOWER", because);
+            (await File.ReadAllTextAsync(upper)).Should().Be("UPPER", because);
+            (await File.ReadAllTextAsync(lower)).Should().Be("LOWER", because);
+        }
+        else
+        {
+            (await File.ReadAllTextAsync(Path.Combine(output, "photo.txt"))).Should().Be("UPPER", because);
+        }
+    }
+
+    private static PipelineRunner CreateRunner() =>
+        new(NodeRegistry.CreateDefault(NullLoggerFactory.Instance), NullLogger<PipelineRunner>.Instance);
+
+    private static NodeDefinition Node(string typeKey, object config) => new()
+    {
+        TypeKey = typeKey,
+        Config = JsonSerializer.SerializeToElement(config).EnumerateObject()
+            .ToDictionary(p => p.Name, p => p.Value.Clone(), StringComparer.Ordinal),
+    };
+
+    private static Connection Wire(NodeDefinition from, NodeDefinition to) => new() { FromNode = from.Id, ToNode = to.Id };
 }

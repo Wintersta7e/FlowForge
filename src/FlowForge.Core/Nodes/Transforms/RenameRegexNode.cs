@@ -125,7 +125,7 @@ public class RenameRegexNode : ITransformNode
                 PathGuard.EnsureWithinDirectory(newPath, directory);
             }
 
-            if (!dryRun && !string.Equals(oldPath, newPath, StringComparison.OrdinalIgnoreCase))
+            if (!dryRun && !string.Equals(oldPath, newPath, StringComparison.Ordinal))
             {
                 // .NET has no async File.Move/Copy API; sync call is acceptable for metadata-only operations
                 File.Move(oldPath, newPath, overwrite: false);

@@ -1,15 +1,22 @@
 using System.Text.Json;
 using FluentAssertions;
+using FlowForge.Core.Execution;
 using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Transforms;
 using FlowForge.Core.Nodes.Base;
+using FlowForge.Core.Pipeline;
 using FlowForge.Tests.Helpers;
 using Microsoft.Extensions.Logging.Abstractions;
+using Xunit.Abstractions;
 
 namespace FlowForge.Tests.Nodes;
 
 public class RenamePatternNodeTests
 {
+    private readonly ITestOutputHelper _output;
+
+    public RenamePatternNodeTests(ITestOutputHelper output) => _output = output;
+
     private static Dictionary<string, JsonElement> MakeConfig(string pattern, int startIndex = 1)
     {
         string json = JsonSerializer.Serialize(new { pattern, startIndex });
@@ -256,4 +263,55 @@ public class RenamePatternNodeTests
         FileJob output = result.Single();
         output.FileName.Should().Be("photo_1_2.jpg");
     }
+
+    [Fact]
+    public async Task Identity_pattern_keeps_the_name()
+    {
+        using var dir = new TempDirectory();
+        string input = Path.Combine(dir.Path, "in");
+        string output = Path.Combine(dir.Path, "out");
+        string source = Path.Combine(input, "a.txt");
+        Directory.CreateDirectory(input);
+        await File.WriteAllTextAsync(source, "a");
+
+        ExecutionResult dry = await CreateRunner().RunAsync(IdentityGraph(input, output), dryRun: true);
+        ExecutionResult live = await CreateRunner().RunAsync(IdentityGraph(input, output));
+
+        string dryLine = RenameLine(dry);
+        string liveLine = RenameLine(live);
+        _output.WriteLine($"dry: {dryLine}");
+        _output.WriteLine($"live: {liveLine}");
+        string because = $"dry: {dryLine}; live: {liveLine}";
+        File.Exists(source).Should().BeTrue(because);
+        File.Exists(Path.Combine(output, "a.txt")).Should().BeTrue(because);
+        liveLine.Should().Be(dryLine, because);
+    }
+
+    private static string RenameLine(ExecutionResult result) => string.Join(
+        " | ",
+        result.Jobs.SelectMany(j => j.NodeLog).Where(l => l.StartsWith("RenamePattern:", StringComparison.Ordinal)));
+
+    private static PipelineGraph IdentityGraph(string input, string output)
+    {
+        NodeDefinition source = Node("FolderInput", new { path = input });
+        NodeDefinition rename = Node("RenamePattern", new { pattern = "{name}{ext}" });
+        NodeDefinition sink = Node("FolderOutput", new { path = output });
+        return new PipelineGraph
+        {
+            Nodes = { source, rename, sink },
+            Connections = { Wire(source, rename), Wire(rename, sink) },
+        };
+    }
+
+    private static PipelineRunner CreateRunner() =>
+        new(NodeRegistry.CreateDefault(NullLoggerFactory.Instance), NullLogger<PipelineRunner>.Instance);
+
+    private static NodeDefinition Node(string typeKey, object config) => new()
+    {
+        TypeKey = typeKey,
+        Config = JsonSerializer.SerializeToElement(config).EnumerateObject()
+            .ToDictionary(p => p.Name, p => p.Value.Clone(), StringComparer.Ordinal),
+    };
+
+    private static Connection Wire(NodeDefinition from, NodeDefinition to) => new() { FromNode = from.Id, ToNode = to.Id };
 }

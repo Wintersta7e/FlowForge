@@ -15,6 +15,7 @@ All notable changes to this project will be documented in this file.
 - **Correction to 1.6.0** — "FolderInputNode filters out symlinked files outside source root" held only for links whose path text pointed outside the root; links inside a recursive scan were followed. Fixed in this release.
 - **Image conversion keeps other files** — converting `photo.png` to JPEG no longer overwrites and deletes an existing `photo.jpg`; that file fails with a reason instead. A change of extension case only (`photo.JPG` → `.jpg`) keeps the converted file.
 - **Image compression no longer mislabels files** — a format override that differs from the file's extension now fails the file instead of writing, for example, JPEG bytes into a `.png`.
+- **Case-only renames** — a rename that changes only letter case no longer delivers a different file's contents on case-sensitive file systems, and a pattern that reproduces the same name no longer renames `a.txt` to `a_1.txt`.
 
 ## [2.0.0] - 2026-04-23
 
