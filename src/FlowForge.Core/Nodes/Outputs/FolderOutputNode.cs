@@ -125,6 +125,7 @@ public class FolderOutputNode : IOutputNode
         string destinationPath = Path.Combine(destinationDir, fileName);
 
         PathGuard.EnsureWithinDirectory(destinationPath, _path);
+        RefuseLink(destinationPath);
 
         if (dryRun)
         {
@@ -138,61 +139,93 @@ public class FolderOutputNode : IOutputNode
         }
 
         Directory.CreateDirectory(destinationDir);
+        await DeliverAsync(job, destinationPath, ct).ConfigureAwait(false);
 
-        if (_enableBackup && _overwrite && File.Exists(destinationPath))
+        // Delete the path the delivered bytes came from, never the file just delivered.
+        if (_mode.Equals("move", StringComparison.OrdinalIgnoreCase) && !PathGuard.IsSameFile(job.CurrentPath, destinationPath))
         {
-            await BackupFileAsync(job, destinationPath, ct).ConfigureAwait(false);
-        }
-
-        if (_mode.Equals("move", StringComparison.OrdinalIgnoreCase))
-        {
-            // .NET has no async File.Move; sync is acceptable for metadata-only renames
-            File.Move(job.CurrentPath, destinationPath, overwrite: _overwrite);
-        }
-        else
-        {
-            // Use async streams for copy to avoid blocking the thread pool on large files
-            FileMode destMode = _overwrite ? FileMode.Create : FileMode.CreateNew;
-            FileStream sourceStream = new(job.CurrentPath, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true);
-            await using (sourceStream.ConfigureAwait(false))
-            {
-                FileStream destStream = new(destinationPath, destMode, FileAccess.Write, FileShare.None, 81920, useAsync: true);
-                await using (destStream.ConfigureAwait(false))
-                {
-                    await sourceStream.CopyToAsync(destStream, ct).ConfigureAwait(false);
-                }
-            }
-
-            // Restore original timestamps on the copy
-            var sourceInfo = new FileInfo(job.CurrentPath);
-            File.SetCreationTimeUtc(destinationPath, sourceInfo.CreationTimeUtc);
-            File.SetLastWriteTimeUtc(destinationPath, sourceInfo.LastWriteTimeUtc);
+            DeleteMovedSource(job);
         }
 
         job.CurrentPath = destinationPath;
         job.NodeLog.Add($"FolderOutput: → '{destinationPath}' ({_mode})");
     }
 
-    private async Task BackupFileAsync(FileJob job, string destinationPath, CancellationToken ct)
+    /// <summary>
+    /// Throws when an entry at <paramref name="path"/> is a link. Only the entry's attributes are
+    /// read, so a dry run reports the same refusal.
+    /// </summary>
+    private static void RefuseLink(string path)
     {
-        string backupPath = destinationPath + _backupSuffix;
-        PathGuard.EnsureWithinDirectory(backupPath, _path);
-
-        if (File.Exists(backupPath))
+        var directory = new DirectoryInfo(path);
+        FileSystemInfo entry = directory.Exists ? directory : new FileInfo(path);
+        if (entry.Exists && PathGuard.IsLink(entry))
         {
-            job.NodeLog.Add($"FolderOutput: Replacing previous backup at '{backupPath}'");
+            throw new InvalidOperationException($"FolderOutput: '{path}' is a link; refusing to deliver through it.");
         }
+    }
 
-        FileStream backupSrc = new(destinationPath, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true);
-        await using (backupSrc.ConfigureAwait(false))
+    /// <summary>
+    /// Copies the job's file to a temporary name beside the destination, then renames it into place,
+    /// so a cancelled or failed copy leaves an existing destination untouched.
+    /// </summary>
+    private async Task DeliverAsync(FileJob job, string destinationPath, CancellationToken ct)
+    {
+        string tempPath = $"{destinationPath}.{Guid.NewGuid():N}.tmp";
+        try
         {
-            FileStream backupDst = new(backupPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true);
-            await using (backupDst.ConfigureAwait(false))
+            FileStream sourceStream = new(job.CurrentPath, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true);
+            await using (sourceStream.ConfigureAwait(false))
             {
-                await backupSrc.CopyToAsync(backupDst, ct).ConfigureAwait(false);
+                FileStream tempStream = new(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, useAsync: true);
+                await using (tempStream.ConfigureAwait(false))
+                {
+                    await sourceStream.CopyToAsync(tempStream, ct).ConfigureAwait(false);
+                }
+            }
+
+            // Restore original timestamps on the copy
+            var sourceInfo = new FileInfo(job.CurrentPath);
+            File.SetCreationTimeUtc(tempPath, sourceInfo.CreationTimeUtc);
+            File.SetLastWriteTimeUtc(tempPath, sourceInfo.LastWriteTimeUtc);
+
+            bool exists = File.Exists(destinationPath);
+            if (exists && _overwrite && _enableBackup)
+            {
+                string backupPath = destinationPath + _backupSuffix;
+                PathGuard.EnsureWithinDirectory(backupPath, _path);
+                File.Replace(tempPath, destinationPath, backupPath);
+                job.NodeLog.Add($"FolderOutput: Backed up '{destinationPath}' → '{backupPath}'");
+            }
+            else
+            {
+                // Without overwrite this fails on a destination that appeared meanwhile, leaving it intact.
+                File.Move(tempPath, destinationPath, overwrite: exists && _overwrite);
             }
         }
+        finally
+        {
+            try
+            {
+                File.Delete(tempPath);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                _logger.LogWarning(ex, "FolderOutput: could not delete temporary file {TempPath}", tempPath);
+            }
+        }
+    }
 
-        job.NodeLog.Add($"FolderOutput: Backed up '{destinationPath}' → '{backupPath}'");
+    private void DeleteMovedSource(FileJob job)
+    {
+        try
+        {
+            File.Delete(job.CurrentPath);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _logger.LogWarning(ex, "FolderOutput: delivered but could not delete source {Path}", job.CurrentPath);
+            job.NodeLog.Add($"FolderOutput: Delivered, but could not delete the source '{job.CurrentPath}': {ex.Message}");
+        }
     }
 }
