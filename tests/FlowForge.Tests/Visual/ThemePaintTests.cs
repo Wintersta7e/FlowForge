@@ -116,6 +116,33 @@ public sealed class ThemePaintTests
         WithinTolerance(measured, expected).Should().BeTrue("a checked box is filled with the Dark palette's SystemAccentColorLight1");
     }
 
+    [AvaloniaFact]
+    public void BodyFont_ResolvesToBundledInter()
+    {
+        using var session = VisualSession.Open(_output);
+        FontFamily body = ThemeResource<FontFamily>("MwBody");
+        string bodyFamily = ResolvedFamily(new Typeface(body));
+
+        // Text that takes the window's font rather than a font of its own.
+        TextBlock text = session.Window.GetVisualDescendants().OfType<TextBlock>()
+            .First(block => !block.IsSet(TextBlock.FontFamilyProperty)
+                && ReferenceEquals(block.FontFamily, session.Window.FontFamily)
+                && !string.IsNullOrEmpty(block.Text)
+                && block.IsEffectivelyVisible);
+        string textFamily = ResolvedFamily(new Typeface(text.FontFamily, text.FontStyle, text.FontWeight, text.FontStretch));
+
+        _output.WriteLine($"MwBody='{body}' resolves={bodyFamily}");
+        _output.WriteLine($"text='{text.Text}' font='{text.FontFamily}' weight={text.FontWeight} resolves={textFamily}");
+        bodyFamily.Should().Be("Inter", "the body font is the bundled Inter");
+        textFamily.Should().Be("Inter", "window text without its own font uses the body font");
+    }
+
+    private static string ResolvedFamily(Typeface typeface)
+    {
+        FontManager.Current.TryGetGlyphTypeface(typeface, out IGlyphTypeface? glyphs).Should().BeTrue($"'{typeface.FontFamily}' resolves to a typeface");
+        return glyphs!.FamilyName;
+    }
+
     // One state's frame: whether the presenter shows the theme's brush, the band's mean colour,
     // and that brush's colour over the band. The band is the left padding, clear of the text,
     // inset past the rounded corners and the antialiased edge.

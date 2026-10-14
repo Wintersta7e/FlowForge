@@ -11,7 +11,7 @@
             <FontFamily x:Key="MwSerifRegular">avares://FlowForge.UI/Assets/Fonts/InstrumentSerif-Regular.ttf#Instrument Serif</FontFamily>
             <FontFamily x:Key="MwDisplay">avares://FlowForge.UI/Assets/Fonts/Oswald-VariableFont_wght.ttf#Oswald</FontFamily>
             <FontFamily x:Key="MwMono">avares://FlowForge.UI/Assets/Fonts/JetBrainsMono-VariableFont_wght.ttf#JetBrains Mono</FontFamily>
-            <FontFamily x:Key="MwBody">Inter, Segoe UI, system-ui, sans-serif</FontFamily>
+            <FontFamily x:Key="MwBody">fonts:Inter#Inter, Segoe UI, system-ui, sans-serif</FontFamily>
 
             <ResourceDictionary.ThemeDictionaries>
 
