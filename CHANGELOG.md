@@ -14,6 +14,7 @@ All notable changes to this project will be documented in this file.
 - **Folder input skips links** — symbolic links and junctions are no longer yielded and linked folders are never scanned; an unreadable subfolder is skipped instead of triggering a top-level rescan; files whose names differ only by letter case are both found on case-sensitive file systems.
 - **Correction to 1.6.0** — "FolderInputNode filters out symlinked files outside source root" held only for links whose path text pointed outside the root; links inside a recursive scan were followed. Fixed in this release.
 - **Image conversion keeps other files** — converting `photo.png` to JPEG no longer overwrites and deletes an existing `photo.jpg`; that file fails with a reason instead. A change of extension case only (`photo.JPG` → `.jpg`) keeps the converted file.
+- **Image compression no longer mislabels files** — a format override that differs from the file's extension now fails the file instead of writing, for example, JPEG bytes into a `.png`.
 
 ## [2.0.0] - 2026-04-23
 

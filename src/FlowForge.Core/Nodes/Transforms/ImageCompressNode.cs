@@ -68,6 +68,11 @@ public class ImageCompressNode : ITransformNode
     {
         ct.ThrowIfCancellationRequested();
 
+        if (RejectIfCrossFormatOverride(job))
+        {
+            return new[] { job };
+        }
+
         if (dryRun)
         {
             job.NodeLog.Add($"ImageCompress: would compress to quality={_quality}");
@@ -135,6 +140,26 @@ public class ImageCompressNode : ITransformNode
             }
         }
     }
+
+    /// <summary>
+    /// Fails the job when the format override belongs to another format than the file's extension, so
+    /// a file is never left holding one format's bytes under another format's name. Reads no file.
+    /// </summary>
+    private bool RejectIfCrossFormatOverride(FileJob job)
+    {
+        if (string.IsNullOrEmpty(_format)
+            || string.Equals(FormatFamily(_format), FormatFamily(job.Extension.TrimStart('.')), StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        job.Status = FileJobStatus.Failed;
+        job.ErrorMessage = $"ImageCompress: format '{_format}' differs from the file's extension '{job.Extension}'; the file was not re-encoded.";
+        job.NodeLog.Add(job.ErrorMessage);
+        return true;
+    }
+
+    private static string FormatFamily(string format) => format is "jpg" or "jpeg" ? "jpeg" : format;
 
     private IImageEncoder GetEncoder(string format)
     {

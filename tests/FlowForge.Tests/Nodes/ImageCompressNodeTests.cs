@@ -5,11 +5,16 @@ using FlowForge.Core.Nodes.Transforms;
 using FlowForge.Core.Nodes.Base;
 using FlowForge.Tests.Helpers;
 using Microsoft.Extensions.Logging.Abstractions;
+using Xunit.Abstractions;
 
 namespace FlowForge.Tests.Nodes;
 
 public class ImageCompressNodeTests
 {
+    private readonly ITestOutputHelper _output;
+
+    public ImageCompressNodeTests(ITestOutputHelper output) => _output = output;
+
     private static Dictionary<string, JsonElement> MakeConfig(object config)
     {
         string json = JsonSerializer.Serialize(config);
@@ -139,6 +144,7 @@ public class ImageCompressNodeTests
         using var dir = new TempDirectory();
         string filePath = Path.Combine(dir.Path, "override.jpg");
         TestFileFactory.CreateTestImage(filePath, width: 100, height: 100);
+        byte[] before = await File.ReadAllBytesAsync(filePath);
 
         var node = new ImageCompressNode(NullLogger<ImageCompressNode>.Instance);
         node.Configure(MakeConfig(new { quality = 75, format = "webp" }));
@@ -150,16 +156,76 @@ public class ImageCompressNodeTests
         };
 
         IEnumerable<FileJob> result = await node.TransformAsync(job, dryRun: false);
-        result.Should().HaveCount(1);
-        File.Exists(filePath).Should().BeTrue();
+        byte[] after = await File.ReadAllBytesAsync(filePath);
+        string magic = Magic(after);
+
+        result.Should().ContainSingle().Which.Status.Should().Be(FileJobStatus.Failed, magic);
+        job.ErrorMessage.Should().NotBeNullOrEmpty(magic);
+        after.Should().Equal(before, magic);
+        after.Take(2).Should().Equal(new byte[] { 0xFF, 0xD8 }, magic);
     }
+
+    [Fact]
+    public async Task Cross_format_override_fails_without_writing()
+    {
+        using var dir = new TempDirectory();
+        string filePath = Path.Combine(dir.Path, "pic.png");
+        TestFileFactory.CreateTestPng(filePath, width: 40, height: 40);
+
+        var node = new ImageCompressNode(NullLogger<ImageCompressNode>.Instance);
+        node.Configure(MakeConfig(new { quality = 80, format = "jpg" }));
+
+        var job = new FileJob { OriginalPath = filePath, CurrentPath = filePath };
+        await node.TransformAsync(job, dryRun: false);
+        byte[] bytes = await File.ReadAllBytesAsync(filePath);
+        var dryJob = new FileJob { OriginalPath = filePath, CurrentPath = filePath };
+        await node.TransformAsync(dryJob, dryRun: true);
+
+        int scanned = 0;
+        var mismatches = new List<string>();
+        foreach (string path in Directory.EnumerateFiles(dir.Path))
+        {
+            string extension = Path.GetExtension(path).ToLowerInvariant();
+            if (extension is not (".png" or ".jpg" or ".jpeg" or ".webp"))
+            {
+                continue;
+            }
+
+            scanned++;
+            byte[] content = await File.ReadAllBytesAsync(path);
+            bool matches = extension switch
+            {
+                ".png" => content.AsSpan().StartsWith(new byte[] { 0x89, 0x50, 0x4E, 0x47 }),
+                ".webp" => content.Length >= 12 && content.AsSpan(0, 4).SequenceEqual("RIFF"u8) && content.AsSpan(8, 4).SequenceEqual("WEBP"u8),
+                _ => content.AsSpan().StartsWith(new byte[] { 0xFF, 0xD8, 0xFF }),
+            };
+            if (!matches)
+            {
+                mismatches.Add($"{Path.GetFileName(path)} magic {Magic(content)}");
+            }
+        }
+
+        string because = $"scanned={scanned} mismatches={mismatches.Count}";
+        _output.WriteLine(because);
+        mismatches.ForEach(_output.WriteLine);
+        because = string.Join("; ", [because, .. mismatches]);
+
+        job.Status.Should().Be(FileJobStatus.Failed, because);
+        job.ErrorMessage.Should().NotBeNullOrEmpty(because);
+        bytes.Take(4).Should().Equal(new byte[] { 0x89, 0x50, 0x4E, 0x47 }, because);
+        dryJob.Status.Should().Be(FileJobStatus.Failed, because);
+        scanned.Should().BePositive(because);
+        mismatches.Should().BeEmpty(because);
+    }
+
+    private static string Magic(byte[] content) => BitConverter.ToString(content, 0, Math.Min(4, content.Length)).Replace('-', ' ');
 
     [Fact]
     public async Task Unsupported_format_sets_failed_status()
     {
         using var dir = new TempDirectory();
-        string filePath = Path.Combine(dir.Path, "unsupported.jpg");
-        TestFileFactory.CreateTestImage(filePath, width: 100, height: 100);
+        string filePath = Path.Combine(dir.Path, "unsupported.bmp");
+        TestFileFactory.CreateTestBmp(filePath, width: 100, height: 100);
 
         var node = new ImageCompressNode(NullLogger<ImageCompressNode>.Instance);
         node.Configure(MakeConfig(new { quality = 50, format = "bmp" }));
