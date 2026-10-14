@@ -17,6 +17,7 @@ Versions 1.0.0–2.0.0 were tagged and released at the time; those tags and rele
 ### Removed
 
 - **Concept-render screenshots** — `screenshots/empty-state.png` and `screenshots/stations-running.png` were design renders, not app screenshots, and nothing referenced them.
+- **Unused settings** — the unused `maxConcurrency`, `defaultInputFolder` and `defaultOutputFolder` settings; an existing settings file still loads, and the next save drops them.
 
 ### Fixed
 

@@ -6,20 +6,10 @@ namespace FlowForge.Core.Settings;
 /// </summary>
 public sealed class AppSettings
 {
-    /// <summary>Default folder shown in file-open dialogs for pipeline input.</summary>
-    public string DefaultInputFolder { get; set; } = string.Empty;
-
-    /// <summary>Default folder shown in file-save dialogs for pipeline output.</summary>
-    public string DefaultOutputFolder { get; set; } = string.Empty;
-
-    /// <summary>Maximum number of files processed concurrently by the pipeline runner.</summary>
-    public int MaxConcurrency { get; set; } = Environment.ProcessorCount;
-
     /// <summary>Most recently opened pipeline files, newest first. Max 10.</summary>
     public IList<string> RecentPipelines { get; set; } = new List<string>();
 
     private const int MaxRecentPipelines = 10;
-    private const int MaxAllowedConcurrency = 64;
 
     /// <summary>Add a pipeline path to the front of the recent list, deduplicating and trimming.</summary>
     public void AddRecentPipeline(string path)
@@ -49,11 +39,6 @@ public sealed class AppSettings
     public void Validate()
     {
         RecentPipelines ??= new List<string>();
-
-        if (MaxConcurrency <= 0 || MaxConcurrency > MaxAllowedConcurrency)
-        {
-            MaxConcurrency = Environment.ProcessorCount;
-        }
 
         // Filter out invalid recent pipeline entries (corrupted settings, null bytes, extreme length)
         for (int i = RecentPipelines.Count - 1; i >= 0; i--)

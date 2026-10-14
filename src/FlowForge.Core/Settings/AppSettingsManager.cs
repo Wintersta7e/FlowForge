@@ -39,9 +39,6 @@ public sealed class AppSettingsManager
         _logger = logger;
     }
 
-    /// <summary>Full path where settings are persisted.</summary>
-    public string SettingsFilePath => _settingsFilePath;
-
     /// <summary>
     /// Loads settings from disk. Returns a fresh <see cref="AppSettings"/> with defaults
     /// when the file does not exist or contains invalid JSON.
