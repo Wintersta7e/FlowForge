@@ -75,6 +75,7 @@ Versions 1.0.0–2.0.0 were tagged and released at the time; those tags and rele
 - **One undo reverts a typed edit** — after typing into an inspector field, one Undo restores the value from before the typing, or removes it if the field had none; it used to restore only the text before the last keystroke. Typing after a save starts a new undo step, so Undo returns to the saved pipeline, and editing the same field on two stations in turn no longer drops the first station's edit from the history.
 - **Undoing a delete selects the station again** — after deleting the selected station, Undo puts it back selected and the inspector shows its fields; the inspector used to stay empty.
 - **A file dialog that fails to open no longer closes the app** — when the system's open, save or folder dialog cannot be shown, Open, Save, Save As and the inspector's browse buttons log the failure and change nothing; Open, Save and Save As used to end the app.
+- **Alt+click disconnects a port** — Alt+click on a port removes every pipe on it as one undo step; the user guide listed disconnect among the undoable actions, but a pipe could only go with a deleted station.
 
 ### Security
 

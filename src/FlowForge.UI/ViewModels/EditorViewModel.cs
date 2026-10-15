@@ -372,6 +372,19 @@ public partial class EditorViewModel : ViewModelBase
         SelectedNode = null;
     }
 
+    // Alt+click on a port: every pipe on it goes, as one undo step.
+    [RelayCommand]
+    private void DisconnectConnector(PipelineConnectorViewModel connector)
+    {
+        var attached = Connections.Where(c => c.Source == connector || c.Target == connector).ToList();
+        if (attached.Count == 0)
+        {
+            return;
+        }
+
+        UndoRedo.Execute(new DisconnectCommand(Connections, attached));
+    }
+
     [RelayCommand]
     private void ItemsDragStarted()
     {

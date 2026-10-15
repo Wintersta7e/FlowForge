@@ -47,8 +47,8 @@ strict analyzers (StyleCop + Meziantou, warnings-as-errors). Treat it as a
 working tool you can build and run, not a finished, packaged consumer app.
 
 **Implemented:**
-- Visual node editor — drag-and-drop canvas, pan/zoom, wiring, rubber-band
-  selection, full undo/redo
+- Visual node editor — drag-and-drop canvas, pan/zoom, wiring, Alt+click
+  disconnect, rubber-band selection, full undo/redo
 - 11 built-in node types (see [Features](#features))
 - `flowforge` CLI — `run` with per-run input/output overrides, dry-run,
   `--format json`, and a defined exit-code contract

@@ -27,6 +27,7 @@ dotnet run --project src/FlowForge.UI
 - **Select** — click a node, or rubber-band select multiple nodes
 - **Move** — drag selected nodes
 - **Connect** — drag from an output pin to an input pin to create a wire
+- **Disconnect** — Alt+click a pin to remove every wire on it in one undo step
 - **Delete** — select a node or connection and press Delete
 - **Undo** — Ctrl+Z to undo the last action (up to 25 steps)
 - **Redo** — Ctrl+Y to redo the last undone action

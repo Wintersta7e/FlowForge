@@ -338,6 +338,14 @@ internal sealed class VisualSession : IDisposable
         return Find()!;
     }
 
+    public Nodify.Avalonia.Connections.Connector WaitForPort(PipelineConnectorViewModel port)
+    {
+        Nodify.Avalonia.Connections.Connector? Find() => Window.GetVisualDescendants().OfType<Nodify.Avalonia.Connections.Connector>()
+            .SingleOrDefault(c => ReferenceEquals(c.DataContext, port) && c.Bounds.Width > 0);
+        RenderUntil(() => Find() is not null, $"{port.Node.TypeKey} {(port.IsInput ? "input" : "output")} port shown");
+        return Find()!;
+    }
+
     public void LoadTemplate(string templateId)
     {
         ViewModel.LoadTemplateCommand.Execute(templateId);

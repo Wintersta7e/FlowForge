@@ -328,6 +328,7 @@
                              PendingConnection="{Binding PendingConnection}"
                              ItemsDragStartedCommand="{Binding ItemsDragStartedCommand}"
                              ItemsDragCompletedCommand="{Binding ItemsDragCompletedCommand}"
+                             DisconnectConnectorCommand="{Binding DisconnectConnectorCommand}"
                              Background="Transparent"
                              GridCellSize="40"
                              DragDrop.AllowDrop="True">

@@ -84,10 +84,10 @@ public sealed class EditorInteractionTests
         editor.AddNode("Sort", new Point(440, 120), session.ViewModel.Registry);
         PipelineNodeViewModel a = editor.Nodes[0];
         PipelineNodeViewModel b = editor.Nodes[1];
-        Connector aOut = WaitForPort(session, a.Output[0]);
-        Connector aIn = WaitForPort(session, a.Input[0]);
-        Connector bOut = WaitForPort(session, b.Output[0]);
-        Connector bIn = WaitForPort(session, b.Input[0]);
+        Connector aOut = session.WaitForPort(a.Output[0]);
+        Connector aIn = session.WaitForPort(a.Input[0]);
+        Connector bOut = session.WaitForPort(b.Output[0]);
+        Connector bIn = session.WaitForPort(b.Input[0]);
 
         DragBetween(session, aOut, bIn, () =>
         {
@@ -398,14 +398,6 @@ public sealed class EditorInteractionTests
     private static Point InWindow(Avalonia.Visual visual, Point point) =>
         visual.TranslatePoint(point, TopLevel.GetTopLevel(visual)!)
             ?? throw new InvalidOperationException($"{visual.GetType().Name} has no transform to its window.");
-
-    private static Connector WaitForPort(VisualSession session, PipelineConnectorViewModel port)
-    {
-        Connector? Find() => session.Window.GetVisualDescendants().OfType<Connector>()
-            .SingleOrDefault(c => ReferenceEquals(c.DataContext, port) && c.Bounds.Width > 0);
-        session.RenderUntil(() => Find() is not null, $"{port.Node.TypeKey} {(port.IsInput ? "input" : "output")} port shown");
-        return Find()!;
-    }
 
     // Press on one port, move halfway (where midway runs), move onto the other port and release there.
     private static void DragBetween(VisualSession session, Connector from, Connector to, Action? midway = null)
