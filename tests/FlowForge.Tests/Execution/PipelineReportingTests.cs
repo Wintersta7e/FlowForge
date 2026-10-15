@@ -91,6 +91,50 @@ public class PipelineReportingTests
             .And.BeEquivalentTo(events.Select(e => e.Job.OriginalPath).Distinct(StringComparer.Ordinal));
     }
 
+    [Fact]
+    public async Task Fan_out_progress_counts_originals_once()
+    {
+        using var dir = new TempDirectory();
+        string input = Path.Combine(dir.Path, "in");
+        Directory.CreateDirectory(input);
+        for (int i = 0; i < 10; i++)
+        {
+            await File.WriteAllTextAsync(Path.Combine(input, $"file{i}.txt"), $"content {i}");
+        }
+
+        NodeDefinition source = PipelineBuilder.Node("FolderInput", new { path = input, recursive = false });
+        NodeDefinition outA = PipelineBuilder.Node("FolderOutput", new { path = Path.Combine(dir.Path, "outA"), mode = "copy" });
+        NodeDefinition outB = PipelineBuilder.Node("FolderOutput", new { path = Path.Combine(dir.Path, "outB"), mode = "copy" });
+        var graph = new PipelineGraph
+        {
+            Nodes = { source, outA, outB },
+            Connections =
+            {
+                new Connection { FromNode = source.Id, ToNode = outA.Id },
+                new Connection { FromNode = source.Id, ToNode = outB.Id },
+            },
+        };
+        var progress = new SyncProgress<PipelineProgressEvent>();
+
+        ExecutionResult result = await CreateRunner(NodeRegistry.CreateDefault(NullLoggerFactory.Instance), dir.StagingRoot)
+            .RunAsync(graph, dryRun: false, progress);
+
+        var events = progress.Events.OfType<FileProcessed>().ToList();
+        int completing = 0;
+        int peak = 0;
+        foreach (FileProcessed processed in events)
+        {
+            completing += processed.CompletesOriginal ? 1 : 0;
+            peak = Math.Max(peak, completing);
+            completing.Should().BeLessThanOrEqualTo(result.TotalFiles);
+        }
+
+        _output.WriteLine($"[fan-out] events={events.Count} completing={completing} peak={peak} total={result.TotalFiles}");
+        events.Should().HaveCount(20);
+        result.Succeeded.Should().Be(20);
+        completing.Should().Be(result.TotalFiles).And.Be(10);
+    }
+
     private static PipelineRunner CreateRunner(NodeRegistry registry, string stagingRoot) =>
         new PipelineRunner(registry, NullLogger<PipelineRunner>.Instance, maxConcurrency: 2, stagingRoot: stagingRoot);
 

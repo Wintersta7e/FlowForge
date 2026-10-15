@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text.Json;
 using FlowForge.Core.Execution;
 using FlowForge.Core.Pipeline;
@@ -35,36 +34,6 @@ public class PipelineShapeRefusalTests
             .Which.Message.Should().Contain("RenameAddAffix", listing).And.Contain(stray.Id.ToString(), listing);
         TreeSnapshot.AssertUnchanged(before, TreeSnapshot.Take(input), _output, "in");
         Directory.Exists(output).Should().BeFalse();
-    }
-
-    [Fact]
-    public async Task Copy_and_move_outputs_from_one_source_are_refused()
-    {
-        using var dir = new TempDirectory();
-        string input = CreateInput(dir, "a.txt");
-        string copyOutput = Path.Combine(dir.Path, "outA");
-        string moveOutput = Path.Combine(dir.Path, "outB");
-        NodeDefinition source = Node("FolderInput", new { path = input });
-        NodeDefinition copy = Node("FolderOutput", new { path = copyOutput, mode = "copy" });
-        NodeDefinition move = Node("FolderOutput", new { path = moveOutput, mode = "move" });
-        var graph = new PipelineGraph
-        {
-            Nodes = { source, copy, move },
-            Connections = { Wire(source, copy), Wire(source, move) },
-        };
-
-        var before = TreeSnapshot.Take(input);
-        ExecutionResult? result = null;
-        Exception? refusal = await Record.ExceptionAsync(async () => result = await CreateRunner(dir.StagingRoot).RunAsync(graph));
-        int copied = Directory.Exists(copyOutput) ? Directory.GetFiles(copyOutput).Length : 0;
-        string listing = $"outA entries={copied} succeeded={result?.Succeeded.ToString(CultureInfo.InvariantCulture) ?? "-"}";
-        _output.WriteLine(listing);
-
-        refusal.Should().BeOfType<InvalidOperationException>(listing)
-            .Which.Message.Should().Contain("FolderInput", listing).And.Contain(source.Id.ToString(), listing);
-        TreeSnapshot.AssertUnchanged(before, TreeSnapshot.Take(input), _output, "in");
-        Directory.Exists(copyOutput).Should().BeFalse();
-        Directory.Exists(moveOutput).Should().BeFalse();
     }
 
     private static PipelineRunner CreateRunner(string stagingRoot) =>

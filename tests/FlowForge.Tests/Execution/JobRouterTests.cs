@@ -1,6 +1,7 @@
 using FlowForge.Core.Execution;
 using FlowForge.Core.Models;
 using FlowForge.Core.Pipeline;
+using FlowForge.Tests.Helpers;
 using FluentAssertions;
 
 namespace FlowForge.Tests.Execution;
@@ -15,7 +16,8 @@ public class JobRouterTests
         var c = Guid.NewGuid();
         var d = Guid.NewGuid();
         var lineages = new LineageCounter();
-        var router = new JobRouter(new[] { Wire(a, b), Wire(a, c), Wire(a, d) }, lineages);
+        using RunContext context = TestRunContext.Dry();
+        var router = new JobRouter(new[] { Wire(a, b), Wire(a, c), Wire(a, d) }, lineages, context);
         var job = new FileJob
         {
             OriginalPath = Path.Combine(Path.GetTempPath(), "original.txt"),
@@ -51,7 +53,8 @@ public class JobRouterTests
         var s2 = Guid.NewGuid();
         var t = Guid.NewGuid();
         var lineages = new LineageCounter();
-        var router = new JobRouter(new[] { Wire(s2, t), Wire(s1, t) }, lineages);
+        using RunContext context = TestRunContext.Dry();
+        var router = new JobRouter(new[] { Wire(s2, t), Wire(s1, t) }, lineages, context);
         var j1 = new FileJob();
         var j2 = new FileJob();
         lineages.AddOriginal(j1);

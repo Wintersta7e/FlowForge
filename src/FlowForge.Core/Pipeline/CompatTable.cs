@@ -31,6 +31,11 @@ internal static class CompatTable
         "A set 'format' now also changes the file's extension to match the encoded bytes "
         + "(photo.png saved as WebP becomes photo.webp) instead of keeping the old name.";
 
+    private const string RoutingMessage =
+        "Files now travel only along connections, so each output receives only what is wired to it, instead of every node "
+        + "and every output receiving every file. A node that is not on a path from a source to an output, or a connection "
+        + "that is not allowed, is now refused when the pipeline runs, naming it.";
+
     /// <summary>The built-in node types, for entries that apply to every node of a category.</summary>
     private static readonly NodeRegistry BuiltInNodes = NodeRegistry.CreateDefault(NullLoggerFactory.Instance);
 
@@ -49,6 +54,7 @@ internal static class CompatTable
             RenameAtOutputMessage),
         new("move-after-all-deliveries", "1.0", "FolderOutput", null, IsMove, MoveAfterDeliveriesMessage),
         new("compress-override-renames", "1.0", "ImageCompress", null, config => HasText(config, "format"), CompressRenameMessage),
+        new("graph-runs-along-connections", "1.0", null, RunsDifferentlyAlongConnections, null, RoutingMessage),
     ];
 
     /// <summary>
@@ -106,6 +112,33 @@ internal static class CompatTable
     private static bool HasTransform(PipelineGraph graph) =>
         graph.Nodes.Any(n => BuiltInNodes.IsRegistered(n.TypeKey)
             && BuiltInNodes.GetCategoryForTypeKey(n.TypeKey) == NodeCategory.Transform);
+
+    /// <summary>
+    /// True when the run refuses the graph or it is not one chain from a single source to a single output
+    /// (repeated connections count once). A single chain runs as it did when every transform ran on every
+    /// file and every output received every file.
+    /// </summary>
+    private static bool RunsDifferentlyAlongConnections(PipelineGraph graph)
+    {
+        GraphValidationResult validation = PipelineGraphValidator.Validate(graph, BuiltInNodes);
+        if (!validation.IsValid)
+        {
+            return true;
+        }
+
+        var incoming = new Dictionary<Guid, int>();
+        var outgoing = new Dictionary<Guid, int>();
+        foreach (Connection connection in validation.Connections)
+        {
+            outgoing[connection.FromNode] = outgoing.GetValueOrDefault(connection.FromNode) + 1;
+            incoming[connection.ToNode] = incoming.GetValueOrDefault(connection.ToNode) + 1;
+        }
+
+        return incoming.Values.Any(count => count > 1)
+            || outgoing.Values.Any(count => count > 1)
+            || graph.Nodes.Count(n => BuiltInNodes.GetCategoryForTypeKey(n.TypeKey) == NodeCategory.Source) > 1
+            || graph.Nodes.Count(n => BuiltInNodes.GetCategoryForTypeKey(n.TypeKey) == NodeCategory.Output) > 1;
+    }
 
     private static bool IsMove(IDictionary<string, JsonElement> config) =>
         config.TryGetValue("mode", out JsonElement element)

@@ -161,6 +161,19 @@ public sealed class RunContext : IDisposable
         }
     }
 
+    /// <summary>
+    /// Counts one more live branch: a clone or extra job that reads the same content as the job it came from
+    /// and, in a live run, must end before a moved original is deleted.
+    /// </summary>
+    internal void RetainBranch(FileJob branch)
+    {
+        RetainContent(branch);
+        if (!DryRun)
+        {
+            Destinations.RegisterBranch(branch.OriginalPath);
+        }
+    }
+
     /// <summary>Counts one fewer live job reading the job's content; a staged file nobody reads is deleted.</summary>
     internal void ReleaseContent(FileJob job)
     {

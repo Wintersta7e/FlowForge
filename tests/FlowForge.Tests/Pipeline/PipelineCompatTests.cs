@@ -14,6 +14,38 @@ public class PipelineCompatTests
     private const string OutputId = "0c000000-0000-0000-0000-000000000004";
     private const string RenameId = "0c000000-0000-0000-0000-000000000005";
     private const string CompressId = "0c000000-0000-0000-0000-000000000006";
+    private const string SecondOutputId = "0c000000-0000-0000-0000-000000000007";
+
+    private const string UnconnectedRenameVersion1 = $$"""
+        {
+          "name": "Copy beside an unconnected rename",
+          "version": "1.0",
+          "nodes": [
+            { "id": "{{InputId}}", "typeKey": "FolderInput", "config": { "path": "in" } },
+            { "id": "{{RenameId}}", "typeKey": "RenameAddAffix", "config": { "prefix": "new_" } },
+            { "id": "{{OutputId}}", "typeKey": "FolderOutput", "config": { "path": "out" } }
+          ],
+          "connections": [
+            { "fromNode": "{{InputId}}", "toNode": "{{OutputId}}" }
+          ]
+        }
+        """;
+
+    private const string TwoOutputsVersion1 = $$"""
+        {
+          "name": "Copy to two folders",
+          "version": "1.0",
+          "nodes": [
+            { "id": "{{InputId}}", "typeKey": "FolderInput", "config": { "path": "in" } },
+            { "id": "{{OutputId}}", "typeKey": "FolderOutput", "config": { "path": "out" } },
+            { "id": "{{SecondOutputId}}", "typeKey": "FolderOutput", "config": { "path": "out2" } }
+          ],
+          "connections": [
+            { "fromNode": "{{InputId}}", "toNode": "{{OutputId}}" },
+            { "fromNode": "{{InputId}}", "toNode": "{{SecondOutputId}}" }
+          ]
+        }
+        """;
 
     private const string ResizeVersion1 = $$"""
         {
@@ -136,7 +168,23 @@ public class PipelineCompatTests
         ["rename-collision-at-output|graph"] = RenameVersion1,
         ["move-after-all-deliveries|FolderOutput"] = MoveVersion1,
         ["compress-override-renames|ImageCompress"] = CompressToWebpVersion1,
+        ["graph-runs-along-connections|graph"] = UnconnectedRenameVersion1,
     };
+
+    [Fact]
+    public async Task Version_1_0_file_with_branches_yields_the_routing_notice_and_a_chain_does_not()
+    {
+        using var dir = new TempDirectory();
+
+        PipelineGraph branching = await LoadAsync(dir, TwoOutputsVersion1);
+        PipelineGraph chain = await LoadAsync(dir, CopyVersion1);
+
+        string[] branchingCodes = branching.LoadNotices.Select(n => n.Code).ToArray();
+        string[] chainCodes = chain.LoadNotices.Select(n => n.Code).ToArray();
+        _output.WriteLine($"[compat] two outputs: {string.Join(", ", branchingCodes)}; chain: {string.Join(", ", chainCodes)}");
+        branchingCodes.Should().Contain("graph-runs-along-connections");
+        chainCodes.Should().NotContain("graph-runs-along-connections");
+    }
 
     [Fact]
     public async Task Each_compat_entry_has_a_fixture_that_yields_its_code()

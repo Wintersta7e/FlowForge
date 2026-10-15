@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text.Json;
 using FlowForge.Core.Execution;
 using FlowForge.Core.Models;
@@ -180,11 +181,154 @@ public class PipelineRoutingTests
         counter.Peak.Should().Be(cap);
     }
 
+    [Fact]
+    public async Task Filtered_and_unfiltered_branches_receive_their_own_jobs()
+    {
+        using var dir = new TempDirectory();
+        string input = CreateFolder(dir, "in", "a.txt", "b.txt", "c.dat", "d.csv");
+        string outA = Path.Combine(dir.Path, "outA");
+        string outB = Path.Combine(dir.Path, "outB");
+        NodeDefinition source = PipelineBuilder.Node("FolderInput", new { path = input, recursive = false });
+        NodeDefinition filter = PipelineBuilder.Node("Filter", new
+        {
+            conditions = new[] { new { field = "extension", @operator = "equals", value = ".txt" } },
+        });
+        NodeDefinition filtered = PipelineBuilder.Node("FolderOutput", new { path = outA, mode = "copy" });
+        NodeDefinition unfiltered = PipelineBuilder.Node("FolderOutput", new { path = outB, mode = "copy" });
+        var graph = new PipelineGraph
+        {
+            Nodes = { source, filter, filtered, unfiltered },
+            Connections = { Wire(source, filter), Wire(filter, filtered), Wire(source, unfiltered) },
+        };
+
+        ExecutionResult result = await CreateRunner(dir.StagingRoot).RunAsync(graph, dryRun: false);
+
+        Dictionary<string, string> sources = Hashes(input);
+        Dictionary<string, string> deliveredA = Hashes(outA);
+        Dictionary<string, string> deliveredB = Hashes(outB);
+        _output.WriteLine($"[branches] outA: {Listing(deliveredA)}");
+        _output.WriteLine($"[branches] outB: {Listing(deliveredB)}");
+        deliveredA.Should().Equal(ToDictionary(sources.Where(p => p.Key.EndsWith(".txt", StringComparison.Ordinal))));
+        deliveredB.Should().Equal(sources);
+        result.Succeeded.Should().Be(6);
+        result.Failed.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Two_sources_deliver_their_union()
+    {
+        using var dir = new TempDirectory();
+        string first = CreateFolder(dir, "first", "a.txt", "b.txt");
+        string second = CreateFolder(dir, "second", "c.txt", "d.txt");
+        NodeDefinition inA = PipelineBuilder.Node("FolderInput", new { path = first, recursive = false });
+        NodeDefinition inB = PipelineBuilder.Node("FolderInput", new { path = second, recursive = false });
+        NodeDefinition output = PipelineBuilder.Node("FolderOutput", new { path = dir.OutputPath, mode = "copy" });
+        var graph = new PipelineGraph
+        {
+            Nodes = { inA, inB, output },
+            Connections = { Wire(inA, output), Wire(inB, output) },
+        };
+
+        ExecutionResult result = await CreateRunner(dir.StagingRoot).RunAsync(graph, dryRun: false);
+
+        Dictionary<string, string> delivered = Hashes(dir.OutputPath);
+        _output.WriteLine($"[union] total={result.TotalFiles} out: {Listing(delivered)}");
+        delivered.Should().Equal(ToDictionary(Hashes(first).Concat(Hashes(second))));
+        result.TotalFiles.Should().Be(4);
+        result.Succeeded.Should().Be(4);
+    }
+
+    [Fact]
+    public async Task Diamond_delivers_one_file_per_path()
+    {
+        using var dir = new TempDirectory();
+        string input = CreateFolder(dir, "in", "a.txt", "b.txt", "c.txt");
+        var passAll = new { conditions = new[] { new { field = "extension", @operator = "notequals", value = ".none" } } };
+        NodeDefinition source = PipelineBuilder.Node("FolderInput", new { path = input, recursive = false });
+        NodeDefinition left = PipelineBuilder.Node("Filter", passAll);
+        NodeDefinition right = PipelineBuilder.Node("Filter", passAll);
+        NodeDefinition merge = PipelineBuilder.Node("Sort", new { field = "filename", direction = "asc" });
+        NodeDefinition output = PipelineBuilder.Node("FolderOutput", new { path = dir.OutputPath, mode = "copy" });
+        var graph = new PipelineGraph
+        {
+            Nodes = { source, left, right, merge, output },
+            Connections = { Wire(source, left), Wire(source, right), Wire(left, merge), Wire(right, merge), Wire(merge, output) },
+        };
+
+        ExecutionResult result = await CreateRunner(dir.StagingRoot).RunAsync(graph, dryRun: false);
+
+        Dictionary<string, string> sources = Hashes(input);
+        Dictionary<string, string> delivered = Hashes(dir.OutputPath);
+        _output.WriteLine($"[diamond] succeeded={result.Succeeded} out: {Listing(delivered)}");
+        delivered.Should().Equal(ToDictionary(sources.Concat(sources.Select(p =>
+            KeyValuePair.Create(Path.GetFileNameWithoutExtension(p.Key) + "_1" + Path.GetExtension(p.Key), p.Value)))));
+        result.Succeeded.Should().Be(2 * result.TotalFiles).And.Be(6);
+    }
+
+    [Fact]
+    public async Task Branches_after_a_convert_each_deliver_the_converted_file()
+    {
+        using var dir = new TempDirectory();
+        string input = Path.Combine(dir.Path, "in");
+        TestFileFactory.CreateTestImage(Path.Combine(input, "photo.jpg"));
+        string outA = Path.Combine(dir.Path, "outA");
+        string outB = Path.Combine(dir.Path, "outB");
+        NodeDefinition source = PipelineBuilder.Node("FolderInput", new { path = input, recursive = false });
+        NodeDefinition convert = PipelineBuilder.Node("ImageConvert", new { format = "png" });
+        NodeDefinition first = PipelineBuilder.Node("FolderOutput", new { path = outA, mode = "copy" });
+        NodeDefinition second = PipelineBuilder.Node("FolderOutput", new { path = outB, mode = "copy" });
+        var graph = new PipelineGraph
+        {
+            Nodes = { source, convert, first, second },
+            Connections = { Wire(source, convert), Wire(convert, first), Wire(convert, second) },
+        };
+
+        // One delivery at a time: the first branch ends before the second reads the converted file they share.
+        ExecutionResult result = await CreateRunner(dir.StagingRoot, maxConcurrency: 1).RunAsync(graph, dryRun: false);
+
+        Dictionary<string, string> deliveredA = Hashes(outA);
+        Dictionary<string, string> deliveredB = Hashes(outB);
+        string failures = string.Join("; ", result.Jobs.Where(j => j.Status == FileJobStatus.Failed).Select(j => j.ErrorMessage));
+        _output.WriteLine($"[convert-branches] outA: {Listing(deliveredA)} outB: {Listing(deliveredB)} failures: {failures}");
+        result.Succeeded.Should().Be(2, failures);
+        deliveredA.Keys.Should().Equal("photo.png");
+        deliveredB.Should().Equal(deliveredA);
+        (await File.ReadAllBytesAsync(Path.Combine(outB, "photo.png"))).Take(4).Should().Equal(0x89, (byte)'P', (byte)'N', (byte)'G');
+        Directory.GetFiles(input).Select(f => Path.GetFileName(f)).Should().Equal("photo.jpg");
+    }
+
     private static PipelineRunner CreateRunner(string stagingRoot, int maxConcurrency = 2) =>
         new PipelineRunner(NodeRegistry.CreateDefault(NullLoggerFactory.Instance), NullLogger<PipelineRunner>.Instance, maxConcurrency, stagingRoot);
 
     private static string[] SourceNames(TempDirectory dir) =>
         Directory.GetFiles(dir.Path).Select(f => Path.GetFileName(f)).ToArray();
+
+    private static string CreateFolder(TempDirectory dir, string name, params string[] files)
+    {
+        string folder = Path.Combine(dir.Path, name);
+        Directory.CreateDirectory(folder);
+        foreach (string file in files)
+        {
+            File.WriteAllText(Path.Combine(folder, file), $"content of {name}/{file}");
+        }
+
+        return folder;
+    }
+
+    /// <summary>File name to SHA-256 of its bytes; empty when the folder does not exist.</summary>
+    private static Dictionary<string, string> Hashes(string folder) =>
+        Directory.Exists(folder)
+            ? Directory.GetFiles(folder).ToDictionary(
+                f => Path.GetFileName(f),
+                f => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(f))),
+                StringComparer.Ordinal)
+            : new Dictionary<string, string>(StringComparer.Ordinal);
+
+    private static Dictionary<string, string> ToDictionary(IEnumerable<KeyValuePair<string, string>> pairs) =>
+        pairs.ToDictionary(p => p.Key, p => p.Value, StringComparer.Ordinal);
+
+    private static string Listing(Dictionary<string, string> hashes) =>
+        string.Join(", ", hashes.OrderBy(p => p.Key, StringComparer.Ordinal).Select(p => $"{p.Key}={p.Value[..8]}"));
 
     private static Connection Wire(NodeDefinition from, NodeDefinition to) => new() { FromNode = from.Id, ToNode = to.Id };
 

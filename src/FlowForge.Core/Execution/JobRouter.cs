@@ -6,18 +6,20 @@ namespace FlowForge.Core.Execution;
 /// <summary>
 /// Carries jobs along graph connections. A node's input is what its predecessors emitted along each
 /// incoming connection, in connection order. An emitted job goes to the first outgoing connection
-/// itself and to every other one as a clone in the same lineage.
+/// itself and to every other one as a clone in the same lineage, which shares the job's content.
 /// </summary>
 internal sealed class JobRouter
 {
     private readonly LineageCounter _lineages;
+    private readonly RunContext _context;
     private readonly Dictionary<Guid, List<Connection>> _outgoing = new();
     private readonly Dictionary<Guid, List<Connection>> _incoming = new();
     private readonly Dictionary<Connection, List<FileJob>> _carried = new();
 
-    public JobRouter(IReadOnlyList<Connection> connections, LineageCounter lineages)
+    public JobRouter(IReadOnlyList<Connection> connections, LineageCounter lineages, RunContext context)
     {
         _lineages = lineages;
+        _context = context;
         foreach (Connection connection in connections)
         {
             Append(_outgoing, connection.FromNode, connection);
@@ -34,6 +36,7 @@ internal sealed class JobRouter
         {
             FileJob clone = job.CloneForBranch();
             _lineages.Branch(job, clone);
+            _context.RetainBranch(clone);
             _carried[connection].Add(clone);
         }
     }
