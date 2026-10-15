@@ -206,16 +206,17 @@ public partial class ExecutionLogViewModel : ViewModelBase
 
     private void RecordJob(FileJob job)
     {
+        // Each status has its own list, so dropped or failed files never use up the Output list's cap.
         var entry = new FileJobLogEntryViewModel(job);
-        if (Entries.Count < MaxLogEntries)
-        {
-            Entries.Add(entry);
-        }
-
         switch (job.Status)
         {
             case FileJobStatus.Succeeded:
                 Succeeded++;
+                if (Entries.Count < MaxLogEntries)
+                {
+                    Entries.Add(entry);
+                }
+
                 break;
             case FileJobStatus.Failed:
                 Failed++;

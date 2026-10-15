@@ -66,9 +66,9 @@ Undo/redo state is cleared when you load a new pipeline or create a new one.
 
 The bottom panel shows pipeline execution results:
 
-- **Output tab** — per-file status (success, failed, skipped) with details
+- **Output tab** — files that succeeded
 - **Errors tab** — files that failed processing
-- **Warnings tab** — files that were skipped
+- **Skipped tab** — files that were skipped
 - **Progress bar** — live progress during execution
 - **Summary line** — total files, success/fail/skip counts, and duration
 - **Real-time progress** — file scanning count updates live during enumeration, followed by per-file processing status

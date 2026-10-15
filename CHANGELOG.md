@@ -17,7 +17,8 @@ Versions 1.0.0–2.0.0 were tagged and released at the time; those tags and rele
 - **Stations lift on hover** — the station under the pointer rises by one pixel and settles back when the pointer leaves, so it is clear which station a click or drag will take.
 - **The console shows DEMO mode** — while DEMO animates the canvas without a run, the console reads DEMO and "// demo — no files touched" instead of COLD and the idle caption, and shows no process id, since no run is in progress.
 - **One progress bar** — the strip above the log no longer repeats the console's file count under a second, always-moving bar. It names what the run is doing: the scan count while files are found, `Stage n of m · title done/total` while a transform step works through its files (its place among the run's steps, its name, and how many of its files it has taken), then finished files over files found with the latest file's name.
-- **Log rows show their time and node log** — each row on the Output, Errors and Warnings tabs leads with the time it was logged, and hovering a row lists what each node did to that file.
+- **Log rows show their time and node log** — each row on the Output, Errors and Skipped tabs leads with the time it was logged, and hovering a row lists what each node did to that file.
+- **The Output tab lists the files that succeeded** — files a filter drops and files that fail are listed only on their own tabs, and the Warnings tab is now called Skipped, as the run summary and each row call those files. Dropped and failed files used to fill the Output tab ahead of every file the run produced, and after 5,000 of them no produced file appeared there at all.
 
 ### Removed
 
@@ -42,7 +43,7 @@ Versions 1.0.0–2.0.0 were tagged and released at the time; those tags and rele
 - **Templates and samples docs** — the template table is generated from the template library (the Photo Import pattern was wrong); menu and button names match the toolbar (Open, Recent, DRY RUN, IGNITE); samples are no longer called ready-to-run while their nodes open stacked.
 - **Third-party notices** — the font licence is described where it ships (`Assets/Fonts/OFL.txt` in the published folder), not in a release zip that did not exist.
 - **Output failures show their reason** — when an output node fails, its message now becomes the file's error, so the CLI prints an error line for the file and the UI's error tab lists it; both were empty.
-- **Every file reaches progress and the log** — files a filter drops and files a transform fails now print their `[SKIP]` or `[FAIL]` line in the CLI, appear in the UI's log (failures on the errors tab, dropped files on the warnings tab) and count toward the progress bar; they used to report nothing, so the bar stopped short when a filter dropped files.
+- **Every file reaches progress and the log** — files a filter drops and files a transform fails now print their `[SKIP]` or `[FAIL]` line in the CLI, appear in the UI's log (failures on the errors tab, dropped files on the skipped tab) and count toward the progress bar; they used to report nothing, so the bar stopped short when a filter dropped files.
 - **Runs start off the UI thread** — the folder scan and the nodes of a run ran on the editor's UI thread until the first file operation that had to wait, so the window could stop responding while a large folder was scanned or previewed.
 - **Copy mode no longer claims to keep originals** — rename and image nodes change files in the input folder itself, so Folder Output's `copy` description, the README and the user guide no longer say that copy keeps the originals or that path guards keep every write inside its target directory; the README, the user guide and the samples README warn to point the input at a copy of your files.
 - **Settings with a null recent list** — a settings file whose `recentPipelines` is `null` now loads as an empty list instead of failing and being overwritten with defaults.
@@ -55,7 +56,7 @@ Versions 1.0.0–2.0.0 were tagged and released at the time; those tags and rele
 - **Station subtitles stay readable while running** — a running station's heat glow lit the body behind its subtitle to almost the subtitle's own colour; while a station runs, its subtitle is now light text on a dark plate.
 - **Readings come from the run** — the toolbar's SRC count and the canvas HUD's latency and error count show the current or last run, and the console shows the app's real process id while a run is in progress; all four were fixed text. The console's file count reads finished files over the files found, so it never passes the total. Station gauges and the HUD's memory reading show a dash, since nothing measures them.
 - **Correction to 2.0.0** — the "animated gauge strip" and the "system HUD with lat/mem/err stats" showed fixed numbers that no run changed (gauges 86, 72 and 43; 6.2ms, 142MB and 0 errors). Fixed in this release: the HUD shows the run's latency and errors, and the gauges and the memory reading show a dash.
-- **Long runs keep the log light** — the Output, Errors and Warnings lists build only the rows in view; each list used to build a full row of controls for every file it held, up to 5,000 per list, on the UI thread.
+- **Long runs keep the log light** — the Output, Errors and Skipped lists build only the rows in view; each list used to build a full row of controls for every file it held, up to 5,000 per list, on the UI thread.
 
 ### Security
 

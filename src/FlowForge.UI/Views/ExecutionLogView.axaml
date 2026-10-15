@@ -271,14 +271,14 @@
                     </StackPanel>
                 </ToggleButton>
 
-                <!-- Warnings tab -->
+                <!-- Skipped tab -->
                 <ToggleButton Grid.Column="2"
                               Classes="outputTab"
                               IsChecked="{Binding IsWarningsTabSelected, Mode=OneWay}"
                               Command="{Binding SelectTabCommand}"
                               CommandParameter="2">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="Warnings" VerticalAlignment="Center" FontSize="12" />
+                        <TextBlock Text="Skipped" VerticalAlignment="Center" FontSize="12" />
                         <Border Background="#26f5c842" CornerRadius="8" Padding="6,1"
                                 IsVisible="{Binding !!Skipped}">
                             <TextBlock Text="{Binding Skipped}"
@@ -343,36 +343,13 @@
                                                    Margin="0,0,8,0" />
                                         <Ellipse Grid.Column="1" Width="6" Height="6"
                                                  Fill="{DynamicResource ForgeSuccess}"
-                                                 VerticalAlignment="Center"
-                                                 IsVisible="{Binding IsSuccess}" />
-                                        <Ellipse Grid.Column="1" Width="6" Height="6"
-                                                 Fill="{DynamicResource ForgeError}"
-                                                 VerticalAlignment="Center"
-                                                 IsVisible="{Binding IsError}" />
-                                        <Ellipse Grid.Column="1" Width="6" Height="6"
-                                                 Fill="{DynamicResource ForgeWarning}"
-                                                 VerticalAlignment="Center"
-                                                 IsVisible="{Binding IsWarning}" />
-                                        <Panel Grid.Column="2">
-                                            <TextBlock Text="{Binding StatusText}"
-                                                       FontFamily="{DynamicResource MwMono}"
-                                                       FontWeight="Bold" FontSize="12"
-                                                       Foreground="{DynamicResource ForgeSuccess}"
-                                                       VerticalAlignment="Center"
-                                                       IsVisible="{Binding IsSuccess}" />
-                                            <TextBlock Text="{Binding StatusText}"
-                                                       FontFamily="{DynamicResource MwMono}"
-                                                       FontWeight="Bold" FontSize="12"
-                                                       Foreground="{DynamicResource ForgeError}"
-                                                       VerticalAlignment="Center"
-                                                       IsVisible="{Binding IsError}" />
-                                            <TextBlock Text="{Binding StatusText}"
-                                                       FontFamily="{DynamicResource MwMono}"
-                                                       FontWeight="Bold" FontSize="12"
-                                                       Foreground="{DynamicResource ForgeWarning}"
-                                                       VerticalAlignment="Center"
-                                                       IsVisible="{Binding IsWarning}" />
-                                        </Panel>
+                                                 VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="2"
+                                                   Text="{Binding StatusText}"
+                                                   FontFamily="{DynamicResource MwMono}"
+                                                   FontWeight="Bold" FontSize="12"
+                                                   Foreground="{DynamicResource ForgeSuccess}"
+                                                   VerticalAlignment="Center" />
                                         <TextBlock Grid.Column="3"
                                                    Text="{Binding FileName}"
                                                    FontFamily="{DynamicResource MwMono}"
@@ -380,14 +357,6 @@
                                                    Foreground="{DynamicResource ForgeText}"
                                                    FontSize="12"
                                                    Margin="0,0,8,0" />
-                                        <TextBlock Grid.Column="4"
-                                                   Text="{Binding ErrorMessage}"
-                                                   FontFamily="{DynamicResource MwMono}"
-                                                   Foreground="{DynamicResource ForgeError}"
-                                                   FontSize="12"
-                                                   VerticalAlignment="Center"
-                                                   TextTrimming="CharacterEllipsis"
-                                                   IsVisible="{Binding IsError}" />
                                     </Grid>
                                 </Border>
                             </DataTemplate>
@@ -457,9 +426,9 @@
                 </ScrollViewer>
             </Panel>
 
-            <!-- Warnings tab content -->
+            <!-- Skipped tab content -->
             <Panel IsVisible="{Binding IsWarningsTabSelected}">
-                <TextBlock Text="No warnings"
+                <TextBlock Text="No skipped files"
                            HorizontalAlignment="Center"
                            VerticalAlignment="Center"
                            Foreground="{DynamicResource ForgeTextMuted}"

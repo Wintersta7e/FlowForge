@@ -230,6 +230,27 @@ public class ExecutionLogViewModelTests
     }
 
     [Fact]
+    public void Output_lists_succeeded_files_even_after_5000_dropped_files()
+    {
+        _vm.ReportProgressEvent(new PhaseChanged(ExecutionPhase.Enumerating));
+        _vm.ReportProgressEvent(new FilesDiscovered(5001));
+        _vm.ReportProgressEvent(new PhaseChanged(ExecutionPhase.Processing));
+
+        for (int i = 0; i < 5000; i++)
+        {
+            string path = Path.Combine(Path.GetTempPath(), $"dropped{i}.txt");
+            _vm.ReportProgressEvent(new FileProcessed(new FileJob { OriginalPath = path, CurrentPath = path, Status = FileJobStatus.Skipped }));
+        }
+
+        string kept = Path.Combine(Path.GetTempPath(), "kept.txt");
+        _vm.ReportProgressEvent(new FileProcessed(new FileJob { OriginalPath = kept, CurrentPath = kept, Status = FileJobStatus.Succeeded }));
+
+        _output.WriteLine($"output rows={_vm.Entries.Count} statuses={string.Join(",", _vm.Entries.Select(e => e.StatusText).Distinct(StringComparer.Ordinal))} skipped rows={_vm.WarningEntries.Count}");
+        _vm.Entries.Select(e => e.FileName).Should().Equal(["kept.txt"], "the Output tab lists the files that succeeded");
+        _vm.WarningEntries.Should().HaveCount(5000, "the dropped files are listed on the Skipped tab");
+    }
+
+    [Fact]
     public void FanOutEvents_NeverExceedTotal()
     {
         _vm.ReportProgressEvent(new PhaseChanged(ExecutionPhase.Enumerating));

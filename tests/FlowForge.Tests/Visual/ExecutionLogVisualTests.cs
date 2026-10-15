@@ -102,16 +102,21 @@ public sealed class ExecutionLogVisualTests
         ExecutionLogView view = LogView(window);
         ItemsControl rows = RowList(view, log);
         ToggleButton outputTab = Tab(view, "0");
-        session.RenderUntil(() => RowsShown(rows, 3), "three log rows shown");
+        session.RenderUntil(() => RowsShown(rows, 1), "the succeeded file's row shown");
 
         // Pressing the open tab collapses the row list; pressing it again expands it.
         session.Click(outputTab);
         session.RenderUntil(() => !log.IsPanelExpanded && !rows.IsEffectivelyVisible, "row list collapsed");
         session.Click(outputTab);
-        session.RenderUntil(() => log.IsPanelExpanded && RowsShown(rows, 3), "row list expanded");
+        session.RenderUntil(() => log.IsPanelExpanded && RowsShown(rows, 1), "row list expanded");
+        string[] outputFiles = RowGrids(rows).Select(g => ((FileJobLogEntryViewModel)g.DataContext!).FileName).ToArray();
+
+        session.Click(Tab(view, "1"));
+        session.RenderUntil(() => ListOf(view, log.ErrorEntries) is { } shown && RowsShown(shown, 1), "the failed file's row shown on the Errors tab");
+        ItemsControl errorRows = ListOf(view, log.ErrorEntries)!;
         using WriteableBitmap frame = session.Capture(VisualFrames.LogRows);
 
-        Grid failedRow = RowGrids(rows).Single(g => g.DataContext is FileJobLogEntryViewModel { IsError: true });
+        Grid failedRow = RowGrids(errorRows).Single();
         TextBlock error = failedRow.Children.OfType<TextBlock>().Single(t => Grid.GetColumn(t) == 4);
         Ellipse marker = failedRow.Children.OfType<Ellipse>().Single(e => e.IsEffectivelyVisible);
         PixelRect markerBounds = session.BoundsInWindow(marker);
@@ -122,9 +127,9 @@ public sealed class ExecutionLogVisualTests
         Color measured = session.MeanColour(frame, markerBand);
         Color background = session.MeanColour(frame, backgroundBand);
         Color expected = ThemeColour("ForgeError");
-        _output.WriteLine($"rows={RowGrids(rows).Count} error='{error.Text}' visible={error.IsEffectivelyVisible}");
+        _output.WriteLine($"output rows={string.Join(",", outputFiles)} error rows={RowGrids(errorRows).Count} error='{error.Text}' visible={error.IsEffectivelyVisible}");
         _output.WriteLine($"marker band={markerBand} measured={measured} expected={expected} background={background} tolerance={ColourTolerance}");
-        RowGrids(rows).Should().HaveCount(3, "each processed file adds a row");
+        outputFiles.Should().Equal(["kept.png"], "the Output tab lists only the file that succeeded");
         error.IsEffectivelyVisible.Should().BeTrue();
         error.Text.Should().Be(failedJob.ErrorMessage);
         WithinTolerance(measured, expected).Should().BeTrue("the failed row's marker is drawn in the theme's error colour");
@@ -198,13 +203,13 @@ public sealed class ExecutionLogVisualTests
         }
 
         _output.WriteLine($"rows checked={rowsChecked}");
-        rowsChecked.Should().Be(5, "three Output rows, one Errors row and one Warnings row");
+        rowsChecked.Should().Be(3, "one row on each of the Output, Errors and Skipped tabs");
     }
 
     [AvaloniaFact]
     public void Log_lists_build_only_the_rows_in_view()
     {
-        const int files = 2000;
+        const int files = 3000;
         using var session = VisualSession.Open(_output);
         ExecutionLogViewModel log = session.ViewModel.ExecutionLog;
         log.ReportProgressEvent(new PhaseChanged(ExecutionPhase.Enumerating));
@@ -212,9 +217,12 @@ public sealed class ExecutionLogVisualTests
         log.ReportProgressEvent(new PhaseChanged(ExecutionPhase.Processing));
         for (int i = 0; i < files; i++)
         {
-            FileJob job = i % 2 == 0
-                ? Job(session, $"file{i}.png", FileJobStatus.Failed, "Unsupported image header")
-                : Job(session, $"file{i}.png", FileJobStatus.Skipped);
+            FileJob job = (i % 3) switch
+            {
+                0 => Job(session, $"file{i}.png", FileJobStatus.Succeeded),
+                1 => Job(session, $"file{i}.png", FileJobStatus.Failed, "Unsupported image header"),
+                _ => Job(session, $"file{i}.png", FileJobStatus.Skipped),
+            };
             log.ReportProgressEvent(new FileProcessed(job));
         }
 
