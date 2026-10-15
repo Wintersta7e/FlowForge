@@ -1,8 +1,11 @@
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Media.Imaging;
+using Avalonia.VisualTree;
 using FlowForge.Core.Pipeline.Templates;
 using FlowForge.UI.ViewModels;
+using FlowForge.UI.Views;
 using FluentAssertions;
 using Xunit.Abstractions;
 
@@ -29,6 +32,12 @@ public sealed class WindowSizeTests
 
         AssertMinimumSize(session, frame);
         session.ViewModel.Editor.Nodes.Should().BeEmpty();
+        Control emptyState = session.ById<Control>("EmptyState");
+        PixelRect pane = session.BoundsInWindow(session.Window.GetVisualDescendants().OfType<CanvasView>().Single());
+        session.TextCutOffBy(emptyState, pane).Should().BeEmpty("the headline and the empty state's text wrap inside the canvas pane");
+        TextBlock hudErrors = session.ById<TextBlock>("HudErrors");
+        _output.WriteLine($"hud-errors visible={hudErrors.IsEffectivelyVisible}");
+        hudErrors.IsEffectivelyVisible.Should().BeFalse("the run readouts do not show through the empty state's cards");
         session.TemplateCards().Should().HaveCount(PipelineTemplateLibrary.Templates.Count);
         session.TemplateCardsOutsideCanvas(bringIntoView: true).Should().BeEmpty("every template card scrolls fully into the canvas pane");
     }
@@ -44,6 +53,7 @@ public sealed class WindowSizeTests
         int templateNodes = PipelineTemplateLibrary.CreateFromTemplate(VisualSession.WebExportTemplate).Nodes.Count;
         _output.WriteLine($"nodes={session.ViewModel.Editor.Nodes.Count} template={templateNodes}");
         session.ViewModel.Editor.Nodes.Should().HaveCount(templateNodes);
+        session.ById<TextBlock>("HudErrors").IsEffectivelyVisible.Should().BeTrue("the run readouts show once the canvas has stations");
     }
 
     [AvaloniaFact]
@@ -70,5 +80,6 @@ public sealed class WindowSizeTests
         _output.WriteLine($"client={session.Window.ClientSize} frame={frame.PixelSize}");
         session.Window.ClientSize.Should().Be(MinimumSize);
         frame.PixelSize.Should().Be(new PixelSize(900, 560));
+        session.RunControlsOutsideClient().Should().BeEmpty("the run button and the shortcuts button stay on screen at the minimum size");
     }
 }

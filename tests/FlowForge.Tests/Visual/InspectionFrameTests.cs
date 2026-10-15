@@ -126,6 +126,7 @@ public sealed class InspectionFrameTests
 
         _output.WriteLine($"base-name-length={baseName.Length} title='{vm.Title}'");
         vm.Title.Should().Contain(baseName);
+        session.RunControlsOutsideClient().Should().BeEmpty("a long name is trimmed rather than pushing the run controls off screen");
     }
 
     [AvaloniaFact]

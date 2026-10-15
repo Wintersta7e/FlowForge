@@ -1037,8 +1037,9 @@
                    HorizontalAlignment="Left" VerticalAlignment="Top"
                    Margin="40,14,0,0" />
 
-        <!-- System HUD bottom-right -->
+        <!-- System HUD bottom-right; hidden with no stations, where it would show through the empty state's cards -->
         <Border IsHitTestVisible="False"
+                IsVisible="{Binding HasNodes}"
                 HorizontalAlignment="Right" VerticalAlignment="Bottom"
                 Margin="0,0,38,14"
                 Padding="10,8"
@@ -1092,7 +1093,7 @@
                            Foreground="{DynamicResource MwCyan}"
                            HorizontalAlignment="Center" />
 
-                <!-- Hero headline -->
+                <!-- Hero headline; wraps in a pane narrower than its line -->
                 <StackPanel HorizontalAlignment="Center" Spacing="2">
                     <TextBlock Text="Build your pipeline"
                                Classes="tight"
@@ -1101,6 +1102,8 @@
                                FontWeight="Normal"
                                LineHeight="62"
                                Foreground="{DynamicResource MwBone}"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"
                                HorizontalAlignment="Center" />
                     <TextBlock Text="from raw ore."
                                Classes="tight"
@@ -1110,6 +1113,8 @@
                                FontWeight="Light"
                                LineHeight="62"
                                Foreground="{DynamicResource MwMolten}"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"
                                HorizontalAlignment="Center" />
                 </StackPanel>
 
@@ -1119,6 +1124,8 @@
                            FontSize="12"
                            LineHeight="18"
                            Foreground="{DynamicResource MwAsh}"
+                           TextWrapping="Wrap"
+                           TextAlignment="Center"
                            HorizontalAlignment="Center" />
 
                 <!-- Template cards: one cast-iron button per library template -->

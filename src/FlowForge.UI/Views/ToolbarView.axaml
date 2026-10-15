@@ -8,8 +8,20 @@
              x:Class="FlowForge.UI.Views.ToolbarView"
              x:DataType="vm:MainWindowViewModel">
 
+    <UserControl.Styles>
+        <!-- Below 1100 px the live counts give way, so the run controls stay on screen
+             down to the window's minimum width and the file name keeps some room. -->
+        <ContainerQuery Name="toolbar" Query="max-width:1099">
+            <Style Selector="StackPanel.liveStats, Border.liveStatsRule">
+                <Setter Property="IsVisible" Value="False" />
+            </Style>
+        </ContainerQuery>
+    </UserControl.Styles>
+
     <!-- Mw top bar: 56px, panel→deep gradient, iron-dark bottom border, shadow -->
-    <Border Background="{DynamicResource MwTopBarBody}"
+    <Border Container.Name="toolbar"
+            Container.Sizing="Width"
+            Background="{DynamicResource MwTopBarBody}"
             BorderBrush="{DynamicResource MwIronDark}"
             BorderThickness="0,0,0,1"
             Height="56"
@@ -187,6 +199,7 @@
             </StackPanel>
 
             <Border Grid.Column="7"
+                    Classes="liveStatsRule"
                     Width="1" Height="24"
                     Background="{DynamicResource MwIronDark}"
                     VerticalAlignment="Center"
@@ -194,6 +207,7 @@
 
             <!-- 8. Live stats (stn / pipe / src) -->
             <StackPanel Grid.Column="8"
+                        Classes="liveStats"
                         Orientation="Horizontal"
                         Spacing="16"
                         VerticalAlignment="Center">

@@ -114,6 +114,18 @@ public sealed class ToolbarTests
         session.ShownText(slot).Should().Equal($"/{Path.GetFileName(session.Temp.Path)}/", name);
         (ToolTip.GetTip(slot) as string).Should().Be(path, "hovering the slot shows the full path");
         session.InsideClient(HelpButtonName, help).Should().BeTrue("a long file name is trimmed, not pushing the toolbar off screen");
+        TextBlock sourceCount = session.ById<TextBlock>("ToolbarSourceCount");
+        sourceCount.IsEffectivelyVisible.Should().BeTrue("the live counts show at the default size");
+
+        var minimum = new Size(session.Window.MinWidth, session.Window.MinHeight);
+        session.Window.Width = minimum.Width;
+        session.Window.Height = minimum.Height;
+        session.RenderUntil(() => session.Window.ClientSize == minimum, "the window at its minimum size");
+
+        PrintSlot($"open at {minimum}", session, slot);
+        (ToolTip.GetTip(slot) as string).Should().Be(path);
+        session.InsideClient(HelpButtonName, help).Should().BeTrue("the shortcuts button stays on screen at the window's minimum size");
+        sourceCount.IsEffectivelyVisible.Should().BeFalse("the live counts give way to the run controls in a narrow window");
     }
 
     // The left padding of a toolbar button, clear of its icon, and the brightest pixel of its icon.

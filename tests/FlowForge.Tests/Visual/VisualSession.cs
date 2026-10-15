@@ -241,6 +241,45 @@ internal sealed class VisualSession : IDisposable
         return inside;
     }
 
+    // Each shown TextBlock under the container whose laid-out text is wider than its own box, or whose
+    // box reaches past the sides of the pane: text the pane would cut off. Each one is printed.
+    public List<string> TextCutOffBy(Control container, PixelRect pane)
+    {
+        var cut = new List<string>();
+        foreach (TextBlock text in container.GetVisualDescendants().OfType<TextBlock>().Where(t => t.IsEffectivelyVisible))
+        {
+            PixelRect bounds = BoundsInWindow(text);
+            double width = text.TextLayout.Width;
+            if (width > text.Bounds.Width + 0.5 || bounds.X < pane.X || bounds.Right > pane.Right)
+            {
+                cut.Add($"'{text.Text}' at {bounds} lays out {width:F1} px wide in a {text.Bounds.Width:F1} px box");
+            }
+        }
+
+        _output.WriteLine($"[text] pane={pane} cut-off={cut.Count}");
+        cut.ForEach(_output.WriteLine);
+        return cut;
+    }
+
+    // IGNITE (the toolbar's one button bound to the run command) and the shortcuts button,
+    // each printed; returns the names of those not shown fully inside the client area.
+    public List<string> RunControlsOutsideClient()
+    {
+        Button ignite = Window.GetVisualDescendants().OfType<Button>().Single(button => ReferenceEquals(button.Command, ViewModel.RunCommand));
+        var outside = new List<string>();
+        if (!InsideClient("IGNITE", ignite))
+        {
+            outside.Add("IGNITE");
+        }
+
+        if (!InsideClient("Keyboard Shortcuts", ButtonNamed("Keyboard Shortcuts")))
+        {
+            outside.Add("Keyboard Shortcuts");
+        }
+
+        return outside;
+    }
+
     // The visual's centre in the coordinates of its own top level (the window, or a popup's root).
     public Point CentreOf(Avalonia.Visual visual) =>
         visual.TranslatePoint(new Point(visual.Bounds.Width / 2, visual.Bounds.Height / 2), TopLevel.GetTopLevel(visual)!)
