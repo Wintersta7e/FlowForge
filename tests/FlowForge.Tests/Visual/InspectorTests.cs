@@ -7,6 +7,9 @@ using Avalonia.Input;
 using Avalonia.VisualTree;
 using FlowForge.Core.Execution;
 using FlowForge.Core.Nodes.Base;
+using FlowForge.Core.Pipeline;
+using FlowForge.Tests.Helpers;
+using FlowForge.UI.UndoRedo.Commands;
 using FlowForge.UI.ViewModels;
 using FluentAssertions;
 using Nodify.Avalonia;
@@ -16,7 +19,8 @@ namespace FlowForge.Tests.Visual;
 
 /// <summary>
 /// A station answers the pointer as the editor draws it: a hovered station lifts. The
-/// inspector's field editors show true watermarks and stay inside their cards.
+/// inspector's field editors show true watermarks and stay inside their cards, and a station's
+/// preview follows an edit made there and its undo.
 /// </summary>
 [Collection(VisualCollection.Name)]
 public sealed class InspectorTests
@@ -93,6 +97,41 @@ public sealed class InspectorTests
         lines.Should().BeGreaterThan(1, "a long multi-line value wraps");
         cardBounds.Contains(editorBounds).Should().BeTrue("the multi-line editor stays inside its field card");
         inspectorBounds.Contains(cardBounds).Should().BeTrue("the field card stays inside the inspector");
+    }
+
+    [AvaloniaFact]
+    public void StationPreview_FollowsEditAndUndo()
+    {
+        const string original = "{name}_before{ext}";
+        const string edited = "{name}_after{ext}";
+        using var session = VisualSession.Open(_output);
+        EditorViewModel editor = session.ViewModel.Editor;
+        var definition = new NodeDefinition
+        {
+            TypeKey = "RenamePattern",
+            Position = new CanvasPosition(200, 160),
+            Config = ConfigHelper.MakeConfig(("pattern", original)),
+        };
+        var node = new PipelineNodeViewModel(definition, session.ViewModel.Registry);
+        editor.UndoRedo.Execute(new AddNodeCommand(editor.Nodes, node));
+        ItemContainer station = session.WaitForStation(node);
+        TextBlock preview = station.GetVisualDescendants().OfType<TextBlock>()
+            .Single(text => string.Equals(text.Text, original, StringComparison.Ordinal));
+        session.Click(station);
+        session.RenderUntil(
+            () => ReferenceEquals(editor.SelectedNode, node) && session.InspectorReady(),
+            "RenamePattern selected and its fields shown");
+
+        session.ViewModel.Properties.Fields.Single(f => string.Equals(f.Key, "pattern", StringComparison.Ordinal)).Value = edited;
+        session.Pump();
+        string? afterEdit = preview.Text;
+        session.ViewModel.UndoCommand.Execute(null);
+        session.Pump();
+        string? afterUndo = preview.Text;
+
+        _output.WriteLine($"preview before='{original}' after edit='{afterEdit}' after undo='{afterUndo}' shown={preview.IsEffectivelyVisible}");
+        afterEdit.Should().Be(edited, "the station's preview follows an inspector edit");
+        afterUndo.Should().Be(original, "Undo restores the station's preview");
     }
 
     // Shows one fresh node of this type in the inspector, selected by a click on its station.

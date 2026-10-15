@@ -62,6 +62,16 @@ public partial class EditorViewModel : ViewModelBase
         Nodes.CollectionChanged += OnNodesHasNodesChanged;
         Nodes.CollectionChanged += OnNodesGraphChanged;
         Connections.CollectionChanged += OnConnectionsGraphChanged;
+        UndoRedo.StateChanged += OnUndoRedoStateChanged;
+    }
+
+    // Every config edit, and its undo and redo, passes through the history after mutating the config.
+    private void OnUndoRedoStateChanged(object? sender, EventArgs e)
+    {
+        foreach (PipelineNodeViewModel node in Nodes)
+        {
+            node.RefreshConfigPreview();
+        }
     }
 
     // A card takes the colour of its template's first station that is not a source.
