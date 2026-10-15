@@ -262,6 +262,37 @@ public class PipelineCompatTests
     }
 
     [Fact]
+    public async Task Version_1_0_file_with_two_nodes_sharing_an_id_loads_with_the_routing_notice()
+    {
+        using var dir = new TempDirectory();
+
+        // A node block copied without changing its id.
+        string json = $$"""
+            {
+              "name": "Copied node",
+              "version": "1.0",
+              "nodes": [
+                { "id": "{{InputId}}", "typeKey": "FolderInput", "config": { "path": "in" } },
+                { "id": "{{RenameId}}", "typeKey": "RenameAddAffix", "config": { "prefix": "new_" } },
+                { "id": "{{RenameId}}", "typeKey": "RenameAddAffix", "config": { "suffix": "_old" } },
+                { "id": "{{OutputId}}", "typeKey": "FolderOutput", "config": { "path": "out" } }
+              ],
+              "connections": [
+                { "fromNode": "{{InputId}}", "toNode": "{{RenameId}}" },
+                { "fromNode": "{{RenameId}}", "toNode": "{{OutputId}}" }
+              ]
+            }
+            """;
+
+        PipelineGraph graph = await LoadAsync(dir, json);
+
+        string[] codes = graph.LoadNotices.Select(n => n.Code).ToArray();
+        _output.WriteLine($"[duplicate-id] loaded nodes={graph.Nodes.Count} notices={string.Join(", ", codes)}");
+        graph.Nodes.Should().HaveCount(4);
+        codes.Should().Contain("graph-runs-along-connections", "the run refuses the graph, so the file is not run as before");
+    }
+
+    [Fact]
     public async Task Current_version_file_has_no_notices()
     {
         using var dir = new TempDirectory();
