@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
@@ -70,7 +69,6 @@ public partial class ExecutionLogViewModel : ViewModelBase
 
     private readonly NodeRegistry _registry;
     private readonly Stopwatch _processingStopwatch = new();
-    private readonly List<FileJob> _pendingJobs = new();
 
     // Originals whose last live branch has ended: the one progress count, so it never passes TotalFiles.
     private int _completedOriginals;
@@ -130,7 +128,6 @@ public partial class ExecutionLogViewModel : ViewModelBase
 
     public void Clear()
     {
-        _pendingJobs.Clear();
         _completedOriginals = 0;
         _sourceCounted = false;
         _elapsedAtLastTerminal = TimeSpan.Zero;
@@ -161,7 +158,6 @@ public partial class ExecutionLogViewModel : ViewModelBase
         switch (evt)
         {
             case PhaseChanged phaseEvt:
-                FlushPendingJobs();
                 switch (phaseEvt.Phase)
                 {
                     case ExecutionPhase.Enumerating:
@@ -203,65 +199,43 @@ public partial class ExecutionLogViewModel : ViewModelBase
                 }
 
                 _elapsedAtLastTerminal = _processingStopwatch.Elapsed;
-                _pendingJobs.Add(processed.Job);
-                FlushPendingJobs();
+                RecordJob(processed.Job);
                 break;
         }
     }
 
-    private void FlushPendingJobs()
+    private void RecordJob(FileJob job)
     {
-        if (_pendingJobs.Count == 0)
+        var entry = new FileJobLogEntryViewModel(job);
+        if (Entries.Count < MaxLogEntries)
         {
-            return;
+            Entries.Add(entry);
         }
 
-        int succeededDelta = 0;
-        int failedDelta = 0;
-        int skippedDelta = 0;
-        string? lastFileName = null;
-
-        foreach (FileJob job in _pendingJobs)
+        switch (job.Status)
         {
-            var entry = new FileJobLogEntryViewModel(job);
-            lastFileName = job.FileName;
+            case FileJobStatus.Succeeded:
+                Succeeded++;
+                break;
+            case FileJobStatus.Failed:
+                Failed++;
+                if (ErrorEntries.Count < MaxLogEntries)
+                {
+                    ErrorEntries.Add(entry);
+                }
 
-            if (Entries.Count < MaxLogEntries)
-            {
-                Entries.Add(entry);
-            }
+                break;
+            case FileJobStatus.Skipped:
+                Skipped++;
+                if (WarningEntries.Count < MaxLogEntries)
+                {
+                    WarningEntries.Add(entry);
+                }
 
-            switch (job.Status)
-            {
-                case FileJobStatus.Succeeded:
-                    succeededDelta++;
-                    break;
-                case FileJobStatus.Failed:
-                    failedDelta++;
-                    if (ErrorEntries.Count < MaxLogEntries)
-                    {
-                        ErrorEntries.Add(entry);
-                    }
-
-                    break;
-                case FileJobStatus.Skipped:
-                    skippedDelta++;
-                    if (WarningEntries.Count < MaxLogEntries)
-                    {
-                        WarningEntries.Add(entry);
-                    }
-
-                    break;
-            }
+                break;
         }
 
-        _pendingJobs.Clear();
-
-        Succeeded += succeededDelta;
-        Failed += failedDelta;
-        Skipped += skippedDelta;
-        CurrentFile = lastFileName;
-
+        CurrentFile = job.FileName;
         Progress = TotalFiles > 0 ? (double)_completedOriginals / TotalFiles * 100.0 : 0;
         OnPropertyChanged(nameof(ProgressText));
         OnPropertyChanged(nameof(LatencyText));

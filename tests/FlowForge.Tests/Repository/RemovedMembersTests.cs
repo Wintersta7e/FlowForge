@@ -23,6 +23,8 @@ public partial class RemovedMembersTests
         "EnsureFlushTimerRunning",
         "StopFlushTimer",
         "OnFlushTimerTick",
+        "_pendingJobs",
+        "FlushPendingJobs",
         "CategoryBrush",
         "HeaderBrush",
         "NodeBorderBrush",
