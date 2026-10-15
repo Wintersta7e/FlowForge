@@ -295,6 +295,19 @@ internal sealed class VisualSession : IDisposable
         topLevel.MouseUp(centre, MouseButton.Left, RawInputModifiers.None);
     }
 
+    // Presses and releases a key gesture, written as the shortcuts dialog writes it ("Ctrl+Shift+S"),
+    // on the main window: the focused control receives it first, then the window.
+    public void Press(string gesture)
+    {
+        var parsed = KeyGesture.Parse(gesture);
+
+        // Both flag sets give Alt, Control, Shift and Meta the same bits.
+        var modifiers = (RawInputModifiers)parsed.KeyModifiers;
+        PhysicalKey physical = Enum.TryParse(parsed.Key.ToString(), out PhysicalKey named) ? named : PhysicalKey.None;
+        Window.KeyPress(parsed.Key, modifiers, physical, keySymbol: null);
+        Window.KeyRelease(parsed.Key, modifiers, physical, keySymbol: null);
+    }
+
     // The one control of type T in the window that carries this automation id.
     public T ById<T>(string automationId)
         where T : Control =>

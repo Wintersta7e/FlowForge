@@ -148,6 +148,15 @@
                               Foreground="{DynamicResource MwAsh}"
                               Width="15" Height="15" />
                 </Button>
+                <!-- Save As: the Save disk with its corner cut away for a pencil. -->
+                <Button Command="{Binding SaveAsCommand}"
+                        AutomationProperties.Name="Save As"
+                        ToolTip.Tip="Save As (Ctrl+Shift+S)"
+                        Classes="toolbarIcon">
+                    <PathIcon Data="M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H10L21,10V7L17,3Z M15,9H5V5H15Z M10,17.5A2.5,2.5 0 0,1 7.5,15A2.5,2.5 0 0,1 10,12.5A2.5,2.5 0 0,1 12.5,15A2.5,2.5 0 0,1 10,17.5Z M22.36,15.52C22.55,15.33 22.55,15 22.36,14.82L21.19,13.65C21,13.45 20.68,13.45 20.48,13.65L19.56,14.56L21.44,16.44Z M13.5,20.63V22.5H15.38L20.91,16.97L19.03,15.09L13.5,20.63Z"
+                              Foreground="{DynamicResource MwAsh}"
+                              Width="15" Height="15" />
+                </Button>
                 <Button x:Name="RecentButton"
                         Classes="toolbarIcon"
                         AutomationProperties.Name="Recent Pipelines"
