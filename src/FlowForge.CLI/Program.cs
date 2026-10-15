@@ -302,6 +302,10 @@ static void PrintSummary(ExecutionResult result, TextWriter statusWriter, bool j
     }
 
     statusWriter.WriteLine($"  Dry run     : {result.IsDryRun}");
+    if (result.IsDryRun)
+    {
+        statusWriter.WriteLine($"  {Program.MarkedCountLabel}: {result.Jobs.Count(j => j.PreviewMarker is not null)}");
+    }
 
     // JSON output: structured result to stdout for machine consumption
     if (jsonMode)
@@ -313,6 +317,9 @@ static void PrintSummary(ExecutionResult result, TextWriter statusWriter, bool j
 /// <summary>Partial class to hold cached static members for the top-level Program.</summary>
 internal partial class Program
 {
+    /// <summary>Labels the dry-run summary's count of jobs whose preview may differ from the real run.</summary>
+    internal const string MarkedCountLabel = "Checked at run or unresolved";
+
     private static readonly JsonSerializerOptions JsonOutputOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,

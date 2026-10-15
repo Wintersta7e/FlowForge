@@ -74,15 +74,24 @@ public class SortNode : ITransformNode, IBufferedTransformNode
             {
                 "filename" => SortByKey(_buffer, j => j.FileName, descending, StringComparer.OrdinalIgnoreCase),
                 "extension" => SortByKey(_buffer, j => j.Extension, descending, StringComparer.OrdinalIgnoreCase),
-                "size" => SortByKey(_buffer, j => GetFileSize(j.ContentPath, context), descending, Comparer<long>.Default),
-                "createdat" => SortByKey(_buffer, j => GetFileCreatedAt(j.ContentPath, context), descending, Comparer<DateTime>.Default),
-                "modifiedat" => SortByKey(_buffer, j => GetFileModifiedAt(j.ContentPath, context), descending, Comparer<DateTime>.Default),
+                "size" => SortByKey(_buffer, j => GetFileSize(j.ContentPath), descending, Comparer<long>.Default),
+                "createdat" => SortByKey(_buffer, j => GetFileCreatedAt(j.ContentPath), descending, Comparer<DateTime>.Default),
+                "modifiedat" => SortByKey(_buffer, j => GetFileModifiedAt(j.ContentPath), descending, Comparer<DateTime>.Default),
                 _ => throw new InvalidOperationException($"Unknown sort field: '{_field}'")
             };
 
+            // In a dry run a marked job's size and dates are not the real run's, so neither is the order, which
+            // feeds counters and name clashes downstream.
+            bool orderUnresolved = context.DryRun
+                && _field.ToLowerInvariant() is "size" or "createdat" or "modifiedat"
+                && result.Exists(j => j.PreviewMarker is not null);
             foreach (FileJob job in result)
             {
                 job.NodeLog.Add($"Sort: ordered by {_field} {_direction}");
+                if (orderUnresolved)
+                {
+                    job.PreviewMarker = PreviewMarker.Unresolved;
+                }
             }
 
             return Task.FromResult<IEnumerable<FileJob>>(result);
@@ -139,13 +148,8 @@ public class SortNode : ITransformNode, IBufferedTransformNode
         return result;
     }
 
-    private long GetFileSize(string path, RunContext context)
+    private long GetFileSize(string path)
     {
-        if (context.DryRun)
-        {
-            return 0;
-        }
-
         if (!File.Exists(path))
         {
             _logger.LogWarning("Sort: file not found at '{FilePath}', using default size 0", path);
@@ -155,13 +159,8 @@ public class SortNode : ITransformNode, IBufferedTransformNode
         return new FileInfo(path).Length;
     }
 
-    private DateTime GetFileCreatedAt(string path, RunContext context)
+    private DateTime GetFileCreatedAt(string path)
     {
-        if (context.DryRun)
-        {
-            return DateTime.MinValue;
-        }
-
         if (!File.Exists(path))
         {
             _logger.LogWarning("Sort: file not found at '{FilePath}', using default date", path);
@@ -171,13 +170,8 @@ public class SortNode : ITransformNode, IBufferedTransformNode
         return File.GetCreationTimeUtc(path);
     }
 
-    private DateTime GetFileModifiedAt(string path, RunContext context)
+    private DateTime GetFileModifiedAt(string path)
     {
-        if (context.DryRun)
-        {
-            return DateTime.MinValue;
-        }
-
         if (!File.Exists(path))
         {
             _logger.LogWarning("Sort: file not found at '{FilePath}', using default date", path);

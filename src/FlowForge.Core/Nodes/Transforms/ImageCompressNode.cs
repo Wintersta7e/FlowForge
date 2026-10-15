@@ -82,6 +82,7 @@ public class ImageCompressNode : ITransformNode
 
         if (context.DryRun)
         {
+            job.PreviewMarker ??= PreviewMarker.CheckedAtRun;
             NameByFormat(job);
             job.NodeLog.Add($"ImageCompress: would compress to quality={_quality}");
             return new[] { job };

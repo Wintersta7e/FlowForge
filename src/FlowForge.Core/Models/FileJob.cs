@@ -37,6 +37,9 @@ public class FileJob
     public FileJobStatus Status { get; set; } = FileJobStatus.Pending;
     public string? ErrorMessage { get; set; }
 
+    /// <summary>Null in a real run; in a dry run, why this job's preview may differ from the real run.</summary>
+    public PreviewMarker? PreviewMarker { get; set; }
+
     /// <summary>Ordered log of what each node did to this file.</summary>
     public IList<string> NodeLog { get; init; } = new List<string>();
 
@@ -59,6 +62,7 @@ public class FileJob
         ContentPath = ContentPath,
         CurrentPath = CurrentPath,
         Status = Status,
+        PreviewMarker = PreviewMarker,
         Metadata = new Dictionary<string, string>(Metadata, StringComparer.Ordinal),
         NodeLog = new List<string>(NodeLog),
     };

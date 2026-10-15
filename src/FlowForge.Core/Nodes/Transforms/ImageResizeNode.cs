@@ -118,6 +118,7 @@ public class ImageResizeNode : ITransformNode
 
         if (context.DryRun)
         {
+            job.PreviewMarker ??= PreviewMarker.CheckedAtRun;
             job.NodeLog.Add($"ImageResize: would resize to {targetWidth}x{targetHeight} ({_resizeMode})");
             return new[] { job };
         }

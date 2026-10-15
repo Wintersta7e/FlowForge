@@ -87,6 +87,7 @@ public class ImageConvertNode : ITransformNode
 
         if (context.DryRun)
         {
+            job.PreviewMarker ??= PreviewMarker.CheckedAtRun;
             job.CurrentPath = newPath;
             job.NodeLog.Add($"ImageConvert: would convert to {_format}");
             return new[] { job };

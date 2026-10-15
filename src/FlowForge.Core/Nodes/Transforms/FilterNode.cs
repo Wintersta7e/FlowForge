@@ -79,7 +79,7 @@ public class FilterNode : ITransformNode
             // Cache FileInfo once per file for size/date fields (PERF-02)
             bool needsFileInfo = _conditions.Any(c =>
                 c.Field is "size" or "createdat" or "modifiedat");
-            FileInfo? fileInfo = needsFileInfo ? GetCachedFileInfo(job.ContentPath, context) : null;
+            FileInfo? fileInfo = needsFileInfo ? GetCachedFileInfo(job, context) : null;
 
             matches = true;
             for (int idx = 0; idx < _conditions.Count; idx++)
@@ -146,13 +146,15 @@ public class FilterNode : ITransformNode
         };
     }
 
-    private FileInfo? GetCachedFileInfo(string path, RunContext context)
+    private FileInfo? GetCachedFileInfo(FileJob job, RunContext context)
     {
-        if (context.DryRun)
+        // In a dry run a marked job's content was not rewritten, so its size and dates are not the real run's.
+        if (context.DryRun && job.PreviewMarker is not null)
         {
-            return null;
+            job.PreviewMarker = PreviewMarker.Unresolved;
         }
 
+        string path = job.ContentPath;
         var info = new FileInfo(path);
         if (!info.Exists)
         {

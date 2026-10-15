@@ -347,6 +347,11 @@ public class PipelineRunner
         try
         {
             claim = output.ClaimDestination(job, context);
+            if (context.DryRun && claim is not null)
+            {
+                context.Destinations.MarkDryRunClaim(job, claim);
+            }
+
             return true;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

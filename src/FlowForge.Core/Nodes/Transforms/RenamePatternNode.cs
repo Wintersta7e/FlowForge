@@ -103,9 +103,7 @@ public class RenamePatternNode : ITransformNode
                     ? currentCounter.ToString(CultureInfo.InvariantCulture)
                     : currentCounter.ToString(format, CultureInfo.InvariantCulture),
                 "date" => ResolveDateToken(format),
-                "meta" => !string.IsNullOrEmpty(format) && job.Metadata.TryGetValue(format, out string? metaValue)
-                    ? metaValue
-                    : string.Empty,
+                "meta" => ResolveMetaToken(job, format, context),
                 _ => match.Value
             };
         });
@@ -120,6 +118,25 @@ public class RenamePatternNode : ITransformNode
 
         IEnumerable<FileJob> result = new[] { job };
         return Task.FromResult(result);
+    }
+
+    /// <summary>
+    /// A missing key resolves to an empty string. A dry run reads no file content, so a key missing there may
+    /// exist in the real run: the job's preview is unresolved.
+    /// </summary>
+    private static string ResolveMetaToken(FileJob job, string format, RunContext context)
+    {
+        if (!string.IsNullOrEmpty(format) && job.Metadata.TryGetValue(format, out string? metaValue))
+        {
+            return metaValue;
+        }
+
+        if (context.DryRun)
+        {
+            job.PreviewMarker = PreviewMarker.Unresolved;
+        }
+
+        return string.Empty;
     }
 
     private static string ResolveDateToken(string? format)

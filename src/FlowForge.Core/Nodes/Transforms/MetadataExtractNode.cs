@@ -68,7 +68,7 @@ public class MetadataExtractNode : ITransformNode
 
         if (context.DryRun)
         {
-            job.NodeLog.Add("Dry-run: skipping metadata extraction");
+            ReadFileKeysOnly(job);
             IEnumerable<FileJob> dryRunResult = new[] { job };
             return Task.FromResult(dryRunResult);
         }
@@ -97,6 +97,34 @@ public class MetadataExtractNode : ITransformNode
         job.NodeLog.Add($"MetadataExtract: extracted {job.Metadata.Count} keys");
         IEnumerable<FileJob> result = new[] { job };
         return Task.FromResult(result);
+    }
+
+    /// <summary>
+    /// A dry run opens no file content, so it reads only the <c>File:</c> keys, from a stat. A marked job's
+    /// content was not rewritten as the real run would, so its keys are not read and its preview is unresolved.
+    /// </summary>
+    private void ReadFileKeysOnly(FileJob job)
+    {
+        string[] fileKeys = _keys.Where(k => k.StartsWith("File:", StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (job.PreviewMarker is not null)
+        {
+            if (fileKeys.Length > 0)
+            {
+                job.PreviewMarker = PreviewMarker.Unresolved;
+            }
+        }
+        else
+        {
+            foreach (string key in fileKeys)
+            {
+                if (ExtractFileMetadata(key, job.ContentPath) is { } value)
+                {
+                    job.Metadata[key] = value;
+                }
+            }
+        }
+
+        job.NodeLog.Add($"MetadataExtract: read {job.Metadata.Count} file keys, no file content [dry-run]");
     }
 
     private static string? ExtractValue(string key, string filePath, IReadOnlyList<MetadataExtractor.Directory>? exifDirectories)

@@ -7,6 +7,9 @@ using FlowForge.Core.Nodes.Base;
 using FlowForge.Core.Pipeline;
 using FlowForge.Tests.Helpers;
 using Microsoft.Extensions.Logging.Abstractions;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Metadata.Profiles.Exif;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace FlowForge.Tests.Nodes;
 
@@ -298,25 +301,35 @@ public class MetadataExtractNodeTests
     }
 
     [Fact]
-    public async Task TransformAsync_dryRun_skips_extraction()
+    public async Task Dry_run_reads_file_keys_only()
     {
-        string fakePath = Path.Combine(Path.GetTempPath(), "does_not_exist_dryrun_" + Guid.NewGuid().ToString("N") + ".txt");
+        using var dir = new TempDirectory();
+        string filePath = Path.Combine(dir.Path, "photo.jpg");
+        using (var image = new Image<Rgba32>(8, 8))
+        {
+            image.Metadata.ExifProfile = new ExifProfile();
+            image.Metadata.ExifProfile.SetValue(ExifTag.DateTimeOriginal, "2024:05:06 07:08:09");
+            await image.SaveAsJpegAsync(filePath);
+        }
 
         var node = new MetadataExtractNode(NullLogger<MetadataExtractNode>.Instance);
         node.Configure(MakeConfig(new { keys = new[] { "File:SizeBytes", "EXIF:DateTaken" } }));
+        (await node.TransformAsync(new FileJob { OriginalPath = filePath, CurrentPath = filePath, ContentPath = filePath }, TestRunContext.Live()))
+            .Single().Metadata.Should().ContainKey("EXIF:DateTaken", "a live run reads the file's EXIF");
 
         var job = new FileJob
         {
-            OriginalPath = fakePath,
-            CurrentPath = fakePath,
-            ContentPath = fakePath
+            OriginalPath = filePath,
+            CurrentPath = filePath,
+            ContentPath = filePath
         };
 
         IEnumerable<FileJob> result = await node.TransformAsync(job, TestRunContext.Dry());
 
         result.Should().ContainSingle();
         FileJob resultJob = result.First();
-        resultJob.Metadata.Should().BeEmpty("dry-run should not extract metadata");
-        resultJob.NodeLog.Should().Contain(l => l.Contains("Dry-run"));
+        resultJob.Metadata.Should().ContainKey("File:SizeBytes")
+            .WhoseValue.Should().Be(new FileInfo(filePath).Length.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        resultJob.Metadata.Should().NotContainKey("EXIF:DateTaken", "a dry run opens no file content");
     }
 }

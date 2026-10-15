@@ -1,3 +1,4 @@
+using FlowForge.Core.Models;
 using FlowForge.Core.Nodes.Base;
 
 namespace FlowForge.Core.Execution;
@@ -18,6 +19,9 @@ public sealed class DestinationRegistry
     /// one: a doubtful delete is skipped rather than made.
     /// </summary>
     private readonly Dictionary<string, OriginalRecord> _originals = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Dry run only: folders where a job with an unresolved preview claimed a destination.</summary>
+    private readonly HashSet<string> _unresolvedFolders = new(StringComparer.OrdinalIgnoreCase);
 
     private readonly Lock _gate = new();
 
@@ -74,6 +78,26 @@ public sealed class DestinationRegistry
 
             Add(destinationPath);
             return new DestinationClaim(destinationPath, ClaimKind.New, BackupPath: null);
+        }
+    }
+
+    /// <summary>
+    /// After a dry-run claim: a claim in a folder where an unresolved preview claimed earlier is unresolved too,
+    /// since the real name of that earlier file, and so the suffixes after it, are unknown.
+    /// </summary>
+    internal void MarkDryRunClaim(FileJob job, DestinationClaim claim)
+    {
+        string folder = Path.GetDirectoryName(claim.Path) ?? string.Empty;
+        lock (_gate)
+        {
+            if (_unresolvedFolders.Contains(folder))
+            {
+                job.PreviewMarker = PreviewMarker.Unresolved;
+            }
+            else if (job.PreviewMarker == PreviewMarker.Unresolved)
+            {
+                _unresolvedFolders.Add(folder);
+            }
         }
     }
 
