@@ -117,6 +117,42 @@ public partial class DryRunPreviewTests
     }
 
     [Fact]
+    public async Task Claim_in_an_unresolved_folder_spelled_another_way_is_unresolved()
+    {
+        using var dir = new TempDirectory();
+        string input = Path.Combine(dir.Path, "in");
+        string baseFolder = Path.Combine(input, "sub");
+        Directory.CreateDirectory(baseFolder);
+        await File.WriteAllTextAsync(Path.Combine(input, "a.txt"), "a");
+        await File.WriteAllTextAsync(Path.Combine(baseFolder, "b.txt"), "b");
+
+        // a.txt sits outside the base folder and is delivered flat; b.txt sits in the base folder itself,
+        // so its destination folder is the output folder followed by ".": one folder, two spellings.
+        PipelineGraph graph = PipelineBuilder.New()
+            .AddSource("FolderInput", new { path = input, recursive = true })
+            .AddTransform(UnresolvedPreviewNode.RegisteredTypeKey, new { })
+            .AddTransform("RenamePattern", new { pattern = "x{ext}" })
+            .AddOutput("FolderOutput", new { path = dir.OutputPath, preserveStructure = true, sourceBasePath = baseFolder })
+            .Build();
+        var registry = NodeRegistry.CreateDefault(NullLoggerFactory.Instance);
+        registry.Register(UnresolvedPreviewNode.RegisteredTypeKey, () => new UnresolvedPreviewNode("a.txt"), "Unresolved Preview", NodeCategory.Transform, () => []);
+
+        ExecutionResult dry = await new PipelineRunner(registry, NullLogger<PipelineRunner>.Instance, stagingRoot: dir.StagingRoot)
+            .RunAsync(graph, dryRun: true);
+
+        var byFile = dry.Jobs.ToDictionary(j => Path.GetRelativePath(input, j.OriginalPath), StringComparer.Ordinal);
+        foreach ((string file, FileJob job) in byFile)
+        {
+            _output.WriteLine($"[marker] {file} -> {PreviewPath(job) ?? "none"} {job.PreviewMarker?.ToString() ?? "unmarked"}");
+        }
+
+        string b = Path.Combine("sub", "b.txt");
+        byFile.Keys.Should().BeEquivalentTo(["a.txt", b]);
+        Path.GetRelativePath(dir.OutputPath, PreviewPath(byFile[b])!).Should().Be("x_1.txt", "b.txt claims after a.txt in the same folder");
+        byFile[b].PreviewMarker.Should().Be(PreviewMarker.Unresolved, "the name a.txt really gets is unknown, so b.txt's suffix is too");
+    }
+
+    [Fact]
     public async Task Size_filter_and_sort_match_live()
     {
         using var dir = new TempDirectory();

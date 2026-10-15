@@ -87,7 +87,7 @@ public sealed class DestinationRegistry
     /// </summary>
     internal void MarkDryRunClaim(FileJob job, DestinationClaim claim)
     {
-        string folder = Path.GetDirectoryName(claim.Path) ?? string.Empty;
+        string folder = Path.GetDirectoryName(Path.GetFullPath(claim.Path)) ?? string.Empty;
         lock (_gate)
         {
             if (_unresolvedFolders.Contains(folder))
