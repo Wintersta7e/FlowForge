@@ -53,7 +53,7 @@ public class ConfigFieldTemplateSelector : IDataTemplate
         {
             ConfigFieldType.String => BuildStringEditor(field),
             ConfigFieldType.Int => BuildIntEditor(field),
-            ConfigFieldType.Bool => BuildBoolEditor(field),
+            ConfigFieldType.Bool => BuildBoolEditor(),
             ConfigFieldType.FilePath => BuildFilePathEditor(field),
             ConfigFieldType.FolderPath => BuildFolderPathEditor(field),
             ConfigFieldType.Select => BuildSelectEditor(field),
@@ -92,19 +92,17 @@ public class ConfigFieldTemplateSelector : IDataTemplate
     {
         TextBox textBox = new()
         {
-            Watermark = field.Placeholder ?? "0"
+            Watermark = field.Placeholder ?? field.DefaultValue ?? string.Empty
         };
         textBox.Bind(TextBox.TextProperty,
             new Avalonia.Data.Binding("Value"));
         return textBox;
     }
 
-    private static CheckBox BuildBoolEditor(ConfigFieldViewModel field)
+    // The card's label above names the field, so the box carries no text of its own.
+    private static CheckBox BuildBoolEditor()
     {
-        CheckBox checkBox = new()
-        {
-            Content = field.Label
-        };
+        CheckBox checkBox = new();
         checkBox.Bind(CheckBox.IsCheckedProperty,
             new Avalonia.Data.Binding("Value")
             {

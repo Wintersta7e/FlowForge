@@ -108,10 +108,11 @@
                                HorizontalAlignment="Center" />
                 </StackPanel>
 
-                <!-- Fields list (unchanged — uses existing ConfigFieldTemplateSelector) -->
-                <ScrollViewer IsVisible="{Binding HasSelection}"
-                              Padding="16,8,16,18">
-                    <ItemsControl ItemsSource="{Binding Fields}">
+                <!-- Fields list. The inset is the list's margin, not the ScrollViewer's padding:
+                     the padding moved the cards right without narrowing them, past the inspector's edge. -->
+                <ScrollViewer IsVisible="{Binding HasSelection}">
+                    <ItemsControl ItemsSource="{Binding Fields}"
+                                  Margin="16,8,16,18">
                         <ItemsControl.ItemTemplate>
                             <views:ConfigFieldTemplateSelector />
                         </ItemsControl.ItemTemplate>

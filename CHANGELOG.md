@@ -61,6 +61,7 @@ Versions 1.0.0–2.0.0 were tagged and released at the time; those tags and rele
 - **Docs name nodes as the editor does** — the user guide's node headings give the node library's group (Input, Process, Save To) instead of Source and Transform, and the samples README lists each sample's nodes by the names the editor shows, joined by arrows, instead of by their type keys.
 - **Undo and Redo follow the history** — the toolbar's Undo and Redo buttons are enabled only when there is a step to undo or redo, and their tooltips name that step, for example "Undo Add Rename (Pattern) (Ctrl+Z)"; both buttons were always enabled. A disabled toolbar button keeps the toolbar's background and dims its icon.
 - **Template cards describe their templates** — the empty canvas's cards are built from the template library, so each shows its template's real station count and says what it does; three counts were wrong and every description named steps its template does not take. When the canvas is too short for them, the cards scroll into view instead of running off its edge.
+- **Inspector fields show true hints and fit the panel** — an empty number field's hint is the field's own placeholder or default, or nothing, instead of "0" (Counter Start now hints "1"); check boxes no longer repeat the label shown above them; and the field cards fit inside the inspector, where they used to run past its right edge, so a long multi-line value wraps within the visible card.
 
 ### Security
 
