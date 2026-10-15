@@ -37,8 +37,6 @@ public class PipelineRunner
 
         try
         {
-            progress?.Report(new PhaseChanged(ExecutionPhase.Enumerating));
-
             GraphValidationResult validation = PipelineGraphValidator.Validate(graph, _registry);
             if (!validation.IsValid)
             {
@@ -52,6 +50,9 @@ public class PipelineRunner
             IReadOnlyList<Connection> connections = validation.Connections;
             var lineages = new LineageCounter();
             var router = new JobRouter(connections, lineages);
+
+            // Reported only once the pipeline is accepted, so a refused one never shows a scan.
+            progress?.Report(new PhaseChanged(ExecutionPhase.Enumerating));
             result.TotalFiles = await DiscoverJobsAsync(sources, router, lineages, progress, ct).ConfigureAwait(false);
 
             progress?.Report(new PhaseChanged(ExecutionPhase.Processing));

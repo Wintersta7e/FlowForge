@@ -167,6 +167,47 @@ public sealed class ExecutionLogVisualTests
     }
 
     [AvaloniaFact]
+    public void A_refused_run_keeps_its_summary_in_the_window_and_lists_it_as_errors()
+    {
+        const string prefix = "Execution failed: ";
+        using var session = VisualSession.Open(_output);
+        MainWindowViewModel vm = session.ViewModel;
+        ExecutionLogViewModel log = vm.ExecutionLog;
+        string input = Path.Combine(session.Temp.Path, "in");
+        TestFileFactory.CreateTestImages(input, "a.png");
+
+        // The editor lets one step feed two outputs; the run refuses that shape with a long, node-by-node message.
+        NodeDefinition source = PipelineBuilder.Node("FolderInput", new { path = input, filter = "*.png" });
+        NodeDefinition rename = PipelineBuilder.Node("RenameAddAffix", new { prefix = "x_" });
+        NodeDefinition first = PipelineBuilder.Node("FolderOutput", new { path = Path.Combine(session.Temp.OutputPath, "first"), mode = "copy" });
+        NodeDefinition second = PipelineBuilder.Node("FolderOutput", new { path = Path.Combine(session.Temp.OutputPath, "second"), mode = "copy" });
+        var graph = new PipelineGraph { Name = "fan-out", Nodes = [source, rename, first, second] };
+        graph.Connections.Add(new Connection { FromNode = source.Id, ToNode = rename.Id });
+        graph.Connections.Add(new Connection { FromNode = rename.Id, ToNode = first.Id });
+        graph.Connections.Add(new Connection { FromNode = rename.Id, ToNode = second.Id });
+        vm.Editor.LoadGraph(graph, vm.Registry).Should().Be(0, "the editor keeps every connection of the fan-out");
+
+        vm.RunCommand.Execute(null);
+        session.RenderUntil(() => !log.IsRunning && log.Summary is not null, TimeSpan.FromSeconds(10), "the run was refused");
+        TextBlock summary = session.ById<TextBlock>("RunSummary");
+        session.RenderUntil(() => summary.IsEffectivelyVisible && summary.Bounds.Width > 0, "refusal summary shown");
+        using WriteableBitmap frame = session.Capture(VisualFrames.RunRefused);
+
+        PixelRect bounds = session.BoundsInWindow(summary);
+        var client = PixelSize.FromSize(session.Window.ClientSize, session.Window.RenderScaling);
+        object? tip = ToolTip.GetTip(summary);
+        string[] lines = log.Summary![prefix.Length..].Split(Environment.NewLine);
+        _output.WriteLine($"summary length={log.Summary.Length} bounds={bounds} client={client} tip length={tip?.ToString()?.Length ?? 0}");
+        _output.WriteLine($"message lines={lines.Length} error rows={log.ErrorEntries.Count} failed={log.Failed}");
+        log.Summary.Should().StartWith(prefix);
+        tip.Should().Be(log.Summary, "the tooltip holds the whole summary");
+        bounds.X.Should().BeGreaterThanOrEqualTo(0);
+        bounds.Right.Should().BeLessThanOrEqualTo(client.Width, "the summary is trimmed inside the window, not cut off at its edge");
+        log.ErrorEntries.Select(e => e.ErrorMessage).Should().Equal(lines, "each line of the message is a row on the Errors tab");
+        log.Failed.Should().Be(0, "no file failed; the run was refused before it touched one");
+    }
+
+    [AvaloniaFact]
     public void LogRows_ShowTimestampAndNodeLogTooltip()
     {
         using var session = VisualSession.Open(_output);

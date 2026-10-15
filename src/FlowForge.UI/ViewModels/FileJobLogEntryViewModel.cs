@@ -17,19 +17,28 @@ public class FileJobLogEntryViewModel : ViewModelBase
     public string Timestamp { get; }
 
     public FileJobLogEntryViewModel(FileJob job)
+        : this(job.FileName, job.Status, job.ErrorMessage, job.NodeLog as IReadOnlyList<string> ?? job.NodeLog.ToList())
     {
-        FileName = job.FileName;
-        Status = job.Status;
-        ErrorMessage = job.ErrorMessage;
-        NodeLog = job.NodeLog as IReadOnlyList<string> ?? job.NodeLog.ToList();
+    }
+
+    private FileJobLogEntryViewModel(string fileName, FileJobStatus status, string? errorMessage, IReadOnlyList<string> nodeLog)
+    {
+        FileName = fileName;
+        Status = status;
+        ErrorMessage = errorMessage;
+        NodeLog = nodeLog;
         Timestamp = DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture);
 
-        StatusText = job.Status switch
+        StatusText = status switch
         {
             FileJobStatus.Succeeded => "OK",
             FileJobStatus.Failed => "FAIL",
             FileJobStatus.Skipped => "SKIP",
-            _ => job.Status.ToString().ToUpperInvariant()
+            _ => status.ToString().ToUpperInvariant()
         };
     }
+
+    // A failure of the run itself rather than of one file: no file name, the message as its error.
+    public static FileJobLogEntryViewModel ForRunError(string message) =>
+        new(string.Empty, FileJobStatus.Failed, message, Array.Empty<string>());
 }

@@ -33,6 +33,8 @@ internal static class VisualFrames
 
     public const string RealRun = "real-run";
 
+    public const string RunRefused = "run-refused";
+
     public const string MinEmpty = "w-min-empty";
 
     public const string MinIdle = "w-min-idle";

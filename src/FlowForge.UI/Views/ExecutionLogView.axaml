@@ -234,7 +234,7 @@
         <Border DockPanel.Dock="Top"
                 BorderBrush="{DynamicResource ForgeBorder}"
                 BorderThickness="0,1,0,0">
-            <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto">
+            <Grid ColumnDefinitions="Auto,Auto,Auto,*">
                 <!-- Output tab -->
                 <ToggleButton Grid.Column="0"
                               Classes="outputTab"
@@ -289,10 +289,12 @@
                     </StackPanel>
                 </ToggleButton>
 
-                <!-- Summary text (right-aligned, when not running) -->
-                <TextBlock Grid.Column="4"
+                <!-- Summary text (right-aligned, when not running): one line trimmed to the space left, the whole text in its tooltip -->
+                <TextBlock Grid.Column="3"
                            AutomationProperties.AutomationId="RunSummary"
                            Text="{Binding Summary}"
+                           ToolTip.Tip="{Binding Summary}"
+                           MaxLines="1"
                            TextTrimming="CharacterEllipsis"
                            VerticalAlignment="Center"
                            HorizontalAlignment="Right"

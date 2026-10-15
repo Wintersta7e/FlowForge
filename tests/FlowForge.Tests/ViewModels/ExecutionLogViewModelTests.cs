@@ -251,6 +251,19 @@ public class ExecutionLogViewModelTests
     }
 
     [Fact]
+    public void A_run_error_lists_each_message_line_on_the_errors_tab()
+    {
+        string message = string.Join(Environment.NewLine, "Pipeline graph contains a cycle.", "Unknown node type: 'Missing'");
+
+        _vm.RecordRunError(message);
+
+        _output.WriteLine($"error rows={string.Join(" | ", _vm.ErrorEntries.Select(e => $"{e.StatusText} '{e.FileName}' {e.ErrorMessage}"))} failed={_vm.Failed}");
+        _vm.ErrorEntries.Select(e => e.ErrorMessage).Should().Equal(["Pipeline graph contains a cycle.", "Unknown node type: 'Missing'"]);
+        _vm.ErrorEntries.Should().OnlyContain(e => e.FileName.Length == 0, "the rows name no file");
+        _vm.Failed.Should().Be(0, "no file failed");
+    }
+
+    [Fact]
     public void FanOutEvents_NeverExceedTotal()
     {
         _vm.ReportProgressEvent(new PhaseChanged(ExecutionPhase.Enumerating));

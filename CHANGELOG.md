@@ -57,6 +57,7 @@ Versions 1.0.0–2.0.0 were tagged and released at the time; those tags and rele
 - **Readings come from the run** — the toolbar's SRC count and the canvas HUD's latency and error count show the current or last run, and the console shows the app's real process id while a run is in progress; all four were fixed text. The console's file count reads finished files over the files found, so it never passes the total. Station gauges and the HUD's memory reading show a dash, since nothing measures them.
 - **Correction to 2.0.0** — the "animated gauge strip" and the "system HUD with lat/mem/err stats" showed fixed numbers that no run changed (gauges 86, 72 and 43; 6.2ms, 142MB and 0 errors). Fixed in this release: the HUD shows the run's latency and errors, and the gauges and the memory reading show a dash.
 - **Long runs keep the log light** — the Output, Errors and Skipped lists build only the rows in view; each list used to build a full row of controls for every file it held, up to 5,000 per list, on the UI thread.
+- **A refused or failed run can be read in full** — the summary beside the log tabs is trimmed to the space left, hovering it shows the whole message, and each line of the message is also a row on the Errors tab; a long refusal used to run past the window's edge with no way to read the rest. A refused pipeline no longer reports a scan first, so the CLI no longer prints "Scanning..." on the line of its error.
 
 ### Security
 

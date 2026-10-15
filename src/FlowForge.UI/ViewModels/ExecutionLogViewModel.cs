@@ -244,6 +244,18 @@ public partial class ExecutionLogViewModel : ViewModelBase
         UpdatePhaseLabel();
     }
 
+    // A message that ended the run: one Errors row per line, so text the summary trims can still be read in full.
+    public void RecordRunError(string message)
+    {
+        foreach (string line in message.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (ErrorEntries.Count < MaxLogEntries)
+            {
+                ErrorEntries.Add(FileJobLogEntryViewModel.ForRunError(line));
+            }
+        }
+    }
+
     private void UpdatePhaseLabel()
     {
         // While a transform step still has inputs to take, the label names that step.

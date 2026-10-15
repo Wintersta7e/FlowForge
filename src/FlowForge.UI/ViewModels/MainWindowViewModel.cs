@@ -442,6 +442,7 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             _logger.LogError(ex, "Pipeline execution failed");
             ExecutionLog.Summary = $"Execution failed: {ex.Message}";
+            ExecutionLog.RecordRunError(ex.Message);
         }
         finally
         {
