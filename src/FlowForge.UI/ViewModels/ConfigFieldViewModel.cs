@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using FlowForge.Core.Nodes.Base;
+using FlowForge.UI.Services;
 using FlowForge.UI.UndoRedo;
 using FlowForge.UI.UndoRedo.Commands;
 
@@ -11,6 +14,7 @@ namespace FlowForge.UI.ViewModels;
 public partial class ConfigFieldViewModel : ViewModelBase
 {
     private readonly IDictionary<string, JsonElement> _configDictionary;
+    private readonly IDialogService _dialogService;
     private readonly Action<IUndoableCommand>? _onConfigChanged;
 
     [ObservableProperty]
@@ -32,9 +36,11 @@ public partial class ConfigFieldViewModel : ViewModelBase
     public ConfigFieldViewModel(
         ConfigField field,
         IDictionary<string, JsonElement> configDictionary,
+        IDialogService dialogService,
         Action<IUndoableCommand>? onConfigChanged = null)
     {
         _configDictionary = configDictionary;
+        _dialogService = dialogService;
         _onConfigChanged = onConfigChanged;
         Key = field.Key;
         Label = field.Label;
@@ -65,6 +71,20 @@ public partial class ConfigFieldViewModel : ViewModelBase
         else
         {
             _value = DefaultValue;
+        }
+    }
+
+    // The path fields' "..." button. A chosen path goes through Value, so it is one undoable
+    // change like typing it; a closed dialog leaves the field as it was.
+    [RelayCommand]
+    private async Task BrowseAsync()
+    {
+        string? path = FieldType == ConfigFieldType.FolderPath
+            ? await _dialogService.OpenFolderAsync(Label)
+            : await _dialogService.OpenFileAsync(Label, "All Files|*.*");
+        if (path is not null)
+        {
+            Value = path;
         }
     }
 

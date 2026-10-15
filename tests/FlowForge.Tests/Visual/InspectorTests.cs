@@ -20,7 +20,8 @@ namespace FlowForge.Tests.Visual;
 /// <summary>
 /// A station answers the pointer as the editor draws it: a hovered station lifts. The
 /// inspector's field editors show true watermarks and stay inside their cards, and a station's
-/// preview follows an edit made there and its undo.
+/// preview follows an edit made there and its undo. A folder field's browse button asks the
+/// dialog service for the folder.
 /// </summary>
 [Collection(VisualCollection.Name)]
 public sealed class InspectorTests
@@ -132,6 +133,34 @@ public sealed class InspectorTests
         _output.WriteLine($"preview before='{original}' after edit='{afterEdit}' after undo='{afterUndo}' shown={preview.IsEffectivelyVisible}");
         afterEdit.Should().Be(edited, "the station's preview follows an inspector edit");
         afterUndo.Should().Be(original, "Undo restores the station's preview");
+    }
+
+    [AvaloniaFact]
+    public void BrowseButton_CallsOpenFolderOnce()
+    {
+        using var session = VisualSession.Open(_output);
+        using var picked = new TempDirectory();
+        session.Dialogs.OpenFolderResult = picked.Path;
+        ContentPresenter pathCard = ShowInspector(session, "FolderInput")
+            .Single(card => string.Equals(((ConfigFieldViewModel)card.DataContext!).Key, "path", StringComparison.Ordinal));
+        PipelineNodeViewModel node = session.ViewModel.Editor.SelectedNode!;
+        Button browse = pathCard.GetVisualDescendants().OfType<Button>()
+            .Single(button => string.Equals(button.Content as string, "...", StringComparison.Ordinal));
+
+        session.Click(browse);
+        session.Pump();
+        string? afterBrowse = node.Config.TryGetValue("path", out System.Text.Json.JsonElement chosen) ? chosen.GetString() : null;
+        session.ViewModel.UndoCommand.Execute(null);
+        session.Pump();
+        bool afterUndo = node.Config.ContainsKey("path");
+        string selector = File.ReadAllText(RepoRoot.Combine("src", "FlowForge.UI", "Views", "ConfigFieldTemplateSelector.cs"));
+        int storageHits = selector.Split('\n').Count(line => line.Contains("StorageProvider", StringComparison.Ordinal));
+
+        _output.WriteLine($"calls=[{string.Join(", ", session.Dialogs.Calls)}] path after browse='{afterBrowse}' path kept after undo={afterUndo} selector StorageProvider lines={storageHits}");
+        session.Dialogs.Calls.Should().Equal([nameof(StubDialogService.OpenFolderAsync)], "the button asks the dialog service for a folder, once");
+        afterBrowse.Should().Be(picked.Path, "the chosen folder lands in the station's config");
+        afterUndo.Should().BeFalse("one Undo removes the chosen folder");
+        storageHits.Should().Be(0, "the inspector's browse buttons reach the file system only through the dialog service");
     }
 
     // Shows one fresh node of this type in the inspector, selected by a click on its station.

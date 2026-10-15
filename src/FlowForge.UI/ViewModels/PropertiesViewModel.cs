@@ -5,12 +5,15 @@ using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FlowForge.Core.Execution;
 using FlowForge.Core.Nodes.Base;
+using FlowForge.UI.Services;
 using FlowForge.UI.UndoRedo;
 
 namespace FlowForge.UI.ViewModels;
 
 public partial class PropertiesViewModel : ViewModelBase
 {
+    private readonly IDialogService _dialogService;
+
     [ObservableProperty]
     private string? _selectedNodeTitle;
 
@@ -34,6 +37,11 @@ public partial class PropertiesViewModel : ViewModelBase
     private IBrush? _mwBaseBrush;
 
     public ObservableCollection<ConfigFieldViewModel> Fields { get; } = new();
+
+    public PropertiesViewModel(IDialogService dialogService)
+    {
+        _dialogService = dialogService;
+    }
 
     public void LoadNode(PipelineNodeViewModel? node, NodeRegistry registry, Action<IUndoableCommand>? onConfigChanged = null)
     {
@@ -62,7 +70,7 @@ public partial class PropertiesViewModel : ViewModelBase
         IReadOnlyList<ConfigField> schema = registry.GetConfigSchema(node.TypeKey);
         foreach (ConfigField field in schema)
         {
-            Fields.Add(new ConfigFieldViewModel(field, node.Config, onConfigChanged));
+            Fields.Add(new ConfigFieldViewModel(field, node.Config, _dialogService, onConfigChanged));
         }
     }
 }
