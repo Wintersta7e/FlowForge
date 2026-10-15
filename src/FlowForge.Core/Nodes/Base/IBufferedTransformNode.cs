@@ -10,5 +10,10 @@ namespace FlowForge.Core.Nodes.Base;
 /// </summary>
 public interface IBufferedTransformNode
 {
+    /// <summary>
+    /// Returns exactly the jobs the node buffered (those for which TransformAsync returned nothing), each once,
+    /// in the node's order: none left out and none added. A job may end here by being marked Failed or Skipped.
+    /// The runner stops the run with an <see cref="InvalidOperationException"/> naming the node otherwise.
+    /// </summary>
     Task<IEnumerable<FileJob>> FlushAsync(RunContext context, CancellationToken ct = default);
 }

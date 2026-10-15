@@ -240,6 +240,7 @@ public class PipelineRunner
         IProgress<PipelineProgressEvent>? progress,
         CancellationToken ct)
     {
+        var given = new HashSet<Guid>();
         foreach (FileJob job in router.InputOf(nodeId))
         {
             ct.ThrowIfCancellationRequested();
@@ -253,7 +254,11 @@ public class PipelineRunner
                 {
                     // Buffered nodes intentionally return empty from TransformAsync;
                     // their jobs are routed after FlushAsync.
-                    if (transform is not IBufferedTransformNode)
+                    if (transform is IBufferedTransformNode)
+                    {
+                        given.Add(job.Id);
+                    }
+                    else
                     {
                         HandleEmptyTransformResult(transform, job, context, result, lineages, progress);
                     }
@@ -280,8 +285,33 @@ public class PipelineRunner
 
         if (transform is IBufferedTransformNode buffered)
         {
-            IEnumerable<FileJob> flushed = await buffered.FlushAsync(context, ct).ConfigureAwait(false);
+            var flushed = (await buffered.FlushAsync(context, ct).ConfigureAwait(false)).ToList();
+            EnsureFlushReturnsWhatItWasGiven(transform.TypeKey, nodeId, given, flushed);
             RouteEmitted(transform.TypeKey, nodeId, flushed, router, context, result, lineages, progress);
+        }
+    }
+
+    /// <summary>
+    /// The lineage count and each original's branch count know only the jobs a buffered node was given, so its
+    /// flush must return exactly those, each once. Anything else stops the run before any of them is delivered.
+    /// </summary>
+    private static void EnsureFlushReturnsWhatItWasGiven(string typeKey, Guid nodeId, IReadOnlySet<Guid> given, IReadOnlyList<FileJob> flushed)
+    {
+        var returned = new HashSet<Guid>();
+        int foreign = 0;
+        foreach (FileJob job in flushed)
+        {
+            if (!given.Contains(job.Id) || !returned.Add(job.Id))
+            {
+                foreign++;
+            }
+        }
+
+        int missing = given.Count - returned.Count;
+        if (foreign > 0 || missing > 0)
+        {
+            throw new InvalidOperationException(
+                $"Transform '{typeKey}' ({nodeId}) must return exactly the files it was given when it flushes; it left out {missing} and returned {foreign} it was not given.");
         }
     }
 

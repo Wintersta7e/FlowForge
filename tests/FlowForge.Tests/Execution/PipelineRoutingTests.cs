@@ -297,6 +297,51 @@ public class PipelineRoutingTests
         Directory.GetFiles(input).Select(f => Path.GetFileName(f)).Should().Equal("photo.jpg");
     }
 
+    [Fact]
+    public async Task Buffered_node_that_returns_a_job_it_was_not_given_is_refused()
+    {
+        using var dir = new TempDirectory();
+        dir.CreateFiles("a.txt", "b.txt");
+        (PipelineGraph graph, NodeDefinition buffer, PipelineRunner runner) = MisbehavingBufferRun(dir, addsAJob: true);
+
+        Func<Task> act = () => runner.RunAsync(graph, dryRun: false);
+
+        string message = (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Message;
+        _output.WriteLine($"[flush] {message}");
+        message.Should().Contain($"'{MisbehavingBufferNode.RegisteredTypeKey}' ({buffer.Id})");
+        dir.OutputFiles.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Buffered_node_that_drops_a_job_is_refused()
+    {
+        using var dir = new TempDirectory();
+        dir.CreateFiles("a.txt", "b.txt");
+        (PipelineGraph graph, NodeDefinition buffer, PipelineRunner runner) = MisbehavingBufferRun(dir, addsAJob: false);
+
+        Func<Task> act = () => runner.RunAsync(graph, dryRun: false);
+
+        string message = (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Message;
+        _output.WriteLine($"[flush] {message}");
+        message.Should().Contain($"'{MisbehavingBufferNode.RegisteredTypeKey}' ({buffer.Id})");
+        dir.OutputFiles.Should().BeEmpty();
+    }
+
+    private static (PipelineGraph Graph, NodeDefinition Buffer, PipelineRunner Runner) MisbehavingBufferRun(TempDirectory dir, bool addsAJob)
+    {
+        var registry = NodeRegistry.CreateDefault(NullLoggerFactory.Instance);
+        registry.Register(MisbehavingBufferNode.RegisteredTypeKey, () => new MisbehavingBufferNode(addsAJob), "Misbehaving Buffer", NodeCategory.Transform, () => []);
+        NodeDefinition source = PipelineBuilder.Node("FolderInput", new { path = dir.Path, recursive = false });
+        NodeDefinition buffer = PipelineBuilder.Node(MisbehavingBufferNode.RegisteredTypeKey, new { });
+        NodeDefinition output = PipelineBuilder.Node("FolderOutput", new { path = dir.OutputPath, mode = "copy" });
+        var graph = new PipelineGraph
+        {
+            Nodes = { source, buffer, output },
+            Connections = { Wire(source, buffer), Wire(buffer, output) },
+        };
+        return (graph, buffer, new PipelineRunner(registry, NullLogger<PipelineRunner>.Instance, maxConcurrency: 2, stagingRoot: dir.StagingRoot));
+    }
+
     private static PipelineRunner CreateRunner(string stagingRoot, int maxConcurrency = 2) =>
         new PipelineRunner(NodeRegistry.CreateDefault(NullLoggerFactory.Instance), NullLogger<PipelineRunner>.Instance, maxConcurrency, stagingRoot);
 
@@ -400,6 +445,38 @@ public class PipelineRoutingTests
             {
                 _inFlight--;
             }
+        }
+    }
+
+    /// <summary>A buffered transform whose flush adds a job it was never given, or leaves out the last one.</summary>
+    private sealed class MisbehavingBufferNode : ITransformNode, IBufferedTransformNode
+    {
+        public const string RegisteredTypeKey = "MisbehavingBuffer";
+
+        private readonly bool _addsAJob;
+        private readonly List<FileJob> _buffer = [];
+
+        public MisbehavingBufferNode(bool addsAJob) => _addsAJob = addsAJob;
+
+        public string TypeKey => RegisteredTypeKey;
+
+        public void Configure(IDictionary<string, JsonElement> config)
+        {
+        }
+
+        public Task<IEnumerable<FileJob>> TransformAsync(FileJob job, RunContext context, CancellationToken ct = default)
+        {
+            _buffer.Add(job);
+            return Task.FromResult(Enumerable.Empty<FileJob>());
+        }
+
+        public Task<IEnumerable<FileJob>> FlushAsync(RunContext context, CancellationToken ct = default)
+        {
+            FileJob first = _buffer[0];
+            List<FileJob> flushed = _addsAJob
+                ? [.. _buffer, new FileJob { OriginalPath = first.OriginalPath, ContentPath = first.ContentPath, CurrentPath = Path.Combine(first.DirectoryName, "extra-" + first.FileName) }]
+                : _buffer.Take(_buffer.Count - 1).ToList();
+            return Task.FromResult<IEnumerable<FileJob>>(flushed);
         }
     }
 }
