@@ -170,6 +170,13 @@ public partial class EditorViewModel : ViewModelBase
             {
                 node.PropertyChanged += OnNodePropertyChanged;
                 _subscribedNodes.Add(node);
+
+                // A node put back by undo keeps the selection it was removed with, but that flag
+                // was set while it was unsubscribed, so the inspector would not follow it.
+                if (node.IsSelected)
+                {
+                    SelectedNode = node;
+                }
             }
         }
 

@@ -1,9 +1,12 @@
 using System.Text.Json;
 using Avalonia;
 using FlowForge.Core.Execution;
+using FlowForge.Core.Settings;
+using FlowForge.Tests.Helpers;
 using FlowForge.UI.UndoRedo.Commands;
 using FlowForge.UI.ViewModels;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlowForge.Tests.ViewModels;
@@ -62,6 +65,31 @@ public class EditorViewModelUndoRedoTests
 
         editor.Nodes.Should().HaveCount(1);
         editor.Nodes[0].IsSelected.Should().BeTrue();
+    }
+
+    [Fact]
+    public void UndoOfDelete_RestoresSelection()
+    {
+        using var temp = new TempDirectory();
+        using ServiceProvider services = new ServiceCollection().BuildServiceProvider();
+        NodeRegistry registry = CreateRegistry();
+        var editor = new EditorViewModel(NullLogger<EditorViewModel>.Instance, registry);
+        var vm = new MainWindowViewModel(
+            NullLogger<MainWindowViewModel>.Instance,
+            new AppSettingsManager(Path.Combine(temp.Path, "settings.json"), NullLogger<AppSettingsManager>.Instance),
+            registry,
+            editor,
+            new StubDialogService(),
+            services);
+        PipelineNodeViewModel node = AddRename(editor, registry);
+        node.IsSelected = true;
+        int schemaFields = registry.GetConfigSchema(node.TypeKey).Count;
+
+        editor.RemoveSelectedNodes();
+        editor.Undo();
+
+        editor.SelectedNode.Should().BeSameAs(node, "undo puts back the station that was selected when it was deleted");
+        vm.Properties.Fields.Should().HaveCount(schemaFields, "the inspector shows the restored station's fields");
     }
 
     [Fact]

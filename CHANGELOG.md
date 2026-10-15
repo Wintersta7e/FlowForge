@@ -73,6 +73,7 @@ Versions 1.0.0–2.0.0 were tagged and released at the time; those tags and rele
 - **Pipes that would close a loop are refused** — dropping a pipe on a station that already feeds the pipe's start, directly or through other stations, now adds nothing, like the other refused connections; the loop used to be drawn, leaving a pipeline that cannot run.
 - **Number fields can be emptied** — emptying a number field in the inspector removes its value, as one undo step; the field used to keep its old number in the pipeline. Text that is not a number never reaches the pipeline and outlines the field in the error colour until a number replaces it. Redoing a cleared field clears it again; it used to store an empty value in its place.
 - **One undo reverts a typed edit** — after typing into an inspector field, one Undo restores the value from before the typing, or removes it if the field had none; it used to restore only the text before the last keystroke. Typing after a save starts a new undo step, so Undo returns to the saved pipeline, and editing the same field on two stations in turn no longer drops the first station's edit from the history.
+- **Undoing a delete selects the station again** — after deleting the selected station, Undo puts it back selected and the inspector shows its fields; the inspector used to stay empty.
 
 ### Security
 
