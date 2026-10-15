@@ -219,6 +219,8 @@ Copies or moves processed files to a destination.
 
 The top-right toolbar carries three run-related buttons — **Dry Run**, **Ignite**, and (while a run is in flight) **Quench** — plus a **Demo** toggle.
 
+Files travel only along the wires: a pipeline may branch and merge, and each output receives only what is wired to it. A node with several outgoing wires sends its files down every one of them, and a node with several incoming wires receives the files from all of them.
+
 ### Dry Run (Preview)
 
 Click **Dry Run** to simulate the pipeline; a dry run writes, moves and deletes nothing; lists folders and reads file sizes and dates; opens no file content. The execution log shows what *would* happen — useful for verifying your pipeline before committing to changes.
