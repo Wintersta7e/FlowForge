@@ -112,12 +112,12 @@ public sealed class ExecutionLogVisualTests
         using WriteableBitmap frame = session.Capture(VisualFrames.LogRows);
 
         Grid failedRow = RowGrids(rows).Single(g => g.DataContext is FileJobLogEntryViewModel { IsError: true });
-        TextBlock error = failedRow.Children.OfType<TextBlock>().Single(t => Grid.GetColumn(t) == 3);
+        TextBlock error = failedRow.Children.OfType<TextBlock>().Single(t => Grid.GetColumn(t) == 4);
         Ellipse marker = failedRow.Children.OfType<Ellipse>().Single(e => e.IsEffectivelyVisible);
         PixelRect markerBounds = session.BoundsInWindow(marker);
         var markerBand = new PixelRect(markerBounds.X + (markerBounds.Width / 2) - 1, markerBounds.Y + (markerBounds.Height / 2) - 1, 2, 2);
 
-        // Inside the row's left padding, beside the marker: background only, no text.
+        // In the gap between the timestamp and the marker: background only, no text.
         var backgroundBand = new PixelRect(markerBounds.X - 6, markerBand.Y, 2, 2);
         Color measured = session.MeanColour(frame, markerBand);
         Color background = session.MeanColour(frame, backgroundBand);
@@ -161,6 +161,46 @@ public sealed class ExecutionLogVisualTests
         summary.Text.Should().Be(log.Summary);
     }
 
+    [AvaloniaFact]
+    public void LogRows_ShowTimestampAndNodeLogTooltip()
+    {
+        using var session = VisualSession.Open(_output);
+        ExecutionLogViewModel log = session.ViewModel.ExecutionLog;
+        foreach ((string name, FileJobStatus status) in new[] { ("kept.png", FileJobStatus.Succeeded), ("broken.png", FileJobStatus.Failed), ("passed.png", FileJobStatus.Skipped) })
+        {
+            FileJob job = Job(session, name, status, status == FileJobStatus.Failed ? "Unsupported image header" : null);
+            job.NodeLog.Add($"ImageResize: read '{name}'");
+            job.NodeLog.Add($"FolderOutput: finished '{name}'");
+            log.ReportProgressEvent(new FileProcessed(job));
+        }
+
+        ExecutionLogView view = LogView(session.Window);
+        var tabs = new (int Index, IReadOnlyList<FileJobLogEntryViewModel> Entries)[] { (0, log.Entries), (1, log.ErrorEntries), (2, log.WarningEntries) };
+        int rowsChecked = 0;
+        foreach ((int index, IReadOnlyList<FileJobLogEntryViewModel> entries) in tabs)
+        {
+            log.SelectedTabIndex = index;
+            session.RenderUntil(() => ListOf(view, entries) is { } shown && RowsShown(shown, entries.Count), $"tab {index} rows shown");
+            ItemsControl rows = ListOf(view, entries).Should().NotBeNull().And.BeAssignableTo<ItemsControl>().Subject;
+            foreach (ContentPresenter presenter in rows.GetRealizedContainers().OfType<ContentPresenter>())
+            {
+                FileJobLogEntryViewModel entry = presenter.DataContext.Should().BeOfType<FileJobLogEntryViewModel>().Subject;
+                Border row = presenter.Child.Should().BeOfType<Border>().Subject;
+                Grid grid = row.Child.Should().BeOfType<Grid>().Subject;
+                TextBlock first = grid.Children.OfType<TextBlock>().OrderBy(Grid.GetColumn).First();
+                object? tip = ToolTip.GetTip(row);
+                string expectedTip = string.Join(Environment.NewLine, entry.NodeLog);
+                _output.WriteLine($"[tab {index}] {entry.FileName}: first='{first.Text}' timestamp='{entry.Timestamp}' tip='{tip?.ToString()?.Replace(Environment.NewLine, " | ", StringComparison.Ordinal)}'");
+                first.Text.Should().Be(entry.Timestamp, "a row leads with the time its file finished");
+                tip.Should().Be(expectedTip, "a row's tooltip lists what each node did to its file");
+                rowsChecked++;
+            }
+        }
+
+        _output.WriteLine($"rows checked={rowsChecked}");
+        rowsChecked.Should().Be(5, "three Output rows, one Errors row and one Warnings row");
+    }
+
     private static FileJob Job(VisualSession session, string name, FileJobStatus status, string? error = null)
     {
         string path = Path.Combine(session.Temp.Path, name);
@@ -176,6 +216,10 @@ public sealed class ExecutionLogVisualTests
 
     private static ItemsControl RowList(ExecutionLogView view, ExecutionLogViewModel log) =>
         view.GetVisualDescendants().OfType<ItemsControl>().Single(list => ReferenceEquals(list.ItemsSource, log.Entries));
+
+    // A hidden tab's list joins the visual tree only once its scroll viewer is first laid out.
+    private static ItemsControl? ListOf(ExecutionLogView view, object entries) =>
+        view.GetVisualDescendants().OfType<ItemsControl>().SingleOrDefault(list => ReferenceEquals(list.ItemsSource, entries));
 
     // A row's presenter exists before its template content is built; only built rows count.
     private static List<Grid> RowGrids(ItemsControl rows) =>

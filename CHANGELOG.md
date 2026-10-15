@@ -17,6 +17,7 @@ Versions 1.0.0–2.0.0 were tagged and released at the time; those tags and rele
 - **Stations lift on hover** — the station under the pointer rises by one pixel and settles back when the pointer leaves, so it is clear which station a click or drag will take.
 - **The console shows DEMO mode** — while DEMO animates the canvas without a run, the console reads DEMO and "// demo — no files touched" instead of COLD and the idle caption, and shows no process id, since no run is in progress.
 - **One progress bar** — the strip above the log no longer repeats the console's file count under a second, always-moving bar. It names what the run is doing: the scan count while files are found, `Stage n of m · title done/total` while a transform step works through its files (its place among the run's steps, its name, and how many of its files it has taken), then finished files over files found with the latest file's name.
+- **Log rows show their time and node log** — each row on the Output, Errors and Warnings tabs leads with the time it was logged, and hovering a row lists what each node did to that file.
 
 ### Removed
 

@@ -326,21 +326,29 @@
                             <DataTemplate x:DataType="vm:FileJobLogEntryViewModel">
                                 <Border Padding="12,3"
                                         BorderBrush="{DynamicResource ForgeBorder}"
-                                        BorderThickness="0,0,0,1">
-                                    <Grid ColumnDefinitions="8,55,Auto,*">
-                                        <Ellipse Grid.Column="0" Width="6" Height="6"
+                                        BorderThickness="0,0,0,1"
+                                        ToolTip.Tip="{Binding NodeLogText}">
+                                    <Grid ColumnDefinitions="Auto,8,55,Auto,*">
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{Binding Timestamp}"
+                                                   FontFamily="{DynamicResource MwMono}"
+                                                   FontSize="12"
+                                                   Foreground="{DynamicResource ForgeTextMuted}"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,8,0" />
+                                        <Ellipse Grid.Column="1" Width="6" Height="6"
                                                  Fill="{DynamicResource ForgeSuccess}"
                                                  VerticalAlignment="Center"
                                                  IsVisible="{Binding IsSuccess}" />
-                                        <Ellipse Grid.Column="0" Width="6" Height="6"
+                                        <Ellipse Grid.Column="1" Width="6" Height="6"
                                                  Fill="{DynamicResource ForgeError}"
                                                  VerticalAlignment="Center"
                                                  IsVisible="{Binding IsError}" />
-                                        <Ellipse Grid.Column="0" Width="6" Height="6"
+                                        <Ellipse Grid.Column="1" Width="6" Height="6"
                                                  Fill="{DynamicResource ForgeWarning}"
                                                  VerticalAlignment="Center"
                                                  IsVisible="{Binding IsWarning}" />
-                                        <Panel Grid.Column="1">
+                                        <Panel Grid.Column="2">
                                             <TextBlock Text="{Binding StatusText}"
                                                        FontFamily="{DynamicResource MwMono}"
                                                        FontWeight="Bold" FontSize="12"
@@ -360,14 +368,14 @@
                                                        VerticalAlignment="Center"
                                                        IsVisible="{Binding IsWarning}" />
                                         </Panel>
-                                        <TextBlock Grid.Column="2"
+                                        <TextBlock Grid.Column="3"
                                                    Text="{Binding FileName}"
                                                    FontFamily="{DynamicResource MwMono}"
                                                    VerticalAlignment="Center"
                                                    Foreground="{DynamicResource ForgeText}"
                                                    FontSize="12"
                                                    Margin="0,0,8,0" />
-                                        <TextBlock Grid.Column="3"
+                                        <TextBlock Grid.Column="4"
                                                    Text="{Binding ErrorMessage}"
                                                    FontFamily="{DynamicResource MwMono}"
                                                    Foreground="{DynamicResource ForgeError}"
@@ -398,25 +406,33 @@
                             <DataTemplate x:DataType="vm:FileJobLogEntryViewModel">
                                 <Border Padding="12,3"
                                         BorderBrush="{DynamicResource ForgeBorder}"
-                                        BorderThickness="0,0,0,1">
-                                    <Grid ColumnDefinitions="8,55,Auto,*">
-                                        <Ellipse Grid.Column="0" Width="6" Height="6"
+                                        BorderThickness="0,0,0,1"
+                                        ToolTip.Tip="{Binding NodeLogText}">
+                                    <Grid ColumnDefinitions="Auto,8,55,Auto,*">
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{Binding Timestamp}"
+                                                   FontFamily="{DynamicResource MwMono}"
+                                                   FontSize="12"
+                                                   Foreground="{DynamicResource ForgeTextMuted}"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,8,0" />
+                                        <Ellipse Grid.Column="1" Width="6" Height="6"
                                                  Fill="{DynamicResource ForgeError}"
                                                  VerticalAlignment="Center" />
-                                        <TextBlock Grid.Column="1"
+                                        <TextBlock Grid.Column="2"
                                                    Text="{Binding StatusText}"
                                                    FontFamily="{DynamicResource MwMono}"
                                                    FontWeight="Bold" FontSize="12"
                                                    Foreground="{DynamicResource ForgeError}"
                                                    VerticalAlignment="Center" />
-                                        <TextBlock Grid.Column="2"
+                                        <TextBlock Grid.Column="3"
                                                    Text="{Binding FileName}"
                                                    FontFamily="{DynamicResource MwMono}"
                                                    VerticalAlignment="Center"
                                                    Foreground="{DynamicResource ForgeText}"
                                                    FontSize="12"
                                                    Margin="0,0,8,0" />
-                                        <TextBlock Grid.Column="3"
+                                        <TextBlock Grid.Column="4"
                                                    Text="{Binding ErrorMessage}"
                                                    FontFamily="{DynamicResource MwMono}"
                                                    Foreground="{DynamicResource ForgeError}"
@@ -446,25 +462,33 @@
                             <DataTemplate x:DataType="vm:FileJobLogEntryViewModel">
                                 <Border Padding="12,3"
                                         BorderBrush="{DynamicResource ForgeBorder}"
-                                        BorderThickness="0,0,0,1">
-                                    <Grid ColumnDefinitions="8,55,Auto,*">
-                                        <Ellipse Grid.Column="0" Width="6" Height="6"
+                                        BorderThickness="0,0,0,1"
+                                        ToolTip.Tip="{Binding NodeLogText}">
+                                    <Grid ColumnDefinitions="Auto,8,55,Auto,*">
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{Binding Timestamp}"
+                                                   FontFamily="{DynamicResource MwMono}"
+                                                   FontSize="12"
+                                                   Foreground="{DynamicResource ForgeTextMuted}"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,8,0" />
+                                        <Ellipse Grid.Column="1" Width="6" Height="6"
                                                  Fill="{DynamicResource ForgeWarning}"
                                                  VerticalAlignment="Center" />
-                                        <TextBlock Grid.Column="1"
+                                        <TextBlock Grid.Column="2"
                                                    Text="{Binding StatusText}"
                                                    FontFamily="{DynamicResource MwMono}"
                                                    FontWeight="Bold" FontSize="12"
                                                    Foreground="{DynamicResource ForgeWarning}"
                                                    VerticalAlignment="Center" />
-                                        <TextBlock Grid.Column="2"
+                                        <TextBlock Grid.Column="3"
                                                    Text="{Binding FileName}"
                                                    FontFamily="{DynamicResource MwMono}"
                                                    VerticalAlignment="Center"
                                                    Foreground="{DynamicResource ForgeText}"
                                                    FontSize="12"
                                                    Margin="0,0,8,0" />
-                                        <TextBlock Grid.Column="3"
+                                        <TextBlock Grid.Column="4"
                                                    Text="{Binding ErrorMessage}"
                                                    FontFamily="{DynamicResource MwMono}"
                                                    Foreground="{DynamicResource ForgeWarning}"

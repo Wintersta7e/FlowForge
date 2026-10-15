@@ -13,6 +13,7 @@ public class FileJobLogEntryViewModel : ViewModelBase
     public string StatusText { get; }
     public string? ErrorMessage { get; }
     public IReadOnlyList<string> NodeLog { get; }
+    public string NodeLogText => string.Join(Environment.NewLine, NodeLog);
     public bool IsSuccess { get; }
     public bool IsError { get; }
     public bool IsWarning { get; }
