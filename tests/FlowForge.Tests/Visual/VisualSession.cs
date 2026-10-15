@@ -148,15 +148,24 @@ internal sealed class VisualSession : IDisposable
 
     public void RenderUntil(Func<bool> condition, TimeSpan deadline, string what)
     {
+        if (!TryRenderUntil(condition, deadline, what))
+        {
+            throw new XunitException($"Not reached within {deadline.TotalMilliseconds} ms: {what}.");
+        }
+    }
+
+    // As RenderUntil, but a condition still false at the deadline returns false instead of failing:
+    // for checks where "nothing happened" is an answer.
+    public bool TryRenderUntil(Func<bool> condition, TimeSpan deadline, string what)
+    {
         var stopwatch = Stopwatch.StartNew();
         int iterations = 0;
         while (!condition())
         {
             if (stopwatch.Elapsed > deadline)
             {
-                throw new XunitException(
-                    $"Not reached within {deadline.TotalMilliseconds} ms: {what} " +
-                    $"({stopwatch.ElapsedMilliseconds} ms, {iterations} iterations).");
+                _output.WriteLine($"[render-until] {what}: not reached ({stopwatch.ElapsedMilliseconds} ms, {iterations} iterations)");
+                return false;
             }
 
             Pump();
@@ -164,6 +173,7 @@ internal sealed class VisualSession : IDisposable
         }
 
         _output.WriteLine($"[render-until] {what}: {iterations} iterations, {stopwatch.ElapsedMilliseconds} ms");
+        return true;
     }
 
     public WriteableBitmap Capture(string frameId) => Capture(frameId, Window);
@@ -286,13 +296,49 @@ internal sealed class VisualSession : IDisposable
             ?? throw new InvalidOperationException($"{visual.GetType().Name} has no transform to its window.");
 
     // A left press and release at the visual's centre, sent to the top level that shows it.
-    public void Click(Avalonia.Visual visual)
+    public void Click(Avalonia.Visual visual, RawInputModifiers modifiers = RawInputModifiers.None)
     {
         TopLevel topLevel = TopLevel.GetTopLevel(visual)
             ?? throw new InvalidOperationException($"{visual.GetType().Name} is not in a window.");
         Point centre = CentreOf(visual);
-        topLevel.MouseDown(centre, MouseButton.Left, RawInputModifiers.None);
-        topLevel.MouseUp(centre, MouseButton.Left, RawInputModifiers.None);
+        topLevel.MouseDown(centre, MouseButton.Left, modifiers);
+        topLevel.MouseUp(centre, MouseButton.Left, modifiers);
+    }
+
+    // Moves the pointer to the start, presses the button, drags by the offset in four steps and
+    // releases, on the main window. A real pointer reaches the start before pressing; the editor
+    // reads that last pointer event when a drag begins, and has none if the press comes first.
+    public void Drag(Point from, Vector by, MouseButton button, RawInputModifiers modifiers = RawInputModifiers.None)
+    {
+        RawInputModifiers held = modifiers | button switch
+        {
+            MouseButton.Middle => RawInputModifiers.MiddleMouseButton,
+            MouseButton.Right => RawInputModifiers.RightMouseButton,
+            _ => RawInputModifiers.LeftMouseButton,
+        };
+        Window.MouseMove(from, modifiers);
+        Window.MouseDown(from, button, modifiers);
+        for (int step = 1; step <= 4; step++)
+        {
+            Window.MouseMove(from + (by * step / 4), held);
+            Pump();
+        }
+
+        Window.MouseUp(from + by, button, modifiers);
+        Pump();
+    }
+
+    // The node editor the canvas shows stations on.
+    public NodifyEditor Canvas() =>
+        Window.GetVisualDescendants().OfType<NodifyEditor>().Single(e => string.Equals(e.Name, "Editor", StringComparison.Ordinal));
+
+    // A point in the window over the canvas's top middle: open canvas above the row of stations a
+    // template lays out, at any zoom up to the starting one.
+    public Point OpenCanvasPoint()
+    {
+        NodifyEditor canvas = Canvas();
+        return canvas.TranslatePoint(new Point(canvas.Bounds.Width / 2, canvas.Bounds.Height * 0.1), Window)
+            ?? throw new InvalidOperationException("The canvas has no transform to its window.");
     }
 
     // Presses and releases a key gesture, written as the shortcuts dialog writes it ("Ctrl+Shift+S"),
@@ -330,6 +376,17 @@ internal sealed class VisualSession : IDisposable
         Window.GetVisualDescendants().OfType<ItemContainer>()
             .Where(c => c.DataContext is PipelineNodeViewModel && c.Bounds.Width > 0)
             .ToList();
+
+    // Every station lies whole inside the canvas as it is zoomed and panned. Both corners go
+    // through the zoom transform; a station's own bounds are unscaled.
+    public bool StationsInsideCanvas()
+    {
+        NodifyEditor canvas = Canvas();
+        var visible = new Rect(canvas.Bounds.Size);
+        return Stations().All(s =>
+            visible.Contains(s.TranslatePoint(default, canvas)!.Value)
+            && visible.Contains(s.TranslatePoint(new Point(s.Bounds.Width, s.Bounds.Height), canvas)!.Value));
+    }
 
     public ItemContainer WaitForStation(PipelineNodeViewModel node)
     {

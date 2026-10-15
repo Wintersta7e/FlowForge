@@ -1,5 +1,7 @@
+using System.Text.RegularExpressions;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Avalonia.Threading;
@@ -12,6 +14,7 @@ using FlowForge.UI.ViewModels;
 using FlowForge.UI.Views;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
+using Nodify.Avalonia;
 using Xunit.Abstractions;
 
 namespace FlowForge.Tests.Visual;
@@ -19,18 +22,123 @@ namespace FlowForge.Tests.Visual;
 /// <summary>
 /// The keys the shortcuts dialog lists reach the commands they name, and Save As is on the
 /// toolbar as well as on its key. The live run sits only on a chord; Esc stops a run in
-/// progress and otherwise passes on untouched.
+/// progress and otherwise passes on untouched. Every row the dialog lists, canvas gestures
+/// included, does what its description says.
 /// </summary>
 [Collection(VisualCollection.Name)]
-public sealed class ShortcutTests
+public sealed partial class ShortcutTests
 {
     private const string SaveDialog = nameof(IDialogService.SaveFileAsync);
     private const string OpenDialog = nameof(IDialogService.OpenFileAsync);
     private const string Prompt = nameof(IDialogService.ConfirmUnsavedChangesAsync);
     private const string RunChord = "Ctrl+Shift+Enter";
+    private const string Produced = "effect";
     private const int InputFiles = 2;
 
     private static readonly TimeSpan RunDeadline = TimeSpan.FromSeconds(20);
+    private static readonly TimeSpan EffectDeadline = TimeSpan.FromSeconds(3);
+    private static readonly Vector DragBy = new(120, 80);
+
+    // What each row's description promises. Arrange sets a fresh session up and returns the check,
+    // read after the gesture until it answers: true once the promise is kept, false when the run
+    // ended without it, null while it cannot tell yet.
+    private static readonly Dictionary<string, Effect> Effects = new(StringComparer.Ordinal)
+    {
+        ["New pipeline"] = new((session, _) =>
+        {
+            session.LoadTemplate(VisualSession.WebExportTemplate);
+            return Seen(() => session.ViewModel.Editor.Nodes.Count == 0);
+        }),
+        ["Open pipeline"] = new((session, _) => Seen(() => Count(session, OpenDialog) > 0)),
+        ["Save"] = new((session, _) =>
+        {
+            session.LoadTemplate(VisualSession.WebExportTemplate);
+            session.ViewModel.CurrentFilePath = Path.Combine(session.Temp.Path, "saved-by-key.ffpipe");
+            return Seen(() => !session.ViewModel.IsDirty);
+        }),
+        ["Save as"] = new((session, _) => Seen(() => Count(session, SaveDialog) > 0)),
+        ["Remove selected nodes"] = new((session, _) =>
+        {
+            EditorViewModel editor = session.ViewModel.Editor;
+            session.LoadTemplate(VisualSession.WebExportTemplate);
+            session.Click(session.WaitForStation(editor.Nodes[1]));
+            session.RenderUntil(() => editor.SelectedNode is not null, "a station selected");
+            int before = editor.Nodes.Count;
+            return Seen(() => editor.Nodes.Count == before - 1);
+        }),
+        ["Zoom to fit all nodes"] = new((session, _) =>
+        {
+            // The template's last stations start off screen.
+            session.LoadTemplate(VisualSession.WebExportTemplate);
+            return Seen(session.StationsInsideCanvas);
+        }),
+        ["Pan canvas"] = new((session, _) =>
+        {
+            session.LoadTemplate(VisualSession.WebExportTemplate);
+            NodifyEditor canvas = session.Canvas();
+            Point before = canvas.ViewportLocation;
+            return Seen(() => canvas.ViewportLocation != before);
+        }),
+        ["Zoom in/out"] = new((session, _) =>
+        {
+            session.LoadTemplate(VisualSession.WebExportTemplate);
+            NodifyEditor canvas = session.Canvas();
+            double before = canvas.ViewportZoom;
+            return Seen(() => canvas.ViewportZoom != before);
+        }),
+        ["Undo"] = new((session, _) =>
+        {
+            session.ViewModel.Editor.AddNode("Sort", new Point(200, 160), session.ViewModel.Registry);
+            return Seen(() => session.ViewModel.Editor.Nodes.Count == 0);
+        }),
+        ["Redo"] = new((session, _) =>
+        {
+            session.ViewModel.Editor.AddNode("Sort", new Point(200, 160), session.ViewModel.Registry);
+            session.ViewModel.Editor.Undo();
+            return Seen(() => session.ViewModel.Editor.Nodes.Count == 1);
+        }),
+        ["Dry run (no files changed)"] = new(
+            (session, _) =>
+            {
+                LoadCopyPipeline(session);
+                return () => RunFinished(session.ViewModel)
+                    ? session.ViewModel.ExecutionLog.Summary!.StartsWith("Preview complete", StringComparison.Ordinal)
+                        && Directory.GetFiles(session.Temp.OutputPath).Length == 0
+                    : null;
+            },
+            RunDeadline),
+        ["Run pipeline"] = new(
+            (session, _) =>
+            {
+                LoadCopyPipeline(session);
+                return () => RunFinished(session.ViewModel)
+                    ? session.ViewModel.ExecutionLog.Summary!.StartsWith("Run complete", StringComparison.Ordinal)
+                        && Directory.GetFiles(session.Temp.OutputPath).Length == InputFiles
+                    : null;
+            },
+            RunDeadline),
+        ["Stop the running pipeline"] = new(
+            (session, gate) =>
+            {
+                LoadCopyPipeline(session);
+                gate.Arm();
+                session.ViewModel.RunCommand.Execute(null);
+                session.RenderUntil(() => gate.IsHolding, "the run held in progress");
+                return () => RunFinished(session.ViewModel)
+                    ? string.Equals(session.ViewModel.ExecutionLog.Summary, "Execution cancelled.", StringComparison.Ordinal)
+                    : null;
+            },
+            RunDeadline),
+        ["Show this help"] = new((session, _) =>
+            Seen(() => session.Window.OwnedWindows.OfType<ShortcutsWindow>().Any(dialog => dialog.IsVisible))),
+        ["Disconnect"] = new((session, _) =>
+        {
+            LoadCopyPipeline(session);
+            EditorViewModel editor = session.ViewModel.Editor;
+            int before = editor.Connections.Count;
+            return Seen(() => editor.Connections.Count < before);
+        }),
+    };
 
     private readonly ITestOutputHelper _output;
 
@@ -192,6 +300,163 @@ public sealed class ShortcutTests
         delivered.Should().BeEmpty("the run stopped before delivering anything");
     }
 
+    // Each row's key text is read as a gesture and its description as an effect; each gesture is
+    // sent in a fresh session set up for that effect. A row this test cannot drive fails it.
+    [AvaloniaFact]
+    public void EveryListedShortcut_ProducesItsEffect()
+    {
+        IReadOnlyList<(string Key, string Description)> rows;
+        using (var listing = VisualSession.Open(_output))
+        {
+            rows = ShownShortcuts(listing);
+        }
+
+        var outcomes = new List<string>();
+        var failures = new List<string>();
+        foreach ((string key, string description) in rows)
+        {
+            List<(string Name, Action<VisualSession> Send)>? gestures = Gestures(key);
+            Effect? effect = Effects.GetValueOrDefault(description);
+            if (gestures is null || effect is null)
+            {
+                failures.Add($"{key} = {description}: no driver for its {(gestures is null ? "key" : "description")}");
+                continue;
+            }
+
+            foreach ((string name, Action<VisualSession> send) in gestures)
+            {
+                string result = Drive(name, description, effect, send);
+                outcomes.Add($"{name} = {description}: {result}");
+                if (!string.Equals(result, Produced, StringComparison.Ordinal))
+                {
+                    failures.Add(outcomes[^1]);
+                }
+            }
+        }
+
+        _output.WriteLine($"[shortcuts] rows={rows.Count} gestures={outcomes.Count}");
+        outcomes.ForEach(_output.WriteLine);
+        failures.Should().BeEmpty("every row the shortcuts dialog lists does what it says, and these do not: {0}", string.Join(" | ", failures));
+    }
+
+    private static Func<bool?> Seen(Func<bool> condition) => () => condition() ? true : null;
+
+    // The input a row's key text names, once per way of giving it ("Middle/Right-drag" is two
+    // drags); null when the text names nothing this test can send.
+    private static List<(string Name, Action<VisualSession> Send)>? Gestures(string keyText)
+    {
+        if (ButtonDrag().Match(keyText) is { Success: true } drag)
+        {
+            var drags = new List<(string Name, Action<VisualSession> Send)>();
+            foreach (string name in drag.Groups["buttons"].Value.Split('/'))
+            {
+                if (!Enum.TryParse(name, out MouseButton button))
+                {
+                    return null;
+                }
+
+                drags.Add(($"{name}-drag", session => session.Drag(session.OpenCanvasPoint(), DragBy, button)));
+            }
+
+            return drags;
+        }
+
+        if (HeldKeyDrag().Match(keyText) is { Success: true } held)
+        {
+            if (!Enum.TryParse(held.Groups["key"].Value, out Key key))
+            {
+                return null;
+            }
+
+            PhysicalKey physical = Enum.TryParse(key.ToString(), out PhysicalKey named) ? named : PhysicalKey.None;
+            return [(keyText, session =>
+            {
+                session.Window.KeyPress(key, RawInputModifiers.None, physical, keySymbol: null);
+                session.Drag(session.OpenCanvasPoint(), DragBy, MouseButton.Left);
+                session.Window.KeyRelease(key, RawInputModifiers.None, physical, keySymbol: null);
+            })];
+        }
+
+        if (PointerAction().Match(keyText) is { Success: true } pointer)
+        {
+            if (Modifiers(pointer.Groups["modifiers"].Value) is not { } modifiers)
+            {
+                return null;
+            }
+
+            return string.Equals(pointer.Groups["action"].Value, "Scroll", StringComparison.Ordinal)
+                ? [(keyText, session => session.Window.MouseWheel(session.OpenCanvasPoint(), new Vector(0, 1), modifiers))]
+                : [(keyText, session => ClickPort(session, modifiers))];
+        }
+
+        string gesture = GestureText(keyText);
+        try
+        {
+            KeyGesture.Parse(gesture);
+        }
+        catch (Exception ex) when (ex is ArgumentException or FormatException)
+        {
+            return null;
+        }
+
+        return [(keyText, session => session.Press(gesture))];
+    }
+
+    // The dialog writes keys as people say them; a key gesture names these two differently.
+    private static string GestureText(string keyText)
+    {
+        int plus = keyText.LastIndexOf('+');
+        string key = keyText[(plus + 1)..];
+        string named = key switch
+        {
+            "Esc" => "Escape",
+            [char digit] when char.IsAsciiDigit(digit) => "D" + digit,
+            _ => key,
+        };
+        return keyText[..(plus + 1)] + named;
+    }
+
+    private static RawInputModifiers? Modifiers(string text)
+    {
+        RawInputModifiers modifiers = RawInputModifiers.None;
+        foreach (string name in text.Split('+', StringSplitOptions.RemoveEmptyEntries))
+        {
+            RawInputModifiers? one = name switch
+            {
+                "Ctrl" => RawInputModifiers.Control,
+                "Shift" => RawInputModifiers.Shift,
+                "Alt" => RawInputModifiers.Alt,
+                _ => null,
+            };
+            if (one is null)
+            {
+                return null;
+            }
+
+            modifiers |= one.Value;
+        }
+
+        return modifiers;
+    }
+
+    // A press and release on the source port of the editor's first pipe, once the pointer is on it.
+    private static void ClickPort(VisualSession session, RawInputModifiers modifiers)
+    {
+        Point centre = session.CentreOf(session.WaitForPort(session.ViewModel.Editor.Connections[0].Source));
+        session.Window.MouseMove(centre, RawInputModifiers.None);
+        session.Window.MouseDown(centre, MouseButton.Left, modifiers);
+        session.Window.MouseUp(centre, MouseButton.Left, modifiers);
+    }
+
+    [GeneratedRegex(@"^(?<buttons>\w+(/\w+)*)-drag$", RegexOptions.ExplicitCapture, matchTimeoutMilliseconds: 1000)]
+    private static partial Regex ButtonDrag();
+
+    [GeneratedRegex(@"^(?<key>\w+)\+Drag$", RegexOptions.ExplicitCapture, matchTimeoutMilliseconds: 1000)]
+    private static partial Regex HeldKeyDrag();
+
+    [GeneratedRegex(@"^((?<modifiers>.+)\+)?(?<action>Scroll|Click port)$", RegexOptions.ExplicitCapture, matchTimeoutMilliseconds: 1000)]
+    private static partial Regex PointerAction();
+
     private static int Count(VisualSession session, string call) =>
         session.Dialogs.Calls.Count(name => string.Equals(name, call, StringComparison.Ordinal));
 
@@ -237,6 +502,33 @@ public sealed class ShortcutTests
             session.RenderUntil(() => window.OwnedWindows.Count == 0, "shortcuts dialog closed");
         }
     }
+
+    // A fresh session set up for the effect; sends the gesture and reads the check until it
+    // answers. An effect that already held before the gesture proves nothing.
+    private string Drive(string gesture, string description, Effect effect, Action<VisualSession> send)
+    {
+        using var gate = new RunGate();
+        using var session = VisualSession.Open(_output, loggerProvider: gate);
+        Func<bool?> check = effect.Arrange(session, gate);
+        if (check() == true)
+        {
+            return "already true before the gesture";
+        }
+
+        send(session);
+
+        // A run the arrangement holds in progress goes on once the gesture is sent.
+        gate.Release();
+        bool? answer = null;
+        session.TryRenderUntil(() => (answer = check()) is not null, effect.Deadline ?? EffectDeadline, $"{gesture}: {description}");
+        return answer == true ? Produced : "no effect";
+    }
+
+    /// <summary>
+    /// What a row's description promises: <see cref="Arrange"/> sets a fresh session up and
+    /// returns the check read after the gesture.
+    /// </summary>
+    private sealed record Effect(Func<VisualSession, RunGate, Func<bool?>> Arrange, TimeSpan? Deadline = null);
 
     /// <summary>
     /// A log sink that, once armed, holds the first message logged off the UI thread until it is

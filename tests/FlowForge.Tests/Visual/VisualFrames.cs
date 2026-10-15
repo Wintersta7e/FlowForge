@@ -83,6 +83,10 @@ internal static class VisualFrames
 
     public const string UnsavedChangesPrompt = "unsaved-changes-prompt";
 
+    public const string CanvasPanZoom = "canvas-pan-zoom";
+
+    public const string CanvasMultiSelect = "canvas-multiselect";
+
     internal const string InspectorPrefix = "inspector-";
 
     public static IReadOnlyList<string> Ids { get; } = typeof(VisualFrames)

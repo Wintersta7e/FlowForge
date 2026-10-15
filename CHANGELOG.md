@@ -23,6 +23,7 @@ Versions 1.0.0–2.0.0 were tagged and released at the time; those tags and rele
 - **The toolbar names the open file** — the toolbar shows the open file's folder and name, trimmed to fit with the full path on hover, and `untitled.ffpipe` for a pipeline not yet saved; it showed `/pipelines/` and the window title. The version beside the logo is the build's major version instead of a fixed number.
 - **Unsaved changes are protected** — the window title and the toolbar's file name end in ` *` while the pipeline differs from its last save, and undoing back to the save clears the mark. New, Open, Open recent, a template card and closing the window first ask whether to save, discard or cancel; if the save is cancelled or fails, nothing is replaced. All five used to drop unsaved work without asking.
 - **Keys to preview, run and stop** — F5 starts a dry run, Ctrl+Shift+Enter starts the live run (never a single key, since a run changes files) and Esc stops a run in progress; with no run in progress Esc does what it did before. All three are listed in the shortcuts dialog, IGNITE's tooltip names its chord, and the dialog grows to fit its rows instead of cutting off its Close button.
+- **Canvas gestures match the shortcuts dialog** — zoom runs from 25% to 400% (it was 10% to 200%). The shortcuts dialog lists middle- or right-drag to pan and the plain scroll wheel to zoom, instead of Space+drag and Ctrl+scroll, which did nothing, and adds Alt+click on a port to disconnect; the user guide lists the same shortcuts.
 
 ### Removed
 

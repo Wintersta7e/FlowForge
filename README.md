@@ -47,7 +47,7 @@ strict analyzers (StyleCop + Meziantou, warnings-as-errors). Treat it as a
 working tool you can build and run, not a finished, packaged consumer app.
 
 **Implemented:**
-- Visual node editor — drag-and-drop canvas, pan/zoom, wiring, Alt+click
+- Visual node editor — drag-and-drop canvas, pan/zoom (25–400%), wiring, Alt+click
   disconnect, rubber-band selection, full undo/redo
 - 11 built-in node types (see [Features](#features))
 - `flowforge` CLI — `run` with per-run input/output overrides, dry-run,
@@ -83,7 +83,7 @@ working tool you can build and run, not a finished, packaged consumer app.
   `1` partial, `2` failure / bad args)
 
 ### Desktop editor
-- Node-graph canvas (Nodify.Avalonia): pan, zoom, drag, rubber-band selection
+- Node-graph canvas (Nodify.Avalonia): pan, zoom (25–400%), drag, rubber-band selection
 - Categorised node library with search and drag-to-canvas
 - Properties panel — config forms auto-generated from node schemas (text,
   number, boolean, file/folder picker, dropdown) with hover tooltips

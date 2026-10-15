@@ -23,15 +23,37 @@ dotnet run --project src/FlowForge.UI
 ### Canvas
 
 - **Pan** — right-click drag or middle-click drag
-- **Zoom** — scroll wheel
+- **Zoom** — scroll wheel, from 25% to 400%
 - **Select** — click a node, or rubber-band select multiple nodes
 - **Move** — drag selected nodes
 - **Connect** — drag from an output pin to an input pin to create a wire
 - **Disconnect** — Alt+click a pin to remove every wire on it in one undo step
-- **Delete** — select a node or connection and press Delete
+- **Delete** — select a node and press Delete
 - **Undo** — Ctrl+Z to undo the last action (up to 25 steps)
 - **Redo** — Ctrl+Y to redo the last undone action
 - **Zoom to Fit** — click the toolbar button to fit the entire graph into view
+
+### Keyboard Shortcuts
+
+Press F1, or click the toolbar's **?** button, to show this list in the app:
+
+<!-- shortcuts -->
+- **Ctrl+N** — New pipeline
+- **Ctrl+O** — Open pipeline
+- **Ctrl+S** — Save
+- **Ctrl+Shift+S** — Save as
+- **Delete** — Remove selected nodes
+- **Ctrl+0** — Zoom to fit all nodes
+- **Middle/Right-drag** — Pan canvas
+- **Scroll** — Zoom in/out
+- **Alt+Click port** — Disconnect
+- **Ctrl+Z** — Undo
+- **Ctrl+Y** — Redo
+- **F5** — Dry run (no files changed)
+- **Ctrl+Shift+Enter** — Run pipeline
+- **Esc** — Stop the running pipeline
+- **F1** — Show this help
+<!-- /shortcuts -->
 
 ### Node Library
 

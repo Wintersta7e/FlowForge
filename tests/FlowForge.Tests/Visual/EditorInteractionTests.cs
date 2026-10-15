@@ -49,7 +49,7 @@ public sealed class EditorInteractionTests
         session.RenderUntil(() => LibraryRows(window).Any(row => row.Bounds.Height > 0), "library rows shown");
         TreeViewItem row = LibraryRows(window).First();
         string typeKey = ((NodeLibraryItemViewModel)row.DataContext!).TypeKey;
-        NodifyEditor editor = Editor(window);
+        NodifyEditor editor = session.Canvas();
         Point start = session.CentreOf(row);
         Point drop = InWindow(editor, new Point(editor.Bounds.Width * 0.4, editor.Bounds.Height * 0.3));
 
@@ -325,7 +325,7 @@ public sealed class EditorInteractionTests
         var start = new Point(200, 160);
         editor.AddNode("RenamePattern", start, session.ViewModel.Registry);
         PipelineNodeViewModel node = editor.Nodes.Single();
-        NodifyEditor canvas = Editor(window);
+        NodifyEditor canvas = session.Canvas();
         Vector delta = new Vector(80, 40) * canvas.ViewportZoom;
         Point from = session.CentreOf(session.WaitForStation(node));
 
@@ -358,15 +358,7 @@ public sealed class EditorInteractionTests
         // Fitting measures the laid-out stations, so they must exist first.
         session.LoadTemplate(VisualSession.WebExportTemplate);
         editor.RequestFitToScreen();
-        NodifyEditor canvas = Editor(session.Window);
-        var visible = new Rect(canvas.Bounds.Size);
-
-        // Both corners go through the zoom transform; a station's own bounds are unscaled.
-        session.RenderUntil(
-            () => session.Stations().All(s =>
-                visible.Contains(s.TranslatePoint(default, canvas)!.Value)
-                && visible.Contains(s.TranslatePoint(new Point(s.Bounds.Width, s.Bounds.Height), canvas)!.Value)),
-            "every template station fitted on screen");
+        session.RenderUntil(session.StationsInsideCanvas, "every template station fitted on screen");
         using WriteableBitmap frame = session.Capture(VisualFrames.NodeRender);
 
         List<ItemContainer> stations = session.Stations();
@@ -389,8 +381,84 @@ public sealed class EditorInteractionTests
         stations.Should().HaveCount(editor.Nodes.Count);
     }
 
-    private static NodifyEditor Editor(Window window) =>
-        window.GetVisualDescendants().OfType<NodifyEditor>().Single(e => string.Equals(e.Name, "Editor", StringComparison.Ordinal));
+    [AvaloniaFact]
+    public void Wheel_zooms_within_its_range_and_middle_or_right_drag_pans()
+    {
+        using var session = VisualSession.Open(_output);
+        session.LoadTemplate(VisualSession.WebExportTemplate);
+        NodifyEditor canvas = session.Canvas();
+        Point centre = session.CentreOf(canvas);
+        _output.WriteLine($"range min={canvas.MinViewportZoom} max={canvas.MaxViewportZoom} start zoom={canvas.ViewportZoom}");
+
+        double zoomedIn = WheelUntilSteady(session, canvas, centre, 1);
+        double zoomedOut = WheelUntilSteady(session, canvas, centre, -1);
+
+        var by = new Vector(120, 80);
+        var pans = new List<(MouseButton Button, Point Before, Point After)>();
+        foreach (MouseButton button in new[] { MouseButton.Middle, MouseButton.Right })
+        {
+            Point before = canvas.ViewportLocation;
+            session.Drag(session.OpenCanvasPoint(), by, button);
+            pans.Add((button, before, canvas.ViewportLocation));
+            _output.WriteLine($"{button}-drag by {by} at zoom {canvas.ViewportZoom}: viewport {before} -> {canvas.ViewportLocation}");
+        }
+
+        using WriteableBitmap frame = session.Capture(VisualFrames.CanvasPanZoom);
+        canvas.MinViewportZoom.Should().Be(0.25);
+        canvas.MaxViewportZoom.Should().Be(4);
+        zoomedIn.Should().BeApproximately(4, 1e-9, "the wheel zooms in up to 400%");
+        zoomedOut.Should().BeApproximately(0.25, 1e-9, "the wheel zooms out down to 25%");
+        foreach ((MouseButton button, Point before, Point after) in pans)
+        {
+            // The canvas follows the pointer: the view moves back by the drag over the zoom.
+            Point expected = before - (by / canvas.ViewportZoom);
+            after.X.Should().BeApproximately(expected.X, 0.5, $"a {button}-drag pans the canvas");
+            after.Y.Should().BeApproximately(expected.Y, 0.5, $"a {button}-drag pans the canvas");
+        }
+    }
+
+    [AvaloniaFact]
+    public void Rubber_band_and_modifier_clicks_select_as_the_editor_defines()
+    {
+        using var session = VisualSession.Open(_output);
+        EditorViewModel editor = session.ViewModel.Editor;
+        session.LoadTemplate(VisualSession.WebExportTemplate);
+        PipelineNodeViewModel[] nodes = editor.Nodes.Take(3).ToArray();
+        ItemContainer[] stations = nodes.Select(session.WaitForStation).ToArray();
+        PixelRect first = session.BoundsInWindow(stations[0]);
+        PixelRect second = session.BoundsInWindow(stations[1]);
+        PixelRect third = session.BoundsInWindow(stations[2]);
+
+        // The band starts on open canvas above and left of the first station and ends in the gap
+        // after the second, below it: it holds the first two stations whole and none of the third.
+        var from = new Point(first.X - 30, first.Y - 30);
+        var to = new Point((second.Right + third.X) / 2.0, second.Bottom + 30);
+        session.Drag(from, to - from, MouseButton.Left);
+        var steps = new List<string> { $"band {from}-{to}: {Selected(editor)}" };
+        foreach ((string gesture, int station, RawInputModifiers modifiers) in new[]
+        {
+            ("Shift+click", 2, RawInputModifiers.Shift),
+            ("Ctrl+click", 0, RawInputModifiers.Control),
+            ("Alt+click", 1, RawInputModifiers.Alt),
+            ("click", 0, RawInputModifiers.None),
+        })
+        {
+            session.Click(stations[station], modifiers);
+            session.Pump();
+            steps.Add($"{gesture} {nodes[station].TypeKey}: {Selected(editor)}");
+        }
+
+        using WriteableBitmap frame = session.Capture(VisualFrames.CanvasMultiSelect);
+        steps.ForEach(_output.WriteLine);
+
+        // The editor's own selection rules: Shift adds, Ctrl toggles, Alt removes, a plain click replaces.
+        steps.Select(step => step[(step.IndexOf(':', StringComparison.Ordinal) + 2)..]).Should().Equal(
+            "FolderInput, Filter",
+            "FolderInput, Filter, ImageResize",
+            "Filter, ImageResize",
+            "ImageResize",
+            "FolderInput");
+    }
 
     private static IEnumerable<TreeViewItem> LibraryRows(Window window) =>
         window.GetVisualDescendants().OfType<TreeViewItem>().Where(item => item.DataContext is NodeLibraryItemViewModel);
@@ -449,6 +517,27 @@ public sealed class EditorInteractionTests
         session.RenderUntil(() => box.IsFocused, $"the {key} field focused");
         return box;
     }
+
+    // Turns the wheel one notch at a time until a notch leaves the zoom where it was; returns that zoom.
+    private double WheelUntilSteady(VisualSession session, NodifyEditor canvas, Point at, int notch)
+    {
+        double previous;
+        int notches = 0;
+        do
+        {
+            previous = canvas.ViewportZoom;
+            session.Window.MouseWheel(at, new Vector(0, notch), RawInputModifiers.None);
+            session.Pump();
+            notches++;
+        }
+        while (canvas.ViewportZoom != previous && notches < 200);
+
+        _output.WriteLine($"wheel {(notch > 0 ? "in" : "out")}: {notches} notches, zoom stops at {canvas.ViewportZoom}");
+        return canvas.ViewportZoom;
+    }
+
+    private static string Selected(EditorViewModel editor) =>
+        string.Join(", ", editor.Nodes.Where(node => node.IsSelected).Select(node => node.TypeKey));
 
     private static string Focused(TopLevel topLevel) =>
         topLevel.FocusManager?.GetFocusedElement() is Control control ? control.GetType().Name : "nothing";

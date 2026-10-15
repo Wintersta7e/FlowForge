@@ -331,6 +331,8 @@
                              DisconnectConnectorCommand="{Binding DisconnectConnectorCommand}"
                              Background="Transparent"
                              GridCellSize="40"
+                             MinViewportZoom="0.25"
+                             MaxViewportZoom="4"
                              DragDrop.AllowDrop="True">
 
             <nodify:NodifyEditor.Styles>
