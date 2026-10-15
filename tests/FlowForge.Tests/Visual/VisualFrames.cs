@@ -69,6 +69,8 @@ internal static class VisualFrames
 
     public const string AccentCheckBox = "accent-checkbox";
 
+    public const string ToolbarUndoDisabled = "toolbar-undo-disabled";
+
     public const string RunningSubtitlesDim = "running-subtitles-a";
 
     public const string RunningSubtitlesBright = "running-subtitles-b";

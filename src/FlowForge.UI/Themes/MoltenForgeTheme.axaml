@@ -328,6 +328,14 @@
         <Setter Property="Background" Value="{DynamicResource MwPanelHi}" />
         <Setter Property="CornerRadius" Value="2" />
     </Style>
+    <!-- Disabled: the idle button with a dimmed icon, not the base theme's filled box -->
+    <Style Selector="Button.toolbarIcon:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.toolbarIcon:disabled PathIcon">
+        <Setter Property="Opacity" Value="0.4" />
+    </Style>
 
     <!-- Button.templateButton: quick-start template cards (cast iron) -->
     <Style Selector="Button.templateButton">
