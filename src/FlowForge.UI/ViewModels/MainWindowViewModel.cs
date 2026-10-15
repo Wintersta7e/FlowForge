@@ -21,6 +21,7 @@ namespace FlowForge.UI.ViewModels;
 [System.Diagnostics.CodeAnalysis.SuppressMessage("IDisposable", "CA1001", Justification = "The run CancellationTokenSource is disposed at the end of each run; the view model is an app-lifetime singleton and is not IDisposable")]
 public partial class MainWindowViewModel : ViewModelBase
 {
+    private const string DirtyMarker = " *";
     private readonly NodeRegistry _registry;
     private readonly IDialogService _dialogService;
     private readonly ILogger<MainWindowViewModel> _logger;
@@ -28,20 +29,15 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IServiceProvider _serviceProvider;
     private readonly TaskCompletionSource _initComplete = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private AppSettings _appSettings = new();
+    private string _baseTitle = "FlowForge - Untitled";
 
     public NodeRegistry Registry => _registry;
     private CancellationTokenSource? _cts;
 
     [ObservableProperty]
-    private string _title = "FlowForge - Untitled";
-
-    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(DocumentName))]
     [NotifyPropertyChangedFor(nameof(DocumentFolder))]
     private string? _currentFilePath;
-
-    [ObservableProperty]
-    private bool _isDirty;
 
     /// <summary>
     /// When true, the running visual state (heat pulse, molten liquid, LIVE pills) lights up
@@ -60,8 +56,16 @@ public partial class MainWindowViewModel : ViewModelBase
     public string UndoToolTip => Editor.UndoRedo.UndoDescription is { } step ? $"Undo {step} (Ctrl+Z)" : "Undo (Ctrl+Z)";
     public string RedoToolTip => Editor.UndoRedo.RedoDescription is { } step ? $"Redo {step} (Ctrl+Y)" : "Redo (Ctrl+Y)";
 
-    /// <summary>The open file's name, or the default name of a pipeline never saved.</summary>
-    public string DocumentName => CurrentFilePath is { } path ? Path.GetFileName(path) : "untitled.ffpipe";
+    /// <summary>True while the pipeline differs from what was last saved, as far as the undo history can tell.</summary>
+    public bool IsDirty => !Editor.UndoRedo.IsAtSavePoint;
+
+    /// <summary>The window title, marked while there are unsaved changes.</summary>
+    public string Title => IsDirty ? _baseTitle + DirtyMarker : _baseTitle;
+
+    /// <summary>The open file's name, or the default name of a pipeline never saved; marked while there are unsaved changes.</summary>
+    public string DocumentName => IsDirty ? PipelineName + DirtyMarker : PipelineName;
+
+    private string PipelineName => CurrentFilePath is { } path ? Path.GetFileName(path) : "untitled.ffpipe";
 
     /// <summary>The name of the folder holding the open file; empty for a pipeline never saved.</summary>
     public string DocumentFolder => Path.GetFileName(Path.GetDirectoryName(CurrentFilePath)) ?? string.Empty;
@@ -99,7 +103,6 @@ public partial class MainWindowViewModel : ViewModelBase
 
         Editor.PropertyChanged += OnEditorPropertyChanged;
         Editor.UndoRedo.StateChanged += OnUndoRedoStateChanged;
-        Editor.GraphChanged += OnEditorGraphChanged;
         ExecutionLog.PropertyChanged += OnExecutionLogPropertyChanged;
         Editor.Nodes.CollectionChanged += OnEditorRunningCollectionChanged;
         Editor.Connections.CollectionChanged += OnEditorRunningCollectionChanged;
@@ -194,15 +197,13 @@ public partial class MainWindowViewModel : ViewModelBase
         RedoCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(UndoToolTip));
         OnPropertyChanged(nameof(RedoToolTip));
+        OnPropertyChanged(nameof(IsDirty));
+        OnPropertyChanged(nameof(Title));
+        OnPropertyChanged(nameof(DocumentName));
 
         // Fires synchronously from a binding setter mid-control-event; defer the rebuild
         // until the dispatcher is idle so we don't detach the control still on the stack.
         Dispatcher.UIThread.Post(RefreshPropertiesPanel);
-    }
-
-    private void OnEditorGraphChanged(object? sender, EventArgs e)
-    {
-        IsDirty = true;
     }
 
     private void RefreshPropertiesPanel()
@@ -276,13 +277,18 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private async Task OpenRecentAsync(string path)
     {
+        if (!await ConfirmDiscardAsync())
+        {
+            return;
+        }
+
         try
         {
             PipelineGraph graph = await PipelineSerializer.LoadAsync(path, CancellationToken.None);
             int droppedConnections = Editor.LoadGraph(graph, _registry);
             CurrentFilePath = path;
-            IsDirty = false;
-            Title = $"FlowForge - {Path.GetFileNameWithoutExtension(path)}";
+            SetTitle($"FlowForge - {Path.GetFileNameWithoutExtension(path)}");
+            Editor.UndoRedo.MarkSavePoint();
             await TrackRecentPipelineAsync(path);
 
             if (droppedConnections > 0)
@@ -313,18 +319,28 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void New()
+    private async Task NewAsync()
     {
+        if (!await ConfirmDiscardAsync())
+        {
+            return;
+        }
+
         Editor.ClearAll();
         CurrentFilePath = null;
-        IsDirty = false;
-        Title = "FlowForge - Untitled";
+        SetTitle("FlowForge - Untitled");
+        Editor.UndoRedo.MarkSavePoint();
         ExecutionLog.Clear();
     }
 
     [RelayCommand]
     private async Task OpenAsync()
     {
+        if (!await ConfirmDiscardAsync())
+        {
+            return;
+        }
+
         string? path = await _dialogService.OpenFileAsync(
             "Open Pipeline",
             "Pipeline Files|*.ffpipe|All Files|*.*");
@@ -339,8 +355,8 @@ public partial class MainWindowViewModel : ViewModelBase
             PipelineGraph graph = await PipelineSerializer.LoadAsync(path, CancellationToken.None);
             int droppedConnections = Editor.LoadGraph(graph, _registry);
             CurrentFilePath = path;
-            IsDirty = false;
-            Title = $"FlowForge - {Path.GetFileNameWithoutExtension(path)}";
+            SetTitle($"FlowForge - {Path.GetFileNameWithoutExtension(path)}");
+            Editor.UndoRedo.MarkSavePoint();
             await TrackRecentPipelineAsync(path);
 
             if (droppedConnections > 0)
@@ -358,52 +374,75 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private async Task SaveAsync()
     {
-        if (CurrentFilePath is null)
-        {
-            await SaveAsInternalAsync();
-            return;
-        }
-
-        await SaveToFileAsync(CurrentFilePath);
+        await SaveDocumentAsync(choosePath: false);
     }
 
     [RelayCommand]
     private async Task SaveAsAsync()
     {
-        await SaveAsInternalAsync();
+        await SaveDocumentAsync(choosePath: true);
     }
 
-    private async Task SaveAsInternalAsync()
+    /// <summary>
+    /// Asks whether to keep unsaved changes before closing the window. True when it may close.
+    /// </summary>
+    public Task<bool> ConfirmCloseAsync() => ConfirmDiscardAsync();
+
+    // Runs before anything that would replace the pipeline. True when the caller may go on:
+    // nothing was unsaved, the user chose to discard it, or it was saved.
+    private async Task<bool> ConfirmDiscardAsync()
     {
-        string? path = await _dialogService.SaveFileAsync(
+        if (!IsDirty)
+        {
+            return true;
+        }
+
+        UnsavedChangesChoice choice = await _dialogService.ConfirmUnsavedChangesAsync(PipelineName);
+        return choice switch
+        {
+            UnsavedChangesChoice.Discard => true,
+            UnsavedChangesChoice.Save => await SaveDocumentAsync(choosePath: false),
+            _ => false,
+        };
+    }
+
+    // The one save path. Asks for a file when told to or when the pipeline was never saved;
+    // true only when the file was written.
+    private async Task<bool> SaveDocumentAsync(bool choosePath)
+    {
+        string? path = choosePath ? null : CurrentFilePath;
+        path ??= await _dialogService.SaveFileAsync(
             "Save Pipeline",
             "Pipeline Files|*.ffpipe",
             "Untitled.ffpipe");
 
         if (path is null)
         {
-            return;
+            return false;
         }
 
-        await SaveToFileAsync(path);
-    }
-
-    private async Task SaveToFileAsync(string path)
-    {
         try
         {
             PipelineGraph graph = Editor.BuildGraph();
             await PipelineSerializer.SaveAsync(graph, path);
             CurrentFilePath = path;
-            IsDirty = false;
-            Title = $"FlowForge - {Path.GetFileNameWithoutExtension(path)}";
+            SetTitle($"FlowForge - {Path.GetFileNameWithoutExtension(path)}");
+            Editor.UndoRedo.MarkSavePoint();
             await TrackRecentPipelineAsync(path);
+            return true;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogError(ex, "Failed to save pipeline to {Path}", path);
             ExecutionLog.Summary = $"Save failed: {ex.Message}";
+            return false;
         }
+    }
+
+    private void SetTitle(string title)
+    {
+        _baseTitle = title;
+        OnPropertyChanged(nameof(Title));
     }
 
     [RelayCommand]
@@ -501,8 +540,13 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void LoadTemplate(string templateId)
+    private async Task LoadTemplateAsync(string templateId)
     {
+        if (!await ConfirmDiscardAsync())
+        {
+            return;
+        }
+
         try
         {
             PipelineGraph graph = PipelineTemplateLibrary.CreateFromTemplate(templateId);
@@ -515,8 +559,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
             Editor.LoadGraph(graph, _registry);
             CurrentFilePath = null;
-            IsDirty = true;
-            Title = $"FlowForge - {graph.Name ?? "Untitled"}";
+            SetTitle($"FlowForge - {graph.Name ?? "Untitled"}");
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

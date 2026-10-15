@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace FlowForge.UI.UndoRedo;
 
@@ -9,6 +10,11 @@ public class UndoRedoManager
     private readonly LinkedList<IUndoableCommand> _undoStack = new();
     private readonly Stack<IUndoableCommand> _redoStack = new();
 
+    // The command on top of the undo stack at the last save (null: the stack was empty), and
+    // whether the history can still prove a return to that state.
+    private IUndoableCommand? _savedTop;
+    private bool _savePointReachable = true;
+
     public bool CanUndo => _undoStack.Count > 0;
 
     public bool CanRedo => _redoStack.Count > 0;
@@ -17,20 +23,15 @@ public class UndoRedoManager
 
     public string? RedoDescription => _redoStack.Count > 0 ? _redoStack.Peek().Description : null;
 
+    /// <summary>True while the edits since the last <see cref="MarkSavePoint"/> are provably undone.</summary>
+    public bool IsAtSavePoint => _savePointReachable && ReferenceEquals(_undoStack.Last?.Value, _savedTop);
+
     public event EventHandler? StateChanged;
 
     public void Execute(IUndoableCommand command)
     {
         command.Execute();
-        _undoStack.AddLast(command);
-
-        if (_undoStack.Count > MaxStackSize)
-        {
-            _undoStack.RemoveFirst();
-        }
-
-        _redoStack.Clear();
-        StateChanged?.Invoke(this, EventArgs.Empty);
+        Push(command);
     }
 
     /// <summary>
@@ -39,15 +40,7 @@ public class UndoRedoManager
     /// </summary>
     public void PushExecuted(IUndoableCommand command)
     {
-        _undoStack.AddLast(command);
-
-        if (_undoStack.Count > MaxStackSize)
-        {
-            _undoStack.RemoveFirst();
-        }
-
-        _redoStack.Clear();
-        StateChanged?.Invoke(this, EventArgs.Empty);
+        Push(command);
     }
 
     /// <summary>
@@ -58,18 +51,15 @@ public class UndoRedoManager
     {
         if (_undoStack.Count > 0 && shouldReplace(_undoStack.Last!.Value))
         {
+            if (ReferenceEquals(_undoStack.Last.Value, _savedTop))
+            {
+                _savePointReachable = false;
+            }
+
             _undoStack.RemoveLast();
         }
 
-        _undoStack.AddLast(command);
-
-        if (_undoStack.Count > MaxStackSize)
-        {
-            _undoStack.RemoveFirst();
-        }
-
-        _redoStack.Clear();
-        StateChanged?.Invoke(this, EventArgs.Empty);
+        Push(command);
     }
 
     public void Undo()
@@ -97,12 +87,7 @@ public class UndoRedoManager
         command.Execute();
         _redoStack.Pop();
         _undoStack.AddLast(command);
-
-        if (_undoStack.Count > MaxStackSize)
-        {
-            _undoStack.RemoveFirst();
-        }
-
+        TrimToCap();
         StateChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -110,6 +95,40 @@ public class UndoRedoManager
     {
         _undoStack.Clear();
         _redoStack.Clear();
+        _savePointReachable = false;
         StateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>Records the current state as saved.</summary>
+    public void MarkSavePoint()
+    {
+        _savedTop = _undoStack.Last?.Value;
+        _savePointReachable = true;
+        StateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void Push(IUndoableCommand command)
+    {
+        // The redo stack is about to be dropped; a saved state waiting there is gone with it.
+        if (_redoStack.Any(redo => ReferenceEquals(redo, _savedTop)))
+        {
+            _savePointReachable = false;
+        }
+
+        _undoStack.AddLast(command);
+        TrimToCap();
+        _redoStack.Clear();
+        StateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    // An evicted command stays applied but can no longer be undone. Any eviction gives up the
+    // save point: it drops the saved command, one below it, or the empty start undo returned to.
+    private void TrimToCap()
+    {
+        if (_undoStack.Count > MaxStackSize)
+        {
+            _undoStack.RemoveFirst();
+            _savePointReachable = false;
+        }
     }
 }

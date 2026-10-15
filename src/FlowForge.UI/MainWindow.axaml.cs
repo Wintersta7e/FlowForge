@@ -1,14 +1,53 @@
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Threading;
 using FlowForge.UI.ViewModels;
 
 namespace FlowForge.UI;
 
 public partial class MainWindow : Window
 {
+    private bool _closeConfirmed;
+    private bool _closePromptOpen;
+
     public MainWindow()
     {
         InitializeComponent();
+        Closing += OnClosing;
+    }
+
+    // Every close waits for the view model's answer; a close while it is asking is ignored.
+    private async void OnClosing(object? sender, WindowClosingEventArgs e)
+    {
+        if (_closeConfirmed || DataContext is not MainWindowViewModel vm)
+        {
+            return;
+        }
+
+        e.Cancel = true;
+        if (_closePromptOpen)
+        {
+            return;
+        }
+
+        _closePromptOpen = true;
+        bool close;
+        try
+        {
+            close = await vm.ConfirmCloseAsync();
+        }
+        finally
+        {
+            _closePromptOpen = false;
+        }
+
+        if (close)
+        {
+            // Posted: with nothing to ask the answer arrives inside this Closing handler, and
+            // closing from there would re-enter it.
+            _closeConfirmed = true;
+            Dispatcher.UIThread.Post(Close);
+        }
     }
 
     private async void OnKeyDown(object? sender, KeyEventArgs e)

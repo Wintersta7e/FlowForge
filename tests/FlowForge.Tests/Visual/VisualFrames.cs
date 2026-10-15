@@ -81,6 +81,8 @@ internal static class VisualFrames
 
     public const string RunningSubtitlesMid = "running-subtitles-c";
 
+    public const string UnsavedChangesPrompt = "unsaved-changes-prompt";
+
     internal const string InspectorPrefix = "inspector-";
 
     public static IReadOnlyList<string> Ids { get; } = typeof(VisualFrames)

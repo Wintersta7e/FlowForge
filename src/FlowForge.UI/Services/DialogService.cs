@@ -2,21 +2,32 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
+using FlowForge.UI.Views;
 
 namespace FlowForge.UI.Services;
 
 public class DialogService : IDialogService
 {
-    private static IStorageProvider? GetStorageProvider()
+    private static Window? GetMainWindow() =>
+        (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+
+    private static IStorageProvider? GetStorageProvider() => GetMainWindow()?.StorageProvider;
+
+    public async Task<UnsavedChangesChoice> ConfirmUnsavedChangesAsync(string pipelineName)
     {
-        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        Window? owner = GetMainWindow();
+        if (owner is null)
         {
-            return desktop.MainWindow?.StorageProvider;
+            return UnsavedChangesChoice.Cancel;
         }
 
-        return null;
+        // Closing the prompt by its frame picks no button: nothing is lost.
+        UnsavedChangesWindow prompt = new() { DataContext = pipelineName };
+        UnsavedChangesChoice? choice = await prompt.ShowDialog<UnsavedChangesChoice?>(owner);
+        return choice ?? UnsavedChangesChoice.Cancel;
     }
 
     public async Task<string?> OpenFileAsync(string title, string filter)

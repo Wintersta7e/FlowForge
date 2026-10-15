@@ -7,4 +7,5 @@ public interface IDialogService
     Task<string?> OpenFileAsync(string title, string filter);
     Task<string?> SaveFileAsync(string title, string filter, string? defaultName);
     Task<string?> OpenFolderAsync(string title);
+    Task<UnsavedChangesChoice> ConfirmUnsavedChangesAsync(string pipelineName);
 }
