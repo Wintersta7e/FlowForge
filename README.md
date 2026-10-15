@@ -67,7 +67,7 @@ working tool you can build and run, not a finished, packaged consumer app.
 Rename and image nodes never change the input folder — they work on private copies, and only Folder Output writes to your folders. With `copy` the input files stay as they were; `move` deletes each one only after every delivery of it succeeded.
 
 ### Engine + CLI
-- Pipeline runner with dry-run mode (**writes, moves and deletes nothing**), full `CancellationToken`
+- Pipeline runner with dry-run mode (**writes, moves and deletes nothing; lists folders and reads file sizes and dates; opens no file content**), full `CancellationToken`
   support, and structured progress events
 - **11 built-in node types:**
   - *sources & outputs:* `FolderInput`, `FolderOutput`
@@ -153,7 +153,7 @@ FlowForge/
 1. **Local-first.** No network calls of its own, no telemetry, no account — everything runs on your machine, and a folder on a network share is reached through the operating system like any other path.
 2. **Layered and testable.** `FlowForge.Core` is pure logic with no UI references; the UI and CLI are thin composition roots over the same engine.
 3. **CLI is first-class.** Anything a pipeline does in the GUI runs headless from the CLI, with JSON output and a clear exit-code contract for scripting.
-4. **Safe by default.** Dry-run writes, moves and deletes nothing, path guards stop a rename or a delivery from escaping its folder, and overwrite-with-backup is opt-in.
+4. **Safe by default.** Dry-run writes, moves and deletes nothing; lists folders and reads file sizes and dates; opens no file content. Path guards stop a rename or a delivery from escaping its folder, and overwrite-with-backup is opt-in.
 5. **Inspectable and reusable.** Pipelines are plain `.ffpipe` JSON — save them, diff them, re-run them.
 6. **Strict from commit one.** TreatWarningsAsErrors, StyleCop + Meziantou analyzers, and a `dotnet format` gate enforced in CI.
 
