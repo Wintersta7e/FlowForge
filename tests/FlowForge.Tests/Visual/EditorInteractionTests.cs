@@ -207,6 +207,67 @@ public sealed class EditorInteractionTests
     }
 
     [AvaloniaFact]
+    public void Typing_into_a_field_keeps_its_focus_so_Delete_edits_the_text()
+    {
+        using var session = VisualSession.Open(_output);
+        MainWindow window = session.Window;
+        EditorViewModel editor = session.ViewModel.Editor;
+        editor.AddNode("RenamePattern", new Point(80, 120), session.ViewModel.Registry);
+        PipelineNodeViewModel rename = editor.Nodes[0];
+        TextBox box = FocusField(session, rename, "pattern");
+        window.KeyPress(Key.A, RawInputModifiers.Control, PhysicalKey.A, "a");
+        window.KeyRelease(Key.A, RawInputModifiers.Control, PhysicalKey.A, "a");
+
+        // Two keystrokes, each committed and the queued work run before the next.
+        foreach (string text in new[] { "a", "b" })
+        {
+            window.KeyTextInput(text);
+            session.Pump();
+            _output.WriteLine($"after '{text}': pattern='{ValueText(rename.Config, "pattern")}' focused={Focused(window)}");
+        }
+
+        string? typed = ValueText(rename.Config, "pattern");
+        bool kept = box.IsFocused;
+        int before = editor.Nodes.Count;
+        session.Press("Delete");
+        session.Pump();
+        _output.WriteLine($"after Delete: nodes {before} -> {editor.Nodes.Count}");
+
+        typed.Should().Be("ab", "each keystroke lands in the field");
+        kept.Should().BeTrue("the field keeps the focus through its own edits");
+        editor.Nodes.Should().HaveCount(before, "Delete in a focused field edits its text, not the canvas");
+        editor.Nodes.Should().Contain(rename);
+    }
+
+    [AvaloniaFact]
+    public void Saving_keeps_the_focused_field_so_Delete_edits_the_text()
+    {
+        using var session = VisualSession.Open(_output);
+        MainWindowViewModel vm = session.ViewModel;
+        EditorViewModel editor = vm.Editor;
+        editor.AddNode("RenamePattern", new Point(80, 120), vm.Registry);
+        PipelineNodeViewModel rename = editor.Nodes[0];
+        string path = Path.Combine(session.Temp.Path, "focused.ffpipe");
+        vm.CurrentFilePath = path;
+        TextBox box = FocusField(session, rename, "pattern");
+        bool dirty = vm.IsDirty;
+
+        session.Press("Ctrl+S");
+        session.RenderUntil(() => !vm.IsDirty, "the pipeline saved");
+        session.Pump();
+        bool kept = box.IsFocused;
+        int before = editor.Nodes.Count;
+        session.Press("Delete");
+        session.Pump();
+        _output.WriteLine($"saved={File.Exists(path)} focused after save={Focused(session.Window)} nodes {before} -> {editor.Nodes.Count}");
+
+        dirty.Should().BeTrue("the added station is an unsaved change");
+        kept.Should().BeTrue("a save leaves the focused field focused");
+        editor.Nodes.Should().HaveCount(before, "Delete in a focused field edits its text, not the canvas");
+        editor.Nodes.Should().Contain(rename);
+    }
+
+    [AvaloniaFact]
     public void Delete_and_undo_restore_the_selected_station()
     {
         using var session = VisualSession.Open(_output);
@@ -361,17 +422,29 @@ public sealed class EditorInteractionTests
             .Single(card => card.DataContext is ConfigFieldViewModel field && string.Equals(field.Key, key, StringComparison.Ordinal))
             .GetVisualDescendants().OfType<T>().First();
 
-    // Each config edit rebuilds the inspector's fields; wait for the rebuilt cards before the next gesture.
+    // Waits for the edit to reach the selected station's config before the next gesture.
     private static void EditField(VisualSession session, string key, Action input)
     {
-        ConfigFieldViewModel before = session.ViewModel.Properties.Fields[0];
+        IDictionary<string, JsonElement> config = session.ViewModel.Editor.SelectedNode!.Config;
+        string? before = ValueText(config, key);
         input();
         session.RenderUntil(
-            () => session.ViewModel.Properties.Fields.Count > 0
-                && !ReferenceEquals(session.ViewModel.Properties.Fields[0], before)
-                && session.InspectorReady(),
-            $"inspector rebuilt after editing {key}");
+            () => !string.Equals(ValueText(config, key), before, StringComparison.Ordinal) && session.InspectorReady(),
+            $"{key} edited");
     }
+
+    // Selects the station, clicks the field's text box and waits for it to take the keyboard focus.
+    private static TextBox FocusField(VisualSession session, PipelineNodeViewModel node, string key)
+    {
+        Select(session, node);
+        TextBox box = FieldEditor<TextBox>(session, key);
+        session.Click(box);
+        session.RenderUntil(() => box.IsFocused, $"the {key} field focused");
+        return box;
+    }
+
+    private static string Focused(TopLevel topLevel) =>
+        topLevel.FocusManager?.GetFocusedElement() is Control control ? control.GetType().Name : "nothing";
 
     // Opens the drop-down with a click and clicks the option in its popup.
     private static void PickOption(VisualSession session, ComboBox comboBox, string option)

@@ -165,7 +165,7 @@ public sealed class InspectorTests
         _output.WriteLine($"multi-line {typeKey}.{key} before: card={session.BoundsInWindow(before)} editor={session.BoundsInWindow(box)}");
         box.Text = text;
 
-        // The edit commits and posts an inspector refresh; wait for the rebuilt card showing the value.
+        // The edit commits; wait for the card to lay out the value.
         session.Pump();
         session.RenderUntil(
             () => session.InspectorReady() && string.Equals(MultiLineCard(session.InspectorCards(), key).Editor.Text, text, StringComparison.Ordinal),

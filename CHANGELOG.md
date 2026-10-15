@@ -69,6 +69,7 @@ Versions 1.0.0–2.0.0 were tagged and released at the time; those tags and rele
 - **Station previews follow edits** — the config value a station shows under its title changes when the field is edited in the inspector and when that edit is undone or redone; it used to keep the value the station was created with until the pipeline was opened again.
 - **Run controls stay on screen in a narrow window** — below 1100 px the toolbar's STN, PIPE and SRC counts give way, so IGNITE and the shortcuts button stay visible down to the window's minimum width; a narrow window or a long file name used to push them off screen. In a narrow canvas the empty state's headline and hint wrap instead of being cut off, and the system readout no longer shows through the template cards.
 - **File shortcuts work** — Ctrl+N, Ctrl+O, Ctrl+S and Ctrl+Shift+S, listed in the shortcuts dialog, now start a new pipeline, open, save and save as; they did nothing. A Save As button sits beside Save in the toolbar.
+- **Typing in the inspector keeps the field focused** — each typed character rebuilt the inspector and dropped the keyboard focus, so a field kept only the first character and a following Delete removed the station being edited; a save dropped the focus the same way. Typing and saving now leave the field focused; undo, redo and selecting another station still refresh the inspector.
 
 ### Security
 

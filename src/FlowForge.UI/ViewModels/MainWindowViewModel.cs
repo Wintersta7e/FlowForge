@@ -31,6 +31,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private AppSettings _appSettings = new();
     private string _baseTitle = "FlowForge - Untitled";
 
+    // Set while a history change leaves every inspector value as shown (its own edit, a save).
+    private bool _keepInspector;
+
     public NodeRegistry Registry => _registry;
     private CancellationTokenSource? _cts;
 
@@ -202,9 +205,28 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(Title));
         OnPropertyChanged(nameof(DocumentName));
 
-        // Fires synchronously from a binding setter mid-control-event; defer the rebuild
-        // until the dispatcher is idle so we don't detach the control still on the stack.
-        Dispatcher.UIThread.Post(RefreshPropertiesPanel);
+        // Undo and redo change values the inspector shows, so it is rebuilt; its own edits and a
+        // save change none, and a rebuild would replace the focused editor and drop the keyboard
+        // focus, sending the next Delete to the canvas. Deferred until the dispatcher is idle:
+        // this fires synchronously from a binding setter, with the edited control still on the stack.
+        if (!_keepInspector)
+        {
+            Dispatcher.UIThread.Post(RefreshPropertiesPanel);
+        }
+    }
+
+    // Runs a history change that leaves the inspector's fields in place.
+    private void KeepingInspector(Action historyChange)
+    {
+        _keepInspector = true;
+        try
+        {
+            historyChange();
+        }
+        finally
+        {
+            _keepInspector = false;
+        }
     }
 
     private void RefreshPropertiesPanel()
@@ -213,16 +235,19 @@ public partial class MainWindowViewModel : ViewModelBase
         // merges repeated keystrokes on the same field into a single undo entry.
         Properties.LoadNode(Editor.SelectedNode, _registry, cmd =>
         {
-            if (cmd is UndoRedo.Commands.ChangeConfigCommand configCmd)
+            KeepingInspector(() =>
             {
-                Editor.UndoRedo.PushOrCoalesce(cmd, prev =>
-                    prev is UndoRedo.Commands.ChangeConfigCommand prevConfig
-                    && string.Equals(prevConfig.ConfigKey, configCmd.ConfigKey, StringComparison.Ordinal));
-            }
-            else
-            {
-                Editor.UndoRedo.PushExecuted(cmd);
-            }
+                if (cmd is UndoRedo.Commands.ChangeConfigCommand configCmd)
+                {
+                    Editor.UndoRedo.PushOrCoalesce(cmd, prev =>
+                        prev is UndoRedo.Commands.ChangeConfigCommand prevConfig
+                        && string.Equals(prevConfig.ConfigKey, configCmd.ConfigKey, StringComparison.Ordinal));
+                }
+                else
+                {
+                    Editor.UndoRedo.PushExecuted(cmd);
+                }
+            });
 
             Editor.RaiseGraphChanged();
         });
@@ -428,7 +453,7 @@ public partial class MainWindowViewModel : ViewModelBase
             await PipelineSerializer.SaveAsync(graph, path);
             CurrentFilePath = path;
             SetTitle($"FlowForge - {Path.GetFileNameWithoutExtension(path)}");
-            Editor.UndoRedo.MarkSavePoint();
+            KeepingInspector(Editor.UndoRedo.MarkSavePoint);
             await TrackRecentPipelineAsync(path);
             return true;
         }
