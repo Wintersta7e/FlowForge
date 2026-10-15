@@ -77,7 +77,7 @@ The bottom panel shows pipeline execution results:
 
 **Work on a copy.** Rename and image nodes change files in the input folder itself — they rename, resize, recompress or convert the originals before Folder Output delivers them — so point the input at a copy of your files.
 
-### Folder Input (Source)
+### Folder Input (Input)
 
 Enumerates files from a directory.
 
@@ -89,7 +89,7 @@ Enumerates files from a directory.
 | `filter` | File Filter | no | `*` | — | `*.jpg;*.png` | Semicolon-separated glob patterns (e.g. \*.jpg;\*.png) |
 <!-- /node-fields -->
 
-### Rename (Pattern) (Transform)
+### Rename (Pattern) (Process)
 
 Renames files using token-based patterns.
 
@@ -110,7 +110,7 @@ A `{meta:KEY}` token whose key the file does not carry expands to an empty strin
 | `startIndex` | Counter Start | no | `1` | — | — | Starting number for {counter} token |
 <!-- /node-fields -->
 
-### Rename (Regex) (Transform)
+### Rename (Regex) (Process)
 
 Regex find-and-replace on filenames.
 
@@ -122,7 +122,7 @@ Regex find-and-replace on filenames.
 | `scope` | Scope | no | `filename` | `filename`, `fullpath` | — | filename: match name only, fullpath: match entire path |
 <!-- /node-fields -->
 
-### Rename (Add Affix) (Transform)
+### Rename (Add Affix) (Process)
 
 Adds a prefix and/or suffix to filenames.
 
@@ -133,7 +133,7 @@ Adds a prefix and/or suffix to filenames.
 | `suffix` | Suffix | no | — | — | — | Text to append after filename (before extension) |
 <!-- /node-fields -->
 
-### Filter (Transform)
+### Filter (Process)
 
 Filters files by conditions. Files that don't match are either skipped or dropped.
 
@@ -143,7 +143,7 @@ Filters files by conditions. Files that don't match are either skipped or droppe
 | `conditions` | Conditions (JSON) | yes | — | — | `[{"field":"extension","operator":"equals","value":".jpg"}]` | JSON array of conditions. Fields: extension, filename, size, createdAt, modifiedAt. Operators: equals, notequals, contains, startswith, endswith, greaterthan, lessthan, matches |
 <!-- /node-fields -->
 
-### Sort (Transform)
+### Sort (Process)
 
 Reorders files in the pipeline.
 
@@ -154,7 +154,7 @@ Reorders files in the pipeline.
 | `direction` | Direction | no | `asc` | `asc`, `desc` | — | asc: smallest/oldest first, desc: largest/newest first |
 <!-- /node-fields -->
 
-### Image Resize (Transform)
+### Image Resize (Process)
 
 Resizes image files.
 
@@ -168,7 +168,7 @@ Resizes image files.
 | `dpi` | DPI | no | — | — | — | Output resolution in dots per inch (leave blank to keep original) |
 <!-- /node-fields -->
 
-### Image Convert (Transform)
+### Image Convert (Process)
 
 Converts images between formats.
 
@@ -178,7 +178,7 @@ Converts images between formats.
 | `format` | Target Format | yes | — | `jpg`, `jpeg`, `png`, `webp`, `bmp`, `tiff` | — | Output image format |
 <!-- /node-fields -->
 
-### Image Compress (Transform)
+### Image Compress (Process)
 
 Compresses images with quality control.
 
@@ -189,7 +189,7 @@ Compresses images with quality control.
 | `format` | Output Format | no | — | `jpg`, `jpeg`, `png`, `webp` | — | Override output format (leave blank to keep original format) |
 <!-- /node-fields -->
 
-### Metadata Extract (Transform)
+### Metadata Extract (Process)
 
 Reads EXIF and file metadata into pipeline variables for use in downstream Rename Pattern nodes via `{meta:KEY}`. A `{meta:KEY}` token takes the full key as written in `keys`, for example `{meta:EXIF:DateTaken}`.
 

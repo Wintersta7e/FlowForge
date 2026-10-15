@@ -8,7 +8,7 @@ namespace FlowForge.UI.ViewModels;
 
 public partial class NodeLibraryViewModel : ViewModelBase
 {
-    private static readonly Dictionary<string, string> CategoryDisplayNames = new(StringComparer.Ordinal)
+    internal static readonly Dictionary<string, string> CategoryDisplayNames = new(StringComparer.Ordinal)
     {
         ["Source"] = "Input",
         ["Transform"] = "Process",
