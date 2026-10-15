@@ -303,35 +303,17 @@
             </Grid>
         </Border>
 
-        <!-- Progress bar (docked below tab strip, visible when running) -->
+        <!-- Phase strip (docked below tab strip, visible when running); the console holds the progress bar -->
         <Border DockPanel.Dock="Top"
                 Padding="12,6"
                 BorderBrush="{DynamicResource ForgeBorder}"
                 BorderThickness="0,0,0,1"
                 IsVisible="{Binding IsRunning}">
-            <Grid RowDefinitions="Auto,Auto">
-                <DockPanel>
-                    <TextBlock DockPanel.Dock="Right"
-                               Text="{Binding ProgressText}"
-                               Foreground="{DynamicResource ForgeTextSecondary}"
-                               FontSize="12" VerticalAlignment="Center"
-                               Margin="8,0,0,0" />
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <TextBlock Text="Processing"
-                                   Foreground="{DynamicResource ForgeAccent}"
-                                   FontWeight="SemiBold" FontSize="12" />
-                        <TextBlock Text="{Binding CurrentFile}"
-                                   AutomationProperties.AutomationId="CurrentFile"
-                                   TextTrimming="CharacterEllipsis"
-                                   Foreground="{DynamicResource ForgeTextSecondary}"
-                                   FontSize="12" />
-                    </StackPanel>
-                </DockPanel>
-                <ProgressBar Grid.Row="1"
-                             IsIndeterminate="True"
-                             Height="4" Margin="0,6,0,0"
-                             CornerRadius="2" />
-            </Grid>
+            <TextBlock Text="{Binding PhaseLabel}"
+                       AutomationProperties.AutomationId="PhaseLabel"
+                       TextTrimming="CharacterEllipsis"
+                       Foreground="{DynamicResource ForgeTextSecondary}"
+                       FontSize="12" />
         </Border>
 
         <!-- Content area (collapsible) -->

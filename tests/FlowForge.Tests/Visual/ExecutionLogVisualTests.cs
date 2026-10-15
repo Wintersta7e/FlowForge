@@ -64,21 +64,21 @@ public sealed class ExecutionLogVisualTests
             ExecutionLogView view = LogView(session.Window);
             TextBlock succeeded = session.ById<TextBlock>("SucceededCount");
             TextBlock failed = session.ById<TextBlock>("FailedCount");
-            TextBlock currentFile = session.ById<TextBlock>("CurrentFile");
+            TextBlock phase = session.ById<TextBlock>("PhaseLabel");
             TextBlock count = session.ById<TextBlock>("ConsoleCount");
             session.Pump();
-            ProgressBar bar = view.GetVisualDescendants().OfType<ProgressBar>().Single(p => !p.IsIndeterminate);
+            ProgressBar bar = view.GetVisualDescendants().OfType<ProgressBar>().Single();
             session.RenderUntil(
-                () => new Control[] { succeeded, failed, bar, currentFile }.All(c => c.IsEffectivelyVisible && c.Bounds.Width > 0),
+                () => new Control[] { succeeded, failed, bar, phase }.All(c => c.IsEffectivelyVisible && c.Bounds.Width > 0),
                 "log strip shows the fed counts");
             using WriteableBitmap frame = session.Capture(VisualFrames.LogProgress);
 
-            _output.WriteLine($"succeeded={succeeded.Text} failed={failed.Text} count={count.Text} progress={bar.Value} current={currentFile.Text}");
+            _output.WriteLine($"succeeded={succeeded.Text} failed={failed.Text} count={count.Text} progress={bar.Value} phase='{phase.Text}'");
             succeeded.Text.Should().Be("3");
             failed.Text.Should().Be("1");
             count.Text.Should().Be("3/4", "three of four discovered files are finished");
             bar.Value.Should().BeApproximately(75, 0.001, "three of four discovered files are finished");
-            currentFile.Text.Should().Be(jobs[^1].FileName);
+            phase.Text.Should().Be($"Processing 3 of 4 files — {jobs[^1].FileName}", "the strip counts finished files and names the last one");
         }
         finally
         {

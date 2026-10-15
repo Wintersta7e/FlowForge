@@ -1,14 +1,20 @@
+using System.Globalization;
+using System.Text.RegularExpressions;
 using FlowForge.Core.Execution;
 using FlowForge.Core.Models;
 using FlowForge.UI.ViewModels;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
+using Xunit.Abstractions;
 
 namespace FlowForge.Tests.ViewModels;
 
 public class ExecutionLogViewModelTests
 {
     private readonly ExecutionLogViewModel _vm = new(NodeRegistry.CreateDefault(NullLoggerFactory.Instance));
+    private readonly ITestOutputHelper _output;
+
+    public ExecutionLogViewModelTests(ITestOutputHelper output) => _output = output;
 
     [Fact]
     public void ReportProgressEvent_PhaseChanged_Enumerating_SetsIndeterminate()
@@ -16,7 +22,6 @@ public class ExecutionLogViewModelTests
         _vm.ReportProgressEvent(new PhaseChanged(ExecutionPhase.Enumerating));
 
         _vm.IsIndeterminate.Should().BeTrue();
-        _vm.Phase.Should().Be(ExecutionPhase.Enumerating);
         _vm.PhaseLabel.Should().Be("Scanning...");
     }
 
@@ -87,7 +92,7 @@ public class ExecutionLogViewModelTests
 
         _vm.Progress.Should().Be(100.0);
         _vm.IsIndeterminate.Should().BeFalse();
-        _vm.Phase.Should().Be(ExecutionPhase.Complete);
+        _vm.PhaseLabel.Should().StartWith("Complete:");
     }
 
     [Fact]
@@ -223,4 +228,41 @@ public class ExecutionLogViewModelTests
         _vm.Entries.Should().HaveCount(5000);
         _vm.Succeeded.Should().Be(5001);
     }
+
+    [Fact]
+    public void FanOutEvents_NeverExceedTotal()
+    {
+        _vm.ReportProgressEvent(new PhaseChanged(ExecutionPhase.Enumerating));
+        _vm.ReportProgressEvent(new FilesDiscovered(3));
+        _vm.ReportProgressEvent(new PhaseChanged(ExecutionPhase.Processing));
+        int maxNumerator = 0;
+        double maxProgress = 0;
+        int maxShownCount = 0;
+
+        // Each original splits into two branches; only the branch that ends last completes it.
+        foreach (string name in new[] { "alpha.txt", "beta.txt", "gamma.txt" })
+        {
+            foreach (bool completes in new[] { false, true })
+            {
+                string path = Path.Combine(Path.GetTempPath(), name);
+                var job = new FileJob { OriginalPath = path, CurrentPath = path, Status = FileJobStatus.Succeeded };
+                _vm.ReportProgressEvent(new FileProcessed(job) { CompletesOriginal = completes });
+
+                int numerator = int.Parse(_vm.ProgressText.Split('/')[0], CultureInfo.InvariantCulture);
+                int shownCount = Counts(_vm.ProgressText).Concat(Counts(_vm.PhaseLabel)).Max();
+                _output.WriteLine($"{name} completes={completes}: count={_vm.ProgressText} progress={_vm.Progress} label='{_vm.PhaseLabel}'");
+                maxNumerator = Math.Max(maxNumerator, numerator);
+                maxProgress = Math.Max(maxProgress, _vm.Progress);
+                maxShownCount = Math.Max(maxShownCount, shownCount);
+            }
+        }
+
+        _output.WriteLine($"max numerator={maxNumerator} max progress={maxProgress} max count shown={maxShownCount}");
+        maxNumerator.Should().BeLessThanOrEqualTo(3, "only the three originals count toward progress");
+        maxProgress.Should().BeLessThanOrEqualTo(100);
+        maxShownCount.Should().BeLessThanOrEqualTo(3, "neither the count nor the label counts a branch as a file");
+    }
+
+    private static IEnumerable<int> Counts(string text) =>
+        Regex.Matches(text, @"\d+", RegexOptions.None, TimeSpan.FromSeconds(1)).Select(m => int.Parse(m.Value, CultureInfo.InvariantCulture));
 }

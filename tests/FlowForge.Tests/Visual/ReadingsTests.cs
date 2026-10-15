@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using Avalonia.Automation;
 using Avalonia.Controls;
@@ -7,6 +8,7 @@ using Avalonia.VisualTree;
 using FlowForge.Core.Pipeline;
 using FlowForge.Tests.Helpers;
 using FlowForge.UI.ViewModels;
+using FlowForge.UI.Views;
 using FluentAssertions;
 using Xunit.Abstractions;
 
@@ -128,6 +130,31 @@ public sealed class ReadingsTests
         {
             // The beads animate for as long as DEMO mode is on; stop it before the window closes.
             vm.IsDemoMode = false;
+        }
+    }
+
+    [AvaloniaFact]
+    public void RunningConsole_HasExactlyOneProgressBar()
+    {
+        using var session = VisualSession.Open(_output);
+        ExecutionLogViewModel log = session.ViewModel.ExecutionLog;
+
+        log.IsRunning = true;
+        try
+        {
+            session.Pump();
+            ExecutionLogView view = session.Window.GetVisualDescendants().OfType<ExecutionLogView>().Single();
+            int bars = view.GetVisualDescendants().OfType<ProgressBar>().Count(bar => bar.IsEffectivelyVisible);
+            int phaseMembers = typeof(ExecutionLogViewModel)
+                .GetMember("Phase", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)
+                .Length;
+            _output.WriteLine($"[running] visible progress bars={bars} Phase members={phaseMembers}");
+            bars.Should().Be(1, "the console's bar is the run's only progress bar");
+            phaseMembers.Should().Be(0, "the phase shows through the label, not a second state the view could bind");
+        }
+        finally
+        {
+            log.IsRunning = false;
         }
     }
 

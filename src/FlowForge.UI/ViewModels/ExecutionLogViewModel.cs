@@ -49,9 +49,6 @@ public partial class ExecutionLogViewModel : ViewModelBase
     private bool _isPanelExpanded = true;
 
     [ObservableProperty]
-    private ExecutionPhase _phase;
-
-    [ObservableProperty]
     private int _discoveredFiles;
 
     [ObservableProperty]
@@ -149,7 +146,6 @@ public partial class ExecutionLogViewModel : ViewModelBase
         CurrentFile = null;
         IsRunning = false;
         Summary = null;
-        Phase = default;
         DiscoveredFiles = 0;
         PhaseLabel = string.Empty;
         IsIndeterminate = false;
@@ -166,7 +162,6 @@ public partial class ExecutionLogViewModel : ViewModelBase
         {
             case PhaseChanged phaseEvt:
                 FlushPendingJobs();
-                Phase = phaseEvt.Phase;
                 switch (phaseEvt.Phase)
                 {
                     case ExecutionPhase.Enumerating:
@@ -283,9 +278,8 @@ public partial class ExecutionLogViewModel : ViewModelBase
             return;
         }
 
-        int processed = Succeeded + Failed + Skipped;
         string fileInfo = CurrentFile is not null ? $" \u2014 {CurrentFile}" : string.Empty;
-        PhaseLabel = $"Processing {processed} of {TotalFiles} files{fileInfo}";
+        PhaseLabel = $"Processing {_completedOriginals} of {TotalFiles} files{fileInfo}";
     }
 
     private void UpdateCompletionLabel()
