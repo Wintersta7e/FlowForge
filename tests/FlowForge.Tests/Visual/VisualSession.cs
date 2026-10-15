@@ -252,6 +252,11 @@ internal sealed class VisualSession : IDisposable
         Window.GetVisualDescendants().OfType<T>()
             .Single(control => string.Equals(AutomationProperties.GetAutomationId(control), automationId, StringComparison.Ordinal));
 
+    // The one button in the window that a screen reader announces by this name.
+    public Button ButtonNamed(string name) =>
+        Window.GetVisualDescendants().OfType<Button>()
+            .Single(button => string.Equals(AutomationProperties.GetName(button), name, StringComparison.Ordinal));
+
     // The text a control shows: its effectively visible TextBlocks, in tree order.
     public List<string> ShownText(Control container) =>
         container.GetVisualDescendants().OfType<TextBlock>()

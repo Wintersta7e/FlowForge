@@ -55,6 +55,9 @@ public partial class MainWindowViewModel : ViewModelBase
     public PropertiesViewModel Properties { get; }
     public ExecutionLogViewModel ExecutionLog { get; }
 
+    public string UndoToolTip => Editor.UndoRedo.UndoDescription is { } step ? $"Undo {step} (Ctrl+Z)" : "Undo (Ctrl+Z)";
+    public string RedoToolTip => Editor.UndoRedo.RedoDescription is { } step ? $"Redo {step} (Ctrl+Y)" : "Redo (Ctrl+Y)";
+
     public MainWindowViewModel(
         ILogger<MainWindowViewModel> logger,
         AppSettingsManager settingsManager,
@@ -176,6 +179,11 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void OnUndoRedoStateChanged(object? sender, EventArgs e)
     {
+        UndoCommand.NotifyCanExecuteChanged();
+        RedoCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(UndoToolTip));
+        OnPropertyChanged(nameof(RedoToolTip));
+
         // Fires synchronously from a binding setter mid-control-event; defer the rebuild
         // until the dispatcher is idle so we don't detach the control still on the stack.
         Dispatcher.UIThread.Post(RefreshPropertiesPanel);
@@ -459,17 +467,21 @@ public partial class MainWindowViewModel : ViewModelBase
         cts?.Cancel();
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanUndo))]
     private void Undo()
     {
         Editor.Undo();
     }
 
-    [RelayCommand]
+    private bool CanUndo() => Editor.UndoRedo.CanUndo;
+
+    [RelayCommand(CanExecute = nameof(CanRedo))]
     private void Redo()
     {
         Editor.Redo();
     }
+
+    private bool CanRedo() => Editor.UndoRedo.CanRedo;
 
     [RelayCommand]
     private void ToggleDemoMode()
