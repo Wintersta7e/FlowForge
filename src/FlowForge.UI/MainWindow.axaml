@@ -22,6 +22,11 @@
         <KeyBinding Gesture="Ctrl+O" Command="{Binding OpenCommand}" />
         <KeyBinding Gesture="Ctrl+S" Command="{Binding SaveCommand}" />
         <KeyBinding Gesture="Ctrl+Shift+S" Command="{Binding SaveAsCommand}" />
+        <!-- A live run changes files, so it takes a chord, never a single key. Esc only
+             acts while a run is in progress; otherwise it is left to the focused control. -->
+        <KeyBinding Gesture="F5" Command="{Binding DryRunCommand}" />
+        <KeyBinding Gesture="Ctrl+Shift+Enter" Command="{Binding RunCommand}" />
+        <KeyBinding Gesture="Escape" Command="{Binding CancelCommand}" />
     </Window.KeyBindings>
 
     <Grid RowDefinitions="Auto,*,Auto,160">

@@ -332,7 +332,7 @@
                 <Button Command="{Binding RunCommand}"
                         Classes="accent"
                         IsVisible="{Binding !ExecutionLog.IsRunning}"
-                        ToolTip.Tip="Ignite — run the pipeline">
+                        ToolTip.Tip="Ignite — run the pipeline (Ctrl+Shift+Enter)">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <TextBlock Text="▶" FontFamily="{DynamicResource MwMono}" FontSize="11" VerticalAlignment="Center" />
                         <TextBlock Text="IGNITE" VerticalAlignment="Center" LetterSpacing="1.3" />

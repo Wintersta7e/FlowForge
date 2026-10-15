@@ -115,6 +115,7 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
+        CancelCommand.NotifyCanExecuteChanged();
         UpdateRunningVisual();
     }
 
@@ -510,12 +511,15 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanCancel))]
     private void Cancel()
     {
         CancellationTokenSource? cts = _cts;
         cts?.Cancel();
     }
+
+    // Only a run in progress can be stopped; while idle, Esc stays with the focused control.
+    private bool CanCancel() => ExecutionLog.IsRunning;
 
     [RelayCommand(CanExecute = nameof(CanUndo))]
     private void Undo()
