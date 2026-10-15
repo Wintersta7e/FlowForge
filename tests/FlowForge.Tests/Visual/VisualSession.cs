@@ -95,7 +95,7 @@ internal sealed class VisualSession : IDisposable
                 _provider.GetRequiredService<ILogger<MainWindowViewModel>>(),
                 new AppSettingsManager(SettingsPath, _provider.GetRequiredService<ILogger<AppSettingsManager>>()),
                 _provider.GetRequiredService<NodeRegistry>(),
-                new EditorViewModel(_provider.GetRequiredService<ILogger<EditorViewModel>>()),
+                new EditorViewModel(_provider.GetRequiredService<ILogger<EditorViewModel>>(), _provider.GetRequiredService<NodeRegistry>()),
                 Dialogs,
                 _provider);
             Window = new MainWindow { DataContext = ViewModel };

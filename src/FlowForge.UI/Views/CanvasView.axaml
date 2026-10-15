@@ -510,6 +510,16 @@
                                         Orientation="Horizontal"
                                         Spacing="4"
                                         VerticalAlignment="Center">
+                                <!-- Validity badge: shown while the graph check reports this station -->
+                                <TextBlock Text="!"
+                                           Classes="mw-invalid-badge"
+                                           IsVisible="{Binding ValidationMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                           ToolTip.Tip="{Binding ValidationMessage}"
+                                           FontFamily="{DynamicResource MwMono}"
+                                           FontSize="11"
+                                           FontWeight="Bold"
+                                           Foreground="{DynamicResource ForgeError}"
+                                           VerticalAlignment="Center" />
                                 <!-- Pulsing LIVE dot when running (1s opacity cycle) -->
                                 <Ellipse Width="5" Height="5"
                                          VerticalAlignment="Center"
@@ -897,6 +907,15 @@
                                                 Stroke="{DynamicResource MwChromeHi}"
                                                 StrokeThickness="1"
                                                 Opacity="0.7" />
+                        <!-- Validity flag: dashed over the pipe while the graph check reports this connection -->
+                        <views:MwPipeConnection Source="{Binding Source.Anchor}"
+                                                Target="{Binding Target.Anchor}"
+                                                Classes="mw-invalid-flag"
+                                                Stroke="{DynamicResource ForgeError}"
+                                                StrokeThickness="3"
+                                                StrokeDashArray="3,2"
+                                                IsVisible="{Binding ValidationMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                ToolTip.Tip="{Binding ValidationMessage}" />
 
                         <!-- ═══ Mercury droplets (visible while running) ═══
                              Four beads ride the bezier with staggered delays so the

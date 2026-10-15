@@ -19,7 +19,7 @@ public class EditorViewModelUndoRedoTests
     public void AddNode_CanBeUndone()
     {
         NodeRegistry registry = CreateRegistry();
-        var editor = new EditorViewModel(NullLogger<EditorViewModel>.Instance);
+        var editor = new EditorViewModel(NullLogger<EditorViewModel>.Instance, registry);
 
         editor.AddNode("FolderInput", new Point(100, 200), registry);
 
@@ -36,7 +36,7 @@ public class EditorViewModelUndoRedoTests
     public void AddNode_Redo_RestoresNode()
     {
         NodeRegistry registry = CreateRegistry();
-        var editor = new EditorViewModel(NullLogger<EditorViewModel>.Instance);
+        var editor = new EditorViewModel(NullLogger<EditorViewModel>.Instance, registry);
 
         editor.AddNode("FolderInput", new Point(100, 200), registry);
         editor.Undo();
@@ -49,7 +49,7 @@ public class EditorViewModelUndoRedoTests
     public void RemoveSelectedNodes_CanBeUndone()
     {
         NodeRegistry registry = CreateRegistry();
-        var editor = new EditorViewModel(NullLogger<EditorViewModel>.Instance);
+        var editor = new EditorViewModel(NullLogger<EditorViewModel>.Instance, registry);
 
         editor.AddNode("FolderInput", new Point(100, 200), registry);
         editor.Nodes[0].IsSelected = true;
@@ -68,7 +68,7 @@ public class EditorViewModelUndoRedoTests
     public void ClearAll_ClearsUndoRedoHistory()
     {
         NodeRegistry registry = CreateRegistry();
-        var editor = new EditorViewModel(NullLogger<EditorViewModel>.Instance);
+        var editor = new EditorViewModel(NullLogger<EditorViewModel>.Instance, registry);
 
         editor.AddNode("FolderInput", new Point(0, 0), registry);
         editor.AddNode("FolderInput", new Point(100, 100), registry);
@@ -91,7 +91,7 @@ public class EditorViewModelUndoRedoTests
         JsonElement oldVal = config["path"];
         JsonElement newVal = JsonSerializer.SerializeToElement("/new");
 
-        var editor = new EditorViewModel(NullLogger<EditorViewModel>.Instance);
+        var editor = new EditorViewModel(NullLogger<EditorViewModel>.Instance, CreateRegistry());
 
         // Simulate what ConfigFieldViewModel does: mutate config first, then PushExecuted
         config["path"] = newVal;

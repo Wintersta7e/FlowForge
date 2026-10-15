@@ -71,6 +71,10 @@ internal static class VisualFrames
 
     public const string ToolbarUndoDisabled = "toolbar-undo-disabled";
 
+    public const string StationFlaggedUnconnected = "station-flagged-unconnected";
+
+    public const string PipeFlaggedDuplicate = "pipe-flagged-duplicate";
+
     public const string RunningSubtitlesDim = "running-subtitles-a";
 
     public const string RunningSubtitlesBright = "running-subtitles-b";

@@ -19,6 +19,7 @@ Versions 1.0.0–2.0.0 were tagged and released at the time; those tags and rele
 - **One progress bar** — the strip above the log no longer repeats the console's file count under a second, always-moving bar. It names what the run is doing: the scan count while files are found, `Stage n of m · title done/total` while a transform step works through its files (its place among the run's steps, its name, and how many of its files it has taken), then finished files over files found with the latest file's name.
 - **Log rows show their time and node log** — each row on the Output, Errors and Skipped tabs leads with the time it was logged, and hovering a row lists what each node did to that file.
 - **The Output tab lists the files that succeeded** — files a filter drops and files that fail are listed only on their own tabs, and the Warnings tab is now called Skipped, as the run summary and each row call those files. Dropped and failed files used to fill the Output tab ahead of every file the run produced, and after 5,000 of them no produced file appeared there at all.
+- **The editor marks what the pipeline check reports** — a station the check before a run would report (one on no path from a source to an output, or of an unknown type) shows a `!` beside its status light, and a connection it reports (the same connection twice in a loaded file) is drawn dashed; hovering either shows the check's message. The marks follow every edit, undo and redo, so a problem shows before a run is refused.
 
 ### Removed
 

@@ -67,6 +67,10 @@ public partial class PipelineNodeViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isRunning;
 
+    /// <summary>What the graph check reports about this node, one issue per line; null when it reports nothing.</summary>
+    [ObservableProperty]
+    private string? _validationMessage;
+
     public PipelineNodeViewModel(NodeDefinition definition, NodeRegistry registry)
     {
         Id = definition.Id;

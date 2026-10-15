@@ -14,6 +14,10 @@ public partial class PipelineConnectionViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isRunning;
 
+    /// <summary>What the graph check reports about this connection, one issue per line; null when it reports nothing.</summary>
+    [ObservableProperty]
+    private string? _validationMessage;
+
     public PipelineConnectionViewModel(PipelineConnectorViewModel source, PipelineConnectorViewModel target)
     {
         Source = source;

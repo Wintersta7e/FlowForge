@@ -121,7 +121,7 @@ public class MainWindowViewModelTests
         var settings = new AppSettingsManager(
             Path.Combine(Path.GetTempPath(), $"ffsettings-{Guid.NewGuid():N}.json"),
             NullLogger<AppSettingsManager>.Instance);
-        var editor = new EditorViewModel(NullLogger<EditorViewModel>.Instance);
+        var editor = new EditorViewModel(NullLogger<EditorViewModel>.Instance, registry);
         var dialog = new StubDialogService();
         ServiceProvider services = new ServiceCollection().BuildServiceProvider();
 

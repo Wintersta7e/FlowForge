@@ -21,9 +21,11 @@ namespace FlowForge.UI.ViewModels;
 public partial class EditorViewModel : ViewModelBase
 {
     private readonly ILogger<EditorViewModel> _logger;
+    private readonly NodeRegistry _registry;
     private readonly HashSet<PipelineNodeViewModel> _subscribedNodes = new();
     private Dictionary<PipelineNodeViewModel, Point>? _dragStartPositions;
     private string _graphName = "Untitled Pipeline";
+    private bool _validitySuspended;
 
     public ObservableCollection<PipelineNodeViewModel> Nodes { get; } = new();
     public bool HasNodes => Nodes.Count > 0;
@@ -53,9 +55,10 @@ public partial class EditorViewModel : ViewModelBase
         set => SetProperty(ref _selectedNode, value);
     }
 
-    public EditorViewModel(ILogger<EditorViewModel> logger)
+    public EditorViewModel(ILogger<EditorViewModel> logger, NodeRegistry registry)
     {
         _logger = logger;
+        _registry = registry;
         PendingConnection = new PipelinePendingConnectionViewModel(this);
         TemplateCards = BuildTemplateCards();
         Nodes.CollectionChanged += OnNodesCollectionChanged;
@@ -105,15 +108,49 @@ public partial class EditorViewModel : ViewModelBase
 
     private void OnNodesGraphChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        ShowValidity();
         GraphChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnConnectionsGraphChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        ShowValidity();
         GraphChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    public void RaiseGraphChanged() => GraphChanged?.Invoke(this, EventArgs.Empty);
+    public void RaiseGraphChanged()
+    {
+        ShowValidity();
+        GraphChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    // Puts what the graph check reports on the nodes and connections it names. Issues naming a
+    // connection go to every pipe between its two nodes; issues naming the whole graph are not shown.
+    private void ShowValidity()
+    {
+        if (_validitySuspended)
+        {
+            return;
+        }
+
+        IReadOnlyList<GraphIssue> issues = PipelineGraphValidator.Validate(BuildGraph(), _registry).Issues;
+        foreach (PipelineNodeViewModel node in Nodes)
+        {
+            node.ValidationMessage = JoinMessages(issues.Where(i => i.FromNode is null && i.NodeId == node.Id));
+        }
+
+        foreach (PipelineConnectionViewModel connection in Connections)
+        {
+            connection.ValidationMessage = JoinMessages(issues.Where(i =>
+                i.FromNode == connection.Source.Node.Id && i.ToNode == connection.Target.Node.Id));
+        }
+    }
+
+    private static string? JoinMessages(IEnumerable<GraphIssue> issues)
+    {
+        string joined = string.Join('\n', issues.Select(i => i.Message));
+        return joined.Length == 0 ? null : joined;
+    }
 
     private void UnsubscribeAllNodes()
     {
@@ -171,15 +208,43 @@ public partial class EditorViewModel : ViewModelBase
 
     public void ClearAll()
     {
-        UnsubscribeAllNodes();
-        Nodes.Clear();
-        Connections.Clear();
-        SelectedNode = null;
-        _graphName = "Untitled Pipeline";
-        UndoRedo.Clear();
+        _validitySuspended = true;
+        try
+        {
+            UnsubscribeAllNodes();
+            Nodes.Clear();
+            Connections.Clear();
+            SelectedNode = null;
+            _graphName = "Untitled Pipeline";
+            UndoRedo.Clear();
+        }
+        finally
+        {
+            _validitySuspended = false;
+        }
+
+        ShowValidity();
     }
 
+    // The graph is checked once, after every node and connection is in place.
     public int LoadGraph(PipelineGraph graph, NodeRegistry registry)
+    {
+        _validitySuspended = true;
+        int droppedConnections;
+        try
+        {
+            droppedConnections = LoadNodesAndConnections(graph, registry);
+        }
+        finally
+        {
+            _validitySuspended = false;
+        }
+
+        ShowValidity();
+        return droppedConnections;
+    }
+
+    private int LoadNodesAndConnections(PipelineGraph graph, NodeRegistry registry)
     {
         UnsubscribeAllNodes();
         Nodes.Clear();
