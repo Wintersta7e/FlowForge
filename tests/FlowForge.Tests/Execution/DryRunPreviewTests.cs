@@ -26,7 +26,8 @@ public partial class DryRunPreviewTests
         await PrepopulateOutputAsync(row, dir, root);
 
         var before = TreeSnapshot.Take(root);
-        ExecutionResult dry = await CreateRunner(dir.StagingRoot).RunAsync(await LoadReplacingAsync(row, root), dryRun: true);
+        PipelineGraph dryGraph = await LoadReplacingAsync(row, root);
+        ExecutionResult dry = await CreateRunner(dir.StagingRoot).RunAsync(dryGraph, dryRun: true);
         TreeSnapshot.AssertUnchanged(before, TreeSnapshot.Take(root), _output, row);
         ExecutionResult live = await CreateRunner(dir.StagingRoot).RunAsync(await LoadReplacingAsync(row, root));
 
@@ -69,8 +70,50 @@ public partial class DryRunPreviewTests
         mismatches.ForEach(_output.WriteLine);
         mismatches.Should().BeEmpty();
 
-        // A row whose every preview depends on file content compares nothing, but must still mark each job.
-        (compared + unresolved).Should().BePositive("the row must preview at least one job");
+        // A dry run reads no tags, so a row naming files by metadata may compare nothing if it marks each job;
+        // any other row must compare, or a regression marking every job unresolved would pass it unnoticed.
+        bool namesByMetadata = dryGraph.Nodes.Any(n => n.Config.Values.Any(v => v.GetRawText().Contains("{meta:", StringComparison.Ordinal)));
+        (namesByMetadata ? compared + unresolved : compared).Should().BePositive("the row must preview at least one job");
+    }
+
+    [Fact]
+    public async Task Claim_after_an_unresolved_claim_in_its_folder_is_unresolved()
+    {
+        using var dir = new TempDirectory();
+        string input = Path.Combine(dir.Path, "in");
+        string[] files = ["a.txt", "b.txt", Path.Combine("sub", "c.txt")];
+        foreach (string file in files)
+        {
+            string path = Path.Combine(input, file);
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            await File.WriteAllTextAsync(path, file);
+        }
+
+        // Every file is renamed x.txt, so the suffixes show the claim order in each folder.
+        PipelineGraph graph = PipelineBuilder.New()
+            .AddSource("FolderInput", new { path = input, recursive = true })
+            .AddTransform(UnresolvedPreviewNode.RegisteredTypeKey, new { })
+            .AddTransform("RenamePattern", new { pattern = "x{ext}" })
+            .AddOutput("FolderOutput", new { path = dir.OutputPath, preserveStructure = true, sourceBasePath = input })
+            .Build();
+        var registry = NodeRegistry.CreateDefault(NullLoggerFactory.Instance);
+        registry.Register(UnresolvedPreviewNode.RegisteredTypeKey, () => new UnresolvedPreviewNode("a.txt"), "Unresolved Preview", NodeCategory.Transform, () => []);
+
+        ExecutionResult dry = await new PipelineRunner(registry, NullLogger<PipelineRunner>.Instance, stagingRoot: dir.StagingRoot)
+            .RunAsync(graph, dryRun: true);
+
+        var byFile = dry.Jobs.ToDictionary(j => Path.GetRelativePath(input, j.OriginalPath), StringComparer.Ordinal);
+        foreach ((string file, FileJob job) in byFile)
+        {
+            string? preview = PreviewPath(job);
+            _output.WriteLine($"[marker] {file} -> {(preview is null ? "none" : Path.GetRelativePath(dir.OutputPath, preview))} {job.PreviewMarker?.ToString() ?? "unmarked"}");
+        }
+
+        byFile.Keys.Should().BeEquivalentTo(files);
+        Path.GetRelativePath(dir.OutputPath, PreviewPath(byFile["a.txt"])!).Should().Be("x.txt");
+        Path.GetRelativePath(dir.OutputPath, PreviewPath(byFile["b.txt"])!).Should().Be("x_1.txt", "b.txt claims after a.txt in the same folder");
+        byFile["b.txt"].PreviewMarker.Should().Be(PreviewMarker.Unresolved, "the name a.txt really gets is unknown, so b.txt's suffix is too");
+        byFile[Path.Combine("sub", "c.txt")].PreviewMarker.Should().BeNull("no unresolved preview claimed in its folder");
     }
 
     [Fact]
