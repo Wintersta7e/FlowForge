@@ -277,7 +277,7 @@ public class UndoRedoManagerTests
         var cmd2 = new FakeCommand("edit-2");
 
         manager.PushExecuted(cmd1);
-        manager.PushOrCoalesce(cmd2, prev => prev.Description.StartsWith("edit", StringComparison.Ordinal));
+        manager.PushOrCoalesce(cmd2, prev => prev.Description.StartsWith("edit", StringComparison.Ordinal) ? cmd2 : null);
 
         // Should have replaced, not added
         int count = 0;
@@ -297,7 +297,7 @@ public class UndoRedoManagerTests
         var cmd2 = new FakeCommand("edit");
 
         manager.PushExecuted(cmd1);
-        manager.PushOrCoalesce(cmd2, prev => prev.Description.StartsWith("edit", StringComparison.Ordinal));
+        manager.PushOrCoalesce(cmd2, prev => prev.Description.StartsWith("edit", StringComparison.Ordinal) ? cmd2 : null);
 
         // cmd1 doesn't match predicate, so both should be on stack
         int count = 0;
@@ -317,7 +317,7 @@ public class UndoRedoManagerTests
         manager.Undo();
         manager.CanRedo.Should().BeTrue();
 
-        manager.PushOrCoalesce(new FakeCommand("new"), _ => false);
+        manager.PushOrCoalesce(new FakeCommand("new"), _ => null);
 
         manager.CanRedo.Should().BeFalse();
     }
@@ -428,10 +428,15 @@ public class UndoRedoManagerTests
         manager.PushExecuted(new FakeCommand("edit 1"));
         manager.MarkSavePoint();
 
-        manager.PushOrCoalesce(new FakeCommand("edit 2"), _ => true);
+        manager.PushOrCoalesce(new FakeCommand("edit 2"), _ => new FakeCommand("edit 1 and 2"));
 
         manager.UndoDescription.Should().Be("edit 2");
-        manager.IsAtSavePoint.Should().BeFalse("the merged edit replaced the saved command");
+        manager.IsAtSavePoint.Should().BeFalse("the edit after the save is unsaved");
+
+        manager.Undo();
+
+        manager.IsAtSavePoint.Should().BeTrue("the edit was not merged into the saved command, so one undo returns to it");
+        manager.UndoDescription.Should().Be("edit 1");
     }
 
     [Fact]

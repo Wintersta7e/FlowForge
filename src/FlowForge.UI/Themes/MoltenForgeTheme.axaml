@@ -368,6 +368,11 @@
         <Setter Property="BorderBrush" Value="{DynamicResource MwMolten}" />
     </Style>
 
+    <!-- After :focus so a refused value stays marked while the box is focused. -->
+    <Style Selector="TextBox.error /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="{DynamicResource ForgeError}" />
+    </Style>
+
     <Style Selector="ComboBox">
         <Setter Property="Background" Value="{DynamicResource MwInkA45}" />
         <Setter Property="Foreground" Value="{DynamicResource MwBone}" />

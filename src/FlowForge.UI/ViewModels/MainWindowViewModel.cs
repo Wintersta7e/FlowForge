@@ -232,16 +232,15 @@ public partial class MainWindowViewModel : ViewModelBase
     private void RefreshPropertiesPanel()
     {
         // PushExecuted: the MVVM binding has already mutated the config dictionary; PushOrCoalesce
-        // merges repeated keystrokes on the same field into a single undo entry.
+        // merges repeated keystrokes on the same field into one undo entry that restores the value
+        // from before the first.
         Properties.LoadNode(Editor.SelectedNode, _registry, cmd =>
         {
             KeepingInspector(() =>
             {
                 if (cmd is UndoRedo.Commands.ChangeConfigCommand configCmd)
                 {
-                    Editor.UndoRedo.PushOrCoalesce(cmd, prev =>
-                        prev is UndoRedo.Commands.ChangeConfigCommand prevConfig
-                        && string.Equals(prevConfig.ConfigKey, configCmd.ConfigKey, StringComparison.Ordinal));
+                    Editor.UndoRedo.PushOrCoalesce(cmd, prev => (prev as UndoRedo.Commands.ChangeConfigCommand)?.TryMerge(configCmd));
                 }
                 else
                 {

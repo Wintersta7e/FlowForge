@@ -1,7 +1,10 @@
 using System.Text.Json;
 using FluentAssertions;
+using FlowForge.Core.Execution;
 using FlowForge.Core.Nodes.Base;
+using FlowForge.UI.UndoRedo;
 using FlowForge.UI.ViewModels;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlowForge.Tests.ViewModels;
 
@@ -141,4 +144,60 @@ public class ConfigFieldViewModelTests
         config["size"].GetInt32().Should().Be(42,
             "an unparseable int must not overwrite the stored number — reloads would crash on GetInt32");
     }
+
+    /// <summary>
+    /// Emptying an Int box clears the setting: the key goes, one undoable command is pushed and
+    /// undoing it brings the number back. Text that is not a number never reaches the config and
+    /// marks the field until a number is typed.
+    /// </summary>
+    [Fact]
+    public void ClearingIntField_RemovesKeyAndPushesOneUndo()
+    {
+        Dictionary<string, JsonElement> config = ResizeConfig();
+        var received = new List<IUndoableCommand>();
+        var vm = new ConfigFieldViewModel(ResizeWidth(), config, received.Add);
+
+        vm.Value = string.Empty;
+
+        config.Should().NotContainKey("width", "an emptied Int box clears the setting");
+        received.Should().ContainSingle("one clear is one undo step");
+        received[0].Undo();
+        config["width"].GetInt32().Should().Be(1920, "undo brings the cleared number back");
+
+        vm.Value = "abc";
+
+        config["width"].GetInt32().Should().Be(1920, "text that is not a number never reaches the config");
+        received.Should().ContainSingle("rejected text pushes nothing");
+        vm.HasError.Should().BeTrue("the field shows that its text was not taken");
+
+        vm.Value = "640";
+
+        vm.HasError.Should().BeFalse("an accepted number clears the mark");
+    }
+
+    /// <summary>
+    /// Redo of a clear removes the key again rather than leaving an empty value in its place.
+    /// </summary>
+    [Fact]
+    public void RedoOfClear_RemovesKeyAgain()
+    {
+        Dictionary<string, JsonElement> config = ResizeConfig();
+        var received = new List<IUndoableCommand>();
+        var vm = new ConfigFieldViewModel(ResizeWidth(), config, received.Add);
+        vm.Value = null;
+        IUndoableCommand clear = received.Single();
+
+        clear.Undo();
+        clear.Execute();
+
+        string found = config.TryGetValue("width", out JsonElement left) ? $"ValueKind = {left.ValueKind}" : "absent";
+        found.Should().Be("absent", "redo of a clear removes the key again");
+    }
+
+    private static ConfigField ResizeWidth() =>
+        NodeRegistry.CreateDefault(NullLoggerFactory.Instance).GetConfigSchema("ImageResize")
+            .Single(field => string.Equals(field.Key, "width", StringComparison.Ordinal));
+
+    private static Dictionary<string, JsonElement> ResizeConfig() =>
+        new(StringComparer.Ordinal) { ["width"] = JsonSerializer.SerializeToElement(1920) };
 }

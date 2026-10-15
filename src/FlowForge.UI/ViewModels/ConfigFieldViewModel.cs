@@ -16,6 +16,10 @@ public partial class ConfigFieldViewModel : ViewModelBase
     [ObservableProperty]
     private string? _value;
 
+    // Set while the box holds text the config refused; the editor shows it in the error style.
+    [ObservableProperty]
+    private bool _hasError;
+
     public string Key { get; }
     public string Label { get; }
     public ConfigFieldType FieldType { get; }
@@ -66,20 +70,25 @@ public partial class ConfigFieldViewModel : ViewModelBase
 
     partial void OnValueChanged(string? value)
     {
-        if (value is not null)
+        // An emptied Int box clears the setting; there is no other way to unset a number.
+        bool clears = value is null || (FieldType == ConfigFieldType.Int && string.IsNullOrWhiteSpace(value));
+        if (!clears)
         {
             // Reject unparseable input so we never serialise a raw string into a Bool/Int slot
             // (GetBoolean/GetInt32 on reload would throw).
             if (FieldType == ConfigFieldType.Int && !int.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, out _))
             {
+                HasError = true;
                 return;
             }
 
             if (FieldType == ConfigFieldType.Bool && !bool.TryParse(value, out _))
             {
+                HasError = true;
                 return;
             }
 
+            HasError = false;
             bool keyExisted = _configDictionary.TryGetValue(Key, out JsonElement oldElement);
 
             JsonElement newElement = FieldType switch
@@ -98,6 +107,7 @@ public partial class ConfigFieldViewModel : ViewModelBase
         }
         else
         {
+            HasError = false;
             bool keyExisted = _configDictionary.TryGetValue(Key, out JsonElement oldElement);
             if (!keyExisted)
             {

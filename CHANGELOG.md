@@ -71,6 +71,8 @@ Versions 1.0.0–2.0.0 were tagged and released at the time; those tags and rele
 - **File shortcuts work** — Ctrl+N, Ctrl+O, Ctrl+S and Ctrl+Shift+S, listed in the shortcuts dialog, now start a new pipeline, open, save and save as; they did nothing. A Save As button sits beside Save in the toolbar.
 - **Typing in the inspector keeps the field focused** — each typed character rebuilt the inspector and dropped the keyboard focus, so a field kept only the first character and a following Delete removed the station being edited; a save dropped the focus the same way. Typing and saving now leave the field focused; undo, redo and selecting another station still refresh the inspector.
 - **Pipes that would close a loop are refused** — dropping a pipe on a station that already feeds the pipe's start, directly or through other stations, now adds nothing, like the other refused connections; the loop used to be drawn, leaving a pipeline that cannot run.
+- **Number fields can be emptied** — emptying a number field in the inspector removes its value, as one undo step; the field used to keep its old number in the pipeline. Text that is not a number never reaches the pipeline and outlines the field in the error colour until a number replaces it. Redoing a cleared field clears it again; it used to store an empty value in its place.
+- **One undo reverts a typed edit** — after typing into an inspector field, one Undo restores the value from before the typing, or removes it if the field had none; it used to restore only the text before the last keystroke. Typing after a save starts a new undo step, so Undo returns to the saved pipeline, and editing the same field on two stations in turn no longer drops the first station's edit from the history.
 
 ### Security
 

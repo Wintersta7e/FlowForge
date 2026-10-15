@@ -44,22 +44,20 @@ public class UndoRedoManager
     }
 
     /// <summary>
-    /// Replaces the last command on the undo stack if the predicate matches,
-    /// otherwise pushes as a new entry. Used to coalesce repeated edits (e.g., keystrokes).
+    /// Replaces the last command with what <paramref name="merge"/> makes of it, so repeated edits
+    /// (e.g., keystrokes) undo as one; pushes <paramref name="command"/> as a new entry when merge
+    /// returns null or the last command is the saved one, so one undo still returns to the save.
     /// </summary>
-    public void PushOrCoalesce(IUndoableCommand command, Func<IUndoableCommand, bool> shouldReplace)
+    public void PushOrCoalesce(IUndoableCommand command, Func<IUndoableCommand, IUndoableCommand?> merge)
     {
-        if (_undoStack.Count > 0 && shouldReplace(_undoStack.Last!.Value))
+        IUndoableCommand? top = _undoStack.Last?.Value;
+        IUndoableCommand? merged = top is null || ReferenceEquals(top, _savedTop) ? null : merge(top);
+        if (merged is not null)
         {
-            if (ReferenceEquals(_undoStack.Last.Value, _savedTop))
-            {
-                _savePointReachable = false;
-            }
-
             _undoStack.RemoveLast();
         }
 
-        Push(command);
+        Push(merged ?? command);
     }
 
     public void Undo()

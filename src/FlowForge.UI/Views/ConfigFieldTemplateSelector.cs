@@ -1,4 +1,5 @@
 using System;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Templates;
@@ -96,6 +97,7 @@ public class ConfigFieldTemplateSelector : IDataTemplate
         };
         textBox.Bind(TextBox.TextProperty,
             new Avalonia.Data.Binding("Value"));
+        textBox.BindClass("error", new Avalonia.Data.Binding(nameof(ConfigFieldViewModel.HasError)), textBox);
         return textBox;
     }
 

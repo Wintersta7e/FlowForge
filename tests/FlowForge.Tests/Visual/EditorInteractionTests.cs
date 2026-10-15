@@ -158,39 +158,54 @@ public sealed class EditorInteractionTests
     public async Task Edited_fields_survive_save_and_reload()
     {
         using var session = VisualSession.Open(_output);
-        MainWindow window = session.Window;
         EditorViewModel editor = session.ViewModel.Editor;
         editor.AddNode("RenamePattern", new Point(80, 120), session.ViewModel.Registry);
         editor.AddNode("FolderOutput", new Point(440, 120), session.ViewModel.Registry);
+        editor.AddNode("ImageResize", new Point(260, 300), session.ViewModel.Registry);
         PipelineNodeViewModel rename = editor.Nodes[0];
         PipelineNodeViewModel output = editor.Nodes[1];
+        PipelineNodeViewModel resize = editor.Nodes[2];
+        resize.Config["width"] = JsonSerializer.SerializeToElement(1920);
 
         Select(session, rename);
+        TextBox pattern = FieldEditor<TextBox>(session, "pattern");
         EditField(session, "pattern", () =>
         {
-            session.Click(FieldEditor<TextBox>(session, "pattern"));
-            window.KeyTextInput(EditedPattern);
+            session.Click(pattern);
+            session.Window.KeyTextInput(EditedPattern);
         });
+        bool patternFocused = pattern.IsFocused;
         EditField(session, "startIndex", () =>
         {
             session.Click(FieldEditor<TextBox>(session, "startIndex"));
-            window.KeyPress(Key.A, RawInputModifiers.Control, PhysicalKey.A, "a");
-            window.KeyRelease(Key.A, RawInputModifiers.Control, PhysicalKey.A, "a");
-            window.KeyTextInput("7");
+            session.Press("Ctrl+A");
+            session.Window.KeyTextInput("7");
+        });
+        Select(session, resize);
+        EditField(session, "width", () =>
+        {
+            session.Click(FieldEditor<TextBox>(session, "width"));
+            session.Press("Ctrl+A");
+            session.Press("Back");
         });
         Select(session, output);
         EditField(session, "overwrite", () => session.Click(FieldEditor<CheckBox>(session, "overwrite")));
         EditField(session, "mode", () => PickOption(session, FieldEditor<ComboBox>(session, "mode"), "move"));
         using WriteableBitmap frame = session.Capture(VisualFrames.EditPersists);
 
-        (PipelineNodeViewModel Node, string Key, string Expected)[] edits =
+        _output.WriteLine($"pattern field focused after its edit={patternFocused}");
+        patternFocused.Should().BeTrue("the field keeps the focus through the edit it sends");
+
+        // A null value is a key the edit removed: an emptied Int box clears the setting.
+        (PipelineNodeViewModel Node, string Key, string? Expected)[] edits =
         [
             (rename, "pattern", EditedPattern),
             (rename, "startIndex", "7"),
+            (resize, "width", null),
             (output, "overwrite", "true"),
             (output, "mode", "move"),
         ];
-        foreach ((PipelineNodeViewModel node, string key, string expected) in edits)
+        foreach ((PipelineNodeViewModel node, string key, string? expected) in edits)
         {
             ValueText(node.Config, key).Should().Be(expected, $"typing into {key} updates the node's config");
         }
@@ -198,7 +213,7 @@ public sealed class EditorInteractionTests
         string path = Path.Combine(session.Temp.Path, "edit.ffpipe");
         await PipelineSerializer.SaveAsync(editor.BuildGraph(), path);
         PipelineGraph reloaded = await PipelineSerializer.LoadAsync(path);
-        foreach ((PipelineNodeViewModel node, string key, string expected) in edits)
+        foreach ((PipelineNodeViewModel node, string key, string? expected) in edits)
         {
             string? value = ValueText(reloaded.Nodes.Single(n => n.Id == node.Id).Config, key);
             _output.WriteLine($"reloaded {node.TypeKey}.{key}={value}");
