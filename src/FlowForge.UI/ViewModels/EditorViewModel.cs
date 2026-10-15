@@ -3,12 +3,15 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Globalization;
 using System.Linq;
 using System.Text.Json;
 using Avalonia;
+using Avalonia.Media;
 using CommunityToolkit.Mvvm.Input;
 using FlowForge.Core.Execution;
 using FlowForge.Core.Pipeline;
+using FlowForge.Core.Pipeline.Templates;
 using FlowForge.UI.UndoRedo;
 using FlowForge.UI.UndoRedo.Commands;
 using Microsoft.Extensions.Logging;
@@ -27,6 +30,9 @@ public partial class EditorViewModel : ViewModelBase
     public ObservableCollection<PipelineConnectionViewModel> Connections { get; } = new();
     public PipelinePendingConnectionViewModel PendingConnection { get; }
     public UndoRedoManager UndoRedo { get; } = new();
+
+    /// <summary>One card per library template, shown on the empty canvas.</summary>
+    public IReadOnlyList<TemplateCardViewModel> TemplateCards { get; }
 
     /// <summary>
     /// Raised when any graph content changes (node config edits, structural changes).
@@ -51,10 +57,35 @@ public partial class EditorViewModel : ViewModelBase
     {
         _logger = logger;
         PendingConnection = new PipelinePendingConnectionViewModel(this);
+        TemplateCards = BuildTemplateCards();
         Nodes.CollectionChanged += OnNodesCollectionChanged;
         Nodes.CollectionChanged += OnNodesHasNodesChanged;
         Nodes.CollectionChanged += OnNodesGraphChanged;
         Connections.CollectionChanged += OnConnectionsGraphChanged;
+    }
+
+    // A card takes the colour of its template's first station that is not a source.
+    private static List<TemplateCardViewModel> BuildTemplateCards()
+    {
+        var cards = new List<TemplateCardViewModel>();
+        IReadOnlyList<PipelineTemplate> templates = PipelineTemplateLibrary.Templates;
+        for (int i = 0; i < templates.Count; i++)
+        {
+            PipelineTemplate template = templates[i];
+            string category = template.Graph.Nodes
+                .Select(node => MwOpsMap.Get(node.TypeKey).Category)
+                .FirstOrDefault(c => !string.Equals(c, "src", StringComparison.Ordinal)) ?? "src";
+            IBrush accent = ThemeHelper.GetBrush(MwOpsMap.KeysFor(category).Neon, "#ff7a1a");
+            cards.Add(new TemplateCardViewModel(
+                template.Id,
+                string.Create(CultureInfo.InvariantCulture, $"TPL.{i + 1:00}"),
+                template.ShortName,
+                template.Description,
+                template.Graph.Nodes.Count,
+                accent));
+        }
+
+        return cards;
     }
 
     private void OnNodesHasNodesChanged(object? sender, NotifyCollectionChangedEventArgs e)

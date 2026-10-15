@@ -1057,6 +1057,9 @@
             <Border.Background>
                 <SolidColorBrush Color="#08060a" Opacity="0.7" />
             </Border.Background>
+            <!-- Scrolls when the pane is shorter than the cards; hidden with the empty state, so it never takes the editor's wheel. -->
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto">
             <StackPanel HorizontalAlignment="Center"
                         VerticalAlignment="Center"
                         Spacing="18"
@@ -1099,140 +1102,49 @@
                            Foreground="{DynamicResource MwAsh}"
                            HorizontalAlignment="Center" />
 
-                <!-- Template cards: 4 cast-iron buttons -->
-                <UniformGrid Columns="4" HorizontalAlignment="Center" Margin="0,14,0,0">
-                    <Button Classes="templateButton" Margin="8"
-                            Tag="photo-import-by-date"
-                            Click="OnTemplateButtonClick"
-                            Width="220">
-                        <StackPanel Orientation="Vertical" Spacing="6" HorizontalAlignment="Left">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Grid.Column="0"
-                                           Text="TPL.01"
-                                           FontFamily="{DynamicResource MwMono}"
-                                           FontSize="9"
-                                           LetterSpacing="2.5"
-                                           FontWeight="SemiBold"
-                                           Foreground="{DynamicResource MwMoltenHi}" />
-                                <Rectangle Grid.Column="1" Width="6" Height="6" Fill="{DynamicResource MwCyan}" />
-                            </Grid>
-                            <TextBlock Text="Photo Import"
-                                       FontFamily="{DynamicResource MwSerif}"
-                                       FontSize="22"
-                                       FontStyle="Italic"
-                                       Foreground="{DynamicResource MwBone}" />
-                            <TextBlock Text="camera SD → dated folders → web sizes"
-                                       FontFamily="{DynamicResource MwMono}"
-                                       FontSize="10"
-                                       Foreground="{DynamicResource MwAsh}"
-                                       TextWrapping="Wrap" />
-                            <Border Height="1"
-                                    Background="{DynamicResource MwIronDark}"
-                                    Margin="0,8,0,0" />
-                            <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
-                                <TextBlock Grid.Column="0"
-                                           Text="5 stations"
-                                           FontFamily="{DynamicResource MwMono}"
-                                           FontSize="9"
-                                           LetterSpacing="1.2"
-                                           Foreground="{DynamicResource MwIronLite}" />
-                                <TextBlock Grid.Column="1"
-                                           Text="ignite ▸"
-                                           FontFamily="{DynamicResource MwMono}"
-                                           FontSize="9"
-                                           LetterSpacing="1.2"
-                                           Foreground="{DynamicResource MwMolten}" />
-                            </Grid>
-                        </StackPanel>
-                    </Button>
-                    <Button Classes="templateButton" Margin="8"
-                            Tag="batch-sequential-rename"
-                            Click="OnTemplateButtonClick"
-                            Width="220">
-                        <StackPanel Orientation="Vertical" Spacing="6" HorizontalAlignment="Left">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Grid.Column="0" Text="TPL.02"
-                                           FontFamily="{DynamicResource MwMono}" FontSize="9"
-                                           LetterSpacing="2.5" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource MwMoltenHi}" />
-                                <Rectangle Grid.Column="1" Width="6" Height="6" Fill="{DynamicResource MwCyan}" />
-                            </Grid>
-                            <TextBlock Text="Batch Rename"
-                                       FontFamily="{DynamicResource MwSerif}" FontSize="22" FontStyle="Italic"
-                                       Foreground="{DynamicResource MwBone}" />
-                            <TextBlock Text="sequential counter with date prefix"
-                                       FontFamily="{DynamicResource MwMono}" FontSize="10"
-                                       Foreground="{DynamicResource MwAsh}" TextWrapping="Wrap" />
-                            <Border Height="1" Background="{DynamicResource MwIronDark}" Margin="0,8,0,0" />
-                            <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
-                                <TextBlock Grid.Column="0" Text="3 stations"
-                                           FontFamily="{DynamicResource MwMono}" FontSize="9"
-                                           LetterSpacing="1.2" Foreground="{DynamicResource MwIronLite}" />
-                                <TextBlock Grid.Column="1" Text="ignite ▸"
-                                           FontFamily="{DynamicResource MwMono}" FontSize="9"
-                                           LetterSpacing="1.2" Foreground="{DynamicResource MwMolten}" />
-                            </Grid>
-                        </StackPanel>
-                    </Button>
-                    <Button Classes="templateButton" Margin="8"
-                            Tag="image-web-export"
-                            Click="OnTemplateButtonClick"
-                            Width="220">
-                        <StackPanel Orientation="Vertical" Spacing="6" HorizontalAlignment="Left">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Grid.Column="0" Text="TPL.03"
-                                           FontFamily="{DynamicResource MwMono}" FontSize="9"
-                                           LetterSpacing="2.5" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource MwMoltenHi}" />
-                                <Rectangle Grid.Column="1" Width="6" Height="6" Fill="{DynamicResource MwCyan}" />
-                            </Grid>
-                            <TextBlock Text="Web Export"
-                                       FontFamily="{DynamicResource MwSerif}" FontSize="22" FontStyle="Italic"
-                                       Foreground="{DynamicResource MwBone}" />
-                            <TextBlock Text="resize + convert + compress for hosting"
-                                       FontFamily="{DynamicResource MwMono}" FontSize="10"
-                                       Foreground="{DynamicResource MwAsh}" TextWrapping="Wrap" />
-                            <Border Height="1" Background="{DynamicResource MwIronDark}" Margin="0,8,0,0" />
-                            <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
-                                <TextBlock Grid.Column="0" Text="6 stations"
-                                           FontFamily="{DynamicResource MwMono}" FontSize="9"
-                                           LetterSpacing="1.2" Foreground="{DynamicResource MwIronLite}" />
-                                <TextBlock Grid.Column="1" Text="ignite ▸"
-                                           FontFamily="{DynamicResource MwMono}" FontSize="9"
-                                           LetterSpacing="1.2" Foreground="{DynamicResource MwMolten}" />
-                            </Grid>
-                        </StackPanel>
-                    </Button>
-                    <Button Classes="templateButton" Margin="8"
-                            Tag="bulk-image-compress"
-                            Click="OnTemplateButtonClick"
-                            Width="220">
-                        <StackPanel Orientation="Vertical" Spacing="6" HorizontalAlignment="Left">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Grid.Column="0" Text="TPL.04"
-                                           FontFamily="{DynamicResource MwMono}" FontSize="9"
-                                           LetterSpacing="2.5" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource MwMoltenHi}" />
-                                <Rectangle Grid.Column="1" Width="6" Height="6" Fill="{DynamicResource MwCyan}" />
-                            </Grid>
-                            <TextBlock Text="Compress"
-                                       FontFamily="{DynamicResource MwSerif}" FontSize="22" FontStyle="Italic"
-                                       Foreground="{DynamicResource MwBone}" />
-                            <TextBlock Text="reduce quality to target file-size budget"
-                                       FontFamily="{DynamicResource MwMono}" FontSize="10"
-                                       Foreground="{DynamicResource MwAsh}" TextWrapping="Wrap" />
-                            <Border Height="1" Background="{DynamicResource MwIronDark}" Margin="0,8,0,0" />
-                            <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
-                                <TextBlock Grid.Column="0" Text="3 stations"
-                                           FontFamily="{DynamicResource MwMono}" FontSize="9"
-                                           LetterSpacing="1.2" Foreground="{DynamicResource MwIronLite}" />
-                                <TextBlock Grid.Column="1" Text="ignite ▸"
-                                           FontFamily="{DynamicResource MwMono}" FontSize="9"
-                                           LetterSpacing="1.2" Foreground="{DynamicResource MwMolten}" />
-                            </Grid>
-                        </StackPanel>
-                    </Button>
-                </UniformGrid>
+                <!-- Template cards: one cast-iron button per library template -->
+                <ItemsControl ItemsSource="{Binding TemplateCards}"
+                              HorizontalAlignment="Center"
+                              Margin="0,14,0,0">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal" HorizontalAlignment="Center" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:TemplateCardViewModel">
+                            <Button Classes="templateButton" Margin="8"
+                                    Tag="{Binding Id}"
+                                    Click="OnTemplateButtonClick"
+                                    Width="220">
+                                <StackPanel Orientation="Vertical" Spacing="6" HorizontalAlignment="Left">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Text="{Binding Code}"
+                                                   FontFamily="{DynamicResource MwMono}" FontSize="9"
+                                                   LetterSpacing="2.5" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource MwMoltenHi}" />
+                                        <Rectangle Grid.Column="1" Width="6" Height="6" Fill="{Binding Accent}" />
+                                    </Grid>
+                                    <TextBlock Text="{Binding Title}"
+                                               FontFamily="{DynamicResource MwSerif}" FontSize="22" FontStyle="Italic"
+                                               Foreground="{DynamicResource MwBone}" />
+                                    <TextBlock Text="{Binding Description}"
+                                               FontFamily="{DynamicResource MwMono}" FontSize="10"
+                                               Foreground="{DynamicResource MwAsh}" TextWrapping="Wrap" />
+                                    <Border Height="1" Background="{DynamicResource MwIronDark}" Margin="0,8,0,0" />
+                                    <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
+                                        <TextBlock Grid.Column="0" Text="{Binding StationCount, StringFormat='{}{0} stations'}"
+                                                   FontFamily="{DynamicResource MwMono}" FontSize="9"
+                                                   LetterSpacing="1.2" Foreground="{DynamicResource MwIronLite}" />
+                                        <TextBlock Grid.Column="1" Text="ignite ▸"
+                                                   FontFamily="{DynamicResource MwMono}" FontSize="9"
+                                                   LetterSpacing="1.2" Foreground="{DynamicResource MwMolten}" />
+                                    </Grid>
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
 
                 <!-- Keyboard hints -->
                 <StackPanel Orientation="Horizontal" Spacing="22" HorizontalAlignment="Center" Margin="0,14,0,0">
@@ -1259,6 +1171,7 @@
                     </StackPanel>
                 </StackPanel>
             </StackPanel>
+            </ScrollViewer>
         </Border>
     </Grid>
 </UserControl>

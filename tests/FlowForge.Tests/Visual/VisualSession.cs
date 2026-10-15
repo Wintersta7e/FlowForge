@@ -282,6 +282,46 @@ internal sealed class VisualSession : IDisposable
         RenderUntil(() => Stations().Count == ViewModel.Editor.Nodes.Count, "template stations laid out");
     }
 
+    // The empty canvas's template card buttons, in display order.
+    public List<Button> TemplateCards() =>
+        Window.GetVisualDescendants().OfType<Button>()
+            .Where(button => button.Classes.Contains("templateButton") && button.Bounds.Width > 0)
+            .ToList();
+
+    // Prints each template card's bounds and the canvas pane's, before and after scrolling the card into view
+    // when bringIntoView is set; returns the cards that reach past the pane's sides as laid out, or that do not
+    // lie inside the pane after that step.
+    public List<string> TemplateCardsOutsideCanvas(bool bringIntoView)
+    {
+        PixelRect pane = BoundsInWindow(Window.GetVisualDescendants().OfType<FlowForge.UI.Views.CanvasView>().Single());
+        List<Button> cards = TemplateCards();
+        _output.WriteLine($"[cards] client={Window.ClientSize} pane={pane} checked={cards.Count} bringIntoView={bringIntoView}");
+        var outside = new List<string>();
+        foreach (Button card in cards)
+        {
+            PixelRect before = BoundsInWindow(card);
+            if (bringIntoView)
+            {
+                card.BringIntoView();
+                Window.UpdateLayout();
+            }
+
+            PixelRect after = BoundsInWindow(card);
+            _output.WriteLine($"[cards] {card.Tag}: before={before} after={after}");
+            if (before.X < pane.X || before.Right > pane.Right)
+            {
+                outside.Add($"{card.Tag} at {before} reaches past the sides of the canvas pane {pane}");
+            }
+
+            if (!pane.Contains(after))
+            {
+                outside.Add($"{card.Tag} at {after} is outside the canvas pane {pane}");
+            }
+        }
+
+        return outside;
+    }
+
     public List<ContentPresenter> InspectorCards() =>
         Window.GetVisualDescendants().OfType<ItemsControl>()
             .Single(list => ReferenceEquals(list.ItemsSource, ViewModel.Properties.Fields))

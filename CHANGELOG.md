@@ -60,6 +60,7 @@ Versions 1.0.0–2.0.0 were tagged and released at the time; those tags and rele
 - **A refused or failed run can be read in full** — the summary beside the log tabs is trimmed to the space left, hovering it shows the whole message, and each line of the message is also a row on the Errors tab; a long refusal used to run past the window's edge with no way to read the rest. A refused pipeline no longer reports a scan first, so the CLI no longer prints "Scanning..." on the line of its error.
 - **Docs name nodes as the editor does** — the user guide's node headings give the node library's group (Input, Process, Save To) instead of Source and Transform, and the samples README lists each sample's nodes by the names the editor shows, joined by arrows, instead of by their type keys.
 - **Undo and Redo follow the history** — the toolbar's Undo and Redo buttons are enabled only when there is a step to undo or redo, and their tooltips name that step, for example "Undo Add Rename (Pattern) (Ctrl+Z)"; both buttons were always enabled.
+- **Template cards describe their templates** — the empty canvas's cards are built from the template library, so each shows its template's real station count and says what it does; three counts were wrong and every description named steps its template does not take. When the canvas is too short for them, the cards scroll into view instead of running off its edge.
 
 ### Security
 

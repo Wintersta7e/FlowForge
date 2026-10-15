@@ -76,7 +76,12 @@ public static class PipelineTemplateLibrary
             Node("FolderOutput", new { path = "", mode = "copy" })
         );
 
-        return new PipelineTemplate("photo-import-by-date", "Photo Import — Rename by EXIF Date", graph);
+        return new PipelineTemplate(
+            "photo-import-by-date",
+            "Photo Import — Rename by EXIF Date",
+            "Photo Import",
+            "Prefixes each photo's name with its EXIF date taken.",
+            graph);
     }
 
     private static PipelineTemplate BatchSequentialRename()
@@ -88,7 +93,12 @@ public static class PipelineTemplateLibrary
             Node("FolderOutput", new { path = "", mode = "copy" })
         );
 
-        return new PipelineTemplate("batch-sequential-rename", "Batch Sequential Rename", graph);
+        return new PipelineTemplate(
+            "batch-sequential-rename",
+            "Batch Sequential Rename",
+            "Batch Rename",
+            "Renames every file to 001, 002, … keeping its extension.",
+            graph);
     }
 
     private static PipelineTemplate ImageWebExport()
@@ -108,7 +118,12 @@ public static class PipelineTemplateLibrary
             Node("FolderOutput", new { path = "", mode = "copy" })
         );
 
-        return new PipelineTemplate("image-web-export", "Image Web Export (Resize + Convert to WebP)", graph);
+        return new PipelineTemplate(
+            "image-web-export",
+            "Image Web Export (Resize + Convert to WebP)",
+            "Web Export",
+            "Resizes images to 1920 px wide and converts them to WebP.",
+            graph);
     }
 
     private static PipelineTemplate BulkImageCompress()
@@ -127,7 +142,12 @@ public static class PipelineTemplateLibrary
             Node("FolderOutput", new { path = "", mode = "copy" })
         );
 
-        return new PipelineTemplate("bulk-image-compress", "Bulk Image Compress", graph);
+        return new PipelineTemplate(
+            "bulk-image-compress",
+            "Bulk Image Compress",
+            "Compress",
+            "Recompresses JPEGs at quality 80.",
+            graph);
     }
 
     private static NodeDefinition Node(string typeKey, object config)

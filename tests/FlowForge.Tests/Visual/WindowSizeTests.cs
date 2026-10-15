@@ -29,6 +29,8 @@ public sealed class WindowSizeTests
 
         AssertMinimumSize(session, frame);
         session.ViewModel.Editor.Nodes.Should().BeEmpty();
+        session.TemplateCards().Should().HaveCount(PipelineTemplateLibrary.Templates.Count);
+        session.TemplateCardsOutsideCanvas(bringIntoView: true).Should().BeEmpty("every template card scrolls fully into the canvas pane");
     }
 
     [AvaloniaFact]
