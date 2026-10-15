@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Data;
 using Avalonia.Headless.XUnit;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
@@ -7,19 +8,23 @@ using Avalonia.VisualTree;
 using FlowForge.Core.Pipeline;
 using FlowForge.UI.UndoRedo.Commands;
 using FlowForge.UI.ViewModels;
+using FlowForge.UI.Views;
 using FluentAssertions;
 using Xunit.Abstractions;
 
 namespace FlowForge.Tests.Visual;
 
 /// <summary>
-/// The toolbar's Undo and Redo buttons: enabled only while the history has a step to take,
-/// with a tooltip naming that step, and drawn dimmed rather than filled while disabled.
+/// The toolbar: Undo and Redo enabled only while the history has a step to take, with a
+/// tooltip naming that step, and drawn dimmed rather than filled while disabled; the open
+/// file's folder and name with its full path on hover; and the build's version.
 /// </summary>
 [Collection(VisualCollection.Name)]
 public sealed class ToolbarTests
 {
     private const int ColourTolerance = 8;
+    private const string DocumentSlotId = "ToolbarDocumentPath";
+    private const string HelpButtonName = "Keyboard Shortcuts";
 
     private readonly ITestOutputHelper _output;
 
@@ -71,6 +76,46 @@ public sealed class ToolbarTests
         Brightness(undoIcon).Should().BeLessThan(Brightness(saveIcon), "a disabled toolbar button dims its icon");
     }
 
+    [AvaloniaFact]
+    public void VersionLabel_ShowsInToolbar()
+    {
+        using var session = VisualSession.Open(_output);
+        ToolbarView toolbar = session.Window.GetVisualDescendants().OfType<ToolbarView>().Single();
+        string label = session.ViewModel.VersionLabel;
+
+        var shown = toolbar.GetVisualDescendants().OfType<TextBlock>()
+            .Where(t => t.IsEffectivelyVisible && string.Equals(t.Text, label, StringComparison.Ordinal))
+            .ToList();
+        bool bound = shown.Count == 1 && BindingOperations.GetBindingExpressionBase(shown[0], TextBlock.TextProperty) is not null;
+        _output.WriteLine($"label='{label}' matches={shown.Count} bound={bound} toolbar=[{string.Join(" | ", session.ShownText(toolbar))}]");
+
+        shown.Should().ContainSingle("the toolbar shows the version label once");
+        bound.Should().BeTrue("the label follows the build's version rather than a fixed number");
+    }
+
+    [AvaloniaFact]
+    public void PathSlot_FitsAndShowsFullPath()
+    {
+        using var session = VisualSession.Open(_output);
+        MainWindowViewModel vm = session.ViewModel;
+        Button help = session.ButtonNamed(HelpButtonName);
+        Control slot = session.ById<Control>(DocumentSlotId);
+
+        PrintSlot("untitled", session, slot);
+        session.ShownText(slot).Should().Equal(["untitled.ffpipe"], "an untitled pipeline shows the default name and no folder");
+        vm.DocumentFolder.Should().BeEmpty();
+
+        string name = string.Concat(Enumerable.Repeat("long-file-name-", 8))[..113] + ".ffpipe";
+        string path = Path.Combine(session.Temp.Path, name);
+        vm.CurrentFilePath = path;
+        session.RenderUntil(() => session.ShownText(slot).Contains(name, StringComparer.Ordinal), "the open file's name in the slot");
+
+        PrintSlot($"open name-length={name.Length}", session, slot);
+        session.ShownText(slot).Should().Equal($"/{Path.GetFileName(session.Temp.Path)}/", name);
+        (ToolTip.GetTip(slot) as string).Should().Be(path, "hovering the slot shows the full path");
+        session.InsideClient(HelpButtonName, help).Should().BeTrue("a long file name is trimmed, not pushing the toolbar off screen");
+    }
+
     // The left padding of a toolbar button, clear of its icon, and the brightest pixel of its icon.
     private static (PixelRect Band, Color Background, Color Icon) Paint(VisualSession session, WriteableBitmap frame, Button button)
     {
@@ -92,4 +137,9 @@ public sealed class ToolbarTests
         _output.WriteLine(
             $"{state}: undo enabled={undo.IsEffectivelyEnabled} tip='{ToolTip.GetTip(undo)}' " +
             $"redo enabled={redo.IsEffectivelyEnabled} tip='{ToolTip.GetTip(redo)}'");
+
+    private void PrintSlot(string state, VisualSession session, Control slot) =>
+        _output.WriteLine(
+            $"{state}: slot=[{string.Join(" | ", session.ShownText(slot))}] bounds={session.BoundsInWindow(slot)} " +
+            $"tip='{ToolTip.GetTip(slot)}' folder='{session.ViewModel.DocumentFolder}' name='{session.ViewModel.DocumentName}'");
 }

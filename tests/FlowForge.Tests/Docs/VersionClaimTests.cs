@@ -1,6 +1,8 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using FlowForge.Tests.Helpers;
+using FlowForge.UI.ViewModels;
 using Xunit.Abstractions;
 
 namespace FlowForge.Tests.Docs;
@@ -15,7 +17,8 @@ public class VersionClaimTests
     public VersionClaimTests(ITestOutputHelper output) => _output = output;
 
     // A development version is still unreleased: its changes sit under [Unreleased] and no section
-    // carries its number yet. A release version has its own dated section.
+    // carries its number yet. A release version has its own dated section. The toolbar's version
+    // label is built from the desktop app's assembly version, whose major must be the build's.
     [Fact]
     public void Changelog_sections_match_the_build_version()
     {
@@ -48,6 +51,13 @@ public class VersionClaimTests
             }
         }
 
-        ClaimCheck.Report(_output, "version", 1, 1, mismatches);
+        int major = int.Parse(version.Split('.')[0], NumberStyles.None, CultureInfo.InvariantCulture);
+        Version? labelVersion = typeof(MainWindowViewModel).Assembly.GetName().Version;
+        if (labelVersion?.Major != major)
+        {
+            mismatches.Add($"FlowForge.UI: the version label's assembly version {labelVersion} does not have the build version {version}'s major {major}");
+        }
+
+        ClaimCheck.Report(_output, "version", 2, 2, mismatches);
     }
 }

@@ -15,7 +15,7 @@
             Height="56"
             BoxShadow="0 4 24 0 #80000000"
             Padding="20,0">
-        <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+        <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
 
             <!-- 0. Brand logo: molten triangle + cyan circle -->
             <Canvas Grid.Column="0"
@@ -70,7 +70,7 @@
                                Foreground="{DynamicResource MwBone}"
                                LineHeight="17" />
                 </StackPanel>
-                <TextBlock Text="MOLTEN WORKS · V3"
+                <TextBlock Text="{Binding VersionLabel}"
                            FontFamily="{DynamicResource MwMono}"
                            FontSize="8"
                            LetterSpacing="2"
@@ -85,26 +85,30 @@
                     VerticalAlignment="Center"
                     Margin="16,0" />
 
-            <!-- 3. Pipeline path -->
-            <StackPanel Grid.Column="3"
-                        Orientation="Horizontal"
-                        VerticalAlignment="Center"
-                        Spacing="0">
-                <TextBlock Text="/pipelines/"
+            <!-- 3. Open file: its folder, then its name, trimmed to the space the
+                 other groups leave; the full path on hover. -->
+            <Grid Grid.Column="3"
+                  ColumnDefinitions="Auto,*"
+                  VerticalAlignment="Center"
+                  Background="Transparent"
+                  AutomationProperties.AutomationId="ToolbarDocumentPath"
+                  ToolTip.Tip="{Binding CurrentFilePath}">
+                <TextBlock Grid.Column="0"
+                           Text="{Binding DocumentFolder, StringFormat='/{0}/'}"
+                           IsVisible="{Binding DocumentFolder, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                            FontFamily="{DynamicResource MwMono}"
                            FontSize="11"
                            Foreground="{DynamicResource MwFaint}" />
-                <TextBlock Text="{Binding Title}"
+                <TextBlock Grid.Column="1"
+                           Text="{Binding DocumentName}"
+                           TextTrimming="CharacterEllipsis"
                            FontFamily="{DynamicResource MwMono}"
                            FontSize="11"
                            Foreground="{DynamicResource MwBone}" />
-            </StackPanel>
+            </Grid>
 
-            <!-- 4. Flex spacer -->
-            <Border Grid.Column="4" />
-
-            <!-- 5. File ops (compact icons) -->
-            <StackPanel Grid.Column="5"
+            <!-- 4. File ops (compact icons) -->
+            <StackPanel Grid.Column="4"
                         Orientation="Horizontal"
                         Spacing="2"
                         VerticalAlignment="Center">
@@ -145,14 +149,14 @@
                 </Button>
             </StackPanel>
 
-            <Border Grid.Column="6"
+            <Border Grid.Column="5"
                     Width="1" Height="24"
                     Background="{DynamicResource MwIronDark}"
                     VerticalAlignment="Center"
                     Margin="8,0" />
 
-            <!-- 7. Undo/Redo/Fit -->
-            <StackPanel Grid.Column="7"
+            <!-- 6. Undo/Redo/Fit -->
+            <StackPanel Grid.Column="6"
                         Orientation="Horizontal"
                         Spacing="2"
                         VerticalAlignment="Center">
@@ -182,14 +186,14 @@
                 </Button>
             </StackPanel>
 
-            <Border Grid.Column="8"
+            <Border Grid.Column="7"
                     Width="1" Height="24"
                     Background="{DynamicResource MwIronDark}"
                     VerticalAlignment="Center"
                     Margin="8,0" />
 
-            <!-- 9. Live stats (stn / pipe / src) -->
-            <StackPanel Grid.Column="9"
+            <!-- 8. Live stats (stn / pipe / src) -->
+            <StackPanel Grid.Column="8"
                         Orientation="Horizontal"
                         Spacing="16"
                         VerticalAlignment="Center">
@@ -229,14 +233,14 @@
                 </StackPanel>
             </StackPanel>
 
-            <Border Grid.Column="10"
+            <Border Grid.Column="9"
                     Width="1" Height="24"
                     Background="{DynamicResource MwIronDark}"
                     VerticalAlignment="Center"
                     Margin="12,0,8,0" />
 
-            <!-- 11. Dry run + Ignite/Quench + theme + help -->
-            <StackPanel Grid.Column="11"
+            <!-- 10. Dry run + Ignite/Quench + theme + help -->
+            <StackPanel Grid.Column="10"
                         Orientation="Horizontal"
                         Spacing="8"
                         VerticalAlignment="Center">

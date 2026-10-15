@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Xml.Linq;
 using FluentAssertions;
 using FlowForge.Core.Execution;
 using FlowForge.Core.Pipeline;
@@ -12,6 +13,20 @@ namespace FlowForge.Tests.ViewModels;
 
 public class MainWindowViewModelTests
 {
+    /// <summary>
+    /// The toolbar's version label names the major version the build carries, so a
+    /// version bump cannot leave an old number on screen.
+    /// </summary>
+    [Fact]
+    public void VersionLabel_MatchesVersionMajor()
+    {
+        MainWindowViewModel vm = BuildVm(out _, out _);
+        string version = XDocument.Load(RepoRoot.Combine("Directory.Build.props")).Descendants("Version").Single().Value;
+        string major = version.Split('.')[0];
+
+        vm.VersionLabel.Should().Be("MOLTEN WORKS · V" + major);
+    }
+
     /// <summary>
     /// Toggling ExecutionLog.IsRunning must flip every station + pipe on the
     /// canvas into the "forge lit" visual state and back.

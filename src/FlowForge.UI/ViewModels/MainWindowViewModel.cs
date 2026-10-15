@@ -36,6 +36,8 @@ public partial class MainWindowViewModel : ViewModelBase
     private string _title = "FlowForge - Untitled";
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DocumentName))]
+    [NotifyPropertyChangedFor(nameof(DocumentFolder))]
     private string? _currentFilePath;
 
     [ObservableProperty]
@@ -57,6 +59,15 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public string UndoToolTip => Editor.UndoRedo.UndoDescription is { } step ? $"Undo {step} (Ctrl+Z)" : "Undo (Ctrl+Z)";
     public string RedoToolTip => Editor.UndoRedo.RedoDescription is { } step ? $"Redo {step} (Ctrl+Y)" : "Redo (Ctrl+Y)";
+
+    /// <summary>The open file's name, or the default name of a pipeline never saved.</summary>
+    public string DocumentName => CurrentFilePath is { } path ? Path.GetFileName(path) : "untitled.ffpipe";
+
+    /// <summary>The name of the folder holding the open file; empty for a pipeline never saved.</summary>
+    public string DocumentFolder => Path.GetFileName(Path.GetDirectoryName(CurrentFilePath)) ?? string.Empty;
+
+    /// <summary>The toolbar's version label, from the major version the app was built with.</summary>
+    public string VersionLabel { get; } = $"MOLTEN WORKS · V{typeof(MainWindowViewModel).Assembly.GetName().Version!.Major}";
 
     public MainWindowViewModel(
         ILogger<MainWindowViewModel> logger,

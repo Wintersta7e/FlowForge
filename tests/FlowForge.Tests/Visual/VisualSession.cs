@@ -231,6 +231,16 @@ internal sealed class VisualSession : IDisposable
         return PixelRect.FromRect(new Rect(visual.Bounds.Size).TransformToAABB(transform), topLevel.RenderScaling);
     }
 
+    // Prints the control's bounds against the window's client area; true when it is shown and lies fully inside.
+    public bool InsideClient(string name, Avalonia.Visual visual)
+    {
+        PixelRect bounds = BoundsInWindow(visual);
+        var client = new PixelRect(PixelSize.FromSize(Window.ClientSize, Window.RenderScaling));
+        bool inside = visual.IsEffectivelyVisible && client.Contains(bounds);
+        _output.WriteLine($"[bounds] {name}={bounds} client={client} visible={visual.IsEffectivelyVisible} inside={inside}");
+        return inside;
+    }
+
     // The visual's centre in the coordinates of its own top level (the window, or a popup's root).
     public Point CentreOf(Avalonia.Visual visual) =>
         visual.TranslatePoint(new Point(visual.Bounds.Width / 2, visual.Bounds.Height / 2), TopLevel.GetTopLevel(visual)!)
