@@ -201,6 +201,41 @@ public sealed class ExecutionLogVisualTests
         rowsChecked.Should().Be(5, "three Output rows, one Errors row and one Warnings row");
     }
 
+    [AvaloniaFact]
+    public void Log_lists_build_only_the_rows_in_view()
+    {
+        const int files = 2000;
+        using var session = VisualSession.Open(_output);
+        ExecutionLogViewModel log = session.ViewModel.ExecutionLog;
+        log.ReportProgressEvent(new PhaseChanged(ExecutionPhase.Enumerating));
+        log.ReportProgressEvent(new FilesDiscovered(files));
+        log.ReportProgressEvent(new PhaseChanged(ExecutionPhase.Processing));
+        for (int i = 0; i < files; i++)
+        {
+            FileJob job = i % 2 == 0
+                ? Job(session, $"file{i}.png", FileJobStatus.Failed, "Unsupported image header")
+                : Job(session, $"file{i}.png", FileJobStatus.Skipped);
+            log.ReportProgressEvent(new FileProcessed(job));
+        }
+
+        ExecutionLogView view = LogView(session.Window);
+        var tabs = new (int Index, IReadOnlyList<FileJobLogEntryViewModel> Entries)[] { (0, log.Entries), (1, log.ErrorEntries), (2, log.WarningEntries) };
+        var realized = new Dictionary<int, int>();
+        foreach ((int index, IReadOnlyList<FileJobLogEntryViewModel> entries) in tabs)
+        {
+            log.SelectedTabIndex = index;
+            session.RenderUntil(
+                () => ListOf(view, entries) is { } shown && shown.IsEffectivelyVisible && RowGrids(shown) is { Count: > 0 } grids && grids.All(g => g.Bounds.Height > 0),
+                TimeSpan.FromSeconds(20),
+                $"tab {index} rows shown");
+            ItemsControl rows = ListOf(view, entries).Should().NotBeNull().And.BeAssignableTo<ItemsControl>().Subject;
+            realized[index] = rows.GetRealizedContainers().Count();
+            _output.WriteLine($"[tab {index}] entries={entries.Count} realized rows={realized[index]}");
+        }
+
+        realized.Values.Should().OnlyContain(count => count > 0 && count < 100, "a list builds the rows in view, not one per entry");
+    }
+
     private static FileJob Job(VisualSession session, string name, FileJobStatus status, string? error = null)
     {
         string path = Path.Combine(session.Temp.Path, name);

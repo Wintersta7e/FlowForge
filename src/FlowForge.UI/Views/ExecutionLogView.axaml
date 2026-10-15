@@ -322,6 +322,11 @@
             <DockPanel IsVisible="{Binding IsOutputTabSelected}">
                 <ScrollViewer>
                     <ItemsControl ItemsSource="{Binding Entries}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:FileJobLogEntryViewModel">
                                 <Border Padding="12,3"
@@ -402,6 +407,11 @@
 
                 <ScrollViewer IsVisible="{Binding !!ErrorEntries.Count}">
                     <ItemsControl ItemsSource="{Binding ErrorEntries}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:FileJobLogEntryViewModel">
                                 <Border Padding="12,3"
@@ -458,6 +468,11 @@
 
                 <ScrollViewer IsVisible="{Binding !!WarningEntries.Count}">
                     <ItemsControl ItemsSource="{Binding WarningEntries}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:FileJobLogEntryViewModel">
                                 <Border Padding="12,3"
