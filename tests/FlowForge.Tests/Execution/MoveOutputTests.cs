@@ -1,4 +1,7 @@
+using System.Text.Json;
 using FlowForge.Core.Execution;
+using FlowForge.Core.Models;
+using FlowForge.Core.Nodes.Base;
 using FlowForge.Core.Pipeline;
 using FlowForge.Tests.Helpers;
 using FluentAssertions;
@@ -97,6 +100,35 @@ public class MoveOutputTests
         (await File.ReadAllTextAsync(original)).Should().Be("NOT AN IMAGE", listing);
     }
 
+    [Fact]
+    public async Task Extra_job_is_delivered_before_the_moved_original_is_deleted()
+    {
+        using var dir = new TempDirectory();
+        string input = Path.Combine(dir.Path, "in");
+        Directory.CreateDirectory(input);
+        string original = Path.Combine(input, "f.txt");
+        await File.WriteAllTextAsync(original, "ORIGINAL");
+        string moveOutput = Path.Combine(dir.Path, "out");
+        var registry = NodeRegistry.CreateDefault(NullLoggerFactory.Instance);
+        registry.Register(ExtraCopyTransform.RegisteredTypeKey, () => new ExtraCopyTransform(), "Extra Copy", NodeCategory.Transform, () => []);
+        PipelineGraph graph = PipelineBuilder.New()
+            .AddSource("FolderInput", new { path = input })
+            .AddTransform(ExtraCopyTransform.RegisteredTypeKey, new { })
+            .AddOutput("FolderOutput", new { path = moveOutput, mode = "move" })
+            .Build();
+
+        // One delivery at a time, so a deletion after the first delivery would come before the second.
+        ExecutionResult result = await new PipelineRunner(registry, NullLogger<PipelineRunner>.Instance, maxConcurrency: 1, stagingRoot: dir.StagingRoot)
+            .RunAsync(graph);
+
+        string listing = Listing(result, input, moveOutput);
+        _output.WriteLine($"[extra-job] {listing}");
+        result.Succeeded.Should().Be(2, listing);
+        (await File.ReadAllTextAsync(Path.Combine(moveOutput, "f.txt"))).Should().Be("ORIGINAL", listing);
+        (await File.ReadAllTextAsync(Path.Combine(moveOutput, "copy-f.txt"))).Should().Be("ORIGINAL", listing);
+        File.Exists(original).Should().BeFalse(listing);
+    }
+
     private static PipelineRunner CreateRunner(TempDirectory dir) =>
         new(NodeRegistry.CreateDefault(NullLoggerFactory.Instance), NullLogger<PipelineRunner>.Instance, stagingRoot: dir.StagingRoot);
 
@@ -106,4 +138,27 @@ public class MoveOutputTests
         $"succeeded={result.Succeeded} failed={result.Failed} errors=[{string.Join("; ", result.Jobs.Select(j => j.ErrorMessage).OfType<string>())}] "
         + string.Join(" ", folders.Select(folder => Path.GetFileName(folder) + ": "
             + (Directory.Exists(folder) ? string.Join(", ", Directory.GetFiles(folder).Select(f => Path.GetFileName(f))) : "-")));
+
+    /// <summary>Returns each job together with one extra job that delivers the same content as copy-&lt;name&gt;.</summary>
+    private sealed class ExtraCopyTransform : ITransformNode
+    {
+        public const string RegisteredTypeKey = "ExtraCopy";
+
+        public string TypeKey => RegisteredTypeKey;
+
+        public void Configure(IDictionary<string, JsonElement> config)
+        {
+        }
+
+        public Task<IEnumerable<FileJob>> TransformAsync(FileJob job, RunContext context, CancellationToken ct = default)
+        {
+            var extra = new FileJob
+            {
+                OriginalPath = job.OriginalPath,
+                ContentPath = job.ContentPath,
+                CurrentPath = Path.Combine(job.DirectoryName, "copy-" + job.FileName),
+            };
+            return Task.FromResult<IEnumerable<FileJob>>([job, extra]);
+        }
+    }
 }
