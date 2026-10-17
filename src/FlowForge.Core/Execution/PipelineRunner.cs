@@ -173,7 +173,9 @@ public class PipelineRunner
 
     /// <summary>
     /// Hands each job carried on a connection into an output to that output alone, walking those
-    /// connections in graph order and each one's jobs in emission order.
+    /// connections in graph order and each one's jobs in emission order. Every destination is claimed,
+    /// one job at a time in that order, before the first delivery starts, so a moved original is checked
+    /// against every claim of the run.
     /// </summary>
     private async Task DispatchOutputJobsAsync(
         IReadOnlyList<Connection> connections,
@@ -185,28 +187,29 @@ public class PipelineRunner
         IProgress<PipelineProgressEvent>? progress,
         CancellationToken ct)
     {
+        var deliveries = new List<Delivery>();
+        foreach (Connection connection in connections.Where(c => outputs.ContainsKey(c.ToNode)))
+        {
+            IOutputNode output = outputs[connection.ToNode];
+            foreach (FileJob job in router.CarriedOn(connection))
+            {
+                ct.ThrowIfCancellationRequested();
+                if (TryClaimDestination(job, output, context, result, lineages, progress, out DestinationClaim? claim))
+                {
+                    deliveries.Add(new Delivery(job, output, claim));
+                }
+            }
+        }
+
         var semaphore = new SemaphoreSlim(_maxConcurrency);
         var outputTasks = new List<Task>();
 
         try
         {
-            foreach (Connection connection in connections.Where(c => outputs.ContainsKey(c.ToNode)))
+            foreach (Delivery delivery in deliveries)
             {
-                IOutputNode output = outputs[connection.ToNode];
-                foreach (FileJob job in router.CarriedOn(connection))
-                {
-                    ct.ThrowIfCancellationRequested();
-
-                    // Claims run here, one job at a time in input order, before any delivery they decide starts.
-                    if (!TryClaimDestination(job, output, context, result, lineages, progress, out DestinationClaim? claim))
-                    {
-                        continue;
-                    }
-
-                    await semaphore.WaitAsync(ct).ConfigureAwait(false);
-                    Task task = ConsumeJobAsync(job, output, claim, context, result, lineages, progress, semaphore, ct);
-                    outputTasks.Add(task);
-                }
+                await semaphore.WaitAsync(ct).ConfigureAwait(false);
+                outputTasks.Add(ConsumeJobAsync(delivery.Job, delivery.Output, delivery.Claim, context, result, lineages, progress, semaphore, ct));
             }
 
             await Task.WhenAll(outputTasks).ConfigureAwait(false);
@@ -516,4 +519,7 @@ public class PipelineRunner
             job.NodeLog.Add($"Move: could not delete original '{Path.GetFileName(original)}': {ex.Message}");
         }
     }
+
+    /// <summary>One claimed job waiting for its output to deliver it.</summary>
+    private sealed record Delivery(FileJob Job, IOutputNode Output, DestinationClaim? Claim);
 }

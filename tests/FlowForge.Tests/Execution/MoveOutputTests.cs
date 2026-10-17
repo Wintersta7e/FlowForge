@@ -129,8 +129,101 @@ public class MoveOutputTests
         File.Exists(original).Should().BeFalse(listing);
     }
 
-    private static PipelineRunner CreateRunner(TempDirectory dir) =>
-        new(NodeRegistry.CreateDefault(NullLoggerFactory.Instance), NullLogger<PipelineRunner>.Instance, stagingRoot: dir.StagingRoot);
+    [Fact]
+    public async Task In_place_move_never_deletes_another_files_delivery()
+    {
+        using var dir = new TempDirectory();
+        string data = await CreateRenumberCaseAsync(dir);
+
+        ExecutionResult result = await CreateRunner(dir, maxConcurrency: 2)
+            .RunAsync(RenumberInPlace(data, new { path = data, mode = "move", overwrite = true }));
+
+        string listing = await ContentsAsync(result, data);
+        _output.WriteLine($"[renumber-move] {listing}");
+        result.Succeeded.Should().Be(2, listing);
+        result.Failed.Should().Be(0, listing);
+        Directory.GetFiles(data).Select(f => Path.GetFileName(f)).Should().BeEquivalentTo(["001.txt", "002.txt"], listing);
+        (await File.ReadAllTextAsync(Path.Combine(data, "002.txt"))).Should().Be("AAA", listing);
+    }
+
+    [Fact]
+    public async Task In_place_move_with_backup_never_deletes_another_files_delivery()
+    {
+        using var dir = new TempDirectory();
+        string data = await CreateRenumberCaseAsync(dir);
+
+        ExecutionResult result = await CreateRunner(dir, maxConcurrency: 2)
+            .RunAsync(RenumberInPlace(data, new { path = data, mode = "move", overwrite = true, enableBackup = true }));
+
+        string listing = await ContentsAsync(result, data);
+        _output.WriteLine($"[renumber-backup] {listing}");
+        result.Succeeded.Should().Be(2, listing);
+        result.Failed.Should().Be(0, listing);
+        Directory.GetFiles(data).Select(f => Path.GetFileName(f)).Should().BeEquivalentTo(["001.txt", "002.txt", "002.txt.bak"], listing);
+        (await File.ReadAllTextAsync(Path.Combine(data, "002.txt"))).Should().Be("AAA", listing);
+        (await File.ReadAllTextAsync(Path.Combine(data, "002.txt.bak"))).Should().Be("TWO", listing);
+    }
+
+    [Fact]
+    public async Task Second_run_into_a_subfolder_of_a_recursive_source_keeps_both()
+    {
+        using var dir = new TempDirectory();
+        string input = Path.Combine(dir.Path, "in");
+        string output = Path.Combine(input, "out");
+        Directory.CreateDirectory(output);
+        await File.WriteAllTextAsync(Path.Combine(input, "a.txt"), "NEW");
+        await File.WriteAllTextAsync(Path.Combine(output, "a.txt"), "OLD");
+        PipelineGraph graph = PipelineBuilder.New()
+            .AddSource("FolderInput", new { path = input, recursive = true })
+            .AddOutput("FolderOutput", new { path = output, mode = "move", overwrite = true })
+            .Build();
+
+        // One delivery at a time: the file already in the output is read only after the new one replaced it.
+        ExecutionResult result = await CreateRunner(dir, maxConcurrency: 1).RunAsync(graph);
+
+        string listing = await ContentsAsync(result, input, output);
+        _output.WriteLine($"[recursive-move] {listing}");
+        result.Succeeded.Should().Be(2, listing);
+        File.Exists(Path.Combine(input, "a.txt")).Should().BeFalse(listing);
+        Directory.GetFiles(output).Should().HaveCount(2, listing);
+        (await File.ReadAllTextAsync(Path.Combine(output, "a.txt"))).Should().Be("NEW", listing);
+    }
+
+    /// <summary>A folder renumbered in place: <c>002.txt</c> becomes <c>001.txt</c> and <c>a.txt</c> becomes <c>002.txt</c>.</summary>
+    private static async Task<string> CreateRenumberCaseAsync(TempDirectory dir)
+    {
+        string data = Path.Combine(dir.Path, "data");
+        Directory.CreateDirectory(data);
+        await File.WriteAllTextAsync(Path.Combine(data, "002.txt"), "TWO");
+        await File.WriteAllTextAsync(Path.Combine(data, "a.txt"), "AAA");
+        return data;
+    }
+
+    private static PipelineGraph RenumberInPlace(string data, object outputConfig) =>
+        PipelineBuilder.New()
+            .AddSource("FolderInput", new { path = data, filter = "*.txt" })
+            .AddTransform("Sort", new { field = "filename", direction = "asc" })
+            .AddTransform("RenamePattern", new { pattern = "{counter:000}{ext}", startIndex = 1 })
+            .AddOutput("FolderOutput", outputConfig)
+            .Build();
+
+    private static async Task<string> ContentsAsync(ExecutionResult result, params string[] folders)
+    {
+        var parts = new List<string> { $"succeeded={result.Succeeded} failed={result.Failed} errors=[{string.Join("; ", result.Jobs.Select(j => j.ErrorMessage).OfType<string>())}]" };
+        foreach (string folder in folders)
+        {
+            IEnumerable<string> files = Directory.Exists(folder) ? Directory.GetFiles(folder).Order(StringComparer.Ordinal) : [];
+            foreach (string file in files)
+            {
+                parts.Add($"{Path.GetFileName(folder)}/{Path.GetFileName(file)}={await File.ReadAllTextAsync(file)}");
+            }
+        }
+
+        return string.Join(" ", parts);
+    }
+
+    private static PipelineRunner CreateRunner(TempDirectory dir, int maxConcurrency = 0) =>
+        new(NodeRegistry.CreateDefault(NullLoggerFactory.Instance), NullLogger<PipelineRunner>.Instance, maxConcurrency, dir.StagingRoot);
 
     private static Connection Wire(NodeDefinition from, NodeDefinition to) => new() { FromNode = from.Id, ToNode = to.Id };
 

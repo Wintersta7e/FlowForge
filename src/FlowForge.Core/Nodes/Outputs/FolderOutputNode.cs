@@ -178,7 +178,7 @@ public class FolderOutputNode : IOutputNode
         await DeliverAsync(job, claim, ct).ConfigureAwait(false);
 
         // The run deletes a moved original only once every delivery of it is in place.
-        context.Destinations.RecordDelivery(job.OriginalPath, claim.Path, byMove: string.Equals(_mode, "move", StringComparison.Ordinal));
+        context.Destinations.RecordDelivery(job.OriginalPath, byMove: string.Equals(_mode, "move", StringComparison.Ordinal));
         job.CurrentPath = claim.Path;
         job.NodeLog.Add($"FolderOutput: → '{claim.Path}' ({_mode})");
     }

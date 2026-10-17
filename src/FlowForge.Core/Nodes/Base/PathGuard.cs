@@ -61,6 +61,14 @@ internal static class PathGuard
     }
 
     /// <summary>
+    /// The absolute form of <paramref name="path"/> with every existing linked component replaced by its final
+    /// target. Two paths can name one file only when these are equal ignoring case. Throws
+    /// <see cref="IOException"/> on a link loop.
+    /// </summary>
+    public static string ResolvePath(string path) =>
+        ResolveLinks(Path.TrimEndingDirectorySeparator(Path.GetFullPath(path)));
+
+    /// <summary>
     /// True when both paths name one file: equal once made absolute and resolved through links, or equal
     /// but for letter case with no differing component present under both spellings. The case check
     /// exists because a case-insensitive folder resolves <c>photo.JPG</c> and <c>photo.jpg</c> to one
@@ -69,8 +77,8 @@ internal static class PathGuard
     /// </summary>
     public static bool IsSameFile(string currentPath, string candidatePath)
     {
-        string current = ResolveLinks(Path.TrimEndingDirectorySeparator(Path.GetFullPath(currentPath)));
-        string candidate = ResolveLinks(Path.TrimEndingDirectorySeparator(Path.GetFullPath(candidatePath)));
+        string current = ResolvePath(currentPath);
+        string candidate = ResolvePath(candidatePath);
         if (string.Equals(current, candidate, StringComparison.Ordinal))
         {
             return true;

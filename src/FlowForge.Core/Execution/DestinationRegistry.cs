@@ -15,6 +15,14 @@ public sealed class DestinationRegistry
     private readonly HashSet<string> _claimed = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
+    /// Every path a claim returned, resolved through links once, keyed ignoring case. Each key keeps every
+    /// spelling claimed, since on a case-sensitive disk two spellings are two files. A moved original found
+    /// here is never deleted; every claim is made before the first delivery, so the set is complete before
+    /// any original can be.
+    /// </summary>
+    private readonly Dictionary<string, List<string>> _claimedTargets = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
     /// One record per original, keyed ignoring case so that two originals differing only in case share
     /// one: a doubtful delete is skipped rather than made.
     /// </summary>
@@ -45,39 +53,22 @@ public sealed class DestinationRegistry
             // Checked before anything is created: a folder created under a linked folder lands outside the output.
             RefuseLinkedComponents(outputRoot, destinationPath);
 
-            if (IsClaimed(destinationPath))
+            DestinationClaim claim = Decide(destinationPath, overwrite, backupSuffix);
+            string[] paths = claim.BackupPath is null ? [claim.Path] : [claim.Path, claim.BackupPath];
+
+            // Resolved before anything is recorded, so a path that cannot be resolved refuses the whole claim.
+            string[] targets = paths.Select(PathGuard.ResolvePath).ToArray();
+            foreach (string path in paths)
             {
-                string candidate = FirstFreeCandidate(destinationPath);
-                Add(candidate);
-                return new DestinationClaim(candidate, ClaimKind.New, BackupPath: null);
+                Add(path);
             }
 
-            if (!IsAbsent(destinationPath))
+            foreach (string target in targets)
             {
-                if (!overwrite)
-                {
-                    throw new IOException($"'{destinationPath}' already exists and 'overwrite' is off.");
-                }
-
-                if (backupSuffix is null)
-                {
-                    Add(destinationPath);
-                    return new DestinationClaim(destinationPath, ClaimKind.Replace, BackupPath: null);
-                }
-
-                string backupPath = destinationPath + backupSuffix;
-                if (IsClaimed(backupPath))
-                {
-                    throw new IOException($"'{destinationPath}' cannot be backed up to '{backupPath}': this run already delivers a file there.");
-                }
-
-                Add(destinationPath);
-                Add(backupPath);
-                return new DestinationClaim(destinationPath, ClaimKind.ReplaceWithBackup, backupPath);
+                AddTarget(target);
             }
 
-            Add(destinationPath);
-            return new DestinationClaim(destinationPath, ClaimKind.New, BackupPath: null);
+            return claim;
         }
     }
 
@@ -129,13 +120,12 @@ public sealed class DestinationRegistry
         }
     }
 
-    internal void RecordDelivery(string originalPath, string deliveredPath, bool byMove)
+    internal void RecordDelivery(string originalPath, bool byMove)
     {
         lock (_gate)
         {
             if (_originals.TryGetValue(originalPath, out OriginalRecord? record))
             {
-                record.Delivered.Add(deliveredPath);
                 record.ByMove |= byMove;
             }
         }
@@ -143,7 +133,7 @@ public sealed class DestinationRegistry
 
     /// <summary>
     /// Ends one branch of the original. When it was the last, returns the originals to delete: only after
-    /// some delivery by a move output, with no branch failed, and never one a delivery was made onto.
+    /// some delivery by a move output, with no branch failed, and never one a claim of this run names.
     /// </summary>
     internal IReadOnlyList<string> CompleteBranch(string originalPath, bool failed)
     {
@@ -167,15 +157,15 @@ public sealed class DestinationRegistry
                 return [];
             }
 
-            return record.Paths.Where(original => !record.Delivered.Any(delivered => MayBeSameFile(original, delivered))).ToList();
+            return record.Paths.Where(original => !MayBeClaimed(original)).ToList();
         }
     }
 
-    private static bool MayBeSameFile(string original, string delivered)
+    private static bool MayBeSameFile(string path, string other)
     {
         try
         {
-            return PathGuard.IsSameFile(original, delivered);
+            return PathGuard.IsSameFile(path, other);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -221,6 +211,72 @@ public sealed class DestinationRegistry
         return entry.Exists;
     }
 
+    /// <summary>Where the job's file goes and how, with nothing recorded yet.</summary>
+    private DestinationClaim Decide(string destinationPath, bool overwrite, string? backupSuffix)
+    {
+        if (IsClaimed(destinationPath))
+        {
+            return new DestinationClaim(FirstFreeCandidate(destinationPath), ClaimKind.New, BackupPath: null);
+        }
+
+        if (!IsAbsent(destinationPath))
+        {
+            if (!overwrite)
+            {
+                throw new IOException($"'{destinationPath}' already exists and 'overwrite' is off.");
+            }
+
+            if (backupSuffix is null)
+            {
+                return new DestinationClaim(destinationPath, ClaimKind.Replace, BackupPath: null);
+            }
+
+            string backupPath = destinationPath + backupSuffix;
+            if (IsClaimed(backupPath))
+            {
+                throw new IOException($"'{destinationPath}' cannot be backed up to '{backupPath}': this run already delivers a file there.");
+            }
+
+            return new DestinationClaim(destinationPath, ClaimKind.ReplaceWithBackup, backupPath);
+        }
+
+        return new DestinationClaim(destinationPath, ClaimKind.New, BackupPath: null);
+    }
+
+    /// <summary>
+    /// True when a claim of this run names <paramref name="original"/>, or when its links cannot be resolved:
+    /// a doubtful delete is skipped rather than made. One lookup, then a same-file check only on a hit.
+    /// </summary>
+    private bool MayBeClaimed(string original)
+    {
+        string resolved;
+        try
+        {
+            resolved = PathGuard.ResolvePath(original);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return true;
+        }
+
+        return _claimedTargets.TryGetValue(resolved, out List<string>? spellings)
+            && spellings.Exists(target => MayBeSameFile(original, target));
+    }
+
+    private void AddTarget(string target)
+    {
+        if (!_claimedTargets.TryGetValue(target, out List<string>? spellings))
+        {
+            spellings = [];
+            _claimedTargets[target] = spellings;
+        }
+
+        if (!spellings.Contains(target, StringComparer.Ordinal))
+        {
+            spellings.Add(target);
+        }
+    }
+
     private string FirstFreeCandidate(string destinationPath)
     {
         string directory = Path.GetDirectoryName(destinationPath) ?? string.Empty;
@@ -245,8 +301,6 @@ public sealed class DestinationRegistry
     private sealed class OriginalRecord
     {
         public HashSet<string> Paths { get; } = new(StringComparer.Ordinal);
-
-        public List<string> Delivered { get; } = [];
 
         public int Live { get; set; }
 
