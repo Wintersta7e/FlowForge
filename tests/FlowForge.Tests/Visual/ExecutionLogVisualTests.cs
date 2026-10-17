@@ -176,16 +176,17 @@ public sealed class ExecutionLogVisualTests
         string input = Path.Combine(session.Temp.Path, "in");
         TestFileFactory.CreateTestImages(input, "a.png");
 
-        // The editor lets one step feed two outputs; the run refuses that shape with a long, node-by-node message.
+        // The editor keeps a branch that reaches no output; the run refuses it with one line per step
+        // of the branch, each naming the step's id, so the message is long and spans several lines.
         NodeDefinition source = PipelineBuilder.Node("FolderInput", new { path = input, filter = "*.png" });
+        NodeDefinition output = PipelineBuilder.Node("FolderOutput", new { path = session.Temp.OutputPath, mode = "copy" });
         NodeDefinition rename = PipelineBuilder.Node("RenameAddAffix", new { prefix = "x_" });
-        NodeDefinition first = PipelineBuilder.Node("FolderOutput", new { path = Path.Combine(session.Temp.OutputPath, "first"), mode = "copy" });
-        NodeDefinition second = PipelineBuilder.Node("FolderOutput", new { path = Path.Combine(session.Temp.OutputPath, "second"), mode = "copy" });
-        var graph = new PipelineGraph { Name = "fan-out", Nodes = [source, rename, first, second] };
+        NodeDefinition resize = PipelineBuilder.Node("ImageResize", new { width = 64 });
+        var graph = new PipelineGraph { Name = "dead-end branch", Nodes = [source, output, rename, resize] };
+        graph.Connections.Add(new Connection { FromNode = source.Id, ToNode = output.Id });
         graph.Connections.Add(new Connection { FromNode = source.Id, ToNode = rename.Id });
-        graph.Connections.Add(new Connection { FromNode = rename.Id, ToNode = first.Id });
-        graph.Connections.Add(new Connection { FromNode = rename.Id, ToNode = second.Id });
-        vm.Editor.LoadGraph(graph, vm.Registry).Should().Be(0, "the editor keeps every connection of the fan-out");
+        graph.Connections.Add(new Connection { FromNode = rename.Id, ToNode = resize.Id });
+        vm.Editor.LoadGraph(graph, vm.Registry).Should().Be(0, "the editor keeps every connection of the dead-end branch");
 
         vm.RunCommand.Execute(null);
         session.RenderUntil(() => !log.IsRunning && log.Summary is not null, TimeSpan.FromSeconds(10), "the run was refused");
@@ -200,6 +201,7 @@ public sealed class ExecutionLogVisualTests
         _output.WriteLine($"summary length={log.Summary.Length} bounds={bounds} client={client} tip length={tip?.ToString()?.Length ?? 0}");
         _output.WriteLine($"message lines={lines.Length} error rows={log.ErrorEntries.Count} failed={log.Failed}");
         log.Summary.Should().StartWith(prefix);
+        lines.Should().HaveCount(2, "each step of the dead-end branch is refused on its own line");
         tip.Should().Be(log.Summary, "the tooltip holds the whole summary");
         bounds.X.Should().BeGreaterThanOrEqualTo(0);
         bounds.Right.Should().BeLessThanOrEqualTo(client.Width, "the summary is trimmed inside the window, not cut off at its edge");

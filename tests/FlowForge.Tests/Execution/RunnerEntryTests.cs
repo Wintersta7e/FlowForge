@@ -69,17 +69,18 @@ public class RunnerEntryTests
         dir.CreateFiles("a.txt");
         var runner = new PipelineRunner(NodeRegistry.CreateDefault(NullLoggerFactory.Instance), NullLogger<PipelineRunner>.Instance, stagingRoot: dir.StagingRoot);
 
-        // The editor lets one step feed two outputs; the run refuses that shape after the graph checks pass it.
+        // The editor keeps a branch that reaches no output; the graph checks refuse each of its steps
+        // as off every source-to-output path.
         NodeDefinition input = PipelineBuilder.Node("FolderInput", new { path = dir.Path, recursive = false });
+        NodeDefinition output = PipelineBuilder.Node("FolderOutput", new { path = dir.OutputPath, mode = "copy" });
         NodeDefinition rename = PipelineBuilder.Node("RenameAddAffix", new { prefix = "x_" });
-        NodeDefinition first = PipelineBuilder.Node("FolderOutput", new { path = Path.Combine(dir.OutputPath, "first"), mode = "copy" });
-        NodeDefinition second = PipelineBuilder.Node("FolderOutput", new { path = Path.Combine(dir.OutputPath, "second"), mode = "copy" });
-        var fanOut = new PipelineGraph { Name = "fan-out", Nodes = [input, rename, first, second] };
-        fanOut.Connections.Add(new Connection { FromNode = input.Id, ToNode = rename.Id });
-        fanOut.Connections.Add(new Connection { FromNode = rename.Id, ToNode = first.Id });
-        fanOut.Connections.Add(new Connection { FromNode = rename.Id, ToNode = second.Id });
+        NodeDefinition resize = PipelineBuilder.Node("ImageResize", new { width = 64 });
+        var deadEnd = new PipelineGraph { Name = "dead-end branch", Nodes = [input, output, rename, resize] };
+        deadEnd.Connections.Add(new Connection { FromNode = input.Id, ToNode = output.Id });
+        deadEnd.Connections.Add(new Connection { FromNode = input.Id, ToNode = rename.Id });
+        deadEnd.Connections.Add(new Connection { FromNode = rename.Id, ToNode = resize.Id });
 
-        foreach (PipelineGraph graph in new[] { new PipelineGraph { Name = "empty" }, fanOut })
+        foreach (PipelineGraph graph in new[] { new PipelineGraph { Name = "empty" }, deadEnd })
         {
             var progress = new RecordingProgress();
             Func<Task> run = () => runner.RunAsync(graph, dryRun: true, progress);
