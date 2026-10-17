@@ -9,14 +9,17 @@ namespace FlowForge.Tests.Docs;
 
 /// <summary>
 /// Rename nodes copy nothing, image nodes write into a private run folder and only Folder Output writes to the user's folders, so a run in
-/// copy mode leaves the input files unchanged. The documents and Folder Output's mode description must say so, and
+/// copy mode leaves the input files unchanged, unless it delivers into the input folder with overwrite on and so may
+/// replace an input. The documents and Folder Output's mode description must say so, with that exception, and
 /// never again warn that the nodes change files in the input folder.
 /// </summary>
 public class InputFilesClaimTests
 {
     private const string Claim = "Rename and image nodes never change the input folder";
 
-    private const string CopyModeClaim = "copy: leave the input files unchanged";
+    private const string InPlaceClaim = "unless the output folder is the input folder or inside it and `overwrite` is on: then a delivered file may replace an input, and every input is still read as it was when the run started";
+
+    private const string CopyModeClaim = "copy: leave the input files unchanged unless the output folder is the input folder or inside it with overwrite on";
 
     private static readonly string[] Documents = ["README.md", "docs/USER_GUIDE.md", "samples/README.md"];
 
@@ -49,6 +52,11 @@ public class InputFilesClaimTests
             if (!text.Contains(Claim, StringComparison.Ordinal))
             {
                 mismatches.Add($"{document}:1: does not say '{Claim}'");
+            }
+
+            if (!text.Contains(InPlaceClaim, StringComparison.Ordinal))
+            {
+                mismatches.Add($"{document}:1: does not say when copy may replace an input: '{InPlaceClaim}'");
             }
         }
 

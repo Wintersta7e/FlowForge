@@ -2,7 +2,7 @@
 
 Example pipelines for FlowForge. Their nodes open stacked on the canvas, so drag them apart to see the wiring. Edit the input/output paths before running.
 
-Rename and image nodes never change the input folder — rename nodes copy nothing and change only the delivered name, and image nodes write their results into a private run folder. Only Folder Output writes to your folders. With `copy` the input files stay as they were; `move` deletes each one only after every delivery of it succeeded.
+Rename and image nodes never change the input folder — rename nodes copy nothing and change only the delivered name, and image nodes write their results into a private run folder. Only Folder Output writes to your folders. With `copy` the input files stay as they were, unless the output folder is the input folder or inside it and `overwrite` is on: then a delivered file may replace an input, and every input is still read as it was when the run started. `move` deletes each input file only after every delivery of it succeeded.
 
 ## Pipelines
 

@@ -22,7 +22,7 @@ public class FolderOutputNode : IOutputNode
     {
         new ConfigField("path", ConfigFieldType.FolderPath, Label: "Output Folder", Required: true, Description: "Destination folder for processed files"),
         new ConfigField("mode", ConfigFieldType.Select, Label: "Mode", DefaultValue: "copy",
-            Options: new[] { "copy", "move" }, Description: "copy: leave the input files unchanged, move: delete each input file once every delivery of it succeeded"),
+            Options: new[] { "copy", "move" }, Description: "copy: leave the input files unchanged unless the output folder is the input folder or inside it with overwrite on, move: delete each input file once every delivery of it succeeded"),
         new ConfigField("overwrite", ConfigFieldType.Bool, Label: "Overwrite Existing", DefaultValue: "false", Description: "Replace existing files at destination"),
         new ConfigField("preserveStructure", ConfigFieldType.Bool, Label: "Preserve Folder Structure", DefaultValue: "false", Description: "Recreate source folder hierarchy in output"),
         new ConfigField("sourceBasePath", ConfigFieldType.FolderPath, Label: "Source Base Path", Description: "Root path for computing relative subdirectories"),

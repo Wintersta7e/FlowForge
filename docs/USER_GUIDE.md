@@ -74,6 +74,8 @@ Click any node to see its configuration in the Properties panel. Fields are auto
 - Dropdowns for enumerated options
 - Hover any field label to see its tooltip description
 
+A number field takes a whole number, with or without your own thousands separator: with US English number formats, `1,920` is stored as 1920. Text that is not a whole number is not stored: the field is outlined in the error colour, and the line under it names the number the pipeline keeps, for example `Whole numbers only. The pipeline keeps 12.` Emptying a number field removes its value.
+
 ### Undo/Redo
 
 FlowForge tracks all editor actions and supports full undo/redo:
@@ -98,7 +100,7 @@ The bottom panel shows pipeline execution results:
 
 ## Nodes
 
-Rename and image nodes never change the input folder — rename nodes copy nothing and change only the delivered name, and image nodes write their results into a private run folder. Only Folder Output writes to your folders. With `copy` the input files stay as they were; `move` deletes each one only after every delivery of it succeeded.
+Rename and image nodes never change the input folder — rename nodes copy nothing and change only the delivered name, and image nodes write their results into a private run folder. Only Folder Output writes to your folders. With `copy` the input files stay as they were, unless the output folder is the input folder or inside it and `overwrite` is on: then a delivered file may replace an input, and every input is still read as it was when the run started. `move` deletes each input file only after every delivery of it succeeded.
 
 The private run folder is created in `%TEMP%\FlowForge\runs` on Windows, and in `FlowForge/runs` under your per-user data folder elsewhere (usually `~/.local/share/FlowForge/runs` on Linux). Each Process node handles every file before the first file is delivered, so the folder needs room for every image the run rewrites: a PNG conversion of 12 photos held 22 MB there for 24 MB delivered. When the output folder is the input folder or inside it and `overwrite` is on, it also holds a copy of each input that another file is delivered onto. The folder is deleted when the run ends; one a run could not delete is removed by the next live run.
 
@@ -232,13 +234,15 @@ Copies or moves processed files to a destination.
 | Field | Label | Required | Default | Options | Example | Description |
 |---|---|---|---|---|---|---|
 | `path` | Output Folder | yes | — | — | — | Destination folder for processed files |
-| `mode` | Mode | no | `copy` | `copy`, `move` | — | copy: leave the input files unchanged, move: delete each input file once every delivery of it succeeded |
+| `mode` | Mode | no | `copy` | `copy`, `move` | — | copy: leave the input files unchanged unless the output folder is the input folder or inside it with overwrite on, move: delete each input file once every delivery of it succeeded |
 | `overwrite` | Overwrite Existing | no | `false` | — | — | Replace existing files at destination |
 | `preserveStructure` | Preserve Folder Structure | no | `false` | — | — | Recreate source folder hierarchy in output |
 | `sourceBasePath` | Source Base Path | no | — | — | — | Root path for computing relative subdirectories |
 | `enableBackup` | Backup Before Overwrite | no | `false` | — | — | Create a backup copy of existing destination files before overwriting |
 | `backupSuffix` | Backup Suffix | no | `.bak` | — | — | File extension appended to backup copies (e.g. .bak, .orig) |
 <!-- /node-fields -->
+
+When the output folder is the input folder or inside it and `overwrite` is on, a delivered file may replace an input: for example, when Rename (Pattern) numbers `002.txt` and `a.txt` as `001.txt` and `002.txt`, `a.txt` is delivered onto the input `002.txt`. Every input is still read as it was when the run started: before the first delivery, each input that another delivery of the run overwrites is copied into the private run folder, and every delivery of that input reads the copy. If the copy cannot be made, the file whose delivery would overwrite the input fails with a message naming both files, and the input is left as it was. With `move`, a file that a delivery of the run lands on is never deleted. A dry run copies nothing; hovering the row of each input the run would copy aside shows `Would copy '…' aside first: another delivery of this run overwrites it [dry-run]`, and the CLI's `--format json` output lists the same line in that file's `nodeLog`.
 
 ## Running Pipelines
 
