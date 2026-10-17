@@ -92,9 +92,13 @@ public sealed class DestinationRegistry
         }
     }
 
-    /// <summary>Starts tracking one discovered original: one live branch, nothing delivered yet.</summary>
+    /// <summary>
+    /// Starts tracking one discovered original: one live branch, nothing delivered yet. The path is resolved
+    /// through links now, so a delete can later be refused when the path no longer names the file discovered.
+    /// </summary>
     internal void RegisterOriginal(string originalPath)
     {
+        string? resolved = TryResolve(originalPath);
         lock (_gate)
         {
             if (!_originals.TryGetValue(originalPath, out OriginalRecord? record))
@@ -103,7 +107,7 @@ public sealed class DestinationRegistry
                 _originals[originalPath] = record;
             }
 
-            record.Paths.Add(originalPath);
+            record.Paths.TryAdd(originalPath, resolved);
             record.Live++;
         }
     }
@@ -133,7 +137,8 @@ public sealed class DestinationRegistry
 
     /// <summary>
     /// Ends one branch of the original. When it was the last, returns the originals to delete: only after
-    /// some delivery by a move output, with no branch failed, and never one a claim of this run names.
+    /// some delivery by a move output, with no branch failed, never one a claim of this run names, and never
+    /// one whose path now resolves elsewhere than when it was discovered.
     /// </summary>
     internal IReadOnlyList<string> CompleteBranch(string originalPath, bool failed)
     {
@@ -157,7 +162,7 @@ public sealed class DestinationRegistry
                 return [];
             }
 
-            return record.Paths.Where(original => !MayBeClaimed(original)).ToList();
+            return record.Paths.Where(entry => MayDelete(entry.Key, entry.Value)).Select(entry => entry.Key).ToList();
         }
     }
 
@@ -231,24 +236,34 @@ public sealed class DestinationRegistry
         return new DestinationClaim(destinationPath, ClaimKind.New, BackupPath: null);
     }
 
-    /// <summary>
-    /// True when a claim of this run names <paramref name="original"/>, or when its links cannot be resolved:
-    /// a doubtful delete is skipped rather than made. One lookup, then a same-file check only on a hit.
-    /// </summary>
-    private bool MayBeClaimed(string original)
+    /// <summary>The path resolved through links, or null when its links cannot be resolved.</summary>
+    private static string? TryResolve(string path)
     {
-        string resolved;
         try
         {
-            resolved = PathGuard.ResolvePath(original);
+            return PathGuard.ResolvePath(path);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            return true;
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// False when <paramref name="original"/> no longer resolves to <paramref name="resolvedAtDiscovery"/> (a link
+    /// on its path changed during the run), when its links cannot be resolved, or when a claim of this run names
+    /// it: a doubtful delete is skipped rather than made. One lookup, then a same-file check only on a hit.
+    /// </summary>
+    private bool MayDelete(string original, string? resolvedAtDiscovery)
+    {
+        string? resolved = TryResolve(original);
+        if (resolved is null || !string.Equals(resolved, resolvedAtDiscovery, StringComparison.Ordinal))
+        {
+            return false;
         }
 
-        return _claimedTargets.TryGetValue(resolved, out List<string>? spellings)
-            && spellings.Exists(target => PathGuard.MayBeSameFile(original, target));
+        return !(_claimedTargets.TryGetValue(resolved, out List<string>? spellings)
+            && spellings.Exists(target => PathGuard.MayBeSameFile(original, target)));
     }
 
     private void AddTarget(string target)
@@ -288,7 +303,8 @@ public sealed class DestinationRegistry
 
     private sealed class OriginalRecord
     {
-        public HashSet<string> Paths { get; } = new(StringComparer.Ordinal);
+        /// <summary>Each spelling of the original, with its resolution at discovery (null when it could not be resolved).</summary>
+        public Dictionary<string, string?> Paths { get; } = new(StringComparer.Ordinal);
 
         public int Live { get; set; }
 

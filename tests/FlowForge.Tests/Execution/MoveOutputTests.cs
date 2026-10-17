@@ -237,6 +237,72 @@ public class MoveOutputTests
         delivered.Should().BeEquivalentTo(["NEW", "OLD"], listing);
     }
 
+    [Fact]
+    public async Task Claimed_original_behind_a_link_retargeted_during_the_run_is_kept()
+    {
+        using var dir = new TempDirectory();
+        string first = Path.Combine(dir.Path, "first");
+        string second = Path.Combine(dir.Path, "second");
+        Directory.CreateDirectory(first);
+        Directory.CreateDirectory(second);
+        await File.WriteAllTextAsync(Path.Combine(first, "001.txt"), "ONE");
+        await File.WriteAllTextAsync(Path.Combine(first, "a.txt"), "AAA");
+        string unrelated = Path.Combine(second, "001.txt");
+        await File.WriteAllTextAsync(unrelated, "OTHER");
+        string input = Path.Combine(dir.Path, "in");
+        RetargetAfterFirstDelivery retarget = await RetargetAfterFirstDelivery.CreateAsync(dir, input, first, second);
+
+        // a.txt is delivered onto 001.txt first; the link then moves before 001.txt's own job ends.
+        PipelineGraph graph = PipelineBuilder.New()
+            .AddSource("FolderInput", new { path = input, filter = "*.txt" })
+            .AddTransform("Sort", new { field = "filename", direction = "desc" })
+            .AddTransform("RenamePattern", new { pattern = "{counter:000}{ext}", startIndex = 1 })
+            .AddOutput("FolderOutput", new { path = first, mode = "move", overwrite = true })
+            .Build();
+        ExecutionResult result = await CreateRunner(dir, maxConcurrency: 1).RunAsync(graph, progress: retarget);
+
+        string listing = await ContentsAsync(result, first, second);
+        _output.WriteLine($"[retargeted-claimed] {listing}");
+        retarget.Retargeted.Should().BeTrue(listing);
+        result.Succeeded.Should().Be(2, listing);
+        (await File.ReadAllTextAsync(unrelated)).Should().Be("OTHER", listing);
+        (await File.ReadAllTextAsync(Path.Combine(first, "001.txt"))).Should().Be("AAA", listing);
+        (await File.ReadAllTextAsync(Path.Combine(first, "002.txt"))).Should().Be("ONE", listing);
+    }
+
+    [Fact]
+    public async Task Moved_original_behind_a_link_retargeted_during_the_run_is_kept()
+    {
+        using var dir = new TempDirectory();
+        string first = Path.Combine(dir.Path, "first");
+        string second = Path.Combine(dir.Path, "second");
+        Directory.CreateDirectory(first);
+        Directory.CreateDirectory(second);
+        await File.WriteAllTextAsync(Path.Combine(first, "a.txt"), "AAA");
+        await File.WriteAllTextAsync(Path.Combine(first, "b.txt"), "BBB");
+        string unrelated = Path.Combine(second, "b.txt");
+        await File.WriteAllTextAsync(unrelated, "OTHER");
+        string input = Path.Combine(dir.Path, "in");
+        string output = Path.Combine(dir.Path, "out");
+        RetargetAfterFirstDelivery retarget = await RetargetAfterFirstDelivery.CreateAsync(dir, input, first, second);
+
+        // The link moves after a.txt is delivered and before b.txt's job ends; nothing claims b.txt.
+        PipelineGraph graph = PipelineBuilder.New()
+            .AddSource("FolderInput", new { path = input, filter = "*.txt" })
+            .AddTransform("Sort", new { field = "filename", direction = "asc" })
+            .AddOutput("FolderOutput", new { path = output, mode = "move" })
+            .Build();
+        ExecutionResult result = await CreateRunner(dir, maxConcurrency: 1).RunAsync(graph, progress: retarget);
+
+        string listing = await ContentsAsync(result, first, second, output);
+        _output.WriteLine($"[retargeted-unclaimed] {listing}");
+        retarget.Retargeted.Should().BeTrue(listing);
+        result.Succeeded.Should().Be(2, listing);
+        File.Exists(Path.Combine(first, "a.txt")).Should().BeFalse(listing);
+        (await File.ReadAllTextAsync(Path.Combine(first, "b.txt"))).Should().Be("BBB", listing);
+        (await File.ReadAllTextAsync(unrelated)).Should().Be("OTHER", listing);
+    }
+
     /// <summary>A folder renumbered in place: <c>002.txt</c> becomes <c>001.txt</c> and <c>a.txt</c> becomes <c>002.txt</c>.</summary>
     private static async Task<string> CreateRenumberCaseAsync(TempDirectory dir)
     {
@@ -300,6 +366,44 @@ public class MoveOutputTests
                 CurrentPath = Path.Combine(job.DirectoryName, "copy-" + job.FileName),
             };
             return Task.FromResult<IEnumerable<FileJob>>([job, extra]);
+        }
+    }
+
+    /// <summary>
+    /// A link to one folder that, once the first file of the run is processed, names another: the link is
+    /// moved aside and a prepared link to the other folder takes its name. Reported synchronously by the run.
+    /// </summary>
+    private sealed class RetargetAfterFirstDelivery : IProgress<PipelineProgressEvent>
+    {
+        private readonly string _link;
+        private readonly string _next;
+        private readonly string _parked;
+
+        private RetargetAfterFirstDelivery(string link, string next, string parked)
+        {
+            _link = link;
+            _next = next;
+            _parked = parked;
+        }
+
+        public bool Retargeted { get; private set; }
+
+        public static async Task<RetargetAfterFirstDelivery> CreateAsync(TempDirectory dir, string link, string target, string nextTarget)
+        {
+            string next = Path.Combine(dir.Path, "next-link");
+            await LinkFactory.CreateDirectoryLinkAsync(link, target);
+            await LinkFactory.CreateDirectoryLinkAsync(next, nextTarget);
+            return new RetargetAfterFirstDelivery(link, next, Path.Combine(dir.Path, "parked-link"));
+        }
+
+        public void Report(PipelineProgressEvent value)
+        {
+            if (value is FileProcessed && !Retargeted)
+            {
+                Retargeted = true;
+                Directory.Move(_link, _parked);
+                Directory.Move(_next, _link);
+            }
         }
     }
 }
