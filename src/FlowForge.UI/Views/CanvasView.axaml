@@ -1033,7 +1033,8 @@
                 BorderThickness="0,0,1,1"
                 Opacity="0.5" />
 
-        <!-- Hint caption top-left; hidden with no stations, where it would show through the empty state -->
+        <!-- Hint caption top-left; hidden with no stations, where it would show through the empty state.
+             Wraps inside the pane when narrow, clear of the top-right corner mark. -->
         <TextBlock IsHitTestVisible="False"
                    IsVisible="{Binding HasNodes}"
                    AutomationProperties.AutomationId="CanvasHint"
@@ -1042,8 +1043,9 @@
                    FontSize="10"
                    LetterSpacing="1"
                    Foreground="{DynamicResource MwFaint}"
+                   TextWrapping="Wrap"
                    HorizontalAlignment="Left" VerticalAlignment="Top"
-                   Margin="40,14,0,0" />
+                   Margin="40,14,40,0" />
 
         <!-- System HUD bottom-right; hidden with no stations, where it would show through the empty state's cards -->
         <Border IsHitTestVisible="False"

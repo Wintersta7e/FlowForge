@@ -84,6 +84,33 @@ public sealed class TemplateCardTests
         hint.IsEffectivelyVisible.Should().BeTrue("the hint shows once the canvas has stations");
     }
 
+    // With stations the hint shows every word inside the canvas pane: one line at the default size, wrapped when narrow.
+    [AvaloniaTheory]
+    [InlineData(1400, 820, true)]
+    [InlineData(900, 560, false)]
+    public void Canvas_hint_shows_every_word_inside_the_canvas_pane(int width, int height, bool oneLine)
+    {
+        using var session = VisualSession.Open(_output, new Size(width, height));
+        session.LoadTemplate(VisualSession.WebExportTemplate);
+        TextBlock hint = session.ById<TextBlock>("CanvasHint");
+        session.RenderUntil(() => hint.IsEffectivelyVisible, "the hint shows with stations");
+        PixelRect pane = session.BoundsInWindow(session.Window.GetVisualDescendants().OfType<CanvasView>().Single());
+        PixelRect bounds = session.BoundsInWindow(hint);
+        int lines = hint.TextLayout.TextLines.Count;
+        int laidOut = hint.TextLayout.TextLines.Sum(line => line.Length);
+        bool collapsed = hint.TextLayout.TextLines.Any(line => line.HasCollapsed);
+        _output.WriteLine($"hint={bounds} pane={pane} lines={lines} laid-out width={hint.TextLayout.Width:F1} box width={hint.Bounds.Width:F1} chars={laidOut}/{hint.Text!.Length} collapsed={collapsed}");
+
+        pane.Contains(bounds).Should().BeTrue("the hint lies inside the canvas pane");
+        hint.TextLayout.Width.Should().BeLessThanOrEqualTo(hint.Bounds.Width + 0.5, "no word runs past the hint's own box");
+        collapsed.Should().BeFalse("no line of the hint is trimmed");
+        laidOut.Should().BeGreaterThanOrEqualTo(hint.Text.Length, "every character of the hint is laid out (the last line also counts its paragraph end)");
+        if (oneLine)
+        {
+            lines.Should().Be(1, "the hint stays on one line where the pane has room");
+        }
+    }
+
     // The empty state's scrolling must not take the wheel from the editor once a pipeline is open.
     [AvaloniaFact]
     public void Wheel_zooms_the_editor_once_a_template_is_loaded()
