@@ -24,6 +24,10 @@ public partial class ConfigFieldViewModel : ViewModelBase
     [ObservableProperty]
     private bool _hasError;
 
+    // While HasError, says what the field takes and what the pipeline still holds; the editor shows it under the box.
+    [ObservableProperty]
+    private string? _errorText;
+
     public string Key { get; }
     public string Label { get; }
     public ConfigFieldType FieldType { get; }
@@ -96,8 +100,11 @@ public partial class ConfigFieldViewModel : ViewModelBase
         {
             // Reject unparseable input so we never serialise a raw string into a Bool/Int slot
             // (GetBoolean/GetInt32 on reload would throw).
-            if (FieldType == ConfigFieldType.Int && !int.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, out _))
+            if (FieldType == ConfigFieldType.Int && !TryParseInt(value, out _))
             {
+                ErrorText = _configDictionary.TryGetValue(Key, out JsonElement kept)
+                    ? $"Whole numbers only. The pipeline keeps {kept.GetRawText()}."
+                    : "Whole numbers only. The pipeline keeps no value.";
                 HasError = true;
                 return;
             }
@@ -109,13 +116,14 @@ public partial class ConfigFieldViewModel : ViewModelBase
             }
 
             HasError = false;
+            ErrorText = null;
             bool keyExisted = _configDictionary.TryGetValue(Key, out JsonElement oldElement);
 
             JsonElement newElement = FieldType switch
             {
                 ConfigFieldType.Bool when bool.TryParse(value, out bool b) =>
                     JsonSerializer.SerializeToElement(b),
-                ConfigFieldType.Int when int.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, out int i) =>
+                ConfigFieldType.Int when TryParseInt(value, out int i) =>
                     JsonSerializer.SerializeToElement(i),
                 _ => JsonSerializer.SerializeToElement(value)
             };
@@ -128,6 +136,7 @@ public partial class ConfigFieldViewModel : ViewModelBase
         else
         {
             HasError = false;
+            ErrorText = null;
             bool keyExisted = _configDictionary.TryGetValue(Key, out JsonElement oldElement);
             if (!keyExisted)
             {
@@ -140,4 +149,9 @@ public partial class ConfigFieldViewModel : ViewModelBase
                 $"Clear {Label}"));
         }
     }
+
+    // Reads a number the way the user writes it: with their culture's thousands separators, so every
+    // keystroke of "1,920" parses and the pipeline never keeps a prefix of it.
+    private static bool TryParseInt(string? value, out int number) =>
+        int.TryParse(value, System.Globalization.NumberStyles.Integer | System.Globalization.NumberStyles.AllowThousands, System.Globalization.CultureInfo.CurrentCulture, out number);
 }

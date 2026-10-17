@@ -192,6 +192,8 @@ public sealed class ThemePaintTests
             Measure(frame, "valid height, unfocused", height, refused: false);
         }
 
+        CheckRefusalIsSaidInWords(session, width);
+
         session.Click(height);
         session.RenderUntil(() => height.IsFocused && !width.IsFocused, "the height field focused");
         using (WriteableBitmap frame = session.Capture(VisualFrames.IntFieldRefusedUnfocused))
@@ -204,6 +206,25 @@ public sealed class ThemePaintTests
         {
             WithinTolerance(colour, error).Should().Be(refused, $"the {state} box is outlined in ForgeError only when it holds refused text");
         }
+    }
+
+    // A refused Int field says so in words too: under the box, inside its card, and as the box's help text.
+    private void CheckRefusalIsSaidInWords(VisualSession session, TextBox box)
+    {
+        ContentPresenter card = session.InspectorCards().Single(c => ReferenceEquals(c.DataContext, box.DataContext));
+        string? errorText = ((ConfigFieldViewModel)card.DataContext!).ErrorText;
+        TextBlock? message = card.GetVisualDescendants().OfType<TextBlock>()
+            .SingleOrDefault(block => block.IsEffectivelyVisible && errorText is not null && string.Equals(block.Text, errorText, StringComparison.Ordinal));
+        PixelRect cardBounds = session.BoundsInWindow(card);
+        PixelRect boxBounds = session.BoundsInWindow(box);
+        PixelRect messageBounds = message is null ? default : session.BoundsInWindow(message);
+        string? helpText = Avalonia.Automation.AutomationProperties.GetHelpText(box);
+        _output.WriteLine($"error-text='{errorText}' message='{message?.Text}' help='{helpText}' card={cardBounds} box={boxBounds} message-bounds={messageBounds}");
+        message.Should().NotBeNull("a refused number is said in words, not by colour alone");
+        (messageBounds.Width > 0 && messageBounds.Height > 0).Should().BeTrue("the message is laid out");
+        cardBounds.Contains(messageBounds).Should().BeTrue("the message sits inside the field's card in the inspector");
+        messageBounds.Y.Should().BeGreaterThanOrEqualTo(boxBounds.Bottom, "the message sits under the box");
+        helpText.Should().Be(errorText, "a screen reader hears the same message");
     }
 
     [AvaloniaFact]

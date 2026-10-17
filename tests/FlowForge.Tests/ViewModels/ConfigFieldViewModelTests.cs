@@ -177,6 +177,55 @@ public class ConfigFieldViewModelTests
     }
 
     /// <summary>
+    /// A number typed with the user's thousands separator is stored whole: each keystroke of en-US
+    /// "1,920" parses, so the pipeline never ends up holding a prefix of it and no keystroke is refused.
+    /// </summary>
+    [Fact]
+    public void IntField_StoresANumberTypedWithThousandsSeparators()
+    {
+        Dictionary<string, JsonElement> config = ResizeConfig();
+        var vm = new ConfigFieldViewModel(ResizeWidth(), config, new StubDialogService());
+        var stored = new List<string>();
+
+        InCulture("en-US", () =>
+        {
+            foreach (string typed in new[] { "1", "1,", "1,9", "1,92", "1,920" })
+            {
+                vm.Value = typed;
+                stored.Add($"{typed}→{config["width"].GetRawText()} error={vm.HasError}");
+            }
+        });
+
+        stored.Should().Equal("1→1 error=False", "1,→1 error=False", "1,9→19 error=False", "1,92→192 error=False", "1,920→1920 error=False");
+    }
+
+    /// <summary>
+    /// Text that is still refused says so in words, naming the number the pipeline keeps; a number
+    /// the field takes clears it.
+    /// </summary>
+    [Fact]
+    public void IntField_RefusedText_NamesTheNumberThePipelineKeeps()
+    {
+        Dictionary<string, JsonElement> config = ResizeConfig();
+        var vm = new ConfigFieldViewModel(ResizeWidth(), config, new StubDialogService());
+
+        InCulture("en-US", () =>
+        {
+            vm.Value = "1";
+            vm.Value = "12";
+            vm.Value = "12x";
+        });
+
+        config["width"].GetInt32().Should().Be(12, "the last number the field took");
+        vm.HasError.Should().BeTrue();
+        vm.ErrorText.Should().Be("Whole numbers only. The pipeline keeps 12.");
+
+        vm.Value = "120";
+
+        vm.ErrorText.Should().BeNull("a number the field takes clears the message");
+    }
+
+    /// <summary>
     /// Redo of a clear removes the key again rather than leaving an empty value in its place.
     /// </summary>
     [Fact]
@@ -249,4 +298,19 @@ public class ConfigFieldViewModelTests
 
     private static Dictionary<string, JsonElement> ResizeConfig() =>
         new(StringComparer.Ordinal) { ["width"] = JsonSerializer.SerializeToElement(1920) };
+
+    // Runs the edits in a fixed culture, so the separators they type mean the same on every machine.
+    private static void InCulture(string name, Action edits)
+    {
+        System.Globalization.CultureInfo saved = System.Globalization.CultureInfo.CurrentCulture;
+        System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo(name);
+        try
+        {
+            edits();
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentCulture = saved;
+        }
+    }
 }

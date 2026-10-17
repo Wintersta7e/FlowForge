@@ -607,7 +607,8 @@ public sealed class EditorInteractionTests
 
     private static Type EditorTypeFor(ConfigFieldType type) => type switch
     {
-        ConfigFieldType.String or ConfigFieldType.Int or ConfigFieldType.MultiLine => typeof(TextBox),
+        ConfigFieldType.String or ConfigFieldType.MultiLine => typeof(TextBox),
+        ConfigFieldType.Int => typeof(StackPanel),
         ConfigFieldType.Bool => typeof(CheckBox),
         ConfigFieldType.Select => typeof(ComboBox),
         ConfigFieldType.FilePath or ConfigFieldType.FolderPath => typeof(DockPanel),

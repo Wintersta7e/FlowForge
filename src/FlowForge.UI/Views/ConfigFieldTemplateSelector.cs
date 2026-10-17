@@ -80,7 +80,8 @@ public class ConfigFieldTemplateSelector : IDataTemplate
         return textBox;
     }
 
-    private static TextBox BuildIntEditor(ConfigFieldViewModel field)
+    // Refused text is outlined and, under the box, said in words; a screen reader gets the words as help text.
+    private static StackPanel BuildIntEditor(ConfigFieldViewModel field)
     {
         TextBox textBox = new()
         {
@@ -89,7 +90,21 @@ public class ConfigFieldTemplateSelector : IDataTemplate
         textBox.Bind(TextBox.TextProperty,
             new Avalonia.Data.Binding("Value"));
         textBox.BindClass("error", new Avalonia.Data.Binding(nameof(ConfigFieldViewModel.HasError)), textBox);
-        return textBox;
+        textBox.Bind(Avalonia.Automation.AutomationProperties.HelpTextProperty,
+            new Avalonia.Data.Binding(nameof(ConfigFieldViewModel.ErrorText)));
+
+        TextBlock message = new()
+        {
+            FontSize = 11,
+            Foreground = ThemeHelper.GetBrush("ForgeError", "#ff2e88"),
+            TextWrapping = Avalonia.Media.TextWrapping.Wrap
+        };
+        message.Bind(TextBlock.TextProperty,
+            new Avalonia.Data.Binding(nameof(ConfigFieldViewModel.ErrorText)));
+        message.Bind(Visual.IsVisibleProperty,
+            new Avalonia.Data.Binding(nameof(ConfigFieldViewModel.HasError)));
+
+        return new StackPanel { Spacing = 4, Children = { textBox, message } };
     }
 
     // The card's label above names the field, so the box carries no text of its own.
