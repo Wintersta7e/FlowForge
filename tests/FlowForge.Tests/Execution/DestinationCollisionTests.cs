@@ -266,6 +266,32 @@ public class DestinationCollisionTests
         return (input, output);
     }
 
+    [Fact]
+    public async Task Dry_run_names_the_files_the_live_run_writes()
+    {
+        using var dir = new TempDirectory();
+        string input = CreateFolder(dir, "in");
+        string output = CreateFolder(dir, "out");
+        await File.WriteAllTextAsync(Path.Combine(input, "a.txt"), "A");
+        await File.WriteAllTextAsync(Path.Combine(input, "b.txt"), "B");
+        PipelineGraph graph = PipelineBuilder.New()
+            .AddSource("FolderInput", new { path = input })
+            .AddTransform("Sort", new { field = "filename", direction = "asc" })
+            .AddTransform("RenamePattern", new { pattern = "same{ext}" })
+            .AddOutput("FolderOutput", new { path = output })
+            .Build();
+
+        ExecutionResult dry = await CreateRunner(dir.StagingRoot).RunAsync(graph, dryRun: true);
+        ExecutionResult live = await CreateRunner(dir.StagingRoot).RunAsync(graph);
+
+        static string Names(ExecutionResult result) => string.Join(", ", result.Jobs
+            .OrderBy(j => j.OriginalPath, StringComparer.Ordinal)
+            .Select(j => $"{Path.GetFileName(j.OriginalPath)}→{j.FileName}"));
+        _output.WriteLine($"[dry-names] dry: {Names(dry)} live: {Names(live)}");
+        Names(live).Should().Be("a.txt→same.txt, b.txt→same_1.txt", Describe(live, output));
+        Names(dry).Should().Be(Names(live), "the dry run previews the names the live run writes");
+    }
+
     private static PipelineGraph Graph(string input, object outputConfig, bool recursive = false) =>
         PipelineBuilder.New()
             .AddSource("FolderInput", new { path = input, recursive })

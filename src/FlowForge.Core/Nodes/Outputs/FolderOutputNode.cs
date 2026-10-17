@@ -169,6 +169,8 @@ public class FolderOutputNode : IOutputNode
                 job.NodeLog.Add($"FolderOutput: Would backup '{claim.Path}' → '{claim.BackupPath}' [dry-run]");
             }
 
+            // The name only, in memory: the preview shows the file the live run would write.
+            job.CurrentPath = claim.Path;
             job.NodeLog.Add($"FolderOutput: → '{claim.Path}' ({_mode}) [dry-run]");
             return;
         }
