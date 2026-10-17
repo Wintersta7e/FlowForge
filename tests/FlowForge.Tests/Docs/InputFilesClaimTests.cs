@@ -8,7 +8,7 @@ using Xunit.Abstractions;
 namespace FlowForge.Tests.Docs;
 
 /// <summary>
-/// Rename and image nodes work on private copies and only Folder Output writes to the user's folders, so a run in
+/// Rename nodes copy nothing, image nodes write into a private run folder and only Folder Output writes to the user's folders, so a run in
 /// copy mode leaves the input files unchanged. The documents and Folder Output's mode description must say so, and
 /// never again warn that the nodes change files in the input folder.
 /// </summary>

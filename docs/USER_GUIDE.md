@@ -98,7 +98,9 @@ The bottom panel shows pipeline execution results:
 
 ## Nodes
 
-Rename and image nodes never change the input folder — they work on private copies, and only Folder Output writes to your folders. With `copy` the input files stay as they were; `move` deletes each one only after every delivery of it succeeded.
+Rename and image nodes never change the input folder — rename nodes copy nothing and change only the delivered name, and image nodes write their results into a private run folder. Only Folder Output writes to your folders. With `copy` the input files stay as they were; `move` deletes each one only after every delivery of it succeeded.
+
+The private run folder is created in `%TEMP%\FlowForge\runs` on Windows, and in `FlowForge/runs` under your per-user data folder elsewhere (usually `~/.local/share/FlowForge/runs` on Linux). Each Process node handles every file before the first file is delivered, so the folder needs room for every image the run rewrites: a PNG conversion of 12 photos held 22 MB there for 24 MB delivered. When the output folder is the input folder or inside it and `overwrite` is on, it also holds a copy of each input that another file is delivered onto. The folder is deleted when the run ends; one a run could not delete is removed by the next live run.
 
 ### Folder Input (Input)
 
