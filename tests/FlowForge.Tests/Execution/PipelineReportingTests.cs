@@ -204,11 +204,8 @@ public class PipelineReportingTests
 
         public Task<IEnumerable<FileJob>> TransformAsync(FileJob job, RunContext context, CancellationToken ct = default)
         {
-            var extra = new FileJob
-            {
-                OriginalPath = job.OriginalPath,
-                CurrentPath = Path.Combine(job.DirectoryName, "copy-" + job.FileName),
-            };
+            FileJob extra = context.Branch(job);
+            extra.CurrentPath = Path.Combine(job.DirectoryName, "copy-" + job.FileName);
             return Task.FromResult<IEnumerable<FileJob>>(new[] { job, extra });
         }
     }

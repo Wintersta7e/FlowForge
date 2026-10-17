@@ -413,35 +413,12 @@ public class PipelineRunner
             }
 
             done++;
+            List<FileJob> transformedList;
             try
             {
                 job.Status = FileJobStatus.Processing;
                 IEnumerable<FileJob> transformed = await transform.TransformAsync(job, context, ct).ConfigureAwait(false);
-                var transformedList = transformed.ToList();
-
-                if (transformedList.Count == 0)
-                {
-                    // Buffered nodes intentionally return empty from TransformAsync;
-                    // their jobs are routed after FlushAsync.
-                    if (transform is IBufferedTransformNode)
-                    {
-                        given.Add(job.Id);
-                    }
-                    else
-                    {
-                        HandleEmptyTransformResult(transform, job, context, result, lineages, progress);
-                    }
-                }
-                else
-                {
-                    lineages.Join(job, transformedList);
-                    foreach (FileJob extra in transformedList.Skip(1))
-                    {
-                        context.RetainBranch(extra);
-                    }
-
-                    RouteEmitted(transform.TypeKey, nodeId, transformedList, router, context, result, lineages, progress);
-                }
+                transformedList = transformed.ToList();
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -449,6 +426,27 @@ public class PipelineRunner
                 job.ErrorMessage = ex.Message;
                 _logger.LogError(ex, "Transform {NodeType} failed for {File}", transform.TypeKey, job.OriginalPath);
                 RecordTerminal(job, context, lineages, result, progress);
+                continue;
+            }
+
+            if (transformedList.Count == 0)
+            {
+                // Buffered nodes intentionally return empty from TransformAsync;
+                // their jobs are routed after FlushAsync.
+                if (transform is IBufferedTransformNode)
+                {
+                    given.Add(job.Id);
+                }
+                else
+                {
+                    HandleEmptyTransformResult(transform, job, context, result, lineages, progress);
+                }
+            }
+            else
+            {
+                EnsureExtrasAreBranches(transform.TypeKey, nodeId, job, transformedList, context);
+                lineages.Join(job, transformedList);
+                RouteEmitted(transform.TypeKey, nodeId, transformedList, router, context, result, lineages, progress);
             }
         }
 
@@ -483,6 +481,29 @@ public class PipelineRunner
         {
             throw new InvalidOperationException(
                 $"Transform '{typeKey}' ({nodeId}) must return exactly the files it was given when it flushes; it left out {missing} and returned {foreign} it was not given.");
+        }
+    }
+
+    /// <summary>
+    /// The content count and each original's branch count know an extra job only when
+    /// <see cref="RunContext.Branch"/> made it from the job the transform was given, so every job returned after
+    /// the first must be such a branch, each once. Anything else stops the run before any file is delivered.
+    /// </summary>
+    private static void EnsureExtrasAreBranches(string typeKey, Guid nodeId, FileJob given, IReadOnlyList<FileJob> transformed, RunContext context)
+    {
+        int foreign = 0;
+        foreach (FileJob extra in transformed.Skip(1))
+        {
+            if (!context.TakeBranch(extra, given))
+            {
+                foreign++;
+            }
+        }
+
+        if (foreign > 0)
+        {
+            throw new InvalidOperationException(
+                $"Transform '{typeKey}' ({nodeId}) must make every extra file it returns with RunContext.Branch; it returned {foreign} made some other way.");
         }
     }
 

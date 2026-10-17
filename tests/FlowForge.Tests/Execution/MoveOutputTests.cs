@@ -359,12 +359,8 @@ public class MoveOutputTests
 
         public Task<IEnumerable<FileJob>> TransformAsync(FileJob job, RunContext context, CancellationToken ct = default)
         {
-            var extra = new FileJob
-            {
-                OriginalPath = job.OriginalPath,
-                ContentPath = job.ContentPath,
-                CurrentPath = Path.Combine(job.DirectoryName, "copy-" + job.FileName),
-            };
+            FileJob extra = context.Branch(job);
+            extra.CurrentPath = Path.Combine(job.DirectoryName, "copy-" + job.FileName);
             return Task.FromResult<IEnumerable<FileJob>>([job, extra]);
         }
     }

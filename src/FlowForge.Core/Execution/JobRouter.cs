@@ -34,9 +34,8 @@ internal sealed class JobRouter
         _carried[outgoing[0]].Add(job);
         foreach (Connection connection in outgoing.Skip(1))
         {
-            FileJob clone = job.CloneForBranch();
+            FileJob clone = _context.Branch(job);
             _lineages.Branch(job, clone);
-            _context.RetainBranch(clone);
             _carried[connection].Add(clone);
         }
     }

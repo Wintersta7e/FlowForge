@@ -16,6 +16,9 @@ public sealed class RunContext : IDisposable
     /// <summary>Live jobs whose content is each staged file; only paths this run handed out are tracked.</summary>
     private readonly Dictionary<string, int> _references = new(StringComparer.Ordinal);
 
+    /// <summary>Each job <see cref="Branch"/> made and no check has taken yet, with the id of the job it was made from.</summary>
+    private readonly Dictionary<Guid, Guid> _branchSources = [];
+
     private string? _runDirectory;
     private FileStream? _lock;
 
@@ -162,15 +165,35 @@ public sealed class RunContext : IDisposable
     }
 
     /// <summary>
-    /// Counts one more live branch: a clone or extra job that reads the same content as the job it came from
-    /// and, in a live run, must end before a moved original is deleted.
+    /// A copy of <paramref name="job"/> for one more path through the pipeline, counted as a live branch from
+    /// now on: it reads the job's content until it is given its own and, in a live run, must end before a moved
+    /// original is deleted. Every extra job a transform returns must come from here.
     /// </summary>
-    internal void RetainBranch(FileJob branch)
+    internal FileJob Branch(FileJob job)
     {
+        FileJob branch = job.CloneForBranch();
         RetainContent(branch);
         if (!DryRun)
         {
             Destinations.RegisterBranch(branch.OriginalPath);
+        }
+
+        lock (_gate)
+        {
+            _branchSources[branch.Id] = job.Id;
+        }
+
+        return branch;
+    }
+
+    /// <summary>
+    /// True, once, when <see cref="Branch"/> made <paramref name="extra"/> from <paramref name="job"/>.
+    /// </summary>
+    internal bool TakeBranch(FileJob extra, FileJob job)
+    {
+        lock (_gate)
+        {
+            return _branchSources.Remove(extra.Id, out Guid source) && source == job.Id;
         }
     }
 

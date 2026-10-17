@@ -327,6 +327,57 @@ public class PipelineRoutingTests
         dir.OutputFiles.Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task Extra_with_its_own_content_after_a_convert_delivers_both_files()
+    {
+        using var dir = new TempDirectory();
+        string input = Path.Combine(dir.Path, "in");
+        TestFileFactory.CreateTestImage(Path.Combine(input, "photo.jpg"));
+        string output = Path.Combine(dir.Path, "out");
+        var registry = NodeRegistry.CreateDefault(NullLoggerFactory.Instance);
+        registry.Register(VariantTransform.RegisteredTypeKey, () => new VariantTransform(), "Variant", NodeCategory.Transform, () => []);
+        PipelineGraph graph = PipelineBuilder.New()
+            .AddSource("FolderInput", new { path = input, recursive = false })
+            .AddTransform("ImageConvert", new { format = "png" })
+            .AddTransform(VariantTransform.RegisteredTypeKey, new { })
+            .AddOutput("FolderOutput", new { path = output, mode = "copy" })
+            .Build();
+
+        ExecutionResult result = await new PipelineRunner(registry, NullLogger<PipelineRunner>.Instance, maxConcurrency: 1, dir.StagingRoot).RunAsync(graph);
+
+        Dictionary<string, string> delivered = Hashes(output);
+        string failures = string.Join("; ", result.Jobs.Where(j => j.Status == FileJobStatus.Failed).Select(j => j.ErrorMessage));
+        _output.WriteLine($"[restaged-extra] out: {Listing(delivered)} failures: {failures}");
+        result.Succeeded.Should().Be(2, failures);
+        delivered.Keys.Should().BeEquivalentTo(["photo.png", "variant-photo.png"], failures);
+        delivered["variant-photo.png"].Should().Be(delivered["photo.png"]);
+    }
+
+    [Fact]
+    public async Task Extra_not_made_by_the_run_is_refused_naming_the_node()
+    {
+        using var dir = new TempDirectory();
+        dir.CreateFiles("a.txt");
+        var registry = NodeRegistry.CreateDefault(NullLoggerFactory.Instance);
+        registry.Register(HandBuiltExtraTransform.RegisteredTypeKey, () => new HandBuiltExtraTransform(), "Hand-built Extra", NodeCategory.Transform, () => []);
+        NodeDefinition source = PipelineBuilder.Node("FolderInput", new { path = dir.Path, recursive = false });
+        NodeDefinition extra = PipelineBuilder.Node(HandBuiltExtraTransform.RegisteredTypeKey, new { });
+        NodeDefinition output = PipelineBuilder.Node("FolderOutput", new { path = dir.OutputPath, mode = "copy" });
+        var graph = new PipelineGraph
+        {
+            Nodes = { source, extra, output },
+            Connections = { Wire(source, extra), Wire(extra, output) },
+        };
+        var runner = new PipelineRunner(registry, NullLogger<PipelineRunner>.Instance, maxConcurrency: 1, stagingRoot: dir.StagingRoot);
+
+        Func<Task> act = () => runner.RunAsync(graph, dryRun: false);
+
+        string message = (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Message;
+        _output.WriteLine($"[hand-built-extra] {message}");
+        message.Should().Contain($"'{HandBuiltExtraTransform.RegisteredTypeKey}' ({extra.Id})");
+        dir.OutputFiles.Should().BeEmpty();
+    }
+
     private static (PipelineGraph Graph, NodeDefinition Buffer, PipelineRunner Runner) MisbehavingBufferRun(TempDirectory dir, bool addsAJob)
     {
         var registry = NodeRegistry.CreateDefault(NullLoggerFactory.Instance);
@@ -477,6 +528,51 @@ public class PipelineRoutingTests
                 ? [.. _buffer, new FileJob { OriginalPath = first.OriginalPath, ContentPath = first.ContentPath, CurrentPath = Path.Combine(first.DirectoryName, "extra-" + first.FileName) }]
                 : _buffer.Take(_buffer.Count - 1).ToList();
             return Task.FromResult<IEnumerable<FileJob>>(flushed);
+        }
+    }
+
+    /// <summary>Returns each job together with a branch that carries its own staged copy of the content, as variant-&lt;name&gt;.</summary>
+    private sealed class VariantTransform : ITransformNode
+    {
+        public const string RegisteredTypeKey = "Variant";
+
+        public string TypeKey => RegisteredTypeKey;
+
+        public void Configure(IDictionary<string, JsonElement> config)
+        {
+        }
+
+        public async Task<IEnumerable<FileJob>> TransformAsync(FileJob job, RunContext context, CancellationToken ct = default)
+        {
+            FileJob variant = context.Branch(job);
+            string staged = context.NewStagingPath(Path.GetExtension(job.ContentPath));
+            await File.WriteAllBytesAsync(staged, await File.ReadAllBytesAsync(job.ContentPath, ct), ct);
+            context.SetContent(variant, staged);
+            variant.CurrentPath = Path.Combine(job.DirectoryName, "variant-" + job.FileName);
+            return [job, variant];
+        }
+    }
+
+    /// <summary>Returns each job together with an extra job built by hand rather than by the run.</summary>
+    private sealed class HandBuiltExtraTransform : ITransformNode
+    {
+        public const string RegisteredTypeKey = "HandBuiltExtra";
+
+        public string TypeKey => RegisteredTypeKey;
+
+        public void Configure(IDictionary<string, JsonElement> config)
+        {
+        }
+
+        public Task<IEnumerable<FileJob>> TransformAsync(FileJob job, RunContext context, CancellationToken ct = default)
+        {
+            var extra = new FileJob
+            {
+                OriginalPath = job.OriginalPath,
+                ContentPath = job.ContentPath,
+                CurrentPath = Path.Combine(job.DirectoryName, "extra-" + job.FileName),
+            };
+            return Task.FromResult<IEnumerable<FileJob>>([job, extra]);
         }
     }
 }
