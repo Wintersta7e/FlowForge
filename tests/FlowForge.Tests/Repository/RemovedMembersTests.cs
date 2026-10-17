@@ -52,6 +52,7 @@ public partial class RemovedMembersTests
         "SourceOffsetProperty",
         "TargetOffsetProperty",
         "ApplyOffset",
+        "ConfigKey",
     ];
 
     // Text that must not come back in one file; other files may still use it.

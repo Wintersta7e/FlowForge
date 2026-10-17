@@ -14,11 +14,6 @@ public sealed class ChangeConfigCommand : IUndoableCommand
 
     public string Description { get; }
 
-    /// <summary>
-    /// Identifies the config field for coalescing repeated edits (e.g., keystrokes).
-    /// </summary>
-    public string ConfigKey => _key;
-
     public ChangeConfigCommand(
         IDictionary<string, JsonElement> config,
         string key,
