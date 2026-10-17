@@ -6,6 +6,7 @@ using Avalonia.Input;
 using Avalonia.VisualTree;
 using FlowForge.Core.Pipeline.Templates;
 using FlowForge.UI.ViewModels;
+using FlowForge.UI.Views;
 using FluentAssertions;
 using Nodify.Avalonia;
 using Xunit.Abstractions;
@@ -63,6 +64,24 @@ public sealed class TemplateCardTests
         session.RenderUntil(() => session.TemplateCards().Count == templates, "template cards laid out");
 
         session.TemplateCardsOutsideCanvas(bringIntoView).Should().BeEmpty("every template card lies inside the canvas pane");
+    }
+
+    // The canvas hint sits behind the empty state's text; it shows only once there are stations to drag.
+    [AvaloniaTheory]
+    [InlineData(1400, 820)]
+    [InlineData(900, 560)]
+    public void Canvas_hint_shows_only_once_the_canvas_has_stations(int width, int height)
+    {
+        using var session = VisualSession.Open(_output, new Size(width, height));
+        session.RenderUntil(() => session.TemplateCards().Count == PipelineTemplateLibrary.Templates.Count, "template cards laid out");
+        TextBlock hint = session.ById<TextBlock>("CanvasHint");
+        _output.WriteLine($"empty: hint visible={hint.IsEffectivelyVisible}");
+        hint.IsEffectivelyVisible.Should().BeFalse("the hint does not show through the empty state");
+
+        session.LoadTemplate(VisualSession.WebExportTemplate);
+        PixelRect pane = session.BoundsInWindow(session.Window.GetVisualDescendants().OfType<CanvasView>().Single());
+        _output.WriteLine($"loaded: nodes={session.ViewModel.Editor.Nodes.Count} hint visible={hint.IsEffectivelyVisible} hint={session.BoundsInWindow(hint)} pane={pane}");
+        hint.IsEffectivelyVisible.Should().BeTrue("the hint shows once the canvas has stations");
     }
 
     // The empty state's scrolling must not take the wheel from the editor once a pipeline is open.

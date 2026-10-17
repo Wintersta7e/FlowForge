@@ -1030,8 +1030,10 @@
                 BorderThickness="0,0,1,1"
                 Opacity="0.5" />
 
-        <!-- Hint caption top-left -->
+        <!-- Hint caption top-left; hidden with no stations, where it would show through the empty state -->
         <TextBlock IsHitTestVisible="False"
+                   IsVisible="{Binding HasNodes}"
+                   AutomationProperties.AutomationId="CanvasHint"
                    Text="drag stations · click to select · ▶ ignite to run"
                    FontFamily="{DynamicResource MwMono}"
                    FontSize="10"
