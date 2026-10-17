@@ -69,6 +69,10 @@ internal static class VisualFrames
 
     public const string AccentCheckBox = "accent-checkbox";
 
+    public const string IntFieldRefusedFocused = "int-field-refused-focused";
+
+    public const string IntFieldRefusedUnfocused = "int-field-refused-unfocused";
+
     public const string ToolbarUndoDisabled = "toolbar-undo-disabled";
 
     public const string StationFlaggedUnconnected = "station-flagged-unconnected";

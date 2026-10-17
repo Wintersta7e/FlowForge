@@ -149,6 +149,63 @@ public sealed class ThemePaintTests
         WithinTolerance(measured, expected).Should().BeTrue("a checked box is filled with the Dark palette's SystemAccentColorLight1");
     }
 
+    // An Int field holding text it refused is outlined in the error colour, while the user types in it and
+    // after focus moves on; a field holding a valid value is not, focused or not.
+    [AvaloniaFact]
+    public void RefusedIntField_BorderPaintsErrorColour()
+    {
+        using var session = VisualSession.Open(_output);
+        EditorViewModel editor = session.ViewModel.Editor;
+        editor.AddNode("ImageResize", new Point(200, 160), session.ViewModel.Registry);
+        PipelineNodeViewModel node = editor.Nodes.Single();
+        session.Click(session.WaitForStation(node));
+        session.RenderUntil(
+            () => ReferenceEquals(editor.SelectedNode, node) && session.InspectorReady(),
+            "ImageResize selected and its fields shown");
+        TextBox Field(string key) => session.InspectorCards()
+            .Single(card => card.DataContext is ConfigFieldViewModel field && string.Equals(field.Key, key, StringComparison.Ordinal))
+            .GetVisualDescendants().OfType<TextBox>().Single();
+        TextBox width = Field("width");
+        TextBox height = Field("height");
+        Color error = ThemeResource<ISolidColorBrush>("ForgeError").Color;
+        var measured = new List<(string Case, bool Refused, Color Colour)>();
+        void Measure(WriteableBitmap frame, string state, TextBox box, bool refused)
+        {
+            Border border = box.GetVisualDescendants().OfType<Border>()
+                .Single(part => string.Equals(part.Name, "PART_BorderElement", StringComparison.Ordinal));
+            PixelRect bounds = session.BoundsInWindow(border);
+
+            // The box's left edge, its thickest side, clear of the corners.
+            var band = new PixelRect(bounds.X, bounds.Y + 2, 1, bounds.Height - 4);
+            Color colour = session.MeanColour(frame, band);
+            _output.WriteLine($"{state}: text='{box.Text}' focused={box.IsFocused} error-class={box.Classes.Contains("error")} band={band} measured={colour} error={error} tolerance={ColourTolerance}");
+            measured.Add((state, refused, colour));
+        }
+
+        session.Click(width);
+        session.RenderUntil(() => width.IsFocused, "the width field focused");
+        session.Window.KeyTextInput("12x");
+        session.RenderUntil(() => ((ConfigFieldViewModel)width.DataContext!).HasError, "the width field refuses its text");
+        using (WriteableBitmap frame = session.Capture(VisualFrames.IntFieldRefusedFocused))
+        {
+            Measure(frame, "refused width, focused", width, refused: true);
+            Measure(frame, "valid height, unfocused", height, refused: false);
+        }
+
+        session.Click(height);
+        session.RenderUntil(() => height.IsFocused && !width.IsFocused, "the height field focused");
+        using (WriteableBitmap frame = session.Capture(VisualFrames.IntFieldRefusedUnfocused))
+        {
+            Measure(frame, "refused width, unfocused", width, refused: true);
+            Measure(frame, "valid height, focused", height, refused: false);
+        }
+
+        foreach ((string state, bool refused, Color colour) in measured)
+        {
+            WithinTolerance(colour, error).Should().Be(refused, $"the {state} box is outlined in ForgeError only when it holds refused text");
+        }
+    }
+
     [AvaloniaFact]
     public void BodyFont_ResolvesToBundledInter()
     {
