@@ -15,6 +15,7 @@ public partial class SamplePipelineTests
 {
     private const string SamplesReadme = "samples/README.md";
     private const string NodesPrefix = "- **Nodes:** ";
+    private const string ChainSeparator = " → ";
 
     private readonly ITestOutputHelper _output;
 
@@ -102,7 +103,9 @@ public partial class SamplePipelineTests
 
             failures.AddRange(graph.LoadNotices.Select(n => $"{name}: notice {n.Code}"));
 
-            IReadOnlyList<string> chain = ClaimCheck.TopologicalTypeKeys(graph);
+            string[] chain = ClaimCheck.TopologicalTypeKeys(graph)
+                .Select(k => registry.IsRegistered(k) ? registry.GetDisplayName(k) : k)
+                .ToArray();
             if (!documented.TryGetValue(name, out (int Line, string[] Chain) doc))
             {
                 failures.Add($"{SamplesReadme}: {name}: no heading");
@@ -110,7 +113,7 @@ public partial class SamplePipelineTests
             }
             else if (!doc.Chain.SequenceEqual(chain, StringComparer.Ordinal))
             {
-                failures.Add($"{SamplesReadme}:{doc.Line}: {name}: documented {string.Join(" -> ", doc.Chain)}, graph {string.Join(" -> ", chain)}");
+                failures.Add($"{SamplesReadme}:{doc.Line}: {name}: documented {string.Join(ChainSeparator, doc.Chain)}, graph {string.Join(ChainSeparator, chain)}");
                 chainMismatches++;
             }
 
@@ -240,7 +243,7 @@ public partial class SamplePipelineTests
             {
                 if (lines[j].StartsWith(NodesPrefix, StringComparison.Ordinal))
                 {
-                    entry = (j + 1, lines[j][NodesPrefix.Length..].Trim().Split(" -> "));
+                    entry = (j + 1, lines[j][NodesPrefix.Length..].Trim().Split(ChainSeparator));
                     break;
                 }
             }

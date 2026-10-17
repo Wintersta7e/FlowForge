@@ -5,7 +5,9 @@ using Avalonia.Controls.Presenters;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Media.TextFormatting;
 using Avalonia.VisualTree;
 using FlowForge.Core.Execution;
 using FlowForge.Core.Nodes.Base;
@@ -28,7 +30,6 @@ namespace FlowForge.Tests.Visual;
 public sealed class EditorInteractionTests
 {
     private const string EditedPattern = "{name}_edited{ext}";
-    private const string WebExportTemplate = "image-web-export";
 
     private readonly ITestOutputHelper _output;
 
@@ -50,8 +51,8 @@ public sealed class EditorInteractionTests
         session.RenderUntil(() => LibraryRows(window).Any(row => row.Bounds.Height > 0), "library rows shown");
         TreeViewItem row = LibraryRows(window).First();
         string typeKey = ((NodeLibraryItemViewModel)row.DataContext!).TypeKey;
-        NodifyEditor editor = Editor(window);
-        Point start = CentreInWindow(row);
+        NodifyEditor editor = session.Canvas();
+        Point start = session.CentreOf(row);
         Point drop = InWindow(editor, new Point(editor.Bounds.Width * 0.4, editor.Bounds.Height * 0.3));
 
         window.MouseDown(start, MouseButton.Left, RawInputModifiers.None);
@@ -85,10 +86,10 @@ public sealed class EditorInteractionTests
         editor.AddNode("Sort", new Point(440, 120), session.ViewModel.Registry);
         PipelineNodeViewModel a = editor.Nodes[0];
         PipelineNodeViewModel b = editor.Nodes[1];
-        Connector aOut = WaitForPort(session, a.Output[0]);
-        Connector aIn = WaitForPort(session, a.Input[0]);
-        Connector bOut = WaitForPort(session, b.Output[0]);
-        Connector bIn = WaitForPort(session, b.Input[0]);
+        Connector aOut = session.WaitForPort(a.Output[0]);
+        Connector aIn = session.WaitForPort(a.Input[0]);
+        Connector bOut = session.WaitForPort(b.Output[0]);
+        Connector bIn = session.WaitForPort(b.Input[0]);
 
         DragBetween(session, aOut, bIn, () =>
         {
@@ -137,7 +138,7 @@ public sealed class EditorInteractionTests
         using WriteableBitmap frame = session.Capture(VisualFrames.Inspector(typeKey));
 
         IReadOnlyList<ConfigField> schema = registry.GetConfigSchema(typeKey);
-        List<ContentPresenter> cards = InspectorCards(session);
+        List<ContentPresenter> cards = session.InspectorCards();
         _output.WriteLine($"type-keys={RegisteredTypeKeys.Count}");
         session.ViewModel.Editor.SelectedNode!.TypeKey.Should().Be(typeKey);
         cards.Should().HaveCount(schema.Count, "the inspector shows one card per schema field");
@@ -155,43 +156,103 @@ public sealed class EditorInteractionTests
         _output.WriteLine($"fields-checked={schema.Count}");
     }
 
+    // A station's title and subtitle are trimmed to its text column; hovering either shows it in full.
+    [AvaloniaFact]
+    public void Station_title_and_subtitle_show_their_full_text_on_hover()
+    {
+        using var session = VisualSession.Open(_output);
+        EditorViewModel editor = session.ViewModel.Editor;
+        NodeRegistry registry = session.ViewModel.Registry;
+        var typeKeys = registry.GetRegisteredTypeKeys().Order(StringComparer.Ordinal).ToList();
+        for (int i = 0; i < typeKeys.Count; i++)
+        {
+            editor.AddNode(typeKeys[i], new Point(20 + (220 * (i % 4)), 20 + (150 * (i / 4))), registry);
+        }
+
+        (TextBlock Title, TextBlock Subtitle)? hovered = null;
+        foreach (PipelineNodeViewModel node in editor.Nodes)
+        {
+            ItemContainer station = session.WaitForStation(node);
+            string displayName = registry.GetDisplayName(node.TypeKey);
+            TextBlock title = station.GetVisualDescendants().OfType<TextBlock>()
+                .Single(text => string.Equals(text.Text, displayName, StringComparison.Ordinal));
+            TextBlock subtitle = station.GetVisualDescendants().OfType<TextBlock>().Single(text => text.Classes.Contains("mw-sub"));
+            bool trimmed = title.TextLayout.TextLines.Any(line => line.HasCollapsed);
+            _output.WriteLine(
+                $"{node.TypeKey}: title '{displayName}' {FullWidth(title):F1} px in a {title.Bounds.Width:F1} px column trimmed={trimmed}"
+                + $" | subtitle '{node.MwSub}' {FullWidth(subtitle):F1} px in {subtitle.Bounds.Width:F1}"
+                + $" | tips '{ToolTip.GetTip(title)}' / '{ToolTip.GetTip(subtitle)}'");
+            ToolTip.GetTip(title).Should().Be(displayName, $"{node.TypeKey}'s title tooltip is its full display name");
+            subtitle.Text.Should().Be(node.MwSub);
+            ToolTip.GetTip(subtitle).Should().Be(node.MwSub, $"{node.TypeKey}'s subtitle tooltip is its full subtitle");
+            if (trimmed && hovered is null)
+            {
+                hovered = (title, subtitle);
+            }
+        }
+
+        _output.WriteLine($"types-checked={editor.Nodes.Count} registered={typeKeys.Count}");
+        editor.Nodes.Should().HaveCount(typeKeys.Count);
+        hovered.Should().NotBeNull("at least one title is trimmed to the column");
+        foreach (TextBlock text in new[] { hovered!.Value.Title, hovered.Value.Subtitle })
+        {
+            session.Window.MouseMove(session.CentreOf(text), RawInputModifiers.None);
+            session.RenderUntil(() => ToolTip.GetIsOpen(text), $"the tooltip of '{text.Text}' opens on hover");
+        }
+    }
+
     [AvaloniaFact]
     public async Task Edited_fields_survive_save_and_reload()
     {
         using var session = VisualSession.Open(_output);
-        MainWindow window = session.Window;
         EditorViewModel editor = session.ViewModel.Editor;
         editor.AddNode("RenamePattern", new Point(80, 120), session.ViewModel.Registry);
         editor.AddNode("FolderOutput", new Point(440, 120), session.ViewModel.Registry);
+        editor.AddNode("ImageResize", new Point(260, 300), session.ViewModel.Registry);
         PipelineNodeViewModel rename = editor.Nodes[0];
         PipelineNodeViewModel output = editor.Nodes[1];
+        PipelineNodeViewModel resize = editor.Nodes[2];
+        resize.Config["width"] = JsonSerializer.SerializeToElement(1920);
 
         Select(session, rename);
+        TextBox pattern = FieldEditor<TextBox>(session, "pattern");
         EditField(session, "pattern", () =>
         {
-            Click(window, CentreInWindow(FieldEditor<TextBox>(session, "pattern")));
-            window.KeyTextInput(EditedPattern);
+            session.Click(pattern);
+            session.Window.KeyTextInput(EditedPattern);
         });
+        bool patternFocused = pattern.IsFocused;
         EditField(session, "startIndex", () =>
         {
-            Click(window, CentreInWindow(FieldEditor<TextBox>(session, "startIndex")));
-            window.KeyPress(Key.A, RawInputModifiers.Control, PhysicalKey.A, "a");
-            window.KeyRelease(Key.A, RawInputModifiers.Control, PhysicalKey.A, "a");
-            window.KeyTextInput("7");
+            session.Click(FieldEditor<TextBox>(session, "startIndex"));
+            session.Press("Ctrl+A");
+            session.Window.KeyTextInput("7");
+        });
+        Select(session, resize);
+        EditField(session, "width", () =>
+        {
+            session.Click(FieldEditor<TextBox>(session, "width"));
+            session.Press("Ctrl+A");
+            session.Press("Back");
         });
         Select(session, output);
-        EditField(session, "overwrite", () => Click(window, CentreInWindow(FieldEditor<CheckBox>(session, "overwrite"))));
+        EditField(session, "overwrite", () => session.Click(FieldEditor<CheckBox>(session, "overwrite")));
         EditField(session, "mode", () => PickOption(session, FieldEditor<ComboBox>(session, "mode"), "move"));
         using WriteableBitmap frame = session.Capture(VisualFrames.EditPersists);
 
-        (PipelineNodeViewModel Node, string Key, string Expected)[] edits =
+        _output.WriteLine($"pattern field focused after its edit={patternFocused}");
+        patternFocused.Should().BeTrue("the field keeps the focus through the edit it sends");
+
+        // A null value is a key the edit removed: an emptied Int box clears the setting.
+        (PipelineNodeViewModel Node, string Key, string? Expected)[] edits =
         [
             (rename, "pattern", EditedPattern),
             (rename, "startIndex", "7"),
+            (resize, "width", null),
             (output, "overwrite", "true"),
             (output, "mode", "move"),
         ];
-        foreach ((PipelineNodeViewModel node, string key, string expected) in edits)
+        foreach ((PipelineNodeViewModel node, string key, string? expected) in edits)
         {
             ValueText(node.Config, key).Should().Be(expected, $"typing into {key} updates the node's config");
         }
@@ -199,7 +260,7 @@ public sealed class EditorInteractionTests
         string path = Path.Combine(session.Temp.Path, "edit.ffpipe");
         await PipelineSerializer.SaveAsync(editor.BuildGraph(), path);
         PipelineGraph reloaded = await PipelineSerializer.LoadAsync(path);
-        foreach ((PipelineNodeViewModel node, string key, string expected) in edits)
+        foreach ((PipelineNodeViewModel node, string key, string? expected) in edits)
         {
             string? value = ValueText(reloaded.Nodes.Single(n => n.Id == node.Id).Config, key);
             _output.WriteLine($"reloaded {node.TypeKey}.{key}={value}");
@@ -208,16 +269,77 @@ public sealed class EditorInteractionTests
     }
 
     [AvaloniaFact]
+    public void Typing_into_a_field_keeps_its_focus_so_Delete_edits_the_text()
+    {
+        using var session = VisualSession.Open(_output);
+        MainWindow window = session.Window;
+        EditorViewModel editor = session.ViewModel.Editor;
+        editor.AddNode("RenamePattern", new Point(80, 120), session.ViewModel.Registry);
+        PipelineNodeViewModel rename = editor.Nodes[0];
+        TextBox box = FocusField(session, rename, "pattern");
+        window.KeyPress(Key.A, RawInputModifiers.Control, PhysicalKey.A, "a");
+        window.KeyRelease(Key.A, RawInputModifiers.Control, PhysicalKey.A, "a");
+
+        // Two keystrokes, each committed and the queued work run before the next.
+        foreach (string text in new[] { "a", "b" })
+        {
+            window.KeyTextInput(text);
+            session.Pump();
+            _output.WriteLine($"after '{text}': pattern='{ValueText(rename.Config, "pattern")}' focused={Focused(window)}");
+        }
+
+        string? typed = ValueText(rename.Config, "pattern");
+        bool kept = box.IsFocused;
+        int before = editor.Nodes.Count;
+        session.Press("Delete");
+        session.Pump();
+        _output.WriteLine($"after Delete: nodes {before} -> {editor.Nodes.Count}");
+
+        typed.Should().Be("ab", "each keystroke lands in the field");
+        kept.Should().BeTrue("the field keeps the focus through its own edits");
+        editor.Nodes.Should().HaveCount(before, "Delete in a focused field edits its text, not the canvas");
+        editor.Nodes.Should().Contain(rename);
+    }
+
+    [AvaloniaFact]
+    public void Saving_keeps_the_focused_field_so_Delete_edits_the_text()
+    {
+        using var session = VisualSession.Open(_output);
+        MainWindowViewModel vm = session.ViewModel;
+        EditorViewModel editor = vm.Editor;
+        editor.AddNode("RenamePattern", new Point(80, 120), vm.Registry);
+        PipelineNodeViewModel rename = editor.Nodes[0];
+        string path = Path.Combine(session.Temp.Path, "focused.ffpipe");
+        vm.CurrentFilePath = path;
+        TextBox box = FocusField(session, rename, "pattern");
+        bool dirty = vm.IsDirty;
+
+        session.Press("Ctrl+S");
+        session.RenderUntil(() => !vm.IsDirty, "the pipeline saved");
+        session.Pump();
+        bool kept = box.IsFocused;
+        int before = editor.Nodes.Count;
+        session.Press("Delete");
+        session.Pump();
+        _output.WriteLine($"saved={File.Exists(path)} focused after save={Focused(session.Window)} nodes {before} -> {editor.Nodes.Count}");
+
+        dirty.Should().BeTrue("the added station is an unsaved change");
+        kept.Should().BeTrue("a save leaves the focused field focused");
+        editor.Nodes.Should().HaveCount(before, "Delete in a focused field edits its text, not the canvas");
+        editor.Nodes.Should().Contain(rename);
+    }
+
+    [AvaloniaFact]
     public void Delete_and_undo_restore_the_selected_station()
     {
         using var session = VisualSession.Open(_output);
         MainWindow window = session.Window;
         EditorViewModel editor = session.ViewModel.Editor;
-        session.ViewModel.LoadTemplateCommand.Execute(WebExportTemplate);
+        session.LoadTemplate(VisualSession.WebExportTemplate);
         PipelineNodeViewModel station = editor.Nodes[1];
         int before = editor.Nodes.Count;
 
-        Click(window, CentreInWindow(WaitForStation(session, station)));
+        session.Click(session.WaitForStation(station));
         session.RenderUntil(() => editor.SelectedNode is not null, "a station selected");
         PipelineNodeViewModel? selected = editor.SelectedNode;
         window.KeyPress(Key.Delete, RawInputModifiers.None, PhysicalKey.Delete, keySymbol: null);
@@ -250,9 +372,9 @@ public sealed class EditorInteractionTests
         var start = new Point(200, 160);
         editor.AddNode("RenamePattern", start, session.ViewModel.Registry);
         PipelineNodeViewModel node = editor.Nodes.Single();
-        NodifyEditor canvas = Editor(window);
+        NodifyEditor canvas = session.Canvas();
         Vector delta = new Vector(80, 40) * canvas.ViewportZoom;
-        Point from = CentreInWindow(WaitForStation(session, node));
+        Point from = session.CentreOf(session.WaitForStation(node));
 
         // A real pointer reaches the station before pressing; the editor reads that last pointer
         // event when a station drag begins, and has none if the press is the first event it sees.
@@ -279,23 +401,14 @@ public sealed class EditorInteractionTests
     {
         using var session = VisualSession.Open(_output);
         EditorViewModel editor = session.ViewModel.Editor;
-        session.ViewModel.LoadTemplateCommand.Execute(WebExportTemplate);
 
         // Fitting measures the laid-out stations, so they must exist first.
-        session.RenderUntil(() => Stations(session.Window).Count == editor.Nodes.Count, "template stations laid out");
+        session.LoadTemplate(VisualSession.WebExportTemplate);
         editor.RequestFitToScreen();
-        NodifyEditor canvas = Editor(session.Window);
-        var visible = new Rect(canvas.Bounds.Size);
-
-        // Both corners go through the zoom transform; a station's own bounds are unscaled.
-        session.RenderUntil(
-            () => Stations(session.Window).All(s =>
-                visible.Contains(s.TranslatePoint(default, canvas)!.Value)
-                && visible.Contains(s.TranslatePoint(new Point(s.Bounds.Width, s.Bounds.Height), canvas)!.Value)),
-            "every template station fitted on screen");
+        session.RenderUntil(session.StationsInsideCanvas, "every template station fitted on screen");
         using WriteableBitmap frame = session.Capture(VisualFrames.NodeRender);
 
-        List<ItemContainer> stations = Stations(session.Window);
+        List<ItemContainer> stations = session.Stations();
         foreach (ItemContainer station in stations)
         {
             var node = (PipelineNodeViewModel)station.DataContext!;
@@ -315,8 +428,84 @@ public sealed class EditorInteractionTests
         stations.Should().HaveCount(editor.Nodes.Count);
     }
 
-    private static NodifyEditor Editor(Window window) =>
-        window.GetVisualDescendants().OfType<NodifyEditor>().Single(e => string.Equals(e.Name, "Editor", StringComparison.Ordinal));
+    [AvaloniaFact]
+    public void Wheel_zooms_within_its_range_and_middle_or_right_drag_pans()
+    {
+        using var session = VisualSession.Open(_output);
+        session.LoadTemplate(VisualSession.WebExportTemplate);
+        NodifyEditor canvas = session.Canvas();
+        Point centre = session.CentreOf(canvas);
+        _output.WriteLine($"range min={canvas.MinViewportZoom} max={canvas.MaxViewportZoom} start zoom={canvas.ViewportZoom}");
+
+        double zoomedIn = WheelUntilSteady(session, canvas, centre, 1);
+        double zoomedOut = WheelUntilSteady(session, canvas, centre, -1);
+
+        var by = new Vector(120, 80);
+        var pans = new List<(MouseButton Button, Point Before, Point After)>();
+        foreach (MouseButton button in new[] { MouseButton.Middle, MouseButton.Right })
+        {
+            Point before = canvas.ViewportLocation;
+            session.Drag(session.OpenCanvasPoint(), by, button);
+            pans.Add((button, before, canvas.ViewportLocation));
+            _output.WriteLine($"{button}-drag by {by} at zoom {canvas.ViewportZoom}: viewport {before} -> {canvas.ViewportLocation}");
+        }
+
+        using WriteableBitmap frame = session.Capture(VisualFrames.CanvasPanZoom);
+        canvas.MinViewportZoom.Should().Be(0.25);
+        canvas.MaxViewportZoom.Should().Be(4);
+        zoomedIn.Should().BeApproximately(4, 1e-9, "the wheel zooms in up to 400%");
+        zoomedOut.Should().BeApproximately(0.25, 1e-9, "the wheel zooms out down to 25%");
+        foreach ((MouseButton button, Point before, Point after) in pans)
+        {
+            // The canvas follows the pointer: the view moves back by the drag over the zoom.
+            Point expected = before - (by / canvas.ViewportZoom);
+            after.X.Should().BeApproximately(expected.X, 0.5, $"a {button}-drag pans the canvas");
+            after.Y.Should().BeApproximately(expected.Y, 0.5, $"a {button}-drag pans the canvas");
+        }
+    }
+
+    [AvaloniaFact]
+    public void Rubber_band_and_modifier_clicks_select_as_the_editor_defines()
+    {
+        using var session = VisualSession.Open(_output);
+        EditorViewModel editor = session.ViewModel.Editor;
+        session.LoadTemplate(VisualSession.WebExportTemplate);
+        PipelineNodeViewModel[] nodes = editor.Nodes.Take(3).ToArray();
+        ItemContainer[] stations = nodes.Select(session.WaitForStation).ToArray();
+        PixelRect first = session.BoundsInWindow(stations[0]);
+        PixelRect second = session.BoundsInWindow(stations[1]);
+        PixelRect third = session.BoundsInWindow(stations[2]);
+
+        // The band starts on open canvas above and left of the first station and ends in the gap
+        // after the second, below it: it holds the first two stations whole and none of the third.
+        var from = new Point(first.X - 30, first.Y - 30);
+        var to = new Point((second.Right + third.X) / 2.0, second.Bottom + 30);
+        session.Drag(from, to - from, MouseButton.Left);
+        var steps = new List<string> { $"band {from}-{to}: {Selected(editor)}" };
+        foreach ((string gesture, int station, RawInputModifiers modifiers) in new[]
+        {
+            ("Shift+click", 2, RawInputModifiers.Shift),
+            ("Ctrl+click", 0, RawInputModifiers.Control),
+            ("Alt+click", 1, RawInputModifiers.Alt),
+            ("click", 0, RawInputModifiers.None),
+        })
+        {
+            session.Click(stations[station], modifiers);
+            session.Pump();
+            steps.Add($"{gesture} {nodes[station].TypeKey}: {Selected(editor)}");
+        }
+
+        using WriteableBitmap frame = session.Capture(VisualFrames.CanvasMultiSelect);
+        steps.ForEach(_output.WriteLine);
+
+        // The editor's own selection rules: Shift adds, Ctrl toggles, Alt removes, a plain click replaces.
+        steps.Select(step => step[(step.IndexOf(':', StringComparison.Ordinal) + 2)..]).Should().Equal(
+            "FolderInput, Filter",
+            "FolderInput, Filter, ImageResize",
+            "Filter, ImageResize",
+            "ImageResize",
+            "FolderInput");
+    }
 
     private static IEnumerable<TreeViewItem> LibraryRows(Window window) =>
         window.GetVisualDescendants().OfType<TreeViewItem>().Where(item => item.DataContext is NodeLibraryItemViewModel);
@@ -325,28 +514,11 @@ public sealed class EditorInteractionTests
         visual.TranslatePoint(point, TopLevel.GetTopLevel(visual)!)
             ?? throw new InvalidOperationException($"{visual.GetType().Name} has no transform to its window.");
 
-    private static Point CentreInWindow(Avalonia.Visual visual) =>
-        InWindow(visual, new Point(visual.Bounds.Width / 2, visual.Bounds.Height / 2));
-
-    private static void Click(TopLevel topLevel, Point point)
-    {
-        topLevel.MouseDown(point, MouseButton.Left, RawInputModifiers.None);
-        topLevel.MouseUp(point, MouseButton.Left, RawInputModifiers.None);
-    }
-
-    private static Connector WaitForPort(VisualSession session, PipelineConnectorViewModel port)
-    {
-        Connector? Find() => session.Window.GetVisualDescendants().OfType<Connector>()
-            .SingleOrDefault(c => ReferenceEquals(c.DataContext, port) && c.Bounds.Width > 0);
-        session.RenderUntil(() => Find() is not null, $"{port.Node.TypeKey} {(port.IsInput ? "input" : "output")} port shown");
-        return Find()!;
-    }
-
     // Press on one port, move halfway (where midway runs), move onto the other port and release there.
     private static void DragBetween(VisualSession session, Connector from, Connector to, Action? midway = null)
     {
-        Point start = CentreInWindow(from);
-        Point end = CentreInWindow(to);
+        Point start = session.CentreOf(from);
+        Point end = session.CentreOf(to);
         session.Window.MouseDown(start, MouseButton.Left, RawInputModifiers.None);
         session.Window.MouseMove(start + ((end - start) / 2), RawInputModifiers.LeftMouseButton);
         session.Pump();
@@ -357,69 +529,75 @@ public sealed class EditorInteractionTests
         session.Pump();
     }
 
-    private static List<ItemContainer> Stations(Window window) =>
-        window.GetVisualDescendants().OfType<ItemContainer>()
-            .Where(c => c.DataContext is PipelineNodeViewModel && c.Bounds.Width > 0)
-            .ToList();
-
-    private static ItemContainer WaitForStation(VisualSession session, PipelineNodeViewModel node)
-    {
-        ItemContainer? Find() => Stations(session.Window).SingleOrDefault(c => ReferenceEquals(c.DataContext, node));
-        session.RenderUntil(() => Find() is not null, $"{node.TypeKey} station shown");
-        return Find()!;
-    }
-
     // Clicks the station's body, away from its ports, and waits for the inspector to show its fields.
     private static void Select(VisualSession session, PipelineNodeViewModel node)
     {
-        Click(session.Window, CentreInWindow(WaitForStation(session, node)));
+        session.Click(session.WaitForStation(node));
         session.RenderUntil(
-            () => ReferenceEquals(session.ViewModel.Editor.SelectedNode, node) && InspectorReady(session),
+            () => ReferenceEquals(session.ViewModel.Editor.SelectedNode, node) && session.InspectorReady(),
             $"{node.TypeKey} selected and its fields shown");
-    }
-
-    private static ItemsControl InspectorList(VisualSession session) =>
-        session.Window.GetVisualDescendants().OfType<ItemsControl>()
-            .Single(list => ReferenceEquals(list.ItemsSource, session.ViewModel.Properties.Fields));
-
-    private static List<ContentPresenter> InspectorCards(VisualSession session) =>
-        InspectorList(session).GetRealizedContainers().OfType<ContentPresenter>().ToList();
-
-    // Every current field has a laid-out card, in field order.
-    private static bool InspectorReady(VisualSession session)
-    {
-        List<ContentPresenter> cards = InspectorCards(session);
-        return cards.Select(card => card.DataContext).SequenceEqual(session.ViewModel.Properties.Fields)
-            && cards.All(card => card.Child is { Bounds.Width: > 0 });
     }
 
     private static T FieldEditor<T>(VisualSession session, string key)
         where T : Control =>
-        InspectorCards(session)
+        session.InspectorCards()
             .Single(card => card.DataContext is ConfigFieldViewModel field && string.Equals(field.Key, key, StringComparison.Ordinal))
             .GetVisualDescendants().OfType<T>().First();
 
-    // Each config edit rebuilds the inspector's fields; wait for the rebuilt cards before the next gesture.
+    // Waits for the edit to reach the selected station's config before the next gesture.
     private static void EditField(VisualSession session, string key, Action input)
     {
-        ConfigFieldViewModel before = session.ViewModel.Properties.Fields[0];
+        IDictionary<string, JsonElement> config = session.ViewModel.Editor.SelectedNode!.Config;
+        string? before = ValueText(config, key);
         input();
         session.RenderUntil(
-            () => session.ViewModel.Properties.Fields.Count > 0
-                && !ReferenceEquals(session.ViewModel.Properties.Fields[0], before)
-                && InspectorReady(session),
-            $"inspector rebuilt after editing {key}");
+            () => !string.Equals(ValueText(config, key), before, StringComparison.Ordinal) && session.InspectorReady(),
+            $"{key} edited");
     }
+
+    // Selects the station, clicks the field's text box and waits for it to take the keyboard focus.
+    private static TextBox FocusField(VisualSession session, PipelineNodeViewModel node, string key)
+    {
+        Select(session, node);
+        TextBox box = FieldEditor<TextBox>(session, key);
+        session.Click(box);
+        session.RenderUntil(() => box.IsFocused, $"the {key} field focused");
+        return box;
+    }
+
+    // Turns the wheel one notch at a time until a notch leaves the zoom where it was; returns that zoom.
+    private double WheelUntilSteady(VisualSession session, NodifyEditor canvas, Point at, int notch)
+    {
+        double previous;
+        int notches = 0;
+        do
+        {
+            previous = canvas.ViewportZoom;
+            session.Window.MouseWheel(at, new Vector(0, notch), RawInputModifiers.None);
+            session.Pump();
+            notches++;
+        }
+        while (canvas.ViewportZoom != previous && notches < 200);
+
+        _output.WriteLine($"wheel {(notch > 0 ? "in" : "out")}: {notches} notches, zoom stops at {canvas.ViewportZoom}");
+        return canvas.ViewportZoom;
+    }
+
+    private static string Selected(EditorViewModel editor) =>
+        string.Join(", ", editor.Nodes.Where(node => node.IsSelected).Select(node => node.TypeKey));
+
+    private static string Focused(TopLevel topLevel) =>
+        topLevel.FocusManager?.GetFocusedElement() is Control control ? control.GetType().Name : "nothing";
 
     // Opens the drop-down with a click and clicks the option in its popup.
     private static void PickOption(VisualSession session, ComboBox comboBox, string option)
     {
-        Click(session.Window, CentreInWindow(comboBox));
+        session.Click(comboBox);
         ComboBoxItem? Find() => comboBox.GetRealizedContainers().OfType<ComboBoxItem>()
             .SingleOrDefault(item => string.Equals(item.Content as string, option, StringComparison.Ordinal) && item.Bounds.Width > 0);
         session.RenderUntil(() => comboBox.IsDropDownOpen && Find() is not null, $"option '{option}' shown");
         ComboBoxItem target = Find()!;
-        Click(TopLevel.GetTopLevel(target)!, CentreInWindow(target));
+        session.Click(target);
     }
 
     private static string? ValueText(IDictionary<string, JsonElement> config, string key) =>
@@ -438,4 +616,16 @@ public sealed class EditorInteractionTests
 
     private static string Describe(Control control) =>
         control is TextBlock text ? $"{nameof(TextBlock)} '{text.Text}'" : control.GetType().Name;
+
+    // The width the block's text would take untrimmed, in its own font.
+    private static double FullWidth(TextBlock text)
+    {
+        using var layout = new TextLayout(
+            text.Text,
+            new Typeface(text.FontFamily, text.FontStyle, text.FontWeight),
+            text.FontSize,
+            text.Foreground,
+            letterSpacing: text.LetterSpacing);
+        return layout.Width;
+    }
 }

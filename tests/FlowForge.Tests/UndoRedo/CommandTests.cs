@@ -263,21 +263,6 @@ public class CommandTests
     }
 
     [Fact]
-    public void ChangeConfigCommand_ConfigKey_ExposedForCoalescing()
-    {
-        var config = new Dictionary<string, JsonElement>
-        {
-            ["path"] = JsonSerializer.SerializeToElement("/old"),
-        };
-        JsonElement oldValue = config["path"];
-        JsonElement newValue = JsonSerializer.SerializeToElement("/new");
-
-        var cmd = new ChangeConfigCommand(config, "path", oldValue, newValue, keyExisted: true, "Change path");
-
-        cmd.ConfigKey.Should().Be("path");
-    }
-
-    [Fact]
     public void ChangeConfigCommand_Description_MatchesProvided()
     {
         var config = new Dictionary<string, JsonElement>

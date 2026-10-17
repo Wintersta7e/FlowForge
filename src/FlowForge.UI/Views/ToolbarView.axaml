@@ -8,14 +8,26 @@
              x:Class="FlowForge.UI.Views.ToolbarView"
              x:DataType="vm:MainWindowViewModel">
 
+    <UserControl.Styles>
+        <!-- Below 1100 px the live counts give way, so the run controls stay on screen
+             down to the window's minimum width and the file name keeps some room. -->
+        <ContainerQuery Name="toolbar" Query="max-width:1099">
+            <Style Selector="StackPanel.liveStats, Border.liveStatsRule">
+                <Setter Property="IsVisible" Value="False" />
+            </Style>
+        </ContainerQuery>
+    </UserControl.Styles>
+
     <!-- Mw top bar: 56px, panel→deep gradient, iron-dark bottom border, shadow -->
-    <Border Background="{DynamicResource MwTopBarBody}"
+    <Border Container.Name="toolbar"
+            Container.Sizing="Width"
+            Background="{DynamicResource MwTopBarBody}"
             BorderBrush="{DynamicResource MwIronDark}"
             BorderThickness="0,0,0,1"
             Height="56"
             BoxShadow="0 4 24 0 #80000000"
             Padding="20,0">
-        <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+        <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
 
             <!-- 0. Brand logo: molten triangle + cyan circle -->
             <Canvas Grid.Column="0"
@@ -50,24 +62,27 @@
                         Margin="10,0,0,0">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="FLOW"
+                               Classes="tight"
                                FontFamily="{DynamicResource MwDisplay}"
                                FontSize="17" FontWeight="Bold"
                                LetterSpacing="2.4"
                                Foreground="{DynamicResource MwBone}"
                                LineHeight="17" />
                     <TextBlock Text="·"
+                               Classes="tight"
                                FontFamily="{DynamicResource MwDisplay}"
                                FontSize="17" FontWeight="Bold"
                                Foreground="{DynamicResource MwCyan}"
                                LineHeight="17" />
                     <TextBlock Text="FORGE"
+                               Classes="tight"
                                FontFamily="{DynamicResource MwDisplay}"
                                FontSize="17" FontWeight="Bold"
                                LetterSpacing="2.4"
                                Foreground="{DynamicResource MwBone}"
                                LineHeight="17" />
                 </StackPanel>
-                <TextBlock Text="MOLTEN WORKS · V3"
+                <TextBlock Text="{Binding VersionLabel}"
                            FontFamily="{DynamicResource MwMono}"
                            FontSize="8"
                            LetterSpacing="2"
@@ -82,30 +97,35 @@
                     VerticalAlignment="Center"
                     Margin="16,0" />
 
-            <!-- 3. Pipeline path -->
-            <StackPanel Grid.Column="3"
-                        Orientation="Horizontal"
-                        VerticalAlignment="Center"
-                        Spacing="0">
-                <TextBlock Text="/pipelines/"
+            <!-- 3. Open file: its folder, then its name, trimmed to the space the
+                 other groups leave; the full path on hover. -->
+            <Grid Grid.Column="3"
+                  ColumnDefinitions="Auto,*"
+                  VerticalAlignment="Center"
+                  Background="Transparent"
+                  AutomationProperties.AutomationId="ToolbarDocumentPath"
+                  ToolTip.Tip="{Binding CurrentFilePath}">
+                <TextBlock Grid.Column="0"
+                           Text="{Binding DocumentFolder, StringFormat='/{0}/'}"
+                           IsVisible="{Binding DocumentFolder, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                            FontFamily="{DynamicResource MwMono}"
                            FontSize="11"
                            Foreground="{DynamicResource MwFaint}" />
-                <TextBlock Text="{Binding Title}"
+                <TextBlock Grid.Column="1"
+                           Text="{Binding DocumentName}"
+                           TextTrimming="CharacterEllipsis"
                            FontFamily="{DynamicResource MwMono}"
                            FontSize="11"
                            Foreground="{DynamicResource MwBone}" />
-            </StackPanel>
+            </Grid>
 
-            <!-- 4. Flex spacer -->
-            <Border Grid.Column="4" />
-
-            <!-- 5. File ops (compact icons) -->
-            <StackPanel Grid.Column="5"
+            <!-- 4. File ops (compact icons) -->
+            <StackPanel Grid.Column="4"
                         Orientation="Horizontal"
                         Spacing="2"
                         VerticalAlignment="Center">
                 <Button Command="{Binding NewCommand}"
+                        AutomationProperties.Name="New Pipeline"
                         ToolTip.Tip="New Pipeline (Ctrl+N)"
                         Classes="toolbarIcon">
                     <PathIcon Data="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"
@@ -113,6 +133,7 @@
                               Width="15" Height="15" />
                 </Button>
                 <Button Command="{Binding OpenCommand}"
+                        AutomationProperties.Name="Open Pipeline"
                         ToolTip.Tip="Open Pipeline (Ctrl+O)"
                         Classes="toolbarIcon">
                     <PathIcon Data="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z"
@@ -120,14 +141,25 @@
                               Width="15" Height="15" />
                 </Button>
                 <Button Command="{Binding SaveCommand}"
+                        AutomationProperties.Name="Save"
                         ToolTip.Tip="Save (Ctrl+S)"
                         Classes="toolbarIcon">
                     <PathIcon Data="M15,9H5V5H15M12,19A3,3 0 0,1 9,16A3,3 0 0,1 12,13A3,3 0 0,1 15,16A3,3 0 0,1 12,19M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V7L17,3Z"
                               Foreground="{DynamicResource MwAsh}"
                               Width="15" Height="15" />
                 </Button>
+                <!-- Save As: the Save disk with its corner cut away for a pencil. -->
+                <Button Command="{Binding SaveAsCommand}"
+                        AutomationProperties.Name="Save As"
+                        ToolTip.Tip="Save As (Ctrl+Shift+S)"
+                        Classes="toolbarIcon">
+                    <PathIcon Data="M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H10L21,10V7L17,3Z M15,9H5V5H15Z M10,17.5A2.5,2.5 0 0,1 7.5,15A2.5,2.5 0 0,1 10,12.5A2.5,2.5 0 0,1 12.5,15A2.5,2.5 0 0,1 10,17.5Z M22.36,15.52C22.55,15.33 22.55,15 22.36,14.82L21.19,13.65C21,13.45 20.68,13.45 20.48,13.65L19.56,14.56L21.44,16.44Z M13.5,20.63V22.5H15.38L20.91,16.97L19.03,15.09L13.5,20.63Z"
+                              Foreground="{DynamicResource MwAsh}"
+                              Width="15" Height="15" />
+                </Button>
                 <Button x:Name="RecentButton"
                         Classes="toolbarIcon"
+                        AutomationProperties.Name="Recent Pipelines"
                         ToolTip.Tip="Recent Pipelines">
                     <Button.Flyout>
                         <MenuFlyout Placement="BottomEdgeAlignedLeft" />
@@ -138,33 +170,36 @@
                 </Button>
             </StackPanel>
 
-            <Border Grid.Column="6"
+            <Border Grid.Column="5"
                     Width="1" Height="24"
                     Background="{DynamicResource MwIronDark}"
                     VerticalAlignment="Center"
                     Margin="8,0" />
 
-            <!-- 7. Undo/Redo/Fit -->
-            <StackPanel Grid.Column="7"
+            <!-- 6. Undo/Redo/Fit -->
+            <StackPanel Grid.Column="6"
                         Orientation="Horizontal"
                         Spacing="2"
                         VerticalAlignment="Center">
                 <Button Classes="toolbarIcon"
                         Command="{Binding UndoCommand}"
-                        ToolTip.Tip="Undo (Ctrl+Z)">
+                        AutomationProperties.Name="Undo"
+                        ToolTip.Tip="{Binding UndoToolTip}">
                     <PathIcon Data="M12.5,8C9.85,8 7.45,9.16 5.86,11L3,8V16H11L7.9,12.9C9.09,11.84 10.73,11.19 12.5,11.19C15.49,11.19 18.04,13.18 18.86,16L21.73,15.14C20.6,11.14 16.86,8 12.5,8Z"
                               Foreground="{DynamicResource MwAsh}"
                               Width="15" Height="15" />
                 </Button>
                 <Button Classes="toolbarIcon"
                         Command="{Binding RedoCommand}"
-                        ToolTip.Tip="Redo (Ctrl+Y)">
+                        AutomationProperties.Name="Redo"
+                        ToolTip.Tip="{Binding RedoToolTip}">
                     <PathIcon Data="M18.14,11C16.55,9.16 14.15,8 11.5,8C7.14,8 3.4,11.14 2.27,15.14L5.14,16C5.96,13.18 8.5,11.19 11.5,11.19C13.27,11.19 14.91,11.84 16.1,12.9L13,16H21V8L18.14,11Z"
                               Foreground="{DynamicResource MwAsh}"
                               Width="15" Height="15" />
                 </Button>
                 <Button Classes="toolbarIcon"
                         Click="OnFitToScreenClick"
+                        AutomationProperties.Name="Fit to Screen"
                         ToolTip.Tip="Fit to Screen (Ctrl+0)">
                     <PathIcon Data="M3,3H9V5H5V9H3M3,21V15H5V19H9V21M21,3V9H19V5H15V3M21,21H15V19H19V15H21"
                               Foreground="{DynamicResource MwAsh}"
@@ -172,14 +207,16 @@
                 </Button>
             </StackPanel>
 
-            <Border Grid.Column="8"
+            <Border Grid.Column="7"
+                    Classes="liveStatsRule"
                     Width="1" Height="24"
                     Background="{DynamicResource MwIronDark}"
                     VerticalAlignment="Center"
                     Margin="8,0" />
 
-            <!-- 9. Live stats (stn / pipe / src) -->
-            <StackPanel Grid.Column="9"
+            <!-- 8. Live stats (stn / pipe / src) -->
+            <StackPanel Grid.Column="8"
+                        Classes="liveStats"
                         Orientation="Horizontal"
                         Spacing="16"
                         VerticalAlignment="Center">
@@ -211,21 +248,22 @@
                                FontSize="9"
                                LetterSpacing="1.8"
                                Foreground="{DynamicResource MwFaint}" />
-                    <TextBlock Text="—"
+                    <TextBlock Text="{Binding ExecutionLog.SourceCountText}"
+                               AutomationProperties.AutomationId="ToolbarSourceCount"
                                FontFamily="{DynamicResource MwMono}"
                                FontSize="10" FontWeight="SemiBold"
                                Foreground="{DynamicResource MwBone}" />
                 </StackPanel>
             </StackPanel>
 
-            <Border Grid.Column="10"
+            <Border Grid.Column="9"
                     Width="1" Height="24"
                     Background="{DynamicResource MwIronDark}"
                     VerticalAlignment="Center"
                     Margin="12,0,8,0" />
 
-            <!-- 11. Dry run + Ignite/Quench + theme + help -->
-            <StackPanel Grid.Column="11"
+            <!-- 10. Dry run + Ignite/Quench + theme + help -->
+            <StackPanel Grid.Column="10"
                         Orientation="Horizontal"
                         Spacing="8"
                         VerticalAlignment="Center">
@@ -234,7 +272,9 @@
                         Classes="ghost"
                         ToolTip.Tip="Preview — simulate run without changing files">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="◐" FontSize="13" VerticalAlignment="Center" />
+                        <PathIcon Data="{StaticResource MwIcon.HalfDisc}"
+                                  Width="11" Height="11"
+                                  VerticalAlignment="Center" />
                         <TextBlock Text="DRY RUN" VerticalAlignment="Center" LetterSpacing="1.3" />
                     </StackPanel>
                 </Button>
@@ -292,9 +332,9 @@
                 <Button Command="{Binding RunCommand}"
                         Classes="accent"
                         IsVisible="{Binding !ExecutionLog.IsRunning}"
-                        ToolTip.Tip="Ignite — run the pipeline">
+                        ToolTip.Tip="Ignite — run the pipeline (Ctrl+Shift+Enter)">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="▶" FontSize="11" VerticalAlignment="Center" />
+                        <TextBlock Text="▶" FontFamily="{DynamicResource MwMono}" FontSize="11" VerticalAlignment="Center" />
                         <TextBlock Text="IGNITE" VerticalAlignment="Center" LetterSpacing="1.3" />
                     </StackPanel>
                 </Button>
@@ -305,12 +345,13 @@
                         IsVisible="{Binding ExecutionLog.IsRunning}"
                         ToolTip.Tip="Quench — stop execution">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="■" FontSize="11" VerticalAlignment="Center" />
+                        <TextBlock Text="■" FontFamily="{DynamicResource MwMono}" FontSize="11" VerticalAlignment="Center" />
                         <TextBlock Text="QUENCH" VerticalAlignment="Center" LetterSpacing="1.3" />
                     </StackPanel>
                 </Button>
 
                 <Button Classes="toolbarIcon"
+                        AutomationProperties.Name="Keyboard Shortcuts"
                         ToolTip.Tip="Keyboard Shortcuts (F1)"
                         Click="OnShowShortcutsClick">
                     <TextBlock Text="?"

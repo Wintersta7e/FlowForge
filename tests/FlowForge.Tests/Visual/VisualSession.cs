@@ -1,12 +1,16 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
 using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using FlowForge.Core.Execution;
 using FlowForge.Core.Settings;
 using FlowForge.Tests.Helpers;
@@ -14,6 +18,7 @@ using FlowForge.UI;
 using FlowForge.UI.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Nodify.Avalonia;
 using Xunit.Abstractions;
 using Xunit.Sdk;
 
@@ -24,9 +29,11 @@ namespace FlowForge.Tests.Visual;
 /// model reads isolated in a temp directory. Tests reach a state by pumping the dispatcher
 /// and the render timer until a condition holds, never by waiting on the clock.
 /// </summary>
-[System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Pump and the frame readers are session members: tests reach every harness step through the session they opened.")]
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Pump, the frame readers and the input helpers are session members: tests reach every harness step through the session they opened.")]
 internal sealed class VisualSession : IDisposable
 {
+    public const string WebExportTemplate = "image-web-export";
+
     private const string ConfigHomeVariable = "XDG_CONFIG_HOME";
 
     private static readonly TimeSpan DefaultDeadline = TimeSpan.FromSeconds(3);
@@ -86,7 +93,7 @@ internal sealed class VisualSession : IDisposable
                 _provider.GetRequiredService<ILogger<MainWindowViewModel>>(),
                 new AppSettingsManager(SettingsPath, _provider.GetRequiredService<ILogger<AppSettingsManager>>()),
                 _provider.GetRequiredService<NodeRegistry>(),
-                new EditorViewModel(_provider.GetRequiredService<ILogger<EditorViewModel>>()),
+                new EditorViewModel(_provider.GetRequiredService<ILogger<EditorViewModel>>(), _provider.GetRequiredService<NodeRegistry>()),
                 Dialogs,
                 _provider);
             Window = new MainWindow { DataContext = ViewModel };
@@ -139,15 +146,24 @@ internal sealed class VisualSession : IDisposable
 
     public void RenderUntil(Func<bool> condition, TimeSpan deadline, string what)
     {
+        if (!TryRenderUntil(condition, deadline, what))
+        {
+            throw new XunitException($"Not reached within {deadline.TotalMilliseconds} ms: {what}.");
+        }
+    }
+
+    // As RenderUntil, but a condition still false at the deadline returns false instead of failing:
+    // for checks where "nothing happened" is an answer.
+    public bool TryRenderUntil(Func<bool> condition, TimeSpan deadline, string what)
+    {
         var stopwatch = Stopwatch.StartNew();
         int iterations = 0;
         while (!condition())
         {
             if (stopwatch.Elapsed > deadline)
             {
-                throw new XunitException(
-                    $"Not reached within {deadline.TotalMilliseconds} ms: {what} " +
-                    $"({stopwatch.ElapsedMilliseconds} ms, {iterations} iterations).");
+                _output.WriteLine($"[render-until] {what}: not reached ({stopwatch.ElapsedMilliseconds} ms, {iterations} iterations)");
+                return false;
             }
 
             Pump();
@@ -155,6 +171,7 @@ internal sealed class VisualSession : IDisposable
         }
 
         _output.WriteLine($"[render-until] {what}: {iterations} iterations, {stopwatch.ElapsedMilliseconds} ms");
+        return true;
     }
 
     public WriteableBitmap Capture(string frameId) => Capture(frameId, Window);
@@ -198,6 +215,13 @@ internal sealed class VisualSession : IDisposable
         return Color.FromArgb((byte)(a / count), (byte)(r / count), (byte)(g / count), (byte)(b / count));
     }
 
+    public List<Color> Pixels(WriteableBitmap frame, PixelRect band)
+    {
+        var pixels = new List<Color>(band.Width * band.Height);
+        ForEachPixel(frame, band, pixels.Add);
+        return pixels;
+    }
+
     public int CountDistinctColours(WriteableBitmap frame)
     {
         var colours = new HashSet<uint>();
@@ -213,6 +237,228 @@ internal sealed class VisualSession : IDisposable
         Matrix transform = visual.TransformToVisual(topLevel)
             ?? throw new InvalidOperationException($"{visual.GetType().Name} has no transform to its window.");
         return PixelRect.FromRect(new Rect(visual.Bounds.Size).TransformToAABB(transform), topLevel.RenderScaling);
+    }
+
+    // Prints the control's bounds against the window's client area; true when it is shown and lies fully inside.
+    public bool InsideClient(string name, Avalonia.Visual visual)
+    {
+        PixelRect bounds = BoundsInWindow(visual);
+        var client = new PixelRect(PixelSize.FromSize(Window.ClientSize, Window.RenderScaling));
+        bool inside = visual.IsEffectivelyVisible && client.Contains(bounds);
+        _output.WriteLine($"[bounds] {name}={bounds} client={client} visible={visual.IsEffectivelyVisible} inside={inside}");
+        return inside;
+    }
+
+    // Each shown TextBlock under the container whose laid-out text is wider than its own box, or whose
+    // box reaches past the sides of the pane: text the pane would cut off. Each one is printed.
+    public List<string> TextCutOffBy(Control container, PixelRect pane)
+    {
+        var cut = new List<string>();
+        foreach (TextBlock text in container.GetVisualDescendants().OfType<TextBlock>().Where(t => t.IsEffectivelyVisible))
+        {
+            PixelRect bounds = BoundsInWindow(text);
+            double width = text.TextLayout.Width;
+            if (width > text.Bounds.Width + 0.5 || bounds.X < pane.X || bounds.Right > pane.Right)
+            {
+                cut.Add($"'{text.Text}' at {bounds} lays out {width:F1} px wide in a {text.Bounds.Width:F1} px box");
+            }
+        }
+
+        _output.WriteLine($"[text] pane={pane} cut-off={cut.Count}");
+        cut.ForEach(_output.WriteLine);
+        return cut;
+    }
+
+    // IGNITE (the toolbar's one button bound to the run command) and the shortcuts button,
+    // each printed; returns the names of those not shown fully inside the client area.
+    public List<string> RunControlsOutsideClient()
+    {
+        Button ignite = Window.GetVisualDescendants().OfType<Button>().Single(button => ReferenceEquals(button.Command, ViewModel.RunCommand));
+        var outside = new List<string>();
+        if (!InsideClient("IGNITE", ignite))
+        {
+            outside.Add("IGNITE");
+        }
+
+        if (!InsideClient("Keyboard Shortcuts", ButtonNamed("Keyboard Shortcuts")))
+        {
+            outside.Add("Keyboard Shortcuts");
+        }
+
+        return outside;
+    }
+
+    // The visual's centre in the coordinates of its own top level (the window, or a popup's root).
+    public Point CentreOf(Avalonia.Visual visual) =>
+        visual.TranslatePoint(new Point(visual.Bounds.Width / 2, visual.Bounds.Height / 2), TopLevel.GetTopLevel(visual)!)
+            ?? throw new InvalidOperationException($"{visual.GetType().Name} has no transform to its window.");
+
+    // A left press and release at the visual's centre, sent to the top level that shows it.
+    public void Click(Avalonia.Visual visual, RawInputModifiers modifiers = RawInputModifiers.None)
+    {
+        TopLevel topLevel = TopLevel.GetTopLevel(visual)
+            ?? throw new InvalidOperationException($"{visual.GetType().Name} is not in a window.");
+        Point centre = CentreOf(visual);
+        topLevel.MouseDown(centre, MouseButton.Left, modifiers);
+        topLevel.MouseUp(centre, MouseButton.Left, modifiers);
+    }
+
+    // Moves the pointer to the start, presses the button, drags by the offset in four steps and
+    // releases, on the main window. A real pointer reaches the start before pressing; the editor
+    // reads that last pointer event when a drag begins, and has none if the press comes first.
+    public void Drag(Point from, Vector by, MouseButton button, RawInputModifiers modifiers = RawInputModifiers.None)
+    {
+        RawInputModifiers held = modifiers | button switch
+        {
+            MouseButton.Middle => RawInputModifiers.MiddleMouseButton,
+            MouseButton.Right => RawInputModifiers.RightMouseButton,
+            _ => RawInputModifiers.LeftMouseButton,
+        };
+        Window.MouseMove(from, modifiers);
+        Window.MouseDown(from, button, modifiers);
+        for (int step = 1; step <= 4; step++)
+        {
+            Window.MouseMove(from + (by * step / 4), held);
+            Pump();
+        }
+
+        Window.MouseUp(from + by, button, modifiers);
+        Pump();
+    }
+
+    // The node editor the canvas shows stations on.
+    public NodifyEditor Canvas() =>
+        Window.GetVisualDescendants().OfType<NodifyEditor>().Single(e => string.Equals(e.Name, "Editor", StringComparison.Ordinal));
+
+    // A point in the window over the canvas's top middle: open canvas above the row of stations a
+    // template lays out, at any zoom up to the starting one.
+    public Point OpenCanvasPoint()
+    {
+        NodifyEditor canvas = Canvas();
+        return canvas.TranslatePoint(new Point(canvas.Bounds.Width / 2, canvas.Bounds.Height * 0.1), Window)
+            ?? throw new InvalidOperationException("The canvas has no transform to its window.");
+    }
+
+    // Presses and releases a key gesture, written as the shortcuts dialog writes it ("Ctrl+Shift+S"),
+    // on the main window: the focused control receives it first, then the window.
+    public void Press(string gesture)
+    {
+        var parsed = KeyGesture.Parse(gesture);
+
+        // Both flag sets give Alt, Control, Shift and Meta the same bits.
+        var modifiers = (RawInputModifiers)parsed.KeyModifiers;
+        PhysicalKey physical = Enum.TryParse(parsed.Key.ToString(), out PhysicalKey named) ? named : PhysicalKey.None;
+        Window.KeyPress(parsed.Key, modifiers, physical, keySymbol: null);
+        Window.KeyRelease(parsed.Key, modifiers, physical, keySymbol: null);
+    }
+
+    // The one control of type T in the window that carries this automation id.
+    public T ById<T>(string automationId)
+        where T : Control =>
+        Window.GetVisualDescendants().OfType<T>()
+            .Single(control => string.Equals(AutomationProperties.GetAutomationId(control), automationId, StringComparison.Ordinal));
+
+    // The one button in the window that a screen reader announces by this name.
+    public Button ButtonNamed(string name) =>
+        Window.GetVisualDescendants().OfType<Button>()
+            .Single(button => string.Equals(AutomationProperties.GetName(button), name, StringComparison.Ordinal));
+
+    // The text a control shows: its effectively visible TextBlocks, in tree order.
+    public List<string> ShownText(Control container) =>
+        container.GetVisualDescendants().OfType<TextBlock>()
+            .Where(t => t.IsEffectivelyVisible)
+            .Select(t => t.Text ?? string.Empty)
+            .ToList();
+
+    public List<ItemContainer> Stations() =>
+        Window.GetVisualDescendants().OfType<ItemContainer>()
+            .Where(c => c.DataContext is PipelineNodeViewModel && c.Bounds.Width > 0)
+            .ToList();
+
+    // Every station lies whole inside the canvas as it is zoomed and panned. Both corners go
+    // through the zoom transform; a station's own bounds are unscaled.
+    public bool StationsInsideCanvas()
+    {
+        NodifyEditor canvas = Canvas();
+        var visible = new Rect(canvas.Bounds.Size);
+        return Stations().All(s =>
+            visible.Contains(s.TranslatePoint(default, canvas)!.Value)
+            && visible.Contains(s.TranslatePoint(new Point(s.Bounds.Width, s.Bounds.Height), canvas)!.Value));
+    }
+
+    public ItemContainer WaitForStation(PipelineNodeViewModel node)
+    {
+        ItemContainer? Find() => Stations().SingleOrDefault(c => ReferenceEquals(c.DataContext, node));
+        RenderUntil(() => Find() is not null, $"{node.TypeKey} station shown");
+        return Find()!;
+    }
+
+    public Nodify.Avalonia.Connections.Connector WaitForPort(PipelineConnectorViewModel port)
+    {
+        Nodify.Avalonia.Connections.Connector? Find() => Window.GetVisualDescendants().OfType<Nodify.Avalonia.Connections.Connector>()
+            .SingleOrDefault(c => ReferenceEquals(c.DataContext, port) && c.Bounds.Width > 0);
+        RenderUntil(() => Find() is not null, $"{port.Node.TypeKey} {(port.IsInput ? "input" : "output")} port shown");
+        return Find()!;
+    }
+
+    public void LoadTemplate(string templateId)
+    {
+        ViewModel.LoadTemplateCommand.Execute(templateId);
+        RenderUntil(() => Stations().Count == ViewModel.Editor.Nodes.Count, "template stations laid out");
+    }
+
+    // The empty canvas's template card buttons, in display order.
+    public List<Button> TemplateCards() =>
+        Window.GetVisualDescendants().OfType<Button>()
+            .Where(button => button.Classes.Contains("templateButton") && button.Bounds.Width > 0)
+            .ToList();
+
+    // Prints each template card's bounds and the canvas pane's, before and after scrolling the card into view
+    // when bringIntoView is set; returns the cards that reach past the pane's sides as laid out, or that do not
+    // lie inside the pane after that step.
+    public List<string> TemplateCardsOutsideCanvas(bool bringIntoView)
+    {
+        PixelRect pane = BoundsInWindow(Window.GetVisualDescendants().OfType<FlowForge.UI.Views.CanvasView>().Single());
+        List<Button> cards = TemplateCards();
+        _output.WriteLine($"[cards] client={Window.ClientSize} pane={pane} checked={cards.Count} bringIntoView={bringIntoView}");
+        var outside = new List<string>();
+        foreach (Button card in cards)
+        {
+            PixelRect before = BoundsInWindow(card);
+            if (bringIntoView)
+            {
+                card.BringIntoView();
+                Window.UpdateLayout();
+            }
+
+            PixelRect after = BoundsInWindow(card);
+            _output.WriteLine($"[cards] {card.Tag}: before={before} after={after}");
+            if (before.X < pane.X || before.Right > pane.Right)
+            {
+                outside.Add($"{card.Tag} at {before} reaches past the sides of the canvas pane {pane}");
+            }
+
+            if (!pane.Contains(after))
+            {
+                outside.Add($"{card.Tag} at {after} is outside the canvas pane {pane}");
+            }
+        }
+
+        return outside;
+    }
+
+    public List<ContentPresenter> InspectorCards() =>
+        Window.GetVisualDescendants().OfType<ItemsControl>()
+            .Single(list => ReferenceEquals(list.ItemsSource, ViewModel.Properties.Fields))
+            .GetRealizedContainers().OfType<ContentPresenter>().ToList();
+
+    // Every current field has a laid-out card in the inspector, in field order.
+    public bool InspectorReady()
+    {
+        List<ContentPresenter> cards = InspectorCards();
+        return cards.Count > 0
+            && cards.Select(card => card.DataContext).SequenceEqual(ViewModel.Properties.Fields)
+            && cards.All(card => card.Child is { Bounds.Width: > 0 });
     }
 
     public void Dispose()

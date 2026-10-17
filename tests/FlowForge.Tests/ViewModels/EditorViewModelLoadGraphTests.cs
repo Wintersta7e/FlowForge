@@ -31,7 +31,7 @@ public class EditorViewModelLoadGraphTests
     public void LoadGraph_then_BuildGraph_round_trips_nodes_and_connections()
     {
         PipelineGraph graph = CreateChain();
-        var editor = new EditorViewModel(NullLogger<EditorViewModel>.Instance);
+        var editor = new EditorViewModel(NullLogger<EditorViewModel>.Instance, NodeRegistry.CreateDefault(NullLoggerFactory.Instance));
 
         int dropped = editor.LoadGraph(graph, NodeRegistry.CreateDefault(NullLoggerFactory.Instance));
         PipelineGraph rebuilt = editor.BuildGraph();
@@ -48,7 +48,7 @@ public class EditorViewModelLoadGraphTests
     {
         PipelineGraph graph = CreateChain();
         graph.Connections.Add(new Connection { FromNode = graph.Nodes[0].Id, ToNode = Guid.NewGuid() });
-        var editor = new EditorViewModel(NullLogger<EditorViewModel>.Instance);
+        var editor = new EditorViewModel(NullLogger<EditorViewModel>.Instance, NodeRegistry.CreateDefault(NullLoggerFactory.Instance));
 
         int dropped = editor.LoadGraph(graph, NodeRegistry.CreateDefault(NullLoggerFactory.Instance));
 
@@ -60,7 +60,7 @@ public class EditorViewModelLoadGraphTests
     [Fact]
     public void BuildGraph_snapshots_node_config()
     {
-        var editor = new EditorViewModel(NullLogger<EditorViewModel>.Instance);
+        var editor = new EditorViewModel(NullLogger<EditorViewModel>.Instance, NodeRegistry.CreateDefault(NullLoggerFactory.Instance));
         editor.LoadGraph(CreateChain(), NodeRegistry.CreateDefault(NullLoggerFactory.Instance));
         PipelineNodeViewModel rename = editor.Nodes.Single(n => string.Equals(n.TypeKey, "RenamePattern", StringComparison.Ordinal));
 

@@ -2,7 +2,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="FlowForge.UI.Views.ShortcutsWindow"
         Title="Keyboard Shortcuts"
-        Width="420" Height="440"
+        Width="420"
+        SizeToContent="Height"
         CanResize="False"
         WindowStartupLocation="CenterOwner"
         Background="{DynamicResource ForgePanel}">
@@ -18,10 +19,10 @@
                 Padding="16,12"
                 BorderBrush="{DynamicResource ForgeBorder}"
                 BorderThickness="1">
-            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
                 <Grid.Styles>
                     <Style Selector="TextBlock.key">
-                        <Setter Property="FontFamily" Value="Cascadia Mono,Consolas,monospace" />
+                        <Setter Property="FontFamily" Value="{DynamicResource MwMono}" />
                         <Setter Property="FontSize" Value="12" />
                         <Setter Property="Foreground" Value="{DynamicResource ForgeAccent}" />
                         <Setter Property="Background" Value="{DynamicResource ForgeElevated}" />
@@ -54,20 +55,32 @@
                 <TextBlock Grid.Row="5" Grid.Column="0" Classes="key" Text="Ctrl+0" />
                 <TextBlock Grid.Row="5" Grid.Column="1" Classes="desc" Text="Zoom to fit all nodes" />
 
-                <TextBlock Grid.Row="6" Grid.Column="0" Classes="key" Text="Space+Drag" />
+                <TextBlock Grid.Row="6" Grid.Column="0" Classes="key" Text="Middle/Right-drag" />
                 <TextBlock Grid.Row="6" Grid.Column="1" Classes="desc" Text="Pan canvas" />
 
-                <TextBlock Grid.Row="7" Grid.Column="0" Classes="key" Text="Ctrl+Scroll" />
+                <TextBlock Grid.Row="7" Grid.Column="0" Classes="key" Text="Scroll" />
                 <TextBlock Grid.Row="7" Grid.Column="1" Classes="desc" Text="Zoom in/out" />
 
-                <TextBlock Grid.Row="8" Grid.Column="0" Classes="key" Text="Ctrl+Z" />
-                <TextBlock Grid.Row="8" Grid.Column="1" Classes="desc" Text="Undo" />
+                <TextBlock Grid.Row="8" Grid.Column="0" Classes="key" Text="Alt+Click port" />
+                <TextBlock Grid.Row="8" Grid.Column="1" Classes="desc" Text="Disconnect" />
 
-                <TextBlock Grid.Row="9" Grid.Column="0" Classes="key" Text="Ctrl+Y" />
-                <TextBlock Grid.Row="9" Grid.Column="1" Classes="desc" Text="Redo" />
+                <TextBlock Grid.Row="9" Grid.Column="0" Classes="key" Text="Ctrl+Z" />
+                <TextBlock Grid.Row="9" Grid.Column="1" Classes="desc" Text="Undo" />
 
-                <TextBlock Grid.Row="10" Grid.Column="0" Classes="key" Text="F1" />
-                <TextBlock Grid.Row="10" Grid.Column="1" Classes="desc" Text="Show this help" />
+                <TextBlock Grid.Row="10" Grid.Column="0" Classes="key" Text="Ctrl+Y" />
+                <TextBlock Grid.Row="10" Grid.Column="1" Classes="desc" Text="Redo" />
+
+                <TextBlock Grid.Row="11" Grid.Column="0" Classes="key" Text="F5" />
+                <TextBlock Grid.Row="11" Grid.Column="1" Classes="desc" Text="Dry run (no files changed)" />
+
+                <TextBlock Grid.Row="12" Grid.Column="0" Classes="key" Text="Ctrl+Shift+Enter" />
+                <TextBlock Grid.Row="12" Grid.Column="1" Classes="desc" Text="Run pipeline" />
+
+                <TextBlock Grid.Row="13" Grid.Column="0" Classes="key" Text="Esc" />
+                <TextBlock Grid.Row="13" Grid.Column="1" Classes="desc" Text="Stop the running pipeline" />
+
+                <TextBlock Grid.Row="14" Grid.Column="0" Classes="key" Text="F1" />
+                <TextBlock Grid.Row="14" Grid.Column="1" Classes="desc" Text="Show this help" />
             </Grid>
         </Border>
 

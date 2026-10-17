@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.RegularExpressions;
 using FlowForge.Core.Execution;
 using FlowForge.Tests.Helpers;
+using FlowForge.UI.ViewModels;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit.Abstractions;
 
@@ -24,8 +25,11 @@ public partial class NodeListClaimTests
         var mismatches = new List<string>();
 
         int scanned = CompareReadme(File.ReadAllLines(RepoRoot.Combine(ReadmePath)), typeKeys, mismatches);
-        var displayNames = typeKeys.Select(registry.GetDisplayName).ToHashSet(StringComparer.Ordinal);
-        scanned += CompareGuide(File.ReadAllLines(RepoRoot.Combine("docs", "USER_GUIDE.md")), displayNames, mismatches);
+        Dictionary<string, string> libraryGroups = typeKeys.ToDictionary(
+            registry.GetDisplayName,
+            k => NodeLibraryViewModel.CategoryDisplayNames[registry.GetCategoryForTypeKey(k).ToString()],
+            StringComparer.Ordinal);
+        scanned += CompareGuide(File.ReadAllLines(RepoRoot.Combine("docs", "USER_GUIDE.md")), libraryGroups, mismatches);
 
         ClaimCheck.Report(_output, "node-list", scanned, typeKeys.Length, mismatches);
     }
@@ -77,8 +81,8 @@ public partial class NodeListClaimTests
         return scanned;
     }
 
-    // The user guide's "### <display name> (<category>)" headings under "## Nodes".
-    private static int CompareGuide(string[] lines, HashSet<string> displayNames, List<string> mismatches)
+    // The user guide's "### <display name> (<node library group>)" headings under "## Nodes".
+    private static int CompareGuide(string[] lines, Dictionary<string, string> libraryGroups, List<string> mismatches)
     {
         int nodes = Array.FindIndex(lines, l => string.Equals(l.Trim(), "## Nodes", StringComparison.Ordinal));
         if (nodes < 0)
@@ -99,14 +103,19 @@ public partial class NodeListClaimTests
 
             scanned++;
             string name = match.Groups["name"].Value;
+            string category = match.Groups["cat"].Value;
             headed.Add(name);
-            if (!displayNames.Contains(name))
+            if (!libraryGroups.TryGetValue(name, out string? group))
             {
                 mismatches.Add($"{GuidePath}:{i + 1}: heading '{name}' is not a node's display name");
             }
+            else if (!string.Equals(category, group, StringComparison.Ordinal))
+            {
+                mismatches.Add($"{GuidePath}:{i + 1}: heading '{name}' names the group '{category}'; the node library lists it under '{group}'");
+            }
         }
 
-        foreach (string name in displayNames.Where(n => !headed.Contains(n)).Order(StringComparer.Ordinal))
+        foreach (string name in libraryGroups.Keys.Where(n => !headed.Contains(n)).Order(StringComparer.Ordinal))
         {
             mismatches.Add($"{GuidePath}:{nodes + 1}: no heading for the node '{name}'");
         }

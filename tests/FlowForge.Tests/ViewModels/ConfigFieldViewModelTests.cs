@@ -1,7 +1,11 @@
 using System.Text.Json;
 using FluentAssertions;
+using FlowForge.Core.Execution;
 using FlowForge.Core.Nodes.Base;
+using FlowForge.Tests.Helpers;
+using FlowForge.UI.UndoRedo;
 using FlowForge.UI.ViewModels;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlowForge.Tests.ViewModels;
 
@@ -22,7 +26,7 @@ public class ConfigFieldViewModelTests
             ["recursive"] = JsonSerializer.SerializeToElement(input),
         };
 
-        var vm = new ConfigFieldViewModel(field, config);
+        var vm = new ConfigFieldViewModel(field, config, new StubDialogService());
 
         vm.Value.Should().Be(expected);
     }
@@ -37,7 +41,7 @@ public class ConfigFieldViewModelTests
         var field = new ConfigField("recursive", ConfigFieldType.Bool, Label: "Include Subfolders", DefaultValue: defaultText);
         var config = new Dictionary<string, JsonElement>();
 
-        var vm = new ConfigFieldViewModel(field, config);
+        var vm = new ConfigFieldViewModel(field, config, new StubDialogService());
 
         vm.Value.Should().Be(expected);
     }
@@ -51,7 +55,7 @@ public class ConfigFieldViewModelTests
             ["path"] = JsonSerializer.SerializeToElement("C:\\foo\\bar"),
         };
 
-        var vm = new ConfigFieldViewModel(field, config);
+        var vm = new ConfigFieldViewModel(field, config, new StubDialogService());
 
         vm.Value.Should().Be("C:\\foo\\bar");
     }
@@ -65,7 +69,7 @@ public class ConfigFieldViewModelTests
             ["size"] = JsonSerializer.SerializeToElement(42),
         };
 
-        var vm = new ConfigFieldViewModel(field, config);
+        var vm = new ConfigFieldViewModel(field, config, new StubDialogService());
 
         vm.Value.Should().Be("42");
     }
@@ -83,7 +87,7 @@ public class ConfigFieldViewModelTests
             ["recursive"] = JsonSerializer.SerializeToElement(true),
         };
 
-        var vm = new ConfigFieldViewModel(field, config);
+        var vm = new ConfigFieldViewModel(field, config, new StubDialogService());
         vm.Value.Should().Be("True", "the VM must arrive pre-normalized or the first binding write-back would re-fire");
 
         int changeCount = 0;
@@ -113,7 +117,7 @@ public class ConfigFieldViewModelTests
             ["recursive"] = JsonSerializer.SerializeToElement(true),
         };
 
-        var vm = new ConfigFieldViewModel(field, config);
+        var vm = new ConfigFieldViewModel(field, config, new StubDialogService());
 
         vm.Value = "not-a-bool";
 
@@ -134,11 +138,115 @@ public class ConfigFieldViewModelTests
             ["size"] = JsonSerializer.SerializeToElement(42),
         };
 
-        var vm = new ConfigFieldViewModel(field, config);
+        var vm = new ConfigFieldViewModel(field, config, new StubDialogService());
 
         vm.Value = "not-an-int";
 
         config["size"].GetInt32().Should().Be(42,
             "an unparseable int must not overwrite the stored number — reloads would crash on GetInt32");
     }
+
+    /// <summary>
+    /// Emptying an Int box clears the setting: the key goes, one undoable command is pushed and
+    /// undoing it brings the number back. Text that is not a number never reaches the config and
+    /// marks the field until a number is typed.
+    /// </summary>
+    [Fact]
+    public void ClearingIntField_RemovesKeyAndPushesOneUndo()
+    {
+        Dictionary<string, JsonElement> config = ResizeConfig();
+        var received = new List<IUndoableCommand>();
+        var vm = new ConfigFieldViewModel(ResizeWidth(), config, new StubDialogService(), received.Add);
+
+        vm.Value = string.Empty;
+
+        config.Should().NotContainKey("width", "an emptied Int box clears the setting");
+        received.Should().ContainSingle("one clear is one undo step");
+        received[0].Undo();
+        config["width"].GetInt32().Should().Be(1920, "undo brings the cleared number back");
+
+        vm.Value = "abc";
+
+        config["width"].GetInt32().Should().Be(1920, "text that is not a number never reaches the config");
+        received.Should().ContainSingle("rejected text pushes nothing");
+        vm.HasError.Should().BeTrue("the field shows that its text was not taken");
+
+        vm.Value = "640";
+
+        vm.HasError.Should().BeFalse("an accepted number clears the mark");
+    }
+
+    /// <summary>
+    /// Redo of a clear removes the key again rather than leaving an empty value in its place.
+    /// </summary>
+    [Fact]
+    public void RedoOfClear_RemovesKeyAgain()
+    {
+        Dictionary<string, JsonElement> config = ResizeConfig();
+        var received = new List<IUndoableCommand>();
+        var vm = new ConfigFieldViewModel(ResizeWidth(), config, new StubDialogService(), received.Add);
+        vm.Value = null;
+        IUndoableCommand clear = received.Single();
+
+        clear.Undo();
+        clear.Execute();
+
+        string found = config.TryGetValue("width", out JsonElement left) ? $"ValueKind = {left.ValueKind}" : "absent";
+        found.Should().Be("absent", "redo of a clear removes the key again");
+    }
+
+    /// <summary>
+    /// A folder field's browse button asks the dialog service for a folder; the chosen folder is
+    /// stored as one undoable change.
+    /// </summary>
+    [Fact]
+    public async Task Browse_FolderField_UsesDialogAndPushesOneChange()
+    {
+        using var temp = new TempDirectory();
+        var dialog = new StubDialogService { OpenFolderResult = temp.Path };
+        var config = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+        var received = new List<IUndoableCommand>();
+        var vm = new ConfigFieldViewModel(SourceFolder(), config, dialog, received.Add);
+
+        await vm.BrowseCommand.ExecuteAsync(null);
+
+        dialog.Calls.Should().Equal([nameof(StubDialogService.OpenFolderAsync)], "a folder field asks for a folder");
+        config.Should().ContainKey("path", "the chosen folder lands in the config");
+        config["path"].GetString().Should().Be(temp.Path);
+        received.Should().ContainSingle("one pick is one undo step");
+        received[0].Undo();
+        config.Should().NotContainKey("path", "undo removes the picked folder");
+    }
+
+    /// <summary>
+    /// A file field asks for a file; a dialog closed without a choice leaves the field, its
+    /// config and the history as they were.
+    /// </summary>
+    [Fact]
+    public async Task Browse_Cancelled_ChangesNothing()
+    {
+        var field = new ConfigField("list", ConfigFieldType.FilePath, Label: "List File");
+        Dictionary<string, JsonElement> config = ConfigHelper.MakeConfig(("list", "kept.txt"));
+        var dialog = new StubDialogService();
+        var received = new List<IUndoableCommand>();
+        var vm = new ConfigFieldViewModel(field, config, dialog, received.Add);
+
+        await vm.BrowseCommand.ExecuteAsync(null);
+
+        dialog.Calls.Should().Equal([nameof(StubDialogService.OpenFileAsync)], "a file field asks for a file");
+        vm.Value.Should().Be("kept.txt");
+        config["list"].GetString().Should().Be("kept.txt", "a cancelled dialog changes nothing");
+        received.Should().BeEmpty("a cancelled dialog pushes no undo step");
+    }
+
+    private static ConfigField SourceFolder() =>
+        NodeRegistry.CreateDefault(NullLoggerFactory.Instance).GetConfigSchema("FolderInput")
+            .Single(field => string.Equals(field.Key, "path", StringComparison.Ordinal));
+
+    private static ConfigField ResizeWidth() =>
+        NodeRegistry.CreateDefault(NullLoggerFactory.Instance).GetConfigSchema("ImageResize")
+            .Single(field => string.Equals(field.Key, "width", StringComparison.Ordinal));
+
+    private static Dictionary<string, JsonElement> ResizeConfig() =>
+        new(StringComparer.Ordinal) { ["width"] = JsonSerializer.SerializeToElement(1920) };
 }

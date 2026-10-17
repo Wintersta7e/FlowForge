@@ -20,10 +20,17 @@ public partial class PipelineNodeViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isSelected;
 
+    private string _configPreview;
+
     public Guid Id { get; }
     public string TypeKey { get; }
     public string Title { get; }
-    public string ConfigPreview { get; }
+    public string ConfigPreview
+    {
+        get => _configPreview;
+        private set => SetProperty(ref _configPreview, value);
+    }
+
     public NodeCategory Category { get; }
     public ObservableCollection<PipelineConnectorViewModel> Input { get; } = new();
     public ObservableCollection<PipelineConnectorViewModel> Output { get; } = new();
@@ -60,6 +67,10 @@ public partial class PipelineNodeViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isRunning;
 
+    /// <summary>What the graph check reports about this node, one issue per line; null when it reports nothing.</summary>
+    [ObservableProperty]
+    private string? _validationMessage;
+
     public PipelineNodeViewModel(NodeDefinition definition, NodeRegistry registry)
     {
         Id = definition.Id;
@@ -67,7 +78,7 @@ public partial class PipelineNodeViewModel : ViewModelBase
         Title = registry.GetDisplayName(definition.TypeKey);
         Category = registry.GetCategoryForTypeKey(definition.TypeKey);
         Config = definition.Config;
-        ConfigPreview = BuildConfigPreview(definition.Config);
+        _configPreview = BuildConfigPreview(definition.Config);
         _location = new Point(definition.Position.X, definition.Position.Y);
         _meta = MwOpsMap.Get(definition.TypeKey);
 
@@ -92,6 +103,9 @@ public partial class PipelineNodeViewModel : ViewModelBase
             Output.Add(new PipelineConnectorViewModel("Out", isInput: false, this));
         }
     }
+
+    /// <summary>Recomputes <see cref="ConfigPreview"/> from the node's current config.</summary>
+    public void RefreshConfigPreview() => ConfigPreview = BuildConfigPreview(Config);
 
     private static IBrush BuildHeatPulseBrush(Color glowColor)
     {

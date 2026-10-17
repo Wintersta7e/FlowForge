@@ -8,20 +8,20 @@ Rename and image nodes never change the input folder — they work on private co
 
 ### photo-import-by-date.ffpipe
 Extracts EXIF date from photos and renames them with the date prefix.
-- **Nodes:** FolderInput -> MetadataExtract -> RenamePattern -> FolderOutput
+- **Nodes:** Folder Input → Metadata Extract → Rename (Pattern) → Folder Output
 - **Filter:** `*.jpg;*.jpeg;*.png;*.heic`
 
 ### batch-sequential-rename.ffpipe
 Renames all files with sequential numbering (001, 002, ...).
-- **Nodes:** FolderInput -> RenamePattern -> FolderOutput
+- **Nodes:** Folder Input → Rename (Pattern) → Folder Output
 
 ### image-web-export.ffpipe
 Resizes images to max 1920px wide and converts to WebP format.
-- **Nodes:** FolderInput -> Filter -> ImageResize -> ImageConvert -> FolderOutput
+- **Nodes:** Folder Input → Filter → Image Resize → Image Convert → Folder Output
 
 ### bulk-image-compress.ffpipe
 Compresses JPEG images to 80% quality.
-- **Nodes:** FolderInput -> Filter -> ImageCompress -> FolderOutput
+- **Nodes:** Folder Input → Filter → Image Compress → Folder Output
 
 ## Usage
 

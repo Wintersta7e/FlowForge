@@ -19,8 +19,6 @@ namespace FlowForge.Tests.Visual;
 [Collection(VisualCollection.Name)]
 public sealed class RunningStateTests
 {
-    private const string WebExportTemplate = "image-web-export";
-
     private readonly ITestOutputHelper _output;
 
     public RunningStateTests(ITestOutputHelper output) => _output = output;
@@ -32,17 +30,16 @@ public sealed class RunningStateTests
         MainWindowViewModel vm = session.ViewModel;
         EditorViewModel editor = vm.Editor;
         MainWindow window = session.Window;
-        vm.LoadTemplateCommand.Execute(WebExportTemplate);
 
         // Fitting measures the laid-out stations, so they must exist first.
-        session.RenderUntil(() => Stations(window).Count == editor.Nodes.Count, "template stations laid out");
+        session.LoadTemplate(VisualSession.WebExportTemplate);
         editor.RequestFitToScreen();
         NodifyEditor canvas = window.GetVisualDescendants().OfType<NodifyEditor>().Single(e => string.Equals(e.Name, "Editor", StringComparison.Ordinal));
         var visible = new Rect(canvas.Bounds.Size);
 
         // Both corners go through the zoom transform; a station's own bounds are unscaled.
         session.RenderUntil(
-            () => Stations(window).All(s =>
+            () => session.Stations().All(s =>
                 visible.Contains(s.TranslatePoint(default, canvas)!.Value)
                 && visible.Contains(s.TranslatePoint(new Point(s.Bounds.Width, s.Bounds.Height), canvas)!.Value)),
             "every template station fitted on screen");
@@ -67,6 +64,16 @@ public sealed class RunningStateTests
             editor.Connections.Should().OnlyContain(c => c.IsRunning, "DEMO mode lights every pipe");
             auras.Should().HaveCount(editor.Nodes.Count).And.OnlyContain(a => a.IsEffectivelyVisible);
             beadCanvases.Should().HaveCount(editor.Connections.Count).And.OnlyContain(c => c.IsEffectivelyVisible);
+
+            // The console names the demo and shows none of a run's readings.
+            List<string> pill = session.ShownText(session.ById<StackPanel>("ConsoleState"));
+            TextBlock caption = session.ById<TextBlock>("ConsoleDemoCaption");
+            string[] readings = ["ConsolePid", "ConsoleCount", "ConsoleThroughput"];
+            _output.WriteLine($"console pill={string.Join("|", pill)} caption='{caption.Text}' visible={caption.IsEffectivelyVisible} "
+                + string.Join(" ", readings.Select(id => $"{id}={session.ById<TextBlock>(id).IsEffectivelyVisible}")));
+            pill.Should().Equal("DEMO");
+            caption.IsEffectivelyVisible.Should().BeTrue();
+            readings.Should().OnlyContain(id => !session.ById<TextBlock>(id).IsEffectivelyVisible, "a demo has no process, count or throughput");
         }
         finally
         {
@@ -79,9 +86,4 @@ public sealed class RunningStateTests
 
     private static List<MwMercuryDroplet> VisibleDroplets(Window window) =>
         window.GetVisualDescendants().OfType<MwMercuryDroplet>().Where(d => d.IsEffectivelyVisible).ToList();
-
-    private static List<ItemContainer> Stations(Window window) =>
-        window.GetVisualDescendants().OfType<ItemContainer>()
-            .Where(c => c.DataContext is PipelineNodeViewModel && c.Bounds.Width > 0)
-            .ToList();
 }

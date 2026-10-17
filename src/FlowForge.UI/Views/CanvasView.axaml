@@ -328,8 +328,11 @@
                              PendingConnection="{Binding PendingConnection}"
                              ItemsDragStartedCommand="{Binding ItemsDragStartedCommand}"
                              ItemsDragCompletedCommand="{Binding ItemsDragCompletedCommand}"
+                             DisconnectConnectorCommand="{Binding DisconnectConnectorCommand}"
                              Background="Transparent"
                              GridCellSize="40"
+                             MinViewportZoom="0.25"
+                             MaxViewportZoom="4"
                              DragDrop.AllowDrop="True">
 
             <nodify:NodifyEditor.Styles>
@@ -353,7 +356,7 @@
             <nodify:NodifyEditor.ItemTemplate>
                 <DataTemplate x:DataType="vm:PipelineNodeViewModel">
                     <!-- ═══ Molten Works cast-iron station ═══ -->
-                    <Grid Width="200" Height="130" ClipToBounds="False">
+                    <Grid Width="200" Height="130" ClipToBounds="False" Classes="mw-station">
 
                         <!-- ═══ Running aura: soft rectangular-aspect cloud behind iron ═══
                              Border margin is asymmetric so the aura element is
@@ -510,6 +513,16 @@
                                         Orientation="Horizontal"
                                         Spacing="4"
                                         VerticalAlignment="Center">
+                                <!-- Validity badge: shown while the graph check reports this station -->
+                                <TextBlock Text="!"
+                                           Classes="mw-invalid-badge"
+                                           IsVisible="{Binding ValidationMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                           ToolTip.Tip="{Binding ValidationMessage}"
+                                           FontFamily="{DynamicResource MwMono}"
+                                           FontSize="11"
+                                           FontWeight="Bold"
+                                           Foreground="{DynamicResource ForgeError}"
+                                           VerticalAlignment="Center" />
                                 <!-- Pulsing LIVE dot when running (1s opacity cycle) -->
                                 <Ellipse Width="5" Height="5"
                                          VerticalAlignment="Center"
@@ -613,18 +626,31 @@
                                         Orientation="Vertical"
                                         Spacing="3"
                                         VerticalAlignment="Center">
+                                <!-- Title and subtitle trim to the column; each shows in full on hover -->
                                 <TextBlock Text="{Binding Title}"
+                                           ToolTip.Tip="{Binding Title}"
+                                           Classes="tight"
                                            FontFamily="{DynamicResource MwSerif}"
                                            FontSize="18"
                                            LineHeight="18"
                                            Foreground="{DynamicResource MwBone}"
                                            TextTrimming="CharacterEllipsis" />
-                                <TextBlock Text="{Binding MwSub}"
-                                           FontFamily="{DynamicResource MwMono}"
-                                           FontSize="9"
-                                           LetterSpacing="1"
-                                           Foreground="{DynamicResource MwIronLite}"
-                                           TextTrimming="CharacterEllipsis" />
+                                <!-- Subtitle plate: the margin cancels the padding, so the
+                                     plate reaches past the text without moving anything -->
+                                <Border Classes="mw-sub-plate"
+                                        Classes.running="{Binding IsRunning}"
+                                        Margin="-3,-2"
+                                        Padding="3,2"
+                                        CornerRadius="2">
+                                    <TextBlock Text="{Binding MwSub}"
+                                               ToolTip.Tip="{Binding MwSub}"
+                                               Classes="mw-sub"
+                                               Classes.running="{Binding IsRunning}"
+                                               FontFamily="{DynamicResource MwMono}"
+                                               FontSize="9"
+                                               LetterSpacing="1"
+                                               TextTrimming="CharacterEllipsis" />
+                                </Border>
                                 <!-- Config preview -->
                                 <Border Padding="6,3"
                                         Background="{DynamicResource MwInkA45}"
@@ -666,12 +692,14 @@
                                            FontFamily="{DynamicResource MwMono}"
                                            FontSize="7"
                                            Foreground="{DynamicResource MwFaint}" />
-                                <TextBlock Grid.Column="1" Text="86"
+                                <TextBlock Grid.Column="1" Text="—"
+                                           AutomationProperties.AutomationId="GaugeT"
                                            FontFamily="{DynamicResource MwMono}"
                                            FontSize="7"
                                            IsVisible="{Binding !IsRunning}"
                                            Foreground="{DynamicResource MwIronLite}" />
-                                <TextBlock Grid.Column="1" Text="86"
+                                <TextBlock Grid.Column="1" Text="—"
+                                           AutomationProperties.AutomationId="GaugeT"
                                            FontFamily="{DynamicResource MwMono}"
                                            FontSize="7"
                                            IsVisible="{Binding IsRunning}"
@@ -684,12 +712,14 @@
                                            FontFamily="{DynamicResource MwMono}"
                                            FontSize="7"
                                            Foreground="{DynamicResource MwFaint}" />
-                                <TextBlock Grid.Column="1" Text="72"
+                                <TextBlock Grid.Column="1" Text="—"
+                                           AutomationProperties.AutomationId="GaugeP"
                                            FontFamily="{DynamicResource MwMono}"
                                            FontSize="7"
                                            IsVisible="{Binding !IsRunning}"
                                            Foreground="{DynamicResource MwIronLite}" />
-                                <TextBlock Grid.Column="1" Text="72"
+                                <TextBlock Grid.Column="1" Text="—"
+                                           AutomationProperties.AutomationId="GaugeP"
                                            FontFamily="{DynamicResource MwMono}"
                                            FontSize="7"
                                            IsVisible="{Binding IsRunning}"
@@ -702,12 +732,14 @@
                                            FontFamily="{DynamicResource MwMono}"
                                            FontSize="7"
                                            Foreground="{DynamicResource MwFaint}" />
-                                <TextBlock Grid.Column="1" Text="43"
+                                <TextBlock Grid.Column="1" Text="—"
+                                           AutomationProperties.AutomationId="GaugeD"
                                            FontFamily="{DynamicResource MwMono}"
                                            FontSize="7"
                                            IsVisible="{Binding !IsRunning}"
                                            Foreground="{DynamicResource MwIronLite}" />
-                                <TextBlock Grid.Column="1" Text="43"
+                                <TextBlock Grid.Column="1" Text="—"
+                                           AutomationProperties.AutomationId="GaugeD"
                                            FontFamily="{DynamicResource MwMono}"
                                            FontSize="7"
                                            IsVisible="{Binding IsRunning}"
@@ -881,6 +913,15 @@
                                                 Stroke="{DynamicResource MwChromeHi}"
                                                 StrokeThickness="1"
                                                 Opacity="0.7" />
+                        <!-- Validity flag: dashed over the pipe while the graph check reports this connection -->
+                        <views:MwPipeConnection Source="{Binding Source.Anchor}"
+                                                Target="{Binding Target.Anchor}"
+                                                Classes="mw-invalid-flag"
+                                                Stroke="{DynamicResource ForgeError}"
+                                                StrokeThickness="3"
+                                                StrokeDashArray="3,2"
+                                                IsVisible="{Binding ValidationMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                ToolTip.Tip="{Binding ValidationMessage}" />
 
                         <!-- ═══ Mercury droplets (visible while running) ═══
                              Four beads ride the bezier with staggered delays so the
@@ -992,18 +1033,23 @@
                 BorderThickness="0,0,1,1"
                 Opacity="0.5" />
 
-        <!-- Hint caption top-left -->
+        <!-- Hint caption top-left; hidden with no stations, where it would show through the empty state.
+             Wraps inside the pane when narrow, clear of the top-right corner mark. -->
         <TextBlock IsHitTestVisible="False"
+                   IsVisible="{Binding HasNodes}"
+                   AutomationProperties.AutomationId="CanvasHint"
                    Text="drag stations · click to select · ▶ ignite to run"
                    FontFamily="{DynamicResource MwMono}"
                    FontSize="10"
                    LetterSpacing="1"
                    Foreground="{DynamicResource MwFaint}"
+                   TextWrapping="Wrap"
                    HorizontalAlignment="Left" VerticalAlignment="Top"
-                   Margin="40,14,0,0" />
+                   Margin="40,14,40,0" />
 
-        <!-- System HUD bottom-right -->
+        <!-- System HUD bottom-right; hidden with no stations, where it would show through the empty state's cards -->
         <Border IsHitTestVisible="False"
+                IsVisible="{Binding HasNodes}"
                 HorizontalAlignment="Right" VerticalAlignment="Bottom"
                 Margin="0,0,38,14"
                 Padding="10,8"
@@ -1019,27 +1065,31 @@
                 <StackPanel Orientation="Horizontal" Spacing="12">
                     <StackPanel Orientation="Horizontal" Spacing="3">
                         <TextBlock Text="lat:" FontFamily="{DynamicResource MwMono}" FontSize="10" Foreground="{DynamicResource MwFaint}" />
-                        <TextBlock Text="6.2ms" FontFamily="{DynamicResource MwMono}" FontSize="10" Foreground="{DynamicResource MwCyan}" />
+                        <TextBlock Text="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ExecutionLog.LatencyText}" AutomationProperties.AutomationId="HudLatency" FontFamily="{DynamicResource MwMono}" FontSize="10" Foreground="{DynamicResource MwCyan}" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="3">
                         <TextBlock Text="mem:" FontFamily="{DynamicResource MwMono}" FontSize="10" Foreground="{DynamicResource MwFaint}" />
-                        <TextBlock Text="142MB" FontFamily="{DynamicResource MwMono}" FontSize="10" Foreground="{DynamicResource MwLime}" />
+                        <TextBlock Text="—" AutomationProperties.AutomationId="HudMemory" FontFamily="{DynamicResource MwMono}" FontSize="10" Foreground="{DynamicResource MwLime}" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="3">
                         <TextBlock Text="err:" FontFamily="{DynamicResource MwMono}" FontSize="10" Foreground="{DynamicResource MwFaint}" />
-                        <TextBlock Text="0" FontFamily="{DynamicResource MwMono}" FontSize="10" Foreground="{DynamicResource MwLime}" />
+                        <TextBlock Text="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ExecutionLog.Failed}" AutomationProperties.AutomationId="HudErrors" FontFamily="{DynamicResource MwMono}" FontSize="10" Foreground="{DynamicResource MwLime}" />
                     </StackPanel>
                 </StackPanel>
             </StackPanel>
         </Border>
 
         <!-- ═══ Empty state: Mw "Build your pipeline from raw ore" ═══ -->
-        <Border IsVisible="{Binding !HasNodes}"
+        <Border AutomationProperties.AutomationId="EmptyState"
+                IsVisible="{Binding !HasNodes}"
                 IsHitTestVisible="True"
                 DragDrop.AllowDrop="True">
             <Border.Background>
                 <SolidColorBrush Color="#08060a" Opacity="0.7" />
             </Border.Background>
+            <!-- Scrolls when the pane is shorter than the cards; hidden with the empty state, so it never takes the editor's wheel. -->
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto">
             <StackPanel HorizontalAlignment="Center"
                         VerticalAlignment="Center"
                         Spacing="18"
@@ -1053,22 +1103,28 @@
                            Foreground="{DynamicResource MwCyan}"
                            HorizontalAlignment="Center" />
 
-                <!-- Hero headline -->
+                <!-- Hero headline; wraps in a pane narrower than its line -->
                 <StackPanel HorizontalAlignment="Center" Spacing="2">
                     <TextBlock Text="Build your pipeline"
+                               Classes="tight"
                                FontFamily="{DynamicResource MwSerifRegular}"
                                FontSize="62"
                                FontWeight="Normal"
                                LineHeight="62"
                                Foreground="{DynamicResource MwBone}"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"
                                HorizontalAlignment="Center" />
                     <TextBlock Text="from raw ore."
+                               Classes="tight"
                                FontFamily="{DynamicResource MwSerif}"
                                FontSize="62"
                                FontStyle="Italic"
                                FontWeight="Light"
                                LineHeight="62"
                                Foreground="{DynamicResource MwMolten}"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"
                                HorizontalAlignment="Center" />
                 </StackPanel>
 
@@ -1078,142 +1134,53 @@
                            FontSize="12"
                            LineHeight="18"
                            Foreground="{DynamicResource MwAsh}"
+                           TextWrapping="Wrap"
+                           TextAlignment="Center"
                            HorizontalAlignment="Center" />
 
-                <!-- Template cards: 4 cast-iron buttons -->
-                <UniformGrid Columns="4" HorizontalAlignment="Center" Margin="0,14,0,0">
-                    <Button Classes="templateButton" Margin="8"
-                            Tag="photo-import-by-date"
-                            Click="OnTemplateButtonClick"
-                            Width="220">
-                        <StackPanel Orientation="Vertical" Spacing="6" HorizontalAlignment="Left">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Grid.Column="0"
-                                           Text="TPL.01"
-                                           FontFamily="{DynamicResource MwMono}"
-                                           FontSize="9"
-                                           LetterSpacing="2.5"
-                                           FontWeight="SemiBold"
-                                           Foreground="{DynamicResource MwMoltenHi}" />
-                                <Rectangle Grid.Column="1" Width="6" Height="6" Fill="{DynamicResource MwCyan}" />
-                            </Grid>
-                            <TextBlock Text="Photo Import"
-                                       FontFamily="{DynamicResource MwSerif}"
-                                       FontSize="22"
-                                       FontStyle="Italic"
-                                       Foreground="{DynamicResource MwBone}" />
-                            <TextBlock Text="camera SD → dated folders → web sizes"
-                                       FontFamily="{DynamicResource MwMono}"
-                                       FontSize="10"
-                                       Foreground="{DynamicResource MwAsh}"
-                                       TextWrapping="Wrap" />
-                            <Border Height="1"
-                                    Background="{DynamicResource MwIronDark}"
-                                    Margin="0,8,0,0" />
-                            <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
-                                <TextBlock Grid.Column="0"
-                                           Text="5 stations"
-                                           FontFamily="{DynamicResource MwMono}"
-                                           FontSize="9"
-                                           LetterSpacing="1.2"
-                                           Foreground="{DynamicResource MwIronLite}" />
-                                <TextBlock Grid.Column="1"
-                                           Text="ignite ▸"
-                                           FontFamily="{DynamicResource MwMono}"
-                                           FontSize="9"
-                                           LetterSpacing="1.2"
-                                           Foreground="{DynamicResource MwMolten}" />
-                            </Grid>
-                        </StackPanel>
-                    </Button>
-                    <Button Classes="templateButton" Margin="8"
-                            Tag="batch-sequential-rename"
-                            Click="OnTemplateButtonClick"
-                            Width="220">
-                        <StackPanel Orientation="Vertical" Spacing="6" HorizontalAlignment="Left">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Grid.Column="0" Text="TPL.02"
-                                           FontFamily="{DynamicResource MwMono}" FontSize="9"
-                                           LetterSpacing="2.5" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource MwMoltenHi}" />
-                                <Rectangle Grid.Column="1" Width="6" Height="6" Fill="{DynamicResource MwCyan}" />
-                            </Grid>
-                            <TextBlock Text="Batch Rename"
-                                       FontFamily="{DynamicResource MwSerif}" FontSize="22" FontStyle="Italic"
-                                       Foreground="{DynamicResource MwBone}" />
-                            <TextBlock Text="sequential counter with date prefix"
-                                       FontFamily="{DynamicResource MwMono}" FontSize="10"
-                                       Foreground="{DynamicResource MwAsh}" TextWrapping="Wrap" />
-                            <Border Height="1" Background="{DynamicResource MwIronDark}" Margin="0,8,0,0" />
-                            <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
-                                <TextBlock Grid.Column="0" Text="3 stations"
-                                           FontFamily="{DynamicResource MwMono}" FontSize="9"
-                                           LetterSpacing="1.2" Foreground="{DynamicResource MwIronLite}" />
-                                <TextBlock Grid.Column="1" Text="ignite ▸"
-                                           FontFamily="{DynamicResource MwMono}" FontSize="9"
-                                           LetterSpacing="1.2" Foreground="{DynamicResource MwMolten}" />
-                            </Grid>
-                        </StackPanel>
-                    </Button>
-                    <Button Classes="templateButton" Margin="8"
-                            Tag="image-web-export"
-                            Click="OnTemplateButtonClick"
-                            Width="220">
-                        <StackPanel Orientation="Vertical" Spacing="6" HorizontalAlignment="Left">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Grid.Column="0" Text="TPL.03"
-                                           FontFamily="{DynamicResource MwMono}" FontSize="9"
-                                           LetterSpacing="2.5" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource MwMoltenHi}" />
-                                <Rectangle Grid.Column="1" Width="6" Height="6" Fill="{DynamicResource MwCyan}" />
-                            </Grid>
-                            <TextBlock Text="Web Export"
-                                       FontFamily="{DynamicResource MwSerif}" FontSize="22" FontStyle="Italic"
-                                       Foreground="{DynamicResource MwBone}" />
-                            <TextBlock Text="resize + convert + compress for hosting"
-                                       FontFamily="{DynamicResource MwMono}" FontSize="10"
-                                       Foreground="{DynamicResource MwAsh}" TextWrapping="Wrap" />
-                            <Border Height="1" Background="{DynamicResource MwIronDark}" Margin="0,8,0,0" />
-                            <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
-                                <TextBlock Grid.Column="0" Text="6 stations"
-                                           FontFamily="{DynamicResource MwMono}" FontSize="9"
-                                           LetterSpacing="1.2" Foreground="{DynamicResource MwIronLite}" />
-                                <TextBlock Grid.Column="1" Text="ignite ▸"
-                                           FontFamily="{DynamicResource MwMono}" FontSize="9"
-                                           LetterSpacing="1.2" Foreground="{DynamicResource MwMolten}" />
-                            </Grid>
-                        </StackPanel>
-                    </Button>
-                    <Button Classes="templateButton" Margin="8"
-                            Tag="bulk-image-compress"
-                            Click="OnTemplateButtonClick"
-                            Width="220">
-                        <StackPanel Orientation="Vertical" Spacing="6" HorizontalAlignment="Left">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Grid.Column="0" Text="TPL.04"
-                                           FontFamily="{DynamicResource MwMono}" FontSize="9"
-                                           LetterSpacing="2.5" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource MwMoltenHi}" />
-                                <Rectangle Grid.Column="1" Width="6" Height="6" Fill="{DynamicResource MwCyan}" />
-                            </Grid>
-                            <TextBlock Text="Compress"
-                                       FontFamily="{DynamicResource MwSerif}" FontSize="22" FontStyle="Italic"
-                                       Foreground="{DynamicResource MwBone}" />
-                            <TextBlock Text="reduce quality to target file-size budget"
-                                       FontFamily="{DynamicResource MwMono}" FontSize="10"
-                                       Foreground="{DynamicResource MwAsh}" TextWrapping="Wrap" />
-                            <Border Height="1" Background="{DynamicResource MwIronDark}" Margin="0,8,0,0" />
-                            <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
-                                <TextBlock Grid.Column="0" Text="3 stations"
-                                           FontFamily="{DynamicResource MwMono}" FontSize="9"
-                                           LetterSpacing="1.2" Foreground="{DynamicResource MwIronLite}" />
-                                <TextBlock Grid.Column="1" Text="ignite ▸"
-                                           FontFamily="{DynamicResource MwMono}" FontSize="9"
-                                           LetterSpacing="1.2" Foreground="{DynamicResource MwMolten}" />
-                            </Grid>
-                        </StackPanel>
-                    </Button>
-                </UniformGrid>
+                <!-- Template cards: one cast-iron button per library template -->
+                <ItemsControl ItemsSource="{Binding TemplateCards}"
+                              HorizontalAlignment="Center"
+                              Margin="0,14,0,0">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal" HorizontalAlignment="Center" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:TemplateCardViewModel">
+                            <Button Classes="templateButton" Margin="8"
+                                    Tag="{Binding Id}"
+                                    Click="OnTemplateButtonClick"
+                                    Width="220">
+                                <StackPanel Orientation="Vertical" Spacing="6" HorizontalAlignment="Left">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Text="{Binding Code}"
+                                                   FontFamily="{DynamicResource MwMono}" FontSize="9"
+                                                   LetterSpacing="2.5" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource MwMoltenHi}" />
+                                        <Rectangle Grid.Column="1" Width="6" Height="6" Fill="{Binding Accent}" />
+                                    </Grid>
+                                    <TextBlock Text="{Binding Title}"
+                                               FontFamily="{DynamicResource MwSerif}" FontSize="22" FontStyle="Italic"
+                                               Foreground="{DynamicResource MwBone}" />
+                                    <TextBlock Text="{Binding Description}"
+                                               FontFamily="{DynamicResource MwMono}" FontSize="10"
+                                               Foreground="{DynamicResource MwAsh}" TextWrapping="Wrap" />
+                                    <Border Height="1" Background="{DynamicResource MwIronDark}" Margin="0,8,0,0" />
+                                    <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
+                                        <TextBlock Grid.Column="0" Text="{Binding StationCount, StringFormat='{}{0} stations'}"
+                                                   FontFamily="{DynamicResource MwMono}" FontSize="9"
+                                                   LetterSpacing="1.2" Foreground="{DynamicResource MwIronLite}" />
+                                        <TextBlock Grid.Column="1" Text="ignite ▸"
+                                                   FontFamily="{DynamicResource MwMono}" FontSize="9"
+                                                   LetterSpacing="1.2" Foreground="{DynamicResource MwMolten}" />
+                                    </Grid>
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
 
                 <!-- Keyboard hints -->
                 <StackPanel Orientation="Horizontal" Spacing="22" HorizontalAlignment="Center" Margin="0,14,0,0">
@@ -1240,6 +1207,7 @@
                     </StackPanel>
                 </StackPanel>
             </StackPanel>
+            </ScrollViewer>
         </Border>
     </Grid>
 </UserControl>

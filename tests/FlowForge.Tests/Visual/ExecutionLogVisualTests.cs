@@ -2,9 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Primitives;
-using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
-using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Styling;
@@ -55,27 +53,32 @@ public sealed class ExecutionLogVisualTests
             log.ReportProgressEvent(new PhaseChanged(ExecutionPhase.Enumerating));
             log.ReportProgressEvent(new FilesDiscovered(4));
             log.ReportProgressEvent(new PhaseChanged(ExecutionPhase.Processing));
+
+            // A branch of the second file ends first; the file counts toward progress only when its last branch does.
+            log.ReportProgressEvent(new FileProcessed(Job(session, "second.png", FileJobStatus.Succeeded)) { CompletesOriginal = false });
             foreach (FileJob job in jobs)
             {
                 log.ReportProgressEvent(new FileProcessed(job));
             }
 
             ExecutionLogView view = LogView(session.Window);
-            TextBlock succeeded = TabCount(view, "0");
-            TextBlock failed = TabCount(view, "1");
-            TextBlock currentFile = CurrentFileText(view);
+            TextBlock succeeded = session.ById<TextBlock>("SucceededCount");
+            TextBlock failed = session.ById<TextBlock>("FailedCount");
+            TextBlock phase = session.ById<TextBlock>("PhaseLabel");
+            TextBlock count = session.ById<TextBlock>("ConsoleCount");
             session.Pump();
-            ProgressBar bar = view.GetVisualDescendants().OfType<ProgressBar>().Single(p => !p.IsIndeterminate);
+            ProgressBar bar = view.GetVisualDescendants().OfType<ProgressBar>().Single();
             session.RenderUntil(
-                () => new Control[] { succeeded, failed, bar, currentFile }.All(c => c.IsEffectivelyVisible && c.Bounds.Width > 0),
+                () => new Control[] { succeeded, failed, bar, phase }.All(c => c.IsEffectivelyVisible && c.Bounds.Width > 0),
                 "log strip shows the fed counts");
             using WriteableBitmap frame = session.Capture(VisualFrames.LogProgress);
 
-            _output.WriteLine($"succeeded={succeeded.Text} failed={failed.Text} progress={bar.Value} current={currentFile.Text}");
-            succeeded.Text.Should().Be("2");
+            _output.WriteLine($"succeeded={succeeded.Text} failed={failed.Text} count={count.Text} progress={bar.Value} phase='{phase.Text}'");
+            succeeded.Text.Should().Be("3");
             failed.Text.Should().Be("1");
-            bar.Value.Should().BeApproximately(75, 0.001, "three of four discovered files are processed");
-            currentFile.Text.Should().Be(jobs[^1].FileName);
+            count.Text.Should().Be("3/4", "three of four discovered files are finished");
+            bar.Value.Should().BeApproximately(75, 0.001, "three of four discovered files are finished");
+            phase.Text.Should().Be($"Processing 3 of 4 files — {jobs[^1].FileName}", "the strip counts finished files and names the last one");
         }
         finally
         {
@@ -99,29 +102,34 @@ public sealed class ExecutionLogVisualTests
         ExecutionLogView view = LogView(window);
         ItemsControl rows = RowList(view, log);
         ToggleButton outputTab = Tab(view, "0");
-        session.RenderUntil(() => RowsShown(rows, 3), "three log rows shown");
+        session.RenderUntil(() => RowsShown(rows, 1), "the succeeded file's row shown");
 
         // Pressing the open tab collapses the row list; pressing it again expands it.
-        Click(window, CentreInWindow(outputTab));
+        session.Click(outputTab);
         session.RenderUntil(() => !log.IsPanelExpanded && !rows.IsEffectivelyVisible, "row list collapsed");
-        Click(window, CentreInWindow(outputTab));
-        session.RenderUntil(() => log.IsPanelExpanded && RowsShown(rows, 3), "row list expanded");
+        session.Click(outputTab);
+        session.RenderUntil(() => log.IsPanelExpanded && RowsShown(rows, 1), "row list expanded");
+        string[] outputFiles = RowGrids(rows).Select(g => ((FileJobLogEntryViewModel)g.DataContext!).FileName).ToArray();
+
+        session.Click(Tab(view, "1"));
+        session.RenderUntil(() => ListOf(view, log.ErrorEntries) is { } shown && RowsShown(shown, 1), "the failed file's row shown on the Errors tab");
+        ItemsControl errorRows = ListOf(view, log.ErrorEntries)!;
         using WriteableBitmap frame = session.Capture(VisualFrames.LogRows);
 
-        Grid failedRow = RowGrids(rows).Single(g => g.DataContext is FileJobLogEntryViewModel { IsError: true });
-        TextBlock error = failedRow.Children.OfType<TextBlock>().Single(t => Grid.GetColumn(t) == 3);
+        Grid failedRow = RowGrids(errorRows).Single();
+        TextBlock error = failedRow.Children.OfType<TextBlock>().Single(t => Grid.GetColumn(t) == 4);
         Ellipse marker = failedRow.Children.OfType<Ellipse>().Single(e => e.IsEffectivelyVisible);
         PixelRect markerBounds = session.BoundsInWindow(marker);
         var markerBand = new PixelRect(markerBounds.X + (markerBounds.Width / 2) - 1, markerBounds.Y + (markerBounds.Height / 2) - 1, 2, 2);
 
-        // Inside the row's left padding, beside the marker: background only, no text.
+        // In the gap between the timestamp and the marker: background only, no text.
         var backgroundBand = new PixelRect(markerBounds.X - 6, markerBand.Y, 2, 2);
         Color measured = session.MeanColour(frame, markerBand);
         Color background = session.MeanColour(frame, backgroundBand);
         Color expected = ThemeColour("ForgeError");
-        _output.WriteLine($"rows={RowGrids(rows).Count} error='{error.Text}' visible={error.IsEffectivelyVisible}");
+        _output.WriteLine($"output rows={string.Join(",", outputFiles)} error rows={RowGrids(errorRows).Count} error='{error.Text}' visible={error.IsEffectivelyVisible}");
         _output.WriteLine($"marker band={markerBand} measured={measured} expected={expected} background={background} tolerance={ColourTolerance}");
-        RowGrids(rows).Should().HaveCount(3, "each processed file adds a row");
+        outputFiles.Should().Equal(["kept.png"], "the Output tab lists only the file that succeeded");
         error.IsEffectivelyVisible.Should().BeTrue();
         error.Text.Should().Be(failedJob.ErrorMessage);
         WithinTolerance(measured, expected).Should().BeTrue("the failed row's marker is drawn in the theme's error colour");
@@ -146,7 +154,7 @@ public sealed class ExecutionLogVisualTests
         session.RenderUntil(() => !log.IsRunning, TimeSpan.FromSeconds(10), "real run finished");
         ExecutionLogView view = LogView(session.Window);
         ItemsControl rows = RowList(view, log);
-        TextBlock summary = SummaryText(view);
+        TextBlock summary = session.ById<TextBlock>("RunSummary");
         session.RenderUntil(() => RowsShown(rows, 3) && summary.IsEffectivelyVisible && summary.Bounds.Width > 0, "run rows and summary shown");
         using WriteableBitmap frame = session.Capture(VisualFrames.RealRun);
 
@@ -156,6 +164,125 @@ public sealed class ExecutionLogVisualTests
         RowGrids(rows).Should().HaveCount(3, "each copied file adds a row");
         log.Summary.Should().NotBeNullOrEmpty();
         summary.Text.Should().Be(log.Summary);
+    }
+
+    [AvaloniaFact]
+    public void A_refused_run_keeps_its_summary_in_the_window_and_lists_it_as_errors()
+    {
+        const string prefix = "Execution failed: ";
+        using var session = VisualSession.Open(_output);
+        MainWindowViewModel vm = session.ViewModel;
+        ExecutionLogViewModel log = vm.ExecutionLog;
+        string input = Path.Combine(session.Temp.Path, "in");
+        TestFileFactory.CreateTestImages(input, "a.png");
+
+        // The editor lets one step feed two outputs; the run refuses that shape with a long, node-by-node message.
+        NodeDefinition source = PipelineBuilder.Node("FolderInput", new { path = input, filter = "*.png" });
+        NodeDefinition rename = PipelineBuilder.Node("RenameAddAffix", new { prefix = "x_" });
+        NodeDefinition first = PipelineBuilder.Node("FolderOutput", new { path = Path.Combine(session.Temp.OutputPath, "first"), mode = "copy" });
+        NodeDefinition second = PipelineBuilder.Node("FolderOutput", new { path = Path.Combine(session.Temp.OutputPath, "second"), mode = "copy" });
+        var graph = new PipelineGraph { Name = "fan-out", Nodes = [source, rename, first, second] };
+        graph.Connections.Add(new Connection { FromNode = source.Id, ToNode = rename.Id });
+        graph.Connections.Add(new Connection { FromNode = rename.Id, ToNode = first.Id });
+        graph.Connections.Add(new Connection { FromNode = rename.Id, ToNode = second.Id });
+        vm.Editor.LoadGraph(graph, vm.Registry).Should().Be(0, "the editor keeps every connection of the fan-out");
+
+        vm.RunCommand.Execute(null);
+        session.RenderUntil(() => !log.IsRunning && log.Summary is not null, TimeSpan.FromSeconds(10), "the run was refused");
+        TextBlock summary = session.ById<TextBlock>("RunSummary");
+        session.RenderUntil(() => summary.IsEffectivelyVisible && summary.Bounds.Width > 0, "refusal summary shown");
+        using WriteableBitmap frame = session.Capture(VisualFrames.RunRefused);
+
+        PixelRect bounds = session.BoundsInWindow(summary);
+        var client = PixelSize.FromSize(session.Window.ClientSize, session.Window.RenderScaling);
+        object? tip = ToolTip.GetTip(summary);
+        string[] lines = log.Summary![prefix.Length..].Split(Environment.NewLine);
+        _output.WriteLine($"summary length={log.Summary.Length} bounds={bounds} client={client} tip length={tip?.ToString()?.Length ?? 0}");
+        _output.WriteLine($"message lines={lines.Length} error rows={log.ErrorEntries.Count} failed={log.Failed}");
+        log.Summary.Should().StartWith(prefix);
+        tip.Should().Be(log.Summary, "the tooltip holds the whole summary");
+        bounds.X.Should().BeGreaterThanOrEqualTo(0);
+        bounds.Right.Should().BeLessThanOrEqualTo(client.Width, "the summary is trimmed inside the window, not cut off at its edge");
+        log.ErrorEntries.Select(e => e.ErrorMessage).Should().Equal(lines, "each line of the message is a row on the Errors tab");
+        log.Failed.Should().Be(0, "no file failed; the run was refused before it touched one");
+    }
+
+    [AvaloniaFact]
+    public void LogRows_ShowTimestampAndNodeLogTooltip()
+    {
+        using var session = VisualSession.Open(_output);
+        ExecutionLogViewModel log = session.ViewModel.ExecutionLog;
+        foreach ((string name, FileJobStatus status) in new[] { ("kept.png", FileJobStatus.Succeeded), ("broken.png", FileJobStatus.Failed), ("passed.png", FileJobStatus.Skipped) })
+        {
+            FileJob job = Job(session, name, status, status == FileJobStatus.Failed ? "Unsupported image header" : null);
+            job.NodeLog.Add($"ImageResize: read '{name}'");
+            job.NodeLog.Add($"FolderOutput: finished '{name}'");
+            log.ReportProgressEvent(new FileProcessed(job));
+        }
+
+        ExecutionLogView view = LogView(session.Window);
+        var tabs = new (int Index, IReadOnlyList<FileJobLogEntryViewModel> Entries)[] { (0, log.Entries), (1, log.ErrorEntries), (2, log.WarningEntries) };
+        int rowsChecked = 0;
+        foreach ((int index, IReadOnlyList<FileJobLogEntryViewModel> entries) in tabs)
+        {
+            log.SelectedTabIndex = index;
+            session.RenderUntil(() => ListOf(view, entries) is { } shown && RowsShown(shown, entries.Count), $"tab {index} rows shown");
+            ItemsControl rows = ListOf(view, entries).Should().NotBeNull().And.BeAssignableTo<ItemsControl>().Subject;
+            foreach (ContentPresenter presenter in rows.GetRealizedContainers().OfType<ContentPresenter>())
+            {
+                FileJobLogEntryViewModel entry = presenter.DataContext.Should().BeOfType<FileJobLogEntryViewModel>().Subject;
+                Border row = presenter.Child.Should().BeOfType<Border>().Subject;
+                Grid grid = row.Child.Should().BeOfType<Grid>().Subject;
+                TextBlock first = grid.Children.OfType<TextBlock>().OrderBy(Grid.GetColumn).First();
+                object? tip = ToolTip.GetTip(row);
+                string expectedTip = string.Join(Environment.NewLine, entry.NodeLog);
+                _output.WriteLine($"[tab {index}] {entry.FileName}: first='{first.Text}' timestamp='{entry.Timestamp}' tip='{tip?.ToString()?.Replace(Environment.NewLine, " | ", StringComparison.Ordinal)}'");
+                first.Text.Should().Be(entry.Timestamp, "a row leads with the time its file finished");
+                tip.Should().Be(expectedTip, "a row's tooltip lists what each node did to its file");
+                rowsChecked++;
+            }
+        }
+
+        _output.WriteLine($"rows checked={rowsChecked}");
+        rowsChecked.Should().Be(3, "one row on each of the Output, Errors and Skipped tabs");
+    }
+
+    [AvaloniaFact]
+    public void Log_lists_build_only_the_rows_in_view()
+    {
+        const int files = 3000;
+        using var session = VisualSession.Open(_output);
+        ExecutionLogViewModel log = session.ViewModel.ExecutionLog;
+        log.ReportProgressEvent(new PhaseChanged(ExecutionPhase.Enumerating));
+        log.ReportProgressEvent(new FilesDiscovered(files));
+        log.ReportProgressEvent(new PhaseChanged(ExecutionPhase.Processing));
+        for (int i = 0; i < files; i++)
+        {
+            FileJob job = (i % 3) switch
+            {
+                0 => Job(session, $"file{i}.png", FileJobStatus.Succeeded),
+                1 => Job(session, $"file{i}.png", FileJobStatus.Failed, "Unsupported image header"),
+                _ => Job(session, $"file{i}.png", FileJobStatus.Skipped),
+            };
+            log.ReportProgressEvent(new FileProcessed(job));
+        }
+
+        ExecutionLogView view = LogView(session.Window);
+        var tabs = new (int Index, IReadOnlyList<FileJobLogEntryViewModel> Entries)[] { (0, log.Entries), (1, log.ErrorEntries), (2, log.WarningEntries) };
+        var realized = new Dictionary<int, int>();
+        foreach ((int index, IReadOnlyList<FileJobLogEntryViewModel> entries) in tabs)
+        {
+            log.SelectedTabIndex = index;
+            session.RenderUntil(
+                () => ListOf(view, entries) is { } shown && shown.IsEffectivelyVisible && RowGrids(shown) is { Count: > 0 } grids && grids.All(g => g.Bounds.Height > 0),
+                TimeSpan.FromSeconds(20),
+                $"tab {index} rows shown");
+            ItemsControl rows = ListOf(view, entries).Should().NotBeNull().And.BeAssignableTo<ItemsControl>().Subject;
+            realized[index] = rows.GetRealizedContainers().Count();
+            _output.WriteLine($"[tab {index}] entries={entries.Count} realized rows={realized[index]}");
+        }
+
+        realized.Values.Should().OnlyContain(count => count > 0 && count < 100, "a list builds the rows in view, not one per entry");
     }
 
     private static FileJob Job(VisualSession session, string name, FileJobStatus status, string? error = null)
@@ -171,23 +298,12 @@ public sealed class ExecutionLogVisualTests
     private static ToggleButton Tab(ExecutionLogView view, string index) =>
         view.GetVisualDescendants().OfType<ToggleButton>().Single(b => b.CommandParameter is string p && string.Equals(p, index, StringComparison.Ordinal));
 
-    // A tab's count badge: the one text inside a border, beside the tab's label.
-    private static TextBlock TabCount(ExecutionLogView view, string index) =>
-        Tab(view, index).GetVisualDescendants().OfType<TextBlock>().Single(t => t.Parent is Border);
-
-    // The text after the strip's "Processing" label.
-    private static TextBlock CurrentFileText(ExecutionLogView view)
-    {
-        TextBlock label = view.GetVisualDescendants().OfType<TextBlock>().Single(t => string.Equals(t.Text, "Processing", StringComparison.Ordinal));
-        return (TextBlock)((StackPanel)label.Parent!).Children[1];
-    }
-
-    // The tab strip's one text of its own, right of the tabs.
-    private static TextBlock SummaryText(ExecutionLogView view) =>
-        ((Grid)Tab(view, "0").Parent!).Children.OfType<TextBlock>().Single();
-
     private static ItemsControl RowList(ExecutionLogView view, ExecutionLogViewModel log) =>
         view.GetVisualDescendants().OfType<ItemsControl>().Single(list => ReferenceEquals(list.ItemsSource, log.Entries));
+
+    // A hidden tab's list joins the visual tree only once its scroll viewer is first laid out.
+    private static ItemsControl? ListOf(ExecutionLogView view, object entries) =>
+        view.GetVisualDescendants().OfType<ItemsControl>().SingleOrDefault(list => ReferenceEquals(list.ItemsSource, entries));
 
     // A row's presenter exists before its template content is built; only built rows count.
     private static List<Grid> RowGrids(ItemsControl rows) =>
@@ -196,16 +312,6 @@ public sealed class ExecutionLogVisualTests
 
     private static bool RowsShown(ItemsControl rows, int count) =>
         rows.IsEffectivelyVisible && RowGrids(rows) is { } grids && grids.Count == count && grids.All(g => g.Bounds.Height > 0);
-
-    private static Point CentreInWindow(Avalonia.Visual visual) =>
-        visual.TranslatePoint(new Point(visual.Bounds.Width / 2, visual.Bounds.Height / 2), TopLevel.GetTopLevel(visual)!)
-            ?? throw new InvalidOperationException($"{visual.GetType().Name} has no transform to its window.");
-
-    private static void Click(TopLevel topLevel, Point point)
-    {
-        topLevel.MouseDown(point, MouseButton.Left, RawInputModifiers.None);
-        topLevel.MouseUp(point, MouseButton.Left, RawInputModifiers.None);
-    }
 
     private static Color ThemeColour(string key)
     {

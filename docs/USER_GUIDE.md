@@ -23,14 +23,37 @@ dotnet run --project src/FlowForge.UI
 ### Canvas
 
 - **Pan** — right-click drag or middle-click drag
-- **Zoom** — scroll wheel
+- **Zoom** — scroll wheel, from 25% to 400%
 - **Select** — click a node, or rubber-band select multiple nodes
 - **Move** — drag selected nodes
 - **Connect** — drag from an output pin to an input pin to create a wire
-- **Delete** — select a node or connection and press Delete
+- **Disconnect** — Alt+click a pin to remove every wire on it in one undo step
+- **Delete** — select a node and press Delete
 - **Undo** — Ctrl+Z to undo the last action (up to 25 steps)
 - **Redo** — Ctrl+Y to redo the last undone action
 - **Zoom to Fit** — click the toolbar button to fit the entire graph into view
+
+### Keyboard Shortcuts
+
+Press F1, or click the toolbar's **?** button, to show this list in the app:
+
+<!-- shortcuts -->
+- **Ctrl+N** — New pipeline
+- **Ctrl+O** — Open pipeline
+- **Ctrl+S** — Save
+- **Ctrl+Shift+S** — Save as
+- **Delete** — Remove selected nodes
+- **Ctrl+0** — Zoom to fit all nodes
+- **Middle/Right-drag** — Pan canvas
+- **Scroll** — Zoom in/out
+- **Alt+Click port** — Disconnect
+- **Ctrl+Z** — Undo
+- **Ctrl+Y** — Redo
+- **F5** — Dry run (no files changed)
+- **Ctrl+Shift+Enter** — Run pipeline
+- **Esc** — Stop the running pipeline
+- **F1** — Show this help
+<!-- /shortcuts -->
 
 ### Node Library
 
@@ -66,9 +89,9 @@ Undo/redo state is cleared when you load a new pipeline or create a new one.
 
 The bottom panel shows pipeline execution results:
 
-- **Output tab** — per-file status (success, failed, skipped) with details
+- **Output tab** — files that succeeded
 - **Errors tab** — files that failed processing
-- **Warnings tab** — files that were skipped
+- **Skipped tab** — files that were skipped
 - **Progress bar** — live progress during execution
 - **Summary line** — total files, success/fail/skip counts, and duration
 - **Real-time progress** — file scanning count updates live during enumeration, followed by per-file processing status
@@ -77,7 +100,7 @@ The bottom panel shows pipeline execution results:
 
 Rename and image nodes never change the input folder — they work on private copies, and only Folder Output writes to your folders. With `copy` the input files stay as they were; `move` deletes each one only after every delivery of it succeeded.
 
-### Folder Input (Source)
+### Folder Input (Input)
 
 Enumerates files from a directory.
 
@@ -89,7 +112,7 @@ Enumerates files from a directory.
 | `filter` | File Filter | no | `*` | — | `*.jpg;*.png` | Semicolon-separated glob patterns (e.g. \*.jpg;\*.png) |
 <!-- /node-fields -->
 
-### Rename (Pattern) (Transform)
+### Rename (Pattern) (Process)
 
 Renames files using token-based patterns.
 
@@ -110,7 +133,7 @@ A `{meta:KEY}` token whose key the file does not carry expands to an empty strin
 | `startIndex` | Counter Start | no | `1` | — | — | Starting number for {counter} token |
 <!-- /node-fields -->
 
-### Rename (Regex) (Transform)
+### Rename (Regex) (Process)
 
 Regex find-and-replace on filenames.
 
@@ -122,7 +145,7 @@ Regex find-and-replace on filenames.
 | `scope` | Scope | no | `filename` | `filename`, `fullpath` | — | filename: match name only, fullpath: match entire path |
 <!-- /node-fields -->
 
-### Rename (Add Affix) (Transform)
+### Rename (Add Affix) (Process)
 
 Adds a prefix and/or suffix to filenames.
 
@@ -133,7 +156,7 @@ Adds a prefix and/or suffix to filenames.
 | `suffix` | Suffix | no | — | — | — | Text to append after filename (before extension) |
 <!-- /node-fields -->
 
-### Filter (Transform)
+### Filter (Process)
 
 Filters files by conditions. Files that don't match are either skipped or dropped.
 
@@ -143,7 +166,7 @@ Filters files by conditions. Files that don't match are either skipped or droppe
 | `conditions` | Conditions (JSON) | yes | — | — | `[{"field":"extension","operator":"equals","value":".jpg"}]` | JSON array of conditions. Fields: extension, filename, size, createdAt, modifiedAt. Operators: equals, notequals, contains, startswith, endswith, greaterthan, lessthan, matches |
 <!-- /node-fields -->
 
-### Sort (Transform)
+### Sort (Process)
 
 Reorders files in the pipeline.
 
@@ -154,7 +177,7 @@ Reorders files in the pipeline.
 | `direction` | Direction | no | `asc` | `asc`, `desc` | — | asc: smallest/oldest first, desc: largest/newest first |
 <!-- /node-fields -->
 
-### Image Resize (Transform)
+### Image Resize (Process)
 
 Resizes image files.
 
@@ -168,7 +191,7 @@ Resizes image files.
 | `dpi` | DPI | no | — | — | — | Output resolution in dots per inch (leave blank to keep original) |
 <!-- /node-fields -->
 
-### Image Convert (Transform)
+### Image Convert (Process)
 
 Converts images between formats.
 
@@ -178,7 +201,7 @@ Converts images between formats.
 | `format` | Target Format | yes | — | `jpg`, `jpeg`, `png`, `webp`, `bmp`, `tiff` | — | Output image format |
 <!-- /node-fields -->
 
-### Image Compress (Transform)
+### Image Compress (Process)
 
 Compresses images with quality control.
 
@@ -189,7 +212,7 @@ Compresses images with quality control.
 | `format` | Output Format | no | — | `jpg`, `jpeg`, `png`, `webp` | — | Override output format (leave blank to keep original format) |
 <!-- /node-fields -->
 
-### Metadata Extract (Transform)
+### Metadata Extract (Process)
 
 Reads EXIF and file metadata into pipeline variables for use in downstream Rename Pattern nodes via `{meta:KEY}`. A `{meta:KEY}` token takes the full key as written in `keys`, for example `{meta:EXIF:DateTaken}`.
 

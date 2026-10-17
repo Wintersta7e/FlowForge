@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Avalonia;
+using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Media.Imaging;
@@ -77,7 +78,7 @@ public sealed class LaunchTests
 
         session.ViewModel.Editor.Nodes.Should().BeEmpty();
         session.Window.IsVisible.Should().BeTrue();
-        EmptyStateOverlay(session.Window).IsEffectivelyVisible.Should().BeTrue();
+        session.ById<Border>("EmptyState").IsEffectivelyVisible.Should().BeTrue();
         frame.PixelSize.Should().Be(new PixelSize(1400, 820));
         colours.Should().BeGreaterThanOrEqualTo(500, "the themed window paints far more than a blank surface");
         Application.Current.Should().BeOfType<App>();
@@ -90,12 +91,24 @@ public sealed class LaunchTests
         }
     }
 
-    // The canvas overlay shown while the editor has no nodes: the nearest border around its headline.
-    private static Border EmptyStateOverlay(Window window) =>
-        window.GetVisualDescendants().OfType<TextBlock>()
-            .Single(t => string.Equals(t.Text, "Build your pipeline", StringComparison.Ordinal))
-            .FindAncestorOfType<Border>()
-            ?? throw new InvalidOperationException("The empty-state headline has no border around it.");
+    // A screen reader announces a button by its automation peer's name; a tooltip is only help text.
+    [AvaloniaFact]
+    public void Toolbar_icon_buttons_have_accessible_names()
+    {
+        using var session = VisualSession.Open(_output);
+        var buttons = session.Window.GetVisualDescendants().OfType<Button>()
+            .Where(button => button.Classes.Contains("toolbarIcon"))
+            .Select(button => (Name: ControlAutomationPeer.CreatePeerForElement(button).GetName(), Tip: ToolTip.GetTip(button) as string ?? string.Empty))
+            .ToList();
+
+        static bool NamedForItsTip((string Name, string Tip) button) =>
+            button.Name.Length > 0 && button.Tip.StartsWith(button.Name, StringComparison.Ordinal);
+
+        buttons.ForEach(button => _output.WriteLine($"name='{button.Name}' tip='{button.Tip}'"));
+        _output.WriteLine($"icon-buttons={buttons.Count} named-for-tooltip={buttons.Count(NamedForItsTip)}");
+        buttons.Should().NotBeEmpty();
+        buttons.Where(button => !NamedForItsTip(button)).Should().BeEmpty("an icon-only button is named for the action its tooltip describes");
+    }
 
     // Every line under src/FlowForge.UI (build output excluded) that calls ConfigureServices, as "file:line".
     private static List<string> ConfigureServicesCallSites()

@@ -23,6 +23,8 @@ public partial class RemovedMembersTests
         "EnsureFlushTimerRunning",
         "StopFlushTimer",
         "OnFlushTimerTick",
+        "_pendingJobs",
+        "FlushPendingJobs",
         "CategoryBrush",
         "HeaderBrush",
         "NodeBorderBrush",
@@ -50,6 +52,7 @@ public partial class RemovedMembersTests
         "SourceOffsetProperty",
         "TargetOffsetProperty",
         "ApplyOffset",
+        "ConfigKey",
     ];
 
     // Text that must not come back in one file; other files may still use it.

@@ -33,6 +33,8 @@ internal static class VisualFrames
 
     public const string RealRun = "real-run";
 
+    public const string RunRefused = "run-refused";
+
     public const string MinEmpty = "w-min-empty";
 
     public const string MinIdle = "w-min-idle";
@@ -58,6 +60,36 @@ internal static class VisualFrames
     public const string EyesShortcutsDialog = "eyes-shortcuts-dialog";
 
     public const string EyesRecentFlyout = "eyes-recent-flyout";
+
+    public const string IgniteDefault = "ignite-default";
+
+    public const string IgnitePointerOver = "ignite-pointerover";
+
+    public const string IgnitePressed = "ignite-pressed";
+
+    public const string AccentCheckBox = "accent-checkbox";
+
+    public const string IntFieldRefusedFocused = "int-field-refused-focused";
+
+    public const string IntFieldRefusedUnfocused = "int-field-refused-unfocused";
+
+    public const string ToolbarUndoDisabled = "toolbar-undo-disabled";
+
+    public const string StationFlaggedUnconnected = "station-flagged-unconnected";
+
+    public const string PipeFlaggedDuplicate = "pipe-flagged-duplicate";
+
+    public const string RunningSubtitlesDim = "running-subtitles-a";
+
+    public const string RunningSubtitlesBright = "running-subtitles-b";
+
+    public const string RunningSubtitlesMid = "running-subtitles-c";
+
+    public const string UnsavedChangesPrompt = "unsaved-changes-prompt";
+
+    public const string CanvasPanZoom = "canvas-pan-zoom";
+
+    public const string CanvasMultiSelect = "canvas-multiselect";
 
     internal const string InspectorPrefix = "inspector-";
 

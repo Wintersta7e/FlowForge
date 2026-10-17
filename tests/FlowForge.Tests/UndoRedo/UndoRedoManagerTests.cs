@@ -277,7 +277,7 @@ public class UndoRedoManagerTests
         var cmd2 = new FakeCommand("edit-2");
 
         manager.PushExecuted(cmd1);
-        manager.PushOrCoalesce(cmd2, prev => prev.Description.StartsWith("edit", StringComparison.Ordinal));
+        manager.PushOrCoalesce(cmd2, prev => prev.Description.StartsWith("edit", StringComparison.Ordinal) ? cmd2 : null);
 
         // Should have replaced, not added
         int count = 0;
@@ -297,7 +297,7 @@ public class UndoRedoManagerTests
         var cmd2 = new FakeCommand("edit");
 
         manager.PushExecuted(cmd1);
-        manager.PushOrCoalesce(cmd2, prev => prev.Description.StartsWith("edit", StringComparison.Ordinal));
+        manager.PushOrCoalesce(cmd2, prev => prev.Description.StartsWith("edit", StringComparison.Ordinal) ? cmd2 : null);
 
         // cmd1 doesn't match predicate, so both should be on stack
         int count = 0;
@@ -317,7 +317,7 @@ public class UndoRedoManagerTests
         manager.Undo();
         manager.CanRedo.Should().BeTrue();
 
-        manager.PushOrCoalesce(new FakeCommand("new"), _ => false);
+        manager.PushOrCoalesce(new FakeCommand("new"), _ => null);
 
         manager.CanRedo.Should().BeFalse();
     }
@@ -337,6 +337,120 @@ public class UndoRedoManagerTests
         act.Should().Throw<InvalidOperationException>();
 
         manager.CanUndo.Should().BeTrue("command stays on stack after failed undo");
+    }
+
+    [Fact]
+    public void NewManager_IsAtSavePoint()
+    {
+        var manager = new UndoRedoManager();
+
+        manager.IsAtSavePoint.Should().BeTrue("nothing has changed since the manager was made");
+
+        manager.Execute(new FakeCommand());
+
+        manager.IsAtSavePoint.Should().BeFalse();
+    }
+
+    [Fact]
+    public void UndoAndRedo_AcrossSavePoint_TrackIt()
+    {
+        var manager = new UndoRedoManager();
+        manager.Execute(new FakeCommand("a"));
+        manager.MarkSavePoint();
+        manager.Execute(new FakeCommand("b"));
+
+        manager.IsAtSavePoint.Should().BeFalse("an edit after the save");
+        manager.Undo();
+        manager.IsAtSavePoint.Should().BeTrue("undo returned to the saved state");
+        manager.Undo();
+        manager.IsAtSavePoint.Should().BeFalse("undo went below the saved state");
+        manager.Redo();
+        manager.IsAtSavePoint.Should().BeTrue("redo returned to the saved state");
+        manager.Redo();
+        manager.IsAtSavePoint.Should().BeFalse("redo went past the saved state");
+    }
+
+    [Fact]
+    public void Clear_MakesSavePointUnreachable()
+    {
+        var manager = new UndoRedoManager();
+        manager.Execute(new FakeCommand());
+        manager.Undo();
+        manager.IsAtSavePoint.Should().BeTrue();
+
+        manager.Clear();
+
+        manager.IsAtSavePoint.Should().BeFalse("after a clear the history cannot prove the saved state");
+        manager.MarkSavePoint();
+        manager.IsAtSavePoint.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Eviction_MakesSavePointUnreachable()
+    {
+        var manager = new UndoRedoManager();
+        for (int i = 0; i < 26; i++)
+        {
+            manager.Execute(new FakeCommand($"edit {i}"));
+        }
+
+        for (int i = 0; i < 26; i++)
+        {
+            manager.Undo();
+        }
+
+        manager.CanUndo.Should().BeFalse("the history is empty again");
+        manager.IsAtSavePoint.Should().BeFalse("the first edit fell out of the history and is still applied");
+    }
+
+    [Fact]
+    public void PushAfterUndoBelowSavePoint_MakesItUnreachable()
+    {
+        var manager = new UndoRedoManager();
+        var saved = new FakeCommand("saved");
+        manager.Execute(saved);
+        manager.MarkSavePoint();
+        manager.Undo();
+
+        manager.Execute(new FakeCommand("other"));
+
+        manager.IsAtSavePoint.Should().BeFalse();
+        manager.Undo();
+        manager.IsAtSavePoint.Should().BeFalse("the saved command left the history with the redo stack");
+        manager.PushExecuted(saved);
+        manager.IsAtSavePoint.Should().BeFalse("the same command pushed again is not the saved state");
+    }
+
+    [Fact]
+    public void Coalesce_LeavesSavePoint()
+    {
+        var manager = new UndoRedoManager();
+        manager.PushExecuted(new FakeCommand("edit 1"));
+        manager.MarkSavePoint();
+
+        manager.PushOrCoalesce(new FakeCommand("edit 2"), _ => new FakeCommand("edit 1 and 2"));
+
+        manager.UndoDescription.Should().Be("edit 2");
+        manager.IsAtSavePoint.Should().BeFalse("the edit after the save is unsaved");
+
+        manager.Undo();
+
+        manager.IsAtSavePoint.Should().BeTrue("the edit was not merged into the saved command, so one undo returns to it");
+        manager.UndoDescription.Should().Be("edit 1");
+    }
+
+    [Fact]
+    public void MarkSavePoint_RaisesStateChanged()
+    {
+        var manager = new UndoRedoManager();
+        manager.Execute(new FakeCommand());
+        int raised = 0;
+        manager.StateChanged += (_, _) => raised++;
+
+        manager.MarkSavePoint();
+
+        raised.Should().Be(1);
+        manager.IsAtSavePoint.Should().BeTrue();
     }
 
     private sealed class ThrowingCommand : IUndoableCommand

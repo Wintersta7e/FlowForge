@@ -4,7 +4,11 @@
              RequestedThemeVariant="Dark">
 
     <Application.Styles>
-        <FluentTheme />
+        <FluentTheme>
+            <FluentTheme.Palettes>
+                <ColorPaletteResources x:Key="Dark" Accent="#ff7a1a" />
+            </FluentTheme.Palettes>
+        </FluentTheme>
         <StyleInclude Source="avares://Nodify.Avalonia/Themes/Controls.xaml" />
         <StyleInclude Source="avares://FlowForge.UI/Themes/MoltenForgeTheme.axaml" />
     </Application.Styles>

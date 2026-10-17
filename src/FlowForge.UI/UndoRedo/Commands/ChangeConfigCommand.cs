@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text.Json;
 
@@ -12,11 +13,6 @@ public sealed class ChangeConfigCommand : IUndoableCommand
     private readonly bool _keyExisted;
 
     public string Description { get; }
-
-    /// <summary>
-    /// Identifies the config field for coalescing repeated edits (e.g., keystrokes).
-    /// </summary>
-    public string ConfigKey => _key;
 
     public ChangeConfigCommand(
         IDictionary<string, JsonElement> config,
@@ -36,7 +32,29 @@ public sealed class ChangeConfigCommand : IUndoableCommand
 
     public void Execute()
     {
-        _config[_key] = _newValue;
+        // A clear carries no new value: redoing it removes the key again.
+        if (_newValue.ValueKind == JsonValueKind.Undefined)
+        {
+            _config.Remove(_key);
+        }
+        else
+        {
+            _config[_key] = _newValue;
+        }
+    }
+
+    /// <summary>
+    /// One command doing this edit and then <paramref name="next"/>, or null when
+    /// <paramref name="next"/> edits another field. It undoes to the value from before this edit.
+    /// </summary>
+    public ChangeConfigCommand? TryMerge(ChangeConfigCommand next)
+    {
+        if (!ReferenceEquals(_config, next._config) || !string.Equals(_key, next._key, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        return new ChangeConfigCommand(_config, _key, _oldValue, next._newValue, _keyExisted, next.Description);
     }
 
     public void Undo()

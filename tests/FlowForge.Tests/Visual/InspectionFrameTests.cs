@@ -1,6 +1,5 @@
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Presenters;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
@@ -27,7 +26,6 @@ namespace FlowForge.Tests.Visual;
 [Collection(VisualCollection.Name)]
 public sealed class InspectionFrameTests
 {
-    private const string WebExportTemplate = "image-web-export";
     private const string Search = "resize";
 
     private readonly ITestOutputHelper _output;
@@ -39,12 +37,12 @@ public sealed class InspectionFrameTests
     {
         using var session = VisualSession.Open(_output);
         EditorViewModel editor = session.ViewModel.Editor;
-        LoadTemplate(session);
+        session.LoadTemplate(VisualSession.WebExportTemplate);
         PipelineNodeViewModel station = editor.Nodes[0];
 
-        Click(session.Window, CentreInWindow(Stations(session.Window).Single(c => ReferenceEquals(c.DataContext, station))));
+        session.Click(session.Stations().Single(c => ReferenceEquals(c.DataContext, station)));
         session.RenderUntil(
-            () => ReferenceEquals(editor.SelectedNode, station) && InspectorReady(session),
+            () => ReferenceEquals(editor.SelectedNode, station) && session.InspectorReady(),
             "a station selected and its fields shown");
         using WriteableBitmap frame = session.Capture(VisualFrames.EyesSelectionGlow);
 
@@ -89,7 +87,7 @@ public sealed class InspectionFrameTests
         NodeLibraryViewModel library = session.ViewModel.NodeLibrary;
         TextBox searchBox = window.GetVisualDescendants().OfType<TextBox>().Single(box => box.DataContext is NodeLibraryViewModel);
 
-        Click(window, CentreInWindow(searchBox));
+        session.Click(searchBox);
         window.KeyTextInput(Search);
 
         // Filtering replaces the shown groups; expand whichever remain so their rows are laid out.
@@ -120,14 +118,15 @@ public sealed class InspectionFrameTests
         MainWindowViewModel vm = session.ViewModel;
         string baseName = string.Concat(Enumerable.Repeat("long-pipeline-title-", 6));
         string path = Path.Combine(session.Temp.Path, baseName + ".ffpipe");
-        await PipelineSerializer.SaveAsync(PipelineTemplateLibrary.CreateFromTemplate(WebExportTemplate), path);
+        await PipelineSerializer.SaveAsync(PipelineTemplateLibrary.CreateFromTemplate(VisualSession.WebExportTemplate), path);
 
         await vm.OpenRecentCommand.ExecuteAsync(path);
-        session.RenderUntil(() => Stations(session.Window).Count == vm.Editor.Nodes.Count, "opened pipeline's stations laid out");
+        session.RenderUntil(() => session.Stations().Count == vm.Editor.Nodes.Count, "opened pipeline's stations laid out");
         using WriteableBitmap frame = session.Capture(VisualFrames.EyesLongTitle);
 
         _output.WriteLine($"base-name-length={baseName.Length} title='{vm.Title}'");
         vm.Title.Should().Contain(baseName);
+        session.RunControlsOutsideClient().Should().BeEmpty("a long name is trimmed rather than pushing the run controls off screen");
     }
 
     [AvaloniaFact]
@@ -136,7 +135,7 @@ public sealed class InspectionFrameTests
         using var session = VisualSession.Open(_output);
         EditorViewModel editor = session.ViewModel.Editor;
         MainWindow window = session.Window;
-        LoadTemplate(session);
+        session.LoadTemplate(VisualSession.WebExportTemplate);
 
         // Fitting measures the laid-out stations, so they must exist first.
         editor.RequestFitToScreen();
@@ -145,13 +144,13 @@ public sealed class InspectionFrameTests
 
         // Both corners go through the zoom transform; a station's own bounds are unscaled.
         session.RenderUntil(
-            () => Stations(window).All(s =>
+            () => session.Stations().All(s =>
                 visible.Contains(s.TranslatePoint(default, canvas)!.Value)
                 && visible.Contains(s.TranslatePoint(new Point(s.Bounds.Width, s.Bounds.Height), canvas)!.Value)),
             "every template station fitted on screen");
         using WriteableBitmap frame = session.Capture(VisualFrames.EyesFit);
 
-        int templateNodes = PipelineTemplateLibrary.CreateFromTemplate(WebExportTemplate).Nodes.Count;
+        int templateNodes = PipelineTemplateLibrary.CreateFromTemplate(VisualSession.WebExportTemplate).Nodes.Count;
         _output.WriteLine($"nodes={editor.Nodes.Count} template={templateNodes} zoom={canvas.ViewportZoom}");
         editor.Nodes.Should().HaveCount(templateNodes);
     }
@@ -189,7 +188,7 @@ public sealed class InspectionFrameTests
         using var session = VisualSession.Open(_output);
         MainWindowViewModel vm = session.ViewModel;
         string recent = Path.Combine(session.Temp.Path, "recent.ffpipe");
-        await PipelineSerializer.SaveAsync(PipelineTemplateLibrary.CreateFromTemplate(WebExportTemplate), recent);
+        await PipelineSerializer.SaveAsync(PipelineTemplateLibrary.CreateFromTemplate(VisualSession.WebExportTemplate), recent);
         var settings = new AppSettings();
         settings.AddRecentPipeline(recent);
         await new AppSettingsManager(session.SettingsPath, NullLogger<AppSettingsManager>.Instance).SaveAsync(settings);
@@ -201,7 +200,7 @@ public sealed class InspectionFrameTests
         Button recentButton = session.Window.GetVisualDescendants().OfType<Button>()
             .Single(button => string.Equals(button.Name, "RecentButton", StringComparison.Ordinal));
         var flyout = (MenuFlyout)recentButton.Flyout!;
-        Click(session.Window, CentreInWindow(recentButton));
+        session.Click(recentButton);
         session.RenderUntil(() => flyout.IsOpen, "recent flyout open");
         try
         {
@@ -218,17 +217,6 @@ public sealed class InspectionFrameTests
         }
     }
 
-    private static void LoadTemplate(VisualSession session)
-    {
-        session.ViewModel.LoadTemplateCommand.Execute(WebExportTemplate);
-        session.RenderUntil(() => Stations(session.Window).Count == session.ViewModel.Editor.Nodes.Count, "template stations laid out");
-    }
-
-    private static List<ItemContainer> Stations(Window window) =>
-        window.GetVisualDescendants().OfType<ItemContainer>()
-            .Where(c => c.DataContext is PipelineNodeViewModel && c.Bounds.Width > 0)
-            .ToList();
-
     private static void ExpandLibraryGroups(Window window)
     {
         foreach (TreeViewItem group in window.GetVisualDescendants().OfType<TreeViewItem>().Where(item => item.DataContext is NodeLibraryGroupViewModel))
@@ -243,25 +231,4 @@ public sealed class InspectionFrameTests
             .Select(row => row.DataContext)
             .OfType<NodeLibraryItemViewModel>()
             .ToList();
-
-    private static Point CentreInWindow(Avalonia.Visual visual) =>
-        visual.TranslatePoint(new Point(visual.Bounds.Width / 2, visual.Bounds.Height / 2), TopLevel.GetTopLevel(visual)!)
-            ?? throw new InvalidOperationException($"{visual.GetType().Name} has no transform to its window.");
-
-    private static void Click(TopLevel topLevel, Point point)
-    {
-        topLevel.MouseDown(point, MouseButton.Left, RawInputModifiers.None);
-        topLevel.MouseUp(point, MouseButton.Left, RawInputModifiers.None);
-    }
-
-    // Every current field has a laid-out card in the inspector.
-    private static bool InspectorReady(VisualSession session)
-    {
-        var cards = session.Window.GetVisualDescendants().OfType<ItemsControl>()
-            .Single(list => ReferenceEquals(list.ItemsSource, session.ViewModel.Properties.Fields))
-            .GetRealizedContainers().OfType<ContentPresenter>().ToList();
-        return cards.Count > 0
-            && cards.Select(card => card.DataContext).SequenceEqual(session.ViewModel.Properties.Fields)
-            && cards.All(card => card.Child is { Bounds.Width: > 0 });
-    }
 }

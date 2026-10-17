@@ -21,6 +21,7 @@
 
                 <!-- Status pill: dot + Cold / Forge Lit -->
                 <StackPanel Grid.Column="0"
+                            AutomationProperties.AutomationId="ConsoleState"
                             Orientation="Horizontal"
                             Spacing="8"
                             VerticalAlignment="Center">
@@ -44,12 +45,31 @@
                                Foreground="{DynamicResource MwMoltenHi}"
                                VerticalAlignment="Center" />
                     <TextBlock Text="COLD"
-                               IsVisible="{Binding !IsRunning}"
                                FontFamily="{DynamicResource MwDisplay}"
                                FontSize="11" FontWeight="SemiBold"
                                LetterSpacing="2.2"
                                Foreground="{DynamicResource MwIronLite}"
-                               VerticalAlignment="Center" />
+                               VerticalAlignment="Center">
+                        <TextBlock.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                <Binding Path="!IsRunning" />
+                                <Binding Path="!IsDemo" />
+                            </MultiBinding>
+                        </TextBlock.IsVisible>
+                    </TextBlock>
+                    <TextBlock Text="DEMO"
+                               FontFamily="{DynamicResource MwDisplay}"
+                               FontSize="11" FontWeight="SemiBold"
+                               LetterSpacing="2.2"
+                               Foreground="{DynamicResource MwCyan}"
+                               VerticalAlignment="Center">
+                        <TextBlock.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                <Binding Path="IsDemo" />
+                                <Binding Path="!IsRunning" />
+                            </MultiBinding>
+                        </TextBlock.IsVisible>
+                    </TextBlock>
                 </StackPanel>
 
                 <Border Grid.Column="1"
@@ -58,26 +78,36 @@
                         VerticalAlignment="Center"
                         Margin="16,0" />
 
-                <!-- PID -->
+                <!-- PID (hidden in the demo: no run, so no process to name) -->
                 <StackPanel Grid.Column="2"
                             Orientation="Horizontal"
                             VerticalAlignment="Center">
+                    <StackPanel.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                            <Binding Path="!IsDemo" />
+                            <Binding Path="IsRunning" />
+                        </MultiBinding>
+                    </StackPanel.IsVisible>
                     <TextBlock Text="pid/"
                                FontFamily="{DynamicResource MwMono}"
                                FontSize="10"
                                LetterSpacing="0.9"
                                Foreground="{DynamicResource MwFaint}" />
-                    <TextBlock Text="0x4f7a2c"
-                               IsVisible="{Binding IsRunning}"
+                    <TextBlock Text="{Binding ProcessIdHex}"
+                               AutomationProperties.AutomationId="ConsolePid"
+                               Classes.running="{Binding IsRunning}"
                                FontFamily="{DynamicResource MwMono}"
                                FontSize="10"
-                               LetterSpacing="0.9"
-                               Foreground="{DynamicResource MwCyan}" />
-                    <TextBlock Text="—"
-                               IsVisible="{Binding !IsRunning}"
-                               FontFamily="{DynamicResource MwMono}"
-                               FontSize="10"
-                               Foreground="{DynamicResource MwFaint}" />
+                               LetterSpacing="0.9">
+                        <TextBlock.Styles>
+                            <Style Selector="TextBlock">
+                                <Setter Property="Foreground" Value="{DynamicResource MwFaint}" />
+                            </Style>
+                            <Style Selector="TextBlock.running">
+                                <Setter Property="Foreground" Value="{DynamicResource MwCyan}" />
+                            </Style>
+                        </TextBlock.Styles>
+                    </TextBlock>
                 </StackPanel>
 
                 <Border Grid.Column="3"
@@ -93,6 +123,7 @@
                       ColumnDefinitions="Auto,*,Auto"
                       VerticalAlignment="Center">
                     <TextBlock Grid.Column="0"
+                               AutomationProperties.AutomationId="ConsoleCount"
                                Text="{Binding ProgressText}"
                                FontFamily="{DynamicResource MwMono}"
                                FontSize="11"
@@ -130,6 +161,7 @@
                         </Grid>
                     </Border>
                     <TextBlock Grid.Column="2"
+                               AutomationProperties.AutomationId="ConsoleThroughput"
                                Text="{Binding ThroughputRate}"
                                FontFamily="{DynamicResource MwMono}"
                                FontSize="11"
@@ -142,13 +174,35 @@
 
                 <!-- Idle caption -->
                 <TextBlock Grid.Column="4"
-                           IsVisible="{Binding !IsRunning}"
+                           AutomationProperties.AutomationId="ConsoleIdleCaption"
                            Text="// awaiting ignition signal"
                            FontFamily="{DynamicResource MwMono}"
                            FontSize="10"
                            LetterSpacing="0.5"
                            Foreground="{DynamicResource MwFaint}"
-                           VerticalAlignment="Center" />
+                           VerticalAlignment="Center">
+                    <TextBlock.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                            <Binding Path="!IsRunning" />
+                            <Binding Path="!IsDemo" />
+                        </MultiBinding>
+                    </TextBlock.IsVisible>
+                </TextBlock>
+                <TextBlock Grid.Column="4"
+                           AutomationProperties.AutomationId="ConsoleDemoCaption"
+                           Text="// demo — no files touched"
+                           FontFamily="{DynamicResource MwMono}"
+                           FontSize="10"
+                           LetterSpacing="0.5"
+                           Foreground="{DynamicResource MwFaint}"
+                           VerticalAlignment="Center">
+                    <TextBlock.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                            <Binding Path="IsDemo" />
+                            <Binding Path="!IsRunning" />
+                        </MultiBinding>
+                    </TextBlock.IsVisible>
+                </TextBlock>
 
                 <!-- Right: flavor quote when running -->
                 <TextBlock Grid.Column="5"
@@ -180,7 +234,7 @@
         <Border DockPanel.Dock="Top"
                 BorderBrush="{DynamicResource ForgeBorder}"
                 BorderThickness="0,1,0,0">
-            <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto">
+            <Grid ColumnDefinitions="Auto,Auto,Auto,*">
                 <!-- Output tab -->
                 <ToggleButton Grid.Column="0"
                               Classes="outputTab"
@@ -192,6 +246,7 @@
                         <Border Background="#265ce0a0" CornerRadius="8" Padding="6,1"
                                 IsVisible="{Binding !!TotalFiles}">
                             <TextBlock Text="{Binding Succeeded}"
+                                       AutomationProperties.AutomationId="SucceededCount"
                                        Foreground="{DynamicResource ForgeSuccess}"
                                        FontSize="10" FontWeight="Bold" />
                         </Border>
@@ -209,32 +264,37 @@
                         <Border Background="#26f2716a" CornerRadius="8" Padding="6,1"
                                 IsVisible="{Binding !!Failed}">
                             <TextBlock Text="{Binding Failed}"
+                                       AutomationProperties.AutomationId="FailedCount"
                                        Foreground="{DynamicResource ForgeError}"
                                        FontSize="10" FontWeight="Bold" />
                         </Border>
                     </StackPanel>
                 </ToggleButton>
 
-                <!-- Warnings tab -->
+                <!-- Skipped tab -->
                 <ToggleButton Grid.Column="2"
                               Classes="outputTab"
                               IsChecked="{Binding IsWarningsTabSelected, Mode=OneWay}"
                               Command="{Binding SelectTabCommand}"
                               CommandParameter="2">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="Warnings" VerticalAlignment="Center" FontSize="12" />
+                        <TextBlock Text="Skipped" VerticalAlignment="Center" FontSize="12" />
                         <Border Background="#26f5c842" CornerRadius="8" Padding="6,1"
                                 IsVisible="{Binding !!Skipped}">
                             <TextBlock Text="{Binding Skipped}"
+                                       AutomationProperties.AutomationId="SkippedCount"
                                        Foreground="{DynamicResource ForgeWarning}"
                                        FontSize="10" FontWeight="Bold" />
                         </Border>
                     </StackPanel>
                 </ToggleButton>
 
-                <!-- Summary text (right-aligned, when not running) -->
-                <TextBlock Grid.Column="4"
+                <!-- Summary text (right-aligned, when not running): one line trimmed to the space left, the whole text in its tooltip -->
+                <TextBlock Grid.Column="3"
+                           AutomationProperties.AutomationId="RunSummary"
                            Text="{Binding Summary}"
+                           ToolTip.Tip="{Binding Summary}"
+                           MaxLines="1"
                            TextTrimming="CharacterEllipsis"
                            VerticalAlignment="Center"
                            HorizontalAlignment="Right"
@@ -245,34 +305,17 @@
             </Grid>
         </Border>
 
-        <!-- Progress bar (docked below tab strip, visible when running) -->
+        <!-- Phase strip (docked below tab strip, visible when running); the console holds the progress bar -->
         <Border DockPanel.Dock="Top"
                 Padding="12,6"
                 BorderBrush="{DynamicResource ForgeBorder}"
                 BorderThickness="0,0,0,1"
                 IsVisible="{Binding IsRunning}">
-            <Grid RowDefinitions="Auto,Auto">
-                <DockPanel>
-                    <TextBlock DockPanel.Dock="Right"
-                               Text="{Binding ProgressText}"
-                               Foreground="{DynamicResource ForgeTextSecondary}"
-                               FontSize="12" VerticalAlignment="Center"
-                               Margin="8,0,0,0" />
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <TextBlock Text="Processing"
-                                   Foreground="{DynamicResource ForgeAccent}"
-                                   FontWeight="SemiBold" FontSize="12" />
-                        <TextBlock Text="{Binding CurrentFile}"
-                                   TextTrimming="CharacterEllipsis"
-                                   Foreground="{DynamicResource ForgeTextSecondary}"
-                                   FontSize="12" />
-                    </StackPanel>
-                </DockPanel>
-                <ProgressBar Grid.Row="1"
-                             IsIndeterminate="True"
-                             Height="4" Margin="0,6,0,0"
-                             CornerRadius="2" />
-            </Grid>
+            <TextBlock Text="{Binding PhaseLabel}"
+                       AutomationProperties.AutomationId="PhaseLabel"
+                       TextTrimming="CharacterEllipsis"
+                       Foreground="{DynamicResource ForgeTextSecondary}"
+                       FontSize="12" />
         </Border>
 
         <!-- Content area (collapsible) -->
@@ -281,59 +324,41 @@
             <DockPanel IsVisible="{Binding IsOutputTabSelected}">
                 <ScrollViewer>
                     <ItemsControl ItemsSource="{Binding Entries}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:FileJobLogEntryViewModel">
                                 <Border Padding="12,3"
                                         BorderBrush="{DynamicResource ForgeBorder}"
-                                        BorderThickness="0,0,0,1">
-                                    <Grid ColumnDefinitions="8,55,Auto,*">
-                                        <Ellipse Grid.Column="0" Width="6" Height="6"
+                                        BorderThickness="0,0,0,1"
+                                        ToolTip.Tip="{Binding NodeLogText}">
+                                    <Grid ColumnDefinitions="Auto,8,55,Auto,*">
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{Binding Timestamp}"
+                                                   FontFamily="{DynamicResource MwMono}"
+                                                   FontSize="12"
+                                                   Foreground="{DynamicResource ForgeTextMuted}"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,8,0" />
+                                        <Ellipse Grid.Column="1" Width="6" Height="6"
                                                  Fill="{DynamicResource ForgeSuccess}"
-                                                 VerticalAlignment="Center"
-                                                 IsVisible="{Binding IsSuccess}" />
-                                        <Ellipse Grid.Column="0" Width="6" Height="6"
-                                                 Fill="{DynamicResource ForgeError}"
-                                                 VerticalAlignment="Center"
-                                                 IsVisible="{Binding IsError}" />
-                                        <Ellipse Grid.Column="0" Width="6" Height="6"
-                                                 Fill="{DynamicResource ForgeWarning}"
-                                                 VerticalAlignment="Center"
-                                                 IsVisible="{Binding IsWarning}" />
-                                        <Panel Grid.Column="1">
-                                            <TextBlock Text="{Binding StatusText}"
-                                                       FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
-                                                       FontWeight="Bold" FontSize="12"
-                                                       Foreground="{DynamicResource ForgeSuccess}"
-                                                       VerticalAlignment="Center"
-                                                       IsVisible="{Binding IsSuccess}" />
-                                            <TextBlock Text="{Binding StatusText}"
-                                                       FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
-                                                       FontWeight="Bold" FontSize="12"
-                                                       Foreground="{DynamicResource ForgeError}"
-                                                       VerticalAlignment="Center"
-                                                       IsVisible="{Binding IsError}" />
-                                            <TextBlock Text="{Binding StatusText}"
-                                                       FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
-                                                       FontWeight="Bold" FontSize="12"
-                                                       Foreground="{DynamicResource ForgeWarning}"
-                                                       VerticalAlignment="Center"
-                                                       IsVisible="{Binding IsWarning}" />
-                                        </Panel>
+                                                 VerticalAlignment="Center" />
                                         <TextBlock Grid.Column="2"
+                                                   Text="{Binding StatusText}"
+                                                   FontFamily="{DynamicResource MwMono}"
+                                                   FontWeight="Bold" FontSize="12"
+                                                   Foreground="{DynamicResource ForgeSuccess}"
+                                                   VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="3"
                                                    Text="{Binding FileName}"
-                                                   FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
+                                                   FontFamily="{DynamicResource MwMono}"
                                                    VerticalAlignment="Center"
                                                    Foreground="{DynamicResource ForgeText}"
                                                    FontSize="12"
                                                    Margin="0,0,8,0" />
-                                        <TextBlock Grid.Column="3"
-                                                   Text="{Binding ErrorMessage}"
-                                                   FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
-                                                   Foreground="{DynamicResource ForgeError}"
-                                                   FontSize="12"
-                                                   VerticalAlignment="Center"
-                                                   TextTrimming="CharacterEllipsis"
-                                                   IsVisible="{Binding IsError}" />
                                     </Grid>
                                 </Border>
                             </DataTemplate>
@@ -353,31 +378,44 @@
 
                 <ScrollViewer IsVisible="{Binding !!ErrorEntries.Count}">
                     <ItemsControl ItemsSource="{Binding ErrorEntries}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:FileJobLogEntryViewModel">
                                 <Border Padding="12,3"
                                         BorderBrush="{DynamicResource ForgeBorder}"
-                                        BorderThickness="0,0,0,1">
-                                    <Grid ColumnDefinitions="8,55,Auto,*">
-                                        <Ellipse Grid.Column="0" Width="6" Height="6"
+                                        BorderThickness="0,0,0,1"
+                                        ToolTip.Tip="{Binding NodeLogText}">
+                                    <Grid ColumnDefinitions="Auto,8,55,Auto,*">
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{Binding Timestamp}"
+                                                   FontFamily="{DynamicResource MwMono}"
+                                                   FontSize="12"
+                                                   Foreground="{DynamicResource ForgeTextMuted}"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,8,0" />
+                                        <Ellipse Grid.Column="1" Width="6" Height="6"
                                                  Fill="{DynamicResource ForgeError}"
                                                  VerticalAlignment="Center" />
-                                        <TextBlock Grid.Column="1"
+                                        <TextBlock Grid.Column="2"
                                                    Text="{Binding StatusText}"
-                                                   FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
+                                                   FontFamily="{DynamicResource MwMono}"
                                                    FontWeight="Bold" FontSize="12"
                                                    Foreground="{DynamicResource ForgeError}"
                                                    VerticalAlignment="Center" />
-                                        <TextBlock Grid.Column="2"
+                                        <TextBlock Grid.Column="3"
                                                    Text="{Binding FileName}"
-                                                   FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
+                                                   FontFamily="{DynamicResource MwMono}"
                                                    VerticalAlignment="Center"
                                                    Foreground="{DynamicResource ForgeText}"
                                                    FontSize="12"
                                                    Margin="0,0,8,0" />
-                                        <TextBlock Grid.Column="3"
+                                        <TextBlock Grid.Column="4"
                                                    Text="{Binding ErrorMessage}"
-                                                   FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
+                                                   FontFamily="{DynamicResource MwMono}"
                                                    Foreground="{DynamicResource ForgeError}"
                                                    FontSize="12"
                                                    VerticalAlignment="Center"
@@ -390,9 +428,9 @@
                 </ScrollViewer>
             </Panel>
 
-            <!-- Warnings tab content -->
+            <!-- Skipped tab content -->
             <Panel IsVisible="{Binding IsWarningsTabSelected}">
-                <TextBlock Text="No warnings"
+                <TextBlock Text="No skipped files"
                            HorizontalAlignment="Center"
                            VerticalAlignment="Center"
                            Foreground="{DynamicResource ForgeTextMuted}"
@@ -401,31 +439,44 @@
 
                 <ScrollViewer IsVisible="{Binding !!WarningEntries.Count}">
                     <ItemsControl ItemsSource="{Binding WarningEntries}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:FileJobLogEntryViewModel">
                                 <Border Padding="12,3"
                                         BorderBrush="{DynamicResource ForgeBorder}"
-                                        BorderThickness="0,0,0,1">
-                                    <Grid ColumnDefinitions="8,55,Auto,*">
-                                        <Ellipse Grid.Column="0" Width="6" Height="6"
+                                        BorderThickness="0,0,0,1"
+                                        ToolTip.Tip="{Binding NodeLogText}">
+                                    <Grid ColumnDefinitions="Auto,8,55,Auto,*">
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{Binding Timestamp}"
+                                                   FontFamily="{DynamicResource MwMono}"
+                                                   FontSize="12"
+                                                   Foreground="{DynamicResource ForgeTextMuted}"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,8,0" />
+                                        <Ellipse Grid.Column="1" Width="6" Height="6"
                                                  Fill="{DynamicResource ForgeWarning}"
                                                  VerticalAlignment="Center" />
-                                        <TextBlock Grid.Column="1"
+                                        <TextBlock Grid.Column="2"
                                                    Text="{Binding StatusText}"
-                                                   FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
+                                                   FontFamily="{DynamicResource MwMono}"
                                                    FontWeight="Bold" FontSize="12"
                                                    Foreground="{DynamicResource ForgeWarning}"
                                                    VerticalAlignment="Center" />
-                                        <TextBlock Grid.Column="2"
+                                        <TextBlock Grid.Column="3"
                                                    Text="{Binding FileName}"
-                                                   FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
+                                                   FontFamily="{DynamicResource MwMono}"
                                                    VerticalAlignment="Center"
                                                    Foreground="{DynamicResource ForgeText}"
                                                    FontSize="12"
                                                    Margin="0,0,8,0" />
-                                        <TextBlock Grid.Column="3"
+                                        <TextBlock Grid.Column="4"
                                                    Text="{Binding ErrorMessage}"
-                                                   FontFamily="Cascadia Mono,Consolas,Courier New,monospace"
+                                                   FontFamily="{DynamicResource MwMono}"
                                                    Foreground="{DynamicResource ForgeWarning}"
                                                    FontSize="12"
                                                    VerticalAlignment="Center"

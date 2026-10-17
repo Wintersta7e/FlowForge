@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using FlowForge.Core.Nodes.Base;
+using FlowForge.UI.Services;
 using FlowForge.UI.UndoRedo;
 using FlowForge.UI.UndoRedo.Commands;
 
@@ -11,10 +14,15 @@ namespace FlowForge.UI.ViewModels;
 public partial class ConfigFieldViewModel : ViewModelBase
 {
     private readonly IDictionary<string, JsonElement> _configDictionary;
+    private readonly IDialogService _dialogService;
     private readonly Action<IUndoableCommand>? _onConfigChanged;
 
     [ObservableProperty]
     private string? _value;
+
+    // Set while the box holds text the config refused; the editor shows it in the error style.
+    [ObservableProperty]
+    private bool _hasError;
 
     public string Key { get; }
     public string Label { get; }
@@ -28,9 +36,11 @@ public partial class ConfigFieldViewModel : ViewModelBase
     public ConfigFieldViewModel(
         ConfigField field,
         IDictionary<string, JsonElement> configDictionary,
+        IDialogService dialogService,
         Action<IUndoableCommand>? onConfigChanged = null)
     {
         _configDictionary = configDictionary;
+        _dialogService = dialogService;
         _onConfigChanged = onConfigChanged;
         Key = field.Key;
         Label = field.Label;
@@ -64,22 +74,41 @@ public partial class ConfigFieldViewModel : ViewModelBase
         }
     }
 
+    // The path fields' "..." button. A chosen path goes through Value, so it is one undoable
+    // change like typing it; a closed dialog leaves the field as it was.
+    [RelayCommand]
+    private async Task BrowseAsync()
+    {
+        string? path = FieldType == ConfigFieldType.FolderPath
+            ? await _dialogService.OpenFolderAsync(Label)
+            : await _dialogService.OpenFileAsync(Label, "All Files|*.*");
+        if (path is not null)
+        {
+            Value = path;
+        }
+    }
+
     partial void OnValueChanged(string? value)
     {
-        if (value is not null)
+        // An emptied Int box clears the setting; there is no other way to unset a number.
+        bool clears = value is null || (FieldType == ConfigFieldType.Int && string.IsNullOrWhiteSpace(value));
+        if (!clears)
         {
             // Reject unparseable input so we never serialise a raw string into a Bool/Int slot
             // (GetBoolean/GetInt32 on reload would throw).
             if (FieldType == ConfigFieldType.Int && !int.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, out _))
             {
+                HasError = true;
                 return;
             }
 
             if (FieldType == ConfigFieldType.Bool && !bool.TryParse(value, out _))
             {
+                HasError = true;
                 return;
             }
 
+            HasError = false;
             bool keyExisted = _configDictionary.TryGetValue(Key, out JsonElement oldElement);
 
             JsonElement newElement = FieldType switch
@@ -98,6 +127,7 @@ public partial class ConfigFieldViewModel : ViewModelBase
         }
         else
         {
+            HasError = false;
             bool keyExisted = _configDictionary.TryGetValue(Key, out JsonElement oldElement);
             if (!keyExisted)
             {

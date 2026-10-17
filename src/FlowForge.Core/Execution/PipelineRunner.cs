@@ -18,6 +18,9 @@ public class PipelineRunner
             ? Path.Combine(dataFolder, "FlowForge", "runs")
             : null;
 
+    // A transform step reports its progress at its start, after every this many jobs and at its end.
+    private const int StageReportInterval = 25;
+
     private readonly NodeRegistry _registry;
     private readonly ILogger<PipelineRunner> _logger;
     private readonly int _maxConcurrency;
@@ -49,8 +52,6 @@ public class PipelineRunner
 
         try
         {
-            progress?.Report(new PhaseChanged(ExecutionPhase.Enumerating));
-
             GraphValidationResult validation = PipelineGraphValidator.Validate(graph, _registry);
             if (!validation.IsValid)
             {
@@ -68,13 +69,18 @@ public class PipelineRunner
             IReadOnlyList<Connection> connections = validation.Connections;
             var lineages = new LineageCounter();
             var router = new JobRouter(connections, lineages, context);
+
+            // Reported only once the pipeline is accepted, so a refused one never shows a scan.
+            progress?.Report(new PhaseChanged(ExecutionPhase.Enumerating));
             result.TotalFiles = await DiscoverJobsAsync(sources, router, lineages, context, progress, ct).ConfigureAwait(false);
 
             progress?.Report(new PhaseChanged(ExecutionPhase.Processing));
 
+            int stage = 0;
             foreach ((Guid id, ITransformNode transform) in transforms)
             {
-                await ApplyTransformAsync(id, transform, router, context, result, lineages, progress, ct).ConfigureAwait(false);
+                stage++;
+                await ApplyTransformAsync(id, transform, stage, transforms.Count, router, context, result, lineages, progress, ct).ConfigureAwait(false);
             }
 
             await DispatchOutputJobsAsync(connections, outputs, router, context, result, lineages, progress, ct).ConfigureAwait(false);
@@ -233,6 +239,8 @@ public class PipelineRunner
     private async Task ApplyTransformAsync(
         Guid nodeId,
         ITransformNode transform,
+        int stage,
+        int stageCount,
         JobRouter router,
         RunContext context,
         ExecutionResult result,
@@ -241,9 +249,19 @@ public class PipelineRunner
         CancellationToken ct)
     {
         var given = new HashSet<Guid>();
-        foreach (FileJob job in router.InputOf(nodeId))
+        IReadOnlyList<FileJob> inputs = router.InputOf(nodeId);
+        int done = 0;
+        void ReportStage() => progress?.Report(new StageProgress(transform.TypeKey, stage, stageCount, done, inputs.Count));
+
+        foreach (FileJob job in inputs)
         {
             ct.ThrowIfCancellationRequested();
+            if (done % StageReportInterval == 0)
+            {
+                ReportStage();
+            }
+
+            done++;
             try
             {
                 job.Status = FileJobStatus.Processing;
@@ -289,6 +307,8 @@ public class PipelineRunner
             EnsureFlushReturnsWhatItWasGiven(transform.TypeKey, nodeId, given, flushed);
             RouteEmitted(transform.TypeKey, nodeId, flushed, router, context, result, lineages, progress);
         }
+
+        ReportStage();
     }
 
     /// <summary>

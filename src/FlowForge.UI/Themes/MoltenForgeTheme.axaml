@@ -11,7 +11,7 @@
             <FontFamily x:Key="MwSerifRegular">avares://FlowForge.UI/Assets/Fonts/InstrumentSerif-Regular.ttf#Instrument Serif</FontFamily>
             <FontFamily x:Key="MwDisplay">avares://FlowForge.UI/Assets/Fonts/Oswald-VariableFont_wght.ttf#Oswald</FontFamily>
             <FontFamily x:Key="MwMono">avares://FlowForge.UI/Assets/Fonts/JetBrainsMono-VariableFont_wght.ttf#JetBrains Mono</FontFamily>
-            <FontFamily x:Key="MwBody">Inter, Segoe UI, system-ui, sans-serif</FontFamily>
+            <FontFamily x:Key="MwBody">fonts:Inter#Inter, Segoe UI, system-ui, sans-serif</FontFamily>
 
             <ResourceDictionary.ThemeDictionaries>
 
@@ -213,6 +213,29 @@
 
     <!-- ═══ Global Style Overrides ═══ -->
 
+    <!-- TextBlock.tight: a line box no taller than the font cuts off ascenders and descenders
+         unless the text may draw past its bounds; sets nothing that changes layout -->
+    <Style Selector="TextBlock.tight">
+        <Setter Property="ClipToBounds" Value="False" />
+    </Style>
+
+    <!-- Station subtitle: dim iron while idle; while running the heat pulse lights the body
+         behind it, so it turns bone on a dark plate -->
+    <Style Selector="TextBlock.mw-sub">
+        <Setter Property="Foreground" Value="{DynamicResource MwIronLite}" />
+    </Style>
+    <Style Selector="TextBlock.mw-sub.running">
+        <Setter Property="Foreground" Value="{DynamicResource MwBone}" />
+    </Style>
+    <Style Selector="Border.mw-sub-plate.running">
+        <Setter Property="Background" Value="{DynamicResource MwInkA85}" />
+    </Style>
+
+    <!-- Station: a hovered station lifts by one pixel -->
+    <Style Selector="Grid.mw-station:pointerover">
+        <Setter Property="RenderTransform" Value="translateY(-1px)" />
+    </Style>
+
     <!-- Button: forge surface bg, border, rounded 2px (squared cast-iron feel) -->
     <Style Selector="Button">
         <Setter Property="Background" Value="{DynamicResource MwPanel}" />
@@ -239,8 +262,22 @@
         <Setter Property="FontSize" Value="13" />
         <Setter Property="Padding" Value="14,6" />
     </Style>
+    <!-- The base theme paints the accent button's presenter in its own accent; these part rules win over it. -->
+    <Style Selector="Button.accent /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource MwMoltenButton}" />
+        <Setter Property="Foreground" Value="#1a0a04" />
+    </Style>
     <Style Selector="Button.accent:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource MwMoltenHi}" />
+        <Setter Property="Foreground" Value="#1a0a04" />
+    </Style>
+    <Style Selector="Button.accent:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource MwMoltenLo}" />
+        <Setter Property="Foreground" Value="#1a0a04" />
+    </Style>
+    <Style Selector="Button.accent:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource MwIronDark}" />
+        <Setter Property="Foreground" Value="{DynamicResource MwIronLite}" />
     </Style>
 
     <!-- Button.quench: active-running state, cyan outline, dark fill -->
@@ -291,6 +328,14 @@
         <Setter Property="Background" Value="{DynamicResource MwPanelHi}" />
         <Setter Property="CornerRadius" Value="2" />
     </Style>
+    <!-- Disabled: the idle button with a dimmed icon, not the base theme's filled box -->
+    <Style Selector="Button.toolbarIcon:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.toolbarIcon:disabled PathIcon">
+        <Setter Property="Opacity" Value="0.4" />
+    </Style>
 
     <!-- Button.templateButton: quick-start template cards (cast iron) -->
     <Style Selector="Button.templateButton">
@@ -321,6 +366,11 @@
     </Style>
     <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
         <Setter Property="BorderBrush" Value="{DynamicResource MwMolten}" />
+    </Style>
+
+    <!-- After :focus so a refused value stays marked while the box is focused. -->
+    <Style Selector="TextBox.error /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="{DynamicResource ForgeError}" />
     </Style>
 
     <Style Selector="ComboBox">

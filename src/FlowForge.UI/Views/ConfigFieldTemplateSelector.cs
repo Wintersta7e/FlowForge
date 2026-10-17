@@ -1,22 +1,14 @@
-using System;
+using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Templates;
 using Avalonia.Layout;
-using Avalonia.Platform.Storage;
 using FlowForge.Core.Nodes.Base;
 using FlowForge.UI.ViewModels;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 namespace FlowForge.UI.Views;
 
 public class ConfigFieldTemplateSelector : IDataTemplate
 {
-    private ILogger<ConfigFieldTemplateSelector>? _logger;
-    private ILogger<ConfigFieldTemplateSelector> Logger =>
-        _logger ??= App.Services.GetRequiredService<ILogger<ConfigFieldTemplateSelector>>();
-
     public Control Build(object? param)
     {
         if (param is not ConfigFieldViewModel field)
@@ -53,9 +45,9 @@ public class ConfigFieldTemplateSelector : IDataTemplate
         {
             ConfigFieldType.String => BuildStringEditor(field),
             ConfigFieldType.Int => BuildIntEditor(field),
-            ConfigFieldType.Bool => BuildBoolEditor(field),
-            ConfigFieldType.FilePath => BuildFilePathEditor(field),
-            ConfigFieldType.FolderPath => BuildFolderPathEditor(field),
+            ConfigFieldType.Bool => BuildBoolEditor(),
+            ConfigFieldType.FilePath => BuildPathEditor(field, "Select file..."),
+            ConfigFieldType.FolderPath => BuildPathEditor(field, "Select folder..."),
             ConfigFieldType.Select => BuildSelectEditor(field),
             ConfigFieldType.MultiLine => BuildMultiLineEditor(field),
             _ => new TextBlock { Text = $"Unsupported field type: {field.FieldType}" }
@@ -92,19 +84,18 @@ public class ConfigFieldTemplateSelector : IDataTemplate
     {
         TextBox textBox = new()
         {
-            Watermark = field.Placeholder ?? "0"
+            Watermark = field.Placeholder ?? field.DefaultValue ?? string.Empty
         };
         textBox.Bind(TextBox.TextProperty,
             new Avalonia.Data.Binding("Value"));
+        textBox.BindClass("error", new Avalonia.Data.Binding(nameof(ConfigFieldViewModel.HasError)), textBox);
         return textBox;
     }
 
-    private static CheckBox BuildBoolEditor(ConfigFieldViewModel field)
+    // The card's label above names the field, so the box carries no text of its own.
+    private static CheckBox BuildBoolEditor()
     {
-        CheckBox checkBox = new()
-        {
-            Content = field.Label
-        };
+        CheckBox checkBox = new();
         checkBox.Bind(CheckBox.IsCheckedProperty,
             new Avalonia.Data.Binding("Value")
             {
@@ -113,7 +104,8 @@ public class ConfigFieldTemplateSelector : IDataTemplate
         return checkBox;
     }
 
-    private DockPanel BuildFilePathEditor(ConfigFieldViewModel field)
+    // The "..." button runs the field's browse command, which asks the dialog service for a path.
+    private static DockPanel BuildPathEditor(ConfigFieldViewModel field, string watermark)
     {
         DockPanel dock = new();
 
@@ -124,111 +116,19 @@ public class ConfigFieldTemplateSelector : IDataTemplate
             Margin = new Avalonia.Thickness(4, 0, 0, 0)
         };
         DockPanel.SetDock(browseButton, Dock.Right);
+        browseButton.Bind(Button.CommandProperty,
+            new Avalonia.Data.Binding(nameof(ConfigFieldViewModel.BrowseCommand)));
 
         TextBox textBox = new()
         {
-            Watermark = field.Placeholder ?? "Select file..."
+            Watermark = field.Placeholder ?? watermark
         };
         textBox.Bind(TextBox.TextProperty,
             new Avalonia.Data.Binding("Value"));
 
-        browseButton.Click += async (_, _) =>
-        {
-            try
-            {
-                IStorageProvider? storage = GetStorageProvider();
-                if (storage is null)
-                {
-                    return;
-                }
-
-                System.Collections.Generic.IReadOnlyList<IStorageFile> result =
-                    await storage.OpenFilePickerAsync(new FilePickerOpenOptions
-                    {
-                        Title = field.Label,
-                        AllowMultiple = false
-                    });
-
-                if (result.Count > 0)
-                {
-                    field.Value = result[0].Path.LocalPath;
-                }
-            }
-            catch (Exception ex)
-            {
-                // No user-visible feedback: file picker failure is rare and the dialog simply doesn't appear.
-                // The error is logged for diagnostics.
-                Logger.LogError(ex, "ConfigFieldTemplateSelector: file picker failed for '{Label}'", field.Label);
-            }
-        };
-
         dock.Children.Add(browseButton);
         dock.Children.Add(textBox);
         return dock;
-    }
-
-    private DockPanel BuildFolderPathEditor(ConfigFieldViewModel field)
-    {
-        DockPanel dock = new();
-
-        Button browseButton = new()
-        {
-            Content = "...",
-            Width = 32,
-            Margin = new Avalonia.Thickness(4, 0, 0, 0)
-        };
-        DockPanel.SetDock(browseButton, Dock.Right);
-
-        TextBox textBox = new()
-        {
-            Watermark = field.Placeholder ?? "Select folder..."
-        };
-        textBox.Bind(TextBox.TextProperty,
-            new Avalonia.Data.Binding("Value"));
-
-        browseButton.Click += async (_, _) =>
-        {
-            try
-            {
-                IStorageProvider? storage = GetStorageProvider();
-                if (storage is null)
-                {
-                    return;
-                }
-
-                System.Collections.Generic.IReadOnlyList<IStorageFolder> result =
-                    await storage.OpenFolderPickerAsync(new FolderPickerOpenOptions
-                    {
-                        Title = field.Label,
-                        AllowMultiple = false
-                    });
-
-                if (result.Count > 0)
-                {
-                    field.Value = result[0].Path.LocalPath;
-                }
-            }
-            catch (Exception ex)
-            {
-                // No user-visible feedback: folder picker failure is rare and the dialog simply doesn't appear.
-                // The error is logged for diagnostics.
-                Logger.LogError(ex, "ConfigFieldTemplateSelector: folder picker failed for '{Label}'", field.Label);
-            }
-        };
-
-        dock.Children.Add(browseButton);
-        dock.Children.Add(textBox);
-        return dock;
-    }
-
-    private static IStorageProvider? GetStorageProvider()
-    {
-        if (Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop &&
-            desktop.MainWindow is not null)
-        {
-            return desktop.MainWindow.StorageProvider;
-        }
-        return null;
     }
 
     private static ComboBox BuildSelectEditor(ConfigFieldViewModel field)

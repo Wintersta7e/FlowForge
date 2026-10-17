@@ -39,6 +39,9 @@
     <!-- loupe: metadata (magnifier) -->
     <StreamGeometry x:Key="MwIcon.Loupe">M9,17 A8,8 0 1 1 25,17 A8,8 0 1 1 9,17 M23,23 L32,32 M13,17 L21,17 M17,13 L17,21</StreamGeometry>
 
+    <!-- half-disc: dry run (a ring with its left half filled; a fill shape, not a stroke) -->
+    <StreamGeometry x:Key="MwIcon.HalfDisc">M6,20 A14,14 0 1 1 34,20 A14,14 0 1 1 6,20 Z M20,8.5 L20,31.5 A11.5,11.5 0 0 0 20,8.5 Z</StreamGeometry>
+
     <!-- cog: fallback for unknown types -->
     <StreamGeometry x:Key="MwIcon.Cog">M20,14 A6,6 0 1 1 20,26 A6,6 0 1 1 20,14 M20,6 L20,11 M20,29 L20,34 M6,20 L11,20 M29,20 L34,20 M10,10 L14,14 M26,26 L30,30 M30,10 L26,14 M14,26 L10,30</StreamGeometry>
 

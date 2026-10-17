@@ -62,6 +62,42 @@ public class RunnerEntryTests
         observed.Should().NotBeSameAs(caller);
     }
 
+    [Fact]
+    public async Task A_refused_pipeline_reports_no_progress()
+    {
+        using var dir = new TempDirectory();
+        dir.CreateFiles("a.txt");
+        var runner = new PipelineRunner(NodeRegistry.CreateDefault(NullLoggerFactory.Instance), NullLogger<PipelineRunner>.Instance, stagingRoot: dir.StagingRoot);
+
+        // The editor lets one step feed two outputs; the run refuses that shape after the graph checks pass it.
+        NodeDefinition input = PipelineBuilder.Node("FolderInput", new { path = dir.Path, recursive = false });
+        NodeDefinition rename = PipelineBuilder.Node("RenameAddAffix", new { prefix = "x_" });
+        NodeDefinition first = PipelineBuilder.Node("FolderOutput", new { path = Path.Combine(dir.OutputPath, "first"), mode = "copy" });
+        NodeDefinition second = PipelineBuilder.Node("FolderOutput", new { path = Path.Combine(dir.OutputPath, "second"), mode = "copy" });
+        var fanOut = new PipelineGraph { Name = "fan-out", Nodes = [input, rename, first, second] };
+        fanOut.Connections.Add(new Connection { FromNode = input.Id, ToNode = rename.Id });
+        fanOut.Connections.Add(new Connection { FromNode = rename.Id, ToNode = first.Id });
+        fanOut.Connections.Add(new Connection { FromNode = rename.Id, ToNode = second.Id });
+
+        foreach (PipelineGraph graph in new[] { new PipelineGraph { Name = "empty" }, fanOut })
+        {
+            var progress = new RecordingProgress();
+            Func<Task> run = () => runner.RunAsync(graph, dryRun: true, progress);
+
+            InvalidOperationException refused = (await run.Should().ThrowAsync<InvalidOperationException>()).Which;
+            _output.WriteLine($"[refused] graph={graph.Name} events={string.Join(",", progress.Events)} message='{refused.Message}'");
+            progress.Events.Should().BeEmpty("a refused pipeline never starts a scan, so nothing reports one");
+        }
+    }
+
+    /// <summary>Keeps every reported event, in order, on the reporting thread.</summary>
+    private sealed class RecordingProgress : IProgress<PipelineProgressEvent>
+    {
+        public ConcurrentQueue<PipelineProgressEvent> Events { get; } = new();
+
+        public void Report(PipelineProgressEvent value) => Events.Enqueue(value);
+    }
+
     /// <summary>Queues posted callbacks and runs them on the thread that calls <see cref="RunUntil"/>.</summary>
     private sealed class SingleThreadContext : SynchronizationContext, IDisposable
     {
