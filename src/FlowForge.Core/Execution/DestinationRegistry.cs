@@ -161,18 +161,6 @@ public sealed class DestinationRegistry
         }
     }
 
-    private static bool MayBeSameFile(string path, string other)
-    {
-        try
-        {
-            return PathGuard.IsSameFile(path, other);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            return true;
-        }
-    }
-
     /// <summary>A dangling link counts as present.</summary>
     private static bool IsAbsent(string path) =>
         !File.Exists(path) && !Directory.Exists(path) && new FileInfo(path).LinkTarget == null;
@@ -260,7 +248,7 @@ public sealed class DestinationRegistry
         }
 
         return _claimedTargets.TryGetValue(resolved, out List<string>? spellings)
-            && spellings.Exists(target => MayBeSameFile(original, target));
+            && spellings.Exists(target => PathGuard.MayBeSameFile(original, target));
     }
 
     private void AddTarget(string target)

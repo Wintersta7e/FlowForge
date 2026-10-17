@@ -178,6 +178,84 @@ public class DestinationCollisionTests
         TreeSnapshot.AssertUnchanged(before, TreeSnapshot.Take(input), _output, "source");
     }
 
+    [Fact]
+    public async Task Overwrite_never_delivers_an_input_another_job_replaced()
+    {
+        // Name descending: zz.txt, renamed to a.txt, replaces the input a.txt before a.txt's own job reads it.
+        using var dir = new TempDirectory();
+        string data = CreateFolder(dir, "data");
+        var inputs = new Dictionary<string, string>(StringComparer.Ordinal) { ["zz.txt"] = "ZZ", ["a.txt"] = "AAA" };
+        foreach (string filler in new[] { "m1.txt", "m2.txt", "m3.txt" })
+        {
+            inputs[filler] = filler.ToUpperInvariant();
+        }
+
+        foreach ((string name, string text) in inputs)
+        {
+            await File.WriteAllTextAsync(Path.Combine(data, name), text);
+        }
+
+        PipelineGraph graph = PipelineBuilder.New()
+            .AddSource("FolderInput", new { path = data, filter = "*.txt" })
+            .AddTransform("Sort", new { field = "filename", direction = "desc" })
+            .AddTransform("RenameRegex", new { pattern = "^zz\\.txt$", replacement = "a.txt" })
+            .AddOutput("FolderOutput", new { path = data, mode = "copy", overwrite = true })
+            .Build();
+
+        ExecutionResult result = await CreateRunner(dir.StagingRoot, maxConcurrency: 1).RunAsync(graph);
+
+        string because = Describe(result, data);
+        _output.WriteLine($"[replaced-input] {because}");
+        result.Succeeded.Should().Be(inputs.Count, because);
+        Directory.GetFiles(data).ToDictionary(f => Path.GetFileName(f), f => File.ReadAllText(f), StringComparer.Ordinal).Should().Equal(
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["a.txt"] = "ZZ",
+                ["a_1.txt"] = "AAA",
+                ["m1.txt"] = "M1.TXT",
+                ["m2.txt"] = "M2.TXT",
+                ["m3.txt"] = "M3.TXT",
+                ["zz.txt"] = "ZZ",
+            },
+            because);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task Copy_renumbered_in_place_delivers_each_input_as_it_was(int maxConcurrency)
+    {
+        using var dir = new TempDirectory();
+        string data = CreateFolder(dir, "data");
+        string two = Path.Combine(data, "002.txt");
+        await File.WriteAllTextAsync(two, "TWO");
+        await File.WriteAllTextAsync(Path.Combine(data, "a.txt"), "AAA");
+        var stamp = new DateTime(2020, 1, 2, 3, 4, 5, DateTimeKind.Utc);
+        File.SetCreationTimeUtc(two, stamp);
+        File.SetLastWriteTimeUtc(two, stamp);
+        PipelineGraph graph = PipelineBuilder.New()
+            .AddSource("FolderInput", new { path = data, filter = "*.txt" })
+            .AddTransform("Sort", new { field = "filename", direction = "asc" })
+            .AddTransform("RenamePattern", new { pattern = "{counter:000}{ext}", startIndex = 1 })
+            .AddOutput("FolderOutput", new { path = data, mode = "copy", overwrite = true })
+            .Build();
+
+        ExecutionResult result = await CreateRunner(dir.StagingRoot, maxConcurrency).RunAsync(graph);
+
+        string because = Describe(result, data);
+        _output.WriteLine($"[renumber-copy] slots={maxConcurrency} {because}");
+        result.Succeeded.Should().Be(2, because);
+        string first = Path.Combine(data, "001.txt");
+        (await File.ReadAllTextAsync(first)).Should().Be("TWO", because);
+        (await File.ReadAllTextAsync(two)).Should().Be("AAA", because);
+        (await File.ReadAllTextAsync(Path.Combine(data, "a.txt"))).Should().Be("AAA", because);
+        File.GetLastWriteTimeUtc(first).Should().Be(stamp, because);
+        if (OperatingSystem.IsWindows())
+        {
+            File.GetCreationTimeUtc(first).Should().Be(stamp, because);
+        }
+    }
+
     private static async Task<(string Input, string Output)> CreateBackupCaseAsync(TempDirectory dir)
     {
         string input = CreateFolder(dir, "in");

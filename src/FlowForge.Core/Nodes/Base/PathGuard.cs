@@ -110,6 +110,22 @@ internal static class PathGuard
     }
 
     /// <summary>
+    /// <see cref="IsSameFile"/>, except that a path whose links cannot be resolved counts as the same file:
+    /// a doubtful delete or overwrite is avoided rather than risked.
+    /// </summary>
+    public static bool MayBeSameFile(string path, string other)
+    {
+        try
+        {
+            return IsSameFile(path, other);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return true;
+        }
+    }
+
+    /// <summary>
     /// Replaces the first linked component of <paramref name="fullPath"/> with the link's final target,
     /// and repeats until no existing component is a link.
     /// </summary>

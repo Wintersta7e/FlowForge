@@ -201,6 +201,8 @@ public class PipelineRunner
             }
         }
 
+        deliveries = await CopyAsideReplacedInputsAsync(deliveries, context, result, lineages, progress, ct).ConfigureAwait(false);
+
         var semaphore = new SemaphoreSlim(_maxConcurrency);
         var outputTasks = new List<Task>();
 
@@ -237,6 +239,152 @@ public class PipelineRunner
             // Safe to dispose: all tasks are awaited in both normal and error paths above
             semaphore.Dispose();
         }
+    }
+
+    /// <summary>
+    /// Before the first delivery, copies every input that a claim of another job overwrites (its destination
+    /// or backup path) into the run's staging folder and points the input's readers at the copy, so every
+    /// delivery reads the bytes its input had when the run started. A dry run makes the same decision and only
+    /// logs it. When the copy fails, the job whose claim would overwrite the input fails instead, and the input
+    /// stays untouched. Returns the deliveries still to make.
+    /// </summary>
+    private async Task<List<Delivery>> CopyAsideReplacedInputsAsync(
+        List<Delivery> deliveries,
+        RunContext context,
+        ExecutionResult result,
+        LineageCounter lineages,
+        IProgress<PipelineProgressEvent>? progress,
+        CancellationToken ct)
+    {
+        if (!deliveries.Exists(d => d.Claim?.Kind is ClaimKind.Replace or ClaimKind.ReplaceWithBackup))
+        {
+            return deliveries;
+        }
+
+        (Dictionary<string, List<FileJob>> readers, List<FileJob> unresolved) = IndexReaders(deliveries);
+        var handled = new HashSet<FileJob>();
+        var refused = new HashSet<FileJob>();
+        foreach (Delivery delivery in deliveries)
+        {
+            if (delivery.Claim is not { Kind: ClaimKind.Replace or ClaimKind.ReplaceWithBackup } claim)
+            {
+                continue;
+            }
+
+            bool Eligible(FileJob reader) => reader != delivery.Job && !handled.Contains(reader) && !refused.Contains(reader);
+            string[] targets = claim.BackupPath is null ? [claim.Path] : [claim.Path, claim.BackupPath];
+            foreach (string target in targets)
+            {
+                ct.ThrowIfCancellationRequested();
+                try
+                {
+                    var affected = ReadersOf(target, readers, unresolved, Eligible).ToList();
+                    await CopyAsideAsync(affected, handled, context, ct).ConfigureAwait(false);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    FailOutput(delivery.Job, delivery.Output, new IOException(
+                        $"'{target}' is an input this run still reads, and it could not be copied aside before '{delivery.Job.OriginalPath}' overwrites it: {ex.Message}",
+                        ex));
+                    RecordTerminal(delivery.Job, context, lineages, result, progress);
+                    refused.Add(delivery.Job);
+                    break;
+                }
+            }
+        }
+
+        return deliveries.FindAll(d => !refused.Contains(d.Job));
+    }
+
+    /// <summary>
+    /// Every delivery's content, resolved through links once and keyed ignoring case. A path that cannot be
+    /// resolved may be any file, so its reader counts as reading every file a claim overwrites.
+    /// </summary>
+    private static (Dictionary<string, List<FileJob>> Readers, List<FileJob> Unresolved) IndexReaders(List<Delivery> deliveries)
+    {
+        var readers = new Dictionary<string, List<FileJob>>(StringComparer.OrdinalIgnoreCase);
+        var unresolved = new List<FileJob>();
+        foreach (Delivery delivery in deliveries)
+        {
+            string resolved;
+            try
+            {
+                resolved = PathGuard.ResolvePath(delivery.Job.ContentPath);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                unresolved.Add(delivery.Job);
+                continue;
+            }
+
+            if (!readers.TryGetValue(resolved, out List<FileJob>? list))
+            {
+                list = [];
+                readers[resolved] = list;
+            }
+
+            list.Add(delivery.Job);
+        }
+
+        return (readers, unresolved);
+    }
+
+    /// <summary>The eligible jobs that may read <paramref name="target"/>: one lookup, then a same-file check only on a hit.</summary>
+    private static IEnumerable<FileJob> ReadersOf(
+        string target,
+        Dictionary<string, List<FileJob>> readers,
+        List<FileJob> unresolved,
+        Func<FileJob, bool> eligible)
+    {
+        IEnumerable<FileJob> named = readers.TryGetValue(PathGuard.ResolvePath(target), out List<FileJob>? list)
+            ? list.Where(reader => eligible(reader) && PathGuard.MayBeSameFile(reader.ContentPath, target))
+            : [];
+        return named.Concat(unresolved.Where(eligible));
+    }
+
+    /// <summary>Points each reader at a staged copy of the file it reads, one copy per file; a dry run only logs it.</summary>
+    private static async Task CopyAsideAsync(List<FileJob> affected, HashSet<FileJob> handled, RunContext context, CancellationToken ct)
+    {
+        foreach (IGrouping<string, FileJob> file in affected.GroupBy(reader => reader.ContentPath, StringComparer.Ordinal))
+        {
+            if (context.DryRun)
+            {
+                foreach (FileJob reader in file)
+                {
+                    reader.NodeLog.Add($"Would copy '{file.Key}' aside first: another delivery of this run overwrites it [dry-run]");
+                }
+            }
+            else
+            {
+                string copy = await CopyToStagingAsync(file.Key, context, ct).ConfigureAwait(false);
+                foreach (FileJob reader in file)
+                {
+                    context.SetContent(reader, copy);
+                }
+            }
+
+            handled.UnionWith(file);
+        }
+    }
+
+    /// <summary>Copies a file into the run's staging folder, keeping its creation and last-write times.</summary>
+    private static async Task<string> CopyToStagingAsync(string path, RunContext context, CancellationToken ct)
+    {
+        string staged = context.NewStagingPath(Path.GetExtension(path));
+        FileStream source = new(path, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true);
+        await using (source.ConfigureAwait(false))
+        {
+            FileStream copy = new(staged, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, useAsync: true);
+            await using (copy.ConfigureAwait(false))
+            {
+                await source.CopyToAsync(copy, ct).ConfigureAwait(false);
+            }
+        }
+
+        var info = new FileInfo(path);
+        File.SetCreationTimeUtc(staged, info.CreationTimeUtc);
+        File.SetLastWriteTimeUtc(staged, info.LastWriteTimeUtc);
+        return staged;
     }
 
     private async Task ApplyTransformAsync(

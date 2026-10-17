@@ -143,7 +143,54 @@ public class MoveOutputTests
         result.Succeeded.Should().Be(2, listing);
         result.Failed.Should().Be(0, listing);
         Directory.GetFiles(data).Select(f => Path.GetFileName(f)).Should().BeEquivalentTo(["001.txt", "002.txt"], listing);
+        (await File.ReadAllTextAsync(Path.Combine(data, "001.txt"))).Should().Be("TWO", listing);
         (await File.ReadAllTextAsync(Path.Combine(data, "002.txt"))).Should().Be("AAA", listing);
+    }
+
+    [Fact]
+    public async Task In_place_move_that_cannot_copy_aside_fails_the_overwriting_file()
+    {
+        using var dir = new TempDirectory();
+        string data = await CreateRenumberCaseAsync(dir);
+        string blocker = Path.Combine(dir.Path, "blocker");
+        await File.WriteAllTextAsync(blocker, "a file where the staging folder would go");
+        var runner = new PipelineRunner(
+            NodeRegistry.CreateDefault(NullLoggerFactory.Instance), NullLogger<PipelineRunner>.Instance, maxConcurrency: 2, Path.Combine(blocker, "staging"));
+
+        ExecutionResult result = await runner.RunAsync(RenumberInPlace(data, new { path = data, mode = "move", overwrite = true }));
+
+        string listing = await ContentsAsync(result, data);
+        _output.WriteLine($"[renumber-unstaged] {listing}");
+        result.Succeeded.Should().Be(1, listing);
+        FileJob failed = result.Jobs.Should().ContainSingle(j => j.Status == FileJobStatus.Failed, listing).Subject;
+        failed.OriginalPath.Should().Be(Path.Combine(data, "a.txt"), listing);
+        failed.ErrorMessage.Should().Contain($"'{Path.Combine(data, "002.txt")}'", listing).And.Contain($"'{Path.Combine(data, "a.txt")}'", listing);
+        (await File.ReadAllTextAsync(Path.Combine(data, "001.txt"))).Should().Be("TWO", listing);
+        (await File.ReadAllTextAsync(Path.Combine(data, "002.txt"))).Should().Be("TWO", listing);
+        (await File.ReadAllTextAsync(Path.Combine(data, "a.txt"))).Should().Be("AAA", listing);
+    }
+
+    [Fact]
+    public async Task Dry_run_of_an_in_place_renumber_names_the_input_it_copies_aside()
+    {
+        using var dir = new TempDirectory();
+        string data = await CreateRenumberCaseAsync(dir);
+        var before = TreeSnapshot.Take(data);
+
+        ExecutionResult result = await CreateRunner(dir, maxConcurrency: 2)
+            .RunAsync(RenumberInPlace(data, new { path = data, mode = "move", overwrite = true }), dryRun: true);
+
+        string listing = string.Join(" | ", result.Jobs.Select(j => $"{Path.GetFileName(j.OriginalPath)}→{j.FileName} {j.Status}: {string.Join("; ", j.NodeLog)}"));
+        _output.WriteLine($"[renumber-dry] {listing}");
+        result.Succeeded.Should().Be(2, listing);
+        result.Jobs.Select(j => j.FileName).Should().BeEquivalentTo(["001.txt", "002.txt"], listing);
+        string copyAside = $"Would copy '{Path.Combine(data, "002.txt")}' aside first: another delivery of this run overwrites it [dry-run]";
+        FileJob reader = result.Jobs.Single(j => string.Equals(j.OriginalPath, Path.Combine(data, "002.txt"), StringComparison.Ordinal));
+        FileJob overwriter = result.Jobs.Single(j => string.Equals(j.OriginalPath, Path.Combine(data, "a.txt"), StringComparison.Ordinal));
+        reader.NodeLog.Should().ContainSingle(line => string.Equals(line, copyAside, StringComparison.Ordinal), listing);
+        overwriter.NodeLog.Should().NotContain(line => line.Contains("aside", StringComparison.Ordinal), listing);
+        TreeSnapshot.AssertUnchanged(before, TreeSnapshot.Take(data), _output, "renumber dry run");
+        Directory.Exists(dir.StagingRoot).Should().BeFalse(listing);
     }
 
     [Fact]
@@ -160,6 +207,7 @@ public class MoveOutputTests
         result.Succeeded.Should().Be(2, listing);
         result.Failed.Should().Be(0, listing);
         Directory.GetFiles(data).Select(f => Path.GetFileName(f)).Should().BeEquivalentTo(["001.txt", "002.txt", "002.txt.bak"], listing);
+        (await File.ReadAllTextAsync(Path.Combine(data, "001.txt"))).Should().Be("TWO", listing);
         (await File.ReadAllTextAsync(Path.Combine(data, "002.txt"))).Should().Be("AAA", listing);
         (await File.ReadAllTextAsync(Path.Combine(data, "002.txt.bak"))).Should().Be("TWO", listing);
     }
@@ -185,8 +233,8 @@ public class MoveOutputTests
         _output.WriteLine($"[recursive-move] {listing}");
         result.Succeeded.Should().Be(2, listing);
         File.Exists(Path.Combine(input, "a.txt")).Should().BeFalse(listing);
-        Directory.GetFiles(output).Should().HaveCount(2, listing);
-        (await File.ReadAllTextAsync(Path.Combine(output, "a.txt"))).Should().Be("NEW", listing);
+        string[] delivered = await Task.WhenAll(Directory.GetFiles(output).Select(f => File.ReadAllTextAsync(f)));
+        delivered.Should().BeEquivalentTo(["NEW", "OLD"], listing);
     }
 
     /// <summary>A folder renumbered in place: <c>002.txt</c> becomes <c>001.txt</c> and <c>a.txt</c> becomes <c>002.txt</c>.</summary>
