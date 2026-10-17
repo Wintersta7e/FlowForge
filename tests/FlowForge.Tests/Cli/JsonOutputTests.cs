@@ -2,7 +2,10 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using FlowForge.Core.Execution;
 using FlowForge.Core.Models;
+using FlowForge.Core.Pipeline;
+using FlowForge.Tests.Helpers;
 using FluentAssertions;
+using Xunit.Abstractions;
 
 namespace FlowForge.Tests.Cli;
 
@@ -14,6 +17,35 @@ public class JsonOutputTests
         WriteIndented = true,
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
     };
+
+    private readonly ITestOutputHelper _output;
+
+    public JsonOutputTests(ITestOutputHelper output) => _output = output;
+
+    [Fact]
+    public async Task Json_jobs_after_a_run_carry_no_content_path()
+    {
+        using var dir = new TempDirectory();
+        string input = Path.Combine(dir.Path, "in");
+        Directory.CreateDirectory(input);
+        await File.WriteAllTextAsync(Path.Combine(input, "a.txt"), "a");
+        string pipeline = Path.Combine(dir.Path, "copy.ffpipe");
+        PipelineGraph graph = PipelineBuilder.New("CLI JSON jobs")
+            .AddSource("FolderInput", new { path = input })
+            .AddOutput("FolderOutput", new { path = dir.OutputPath, mode = "copy" })
+            .Build();
+        await PipelineSerializer.SaveAsync(graph, pipeline, CancellationToken.None);
+
+        CliRun run = await CliProcess.RunAsync(["run", pipeline, "--format", "json"], dir.Path, CancellationToken.None);
+
+        string nl = Environment.NewLine;
+        run.ExitCode.Should().Be(0, "{0}", $"stdout:{nl}{run.StdOut}{nl}stderr:{nl}{run.StdErr}");
+        using var doc = JsonDocument.Parse(run.StdOut);
+        JsonElement job = doc.RootElement.GetProperty("jobs")[0];
+        string keys = string.Join(',', job.EnumerateObject().Select(p => p.Name).Order(StringComparer.Ordinal));
+        _output.WriteLine($"[cli] exit={run.ExitCode} job-keys={keys}");
+        job.TryGetProperty("contentPath", out _).Should().BeFalse("job keys: {0}", keys);
+    }
 
     [Fact]
     public void ExecutionResult_serializes_to_expected_json_shape()

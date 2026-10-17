@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace FlowForge.Core.Models;
 
 public class FileJob
@@ -27,8 +29,10 @@ public class FileJob
 
     /// <summary>
     /// Where the job's bytes are: the original until a transform rewrites the content, then a staged copy.
-    /// <see cref="CurrentPath"/> carries the name; this carries the content.
+    /// <see cref="CurrentPath"/> carries the name; this carries the content. Left out of the CLI's
+    /// JSON: a staged path is deleted before the result is printed.
     /// </summary>
+    [JsonIgnore]
     public string ContentPath { get; set; } = string.Empty;
 
     /// <summary>Key-value metadata bag (EXIF, ID3, custom). Values are strings.</summary>
