@@ -5,7 +5,9 @@ using Avalonia.Controls.Presenters;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Media.TextFormatting;
 using Avalonia.VisualTree;
 using FlowForge.Core.Execution;
 using FlowForge.Core.Nodes.Base;
@@ -152,6 +154,51 @@ public sealed class EditorInteractionTests
         }
 
         _output.WriteLine($"fields-checked={schema.Count}");
+    }
+
+    // A station's title and subtitle are trimmed to its text column; hovering either shows it in full.
+    [AvaloniaFact]
+    public void Station_title_and_subtitle_show_their_full_text_on_hover()
+    {
+        using var session = VisualSession.Open(_output);
+        EditorViewModel editor = session.ViewModel.Editor;
+        NodeRegistry registry = session.ViewModel.Registry;
+        var typeKeys = registry.GetRegisteredTypeKeys().Order(StringComparer.Ordinal).ToList();
+        for (int i = 0; i < typeKeys.Count; i++)
+        {
+            editor.AddNode(typeKeys[i], new Point(20 + (220 * (i % 4)), 20 + (150 * (i / 4))), registry);
+        }
+
+        (TextBlock Title, TextBlock Subtitle)? hovered = null;
+        foreach (PipelineNodeViewModel node in editor.Nodes)
+        {
+            ItemContainer station = session.WaitForStation(node);
+            string displayName = registry.GetDisplayName(node.TypeKey);
+            TextBlock title = station.GetVisualDescendants().OfType<TextBlock>()
+                .Single(text => string.Equals(text.Text, displayName, StringComparison.Ordinal));
+            TextBlock subtitle = station.GetVisualDescendants().OfType<TextBlock>().Single(text => text.Classes.Contains("mw-sub"));
+            bool trimmed = title.TextLayout.TextLines.Any(line => line.HasCollapsed);
+            _output.WriteLine(
+                $"{node.TypeKey}: title '{displayName}' {FullWidth(title):F1} px in a {title.Bounds.Width:F1} px column trimmed={trimmed}"
+                + $" | subtitle '{node.MwSub}' {FullWidth(subtitle):F1} px in {subtitle.Bounds.Width:F1}"
+                + $" | tips '{ToolTip.GetTip(title)}' / '{ToolTip.GetTip(subtitle)}'");
+            ToolTip.GetTip(title).Should().Be(displayName, $"{node.TypeKey}'s title tooltip is its full display name");
+            subtitle.Text.Should().Be(node.MwSub);
+            ToolTip.GetTip(subtitle).Should().Be(node.MwSub, $"{node.TypeKey}'s subtitle tooltip is its full subtitle");
+            if (trimmed && hovered is null)
+            {
+                hovered = (title, subtitle);
+            }
+        }
+
+        _output.WriteLine($"types-checked={editor.Nodes.Count} registered={typeKeys.Count}");
+        editor.Nodes.Should().HaveCount(typeKeys.Count);
+        hovered.Should().NotBeNull("at least one title is trimmed to the column");
+        foreach (TextBlock text in new[] { hovered!.Value.Title, hovered.Value.Subtitle })
+        {
+            session.Window.MouseMove(session.CentreOf(text), RawInputModifiers.None);
+            session.RenderUntil(() => ToolTip.GetIsOpen(text), $"the tooltip of '{text.Text}' opens on hover");
+        }
     }
 
     [AvaloniaFact]
@@ -569,4 +616,16 @@ public sealed class EditorInteractionTests
 
     private static string Describe(Control control) =>
         control is TextBlock text ? $"{nameof(TextBlock)} '{text.Text}'" : control.GetType().Name;
+
+    // The width the block's text would take untrimmed, in its own font.
+    private static double FullWidth(TextBlock text)
+    {
+        using var layout = new TextLayout(
+            text.Text,
+            new Typeface(text.FontFamily, text.FontStyle, text.FontWeight),
+            text.FontSize,
+            text.Foreground,
+            letterSpacing: text.LetterSpacing);
+        return layout.Width;
+    }
 }

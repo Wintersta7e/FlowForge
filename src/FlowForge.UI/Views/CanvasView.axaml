@@ -626,7 +626,9 @@
                                         Orientation="Vertical"
                                         Spacing="3"
                                         VerticalAlignment="Center">
+                                <!-- Title and subtitle trim to the column; each shows in full on hover -->
                                 <TextBlock Text="{Binding Title}"
+                                           ToolTip.Tip="{Binding Title}"
                                            Classes="tight"
                                            FontFamily="{DynamicResource MwSerif}"
                                            FontSize="18"
@@ -641,6 +643,7 @@
                                         Padding="3,2"
                                         CornerRadius="2">
                                     <TextBlock Text="{Binding MwSub}"
+                                               ToolTip.Tip="{Binding MwSub}"
                                                Classes="mw-sub"
                                                Classes.running="{Binding IsRunning}"
                                                FontFamily="{DynamicResource MwMono}"
