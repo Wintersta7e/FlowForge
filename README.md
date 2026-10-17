@@ -159,7 +159,7 @@ FlowForge/
 
 ## License
 
-[MIT](LICENSE). The desktop app embeds three OFL-1.1 font families (Instrument Serif, Oswald, JetBrains Mono) — see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+[MIT](LICENSE). The desktop app ships four OFL-1.1 font families (Instrument Serif, Oswald, JetBrains Mono, and Inter from <https://github.com/rsms/inter> inside the `Avalonia.Fonts.Inter` package) — see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 ---
 

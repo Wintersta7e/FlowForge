@@ -4,15 +4,14 @@ FlowForge is distributed under the MIT License (see [`LICENSE`](./LICENSE)). It 
 
 ## Fonts
 
-The FlowForge desktop app embeds three open-source font families under the SIL Open Font License, Version 1.1. The full licence text and the per-font copyright notices are shipped alongside the font files at [`src/FlowForge.UI/Assets/Fonts/OFL.txt`](./src/FlowForge.UI/Assets/Fonts/OFL.txt) and are copied inside the published folder at `Assets/Fonts/OFL.txt`.
+The FlowForge desktop app ships four open-source font families under the SIL Open Font License, Version 1.1. The full licence text and each family's copyright notice are in [`src/FlowForge.UI/Assets/Fonts/OFL.txt`](./src/FlowForge.UI/Assets/Fonts/OFL.txt), which is copied inside the published folder at `Assets/Fonts/OFL.txt`.
 
 | Font | Upstream | Licence |
 | --- | --- | --- |
 | Instrument Serif (Regular + Italic) | <https://github.com/Instrument/instrument-serif> | SIL OFL 1.1 |
 | Oswald (Variable) | <https://github.com/googlefonts/OswaldFont> | SIL OFL 1.1 |
 | JetBrains Mono (Variable) | <https://github.com/JetBrains/JetBrainsMono> | SIL OFL 1.1 |
-
-Inter ships via the `Avalonia.Fonts.Inter` NuGet package and is not redistributed here directly.
+| Inter (Thin, Light, Regular, Medium, SemiBold, Bold), shipped inside `Avalonia.Fonts.Inter.dll` from the `Avalonia.Fonts.Inter` NuGet package | <https://github.com/rsms/inter> | SIL OFL 1.1 |
 
 ## NuGet packages
 

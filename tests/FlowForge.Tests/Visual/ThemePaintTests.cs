@@ -485,7 +485,7 @@ public sealed class ThemePaintTests
 
     // The families of the fonts the app ships: its own embedded fonts and the Inter package's,
     // read from the font assets themselves (Inter's heavier weights name their own family).
-    private static List<string> BundledFamilies(ITestOutputHelper output) =>
+    internal static List<string> BundledFamilies(ITestOutputHelper output) =>
         FamiliesIn(output, new Uri("avares://FlowForge.UI/Assets/Fonts"))
             .Concat(FamiliesIn(output, new Uri("avares://Avalonia.Fonts.Inter/Assets")))
             .Distinct(StringComparer.Ordinal)
