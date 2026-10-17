@@ -42,6 +42,9 @@ public sealed class ThemePaintTests
     // A subtitle pixel this far (RGB distance) from the body behind it is glyph ink.
     private const double GlyphDistance = 40;
 
+    // The share of glyph ink, farthest from the body first, that a subtitle's contrast is read from.
+    private const double KeptInkShare = 0.25;
+
     // How far inside a heat-pulse phase a capture starts, so the render step it takes stays inside.
     private const double PhaseMargin = 0.05;
 
@@ -609,8 +612,14 @@ public sealed class ThemePaintTests
     // Per station, the subtitle's glyph pixels against the station behind them. The heat pulse
     // lights the body unevenly, so what lies behind each pixel of the text area is read from the
     // rows directly above and below the text in that column (body, or a plate where one is drawn),
-    // blended by height. Glyph pixels are those far from it; the ratio is the WCAG contrast of
-    // their mean against the mean of what lies behind them.
+    // blended by height. Glyph pixels are those far from it. Each is a per-channel blend of the
+    // text colour and that body (greyscale antialiasing blends every channel alike, subpixel
+    // antialiasing each channel on its own), so for text lighter or darker than its body in every
+    // channel no glyph pixel contrasts with the body more than the text colour does. A mean over
+    // every glyph pixel takes in the edges, which measure the antialiasing rather than the
+    // colours; the farthest quarter are the strokes. The ratio is the WCAG contrast of their mean
+    // against the mean of what lies behind them: a lower bound on the text's own contrast under
+    // either antialiasing.
     private static List<(string Category, double Ratio, string Line)> SubtitleContrasts(VisualSession session, WriteableBitmap frame)
     {
         var contrasts = new List<(string Category, double Ratio, string Line)>();
@@ -626,23 +635,24 @@ public sealed class ThemePaintTests
             List<Color> above = session.Pixels(frame, new PixelRect(text.X, text.Y - 1, width, 1));
             List<Color> below = session.Pixels(frame, new PixelRect(text.X, text.Bottom, width, 1));
             List<Color> pixels = session.Pixels(frame, text);
-            var ink = new List<Color>();
-            var behind = new List<Color>();
+            var ink = new List<(Color Pixel, Color Body)>();
             for (int i = 0; i < pixels.Count; i++)
             {
                 Color body = Blend(above[i % width], below[i % width], ((i / width) + 1.0) / (text.Height + 1));
                 if (Distance(pixels[i], body) >= GlyphDistance)
                 {
-                    ink.Add(pixels[i]);
-                    behind.Add(body);
+                    ink.Add((pixels[i], body));
                 }
             }
 
-            Color glyph = ink.Count > 0 ? Mean(ink) : Mean(above);
-            Color back = ink.Count > 0 ? Mean(behind) : Mean(above);
+            var kept = ink.OrderByDescending(sample => Distance(sample.Pixel, sample.Body))
+                .Take((int)Math.Ceiling(ink.Count * KeptInkShare))
+                .ToList();
+            Color glyph = kept.Count > 0 ? Mean(kept.ConvertAll(sample => sample.Pixel)) : Mean(above);
+            Color back = kept.Count > 0 ? Mean(kept.ConvertAll(sample => sample.Body)) : Mean(above);
             double ratio = ContrastRatio(glyph, back);
             string category = MwOpsMap.Get(node.TypeKey).Category;
-            contrasts.Add((category, ratio, $"category={category} type={node.TypeKey} subtitle='{node.MwSub}' foreground={subtitle.Foreground} text={text} above={Mean(above)} below={Mean(below)} glyph-pixels={ink.Count} glyph={glyph} behind={back} ratio={ratio:F2}"));
+            contrasts.Add((category, ratio, $"category={category} type={node.TypeKey} subtitle='{node.MwSub}' foreground={subtitle.Foreground} text={text} above={Mean(above)} below={Mean(below)} glyph-pixels={ink.Count} kept={kept.Count} glyph={glyph} behind={back} ratio={ratio:F2}"));
         }
 
         return contrasts;
