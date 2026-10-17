@@ -23,7 +23,7 @@ namespace FlowForge.Tests.Visual;
 /// The keys the shortcuts dialog lists reach the commands they name, and Save As is on the
 /// toolbar as well as on its key. The live run sits only on a chord; Esc stops a run in
 /// progress and otherwise passes on untouched. Every row the dialog lists, canvas gestures
-/// included, does what its description says.
+/// included, does what its description says, and every key the window acts on is listed.
 /// </summary>
 [Collection(VisualCollection.Name)]
 public sealed partial class ShortcutTests
@@ -338,6 +338,77 @@ public sealed partial class ShortcutTests
         outcomes.ForEach(_output.WriteLine);
         failures.Should().BeEmpty("every row the shortcuts dialog lists does what it says, and these do not: {0}", string.Join(" | ", failures));
     }
+
+    // The keys the window acts on come from the window itself: the gestures of its key bindings,
+    // and every key and modifier set its key-down handling marks handled, sent to it one at a time.
+    // Keys a plain window handles the same way (Tab moves the focus) are the framework's, not the
+    // app's. A key handled under every modifier set is one shortcut, listed by its bare key.
+    [AvaloniaFact]
+    public void EveryHandledShortcut_IsListed()
+    {
+        using var session = VisualSession.Open(_output);
+        var listed = ShownShortcuts(session).Select(row => ListedGesture(row.Key)).OfType<KeyGesture>().ToHashSet();
+        MainWindow window = session.Window;
+        var plain = new Window { Content = new Button { Content = "focusable" } };
+        plain.Show();
+        List<KeyGesture> framework;
+        try
+        {
+            framework = HandledKeys(plain);
+        }
+        finally
+        {
+            plain.Close();
+            Dispatcher.UIThread.RunJobs();
+        }
+
+        var swept = HandledKeys(window).Except(framework).ToList();
+        var handled = window.KeyBindings.Select(binding => binding.Gesture).OfType<KeyGesture>().Concat(swept).ToList();
+        string[] unlisted = handled.Where(gesture => !listed.Contains(gesture))
+            .Select(gesture => gesture.ToString(null, System.Globalization.CultureInfo.InvariantCulture)).ToArray();
+        _output.WriteLine($"[shortcuts] bindings={window.KeyBindings.Count} swept={swept.Count} framework={framework.Count} ({string.Join(", ", framework)})");
+        _output.WriteLine($"[shortcuts] handled={handled.Count}: {string.Join(", ", handled)}");
+        _output.WriteLine($"[shortcuts] listed={listed.Count}: {string.Join(", ", listed)}");
+        _output.WriteLine($"[shortcuts] unlisted={unlisted.Length}: {string.Join(", ", unlisted)}");
+        swept.Should().NotBeEmpty("the window handles some keys in its own key-down handling");
+        unlisted.Should().BeEmpty("every key the window acts on is listed in the shortcuts dialog");
+    }
+
+    // Every key, under each of the 16 modifier sets, sent to the window once; the gestures it handled.
+    private static List<KeyGesture> HandledKeys(Window window)
+    {
+        KeyModifiers[] modifierSets = Enumerable.Range(0, 16).Select(bits => (KeyModifiers)bits).ToArray();
+        var handled = new List<KeyGesture>();
+        foreach (Key key in Enum.GetValues<Key>().Distinct().Where(key => key != Key.None))
+        {
+            KeyGesture[] byKey = modifierSets.Where(modifiers => HandlesKeyDown(window, key, modifiers))
+                .Select(modifiers => new KeyGesture(key, modifiers)).ToArray();
+            handled.AddRange(byKey.Length == modifierSets.Length ? [new KeyGesture(key)] : byKey);
+        }
+
+        return handled;
+    }
+
+    // Sends one key-down to the window and reads whether it was handled. F1 marks it handled only
+    // once the dialog it opens is closed, so a dialog it opened is closed before the read.
+    private static bool HandlesKeyDown(Window window, Key key, KeyModifiers modifiers)
+    {
+        var args = new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = key, KeyModifiers = modifiers, Source = window };
+        window.RaiseEvent(args);
+        foreach (Window dialog in window.OwnedWindows.ToList())
+        {
+            dialog.Close();
+        }
+
+        Dispatcher.UIThread.RunJobs();
+        return args.Handled;
+    }
+
+    // The key gesture a row's key text names; null for a pointer row.
+    private static KeyGesture? ListedGesture(string keyText) =>
+        ButtonDrag().IsMatch(keyText) || HeldKeyDrag().IsMatch(keyText) || PointerAction().IsMatch(keyText)
+            ? null
+            : KeyGesture.Parse(GestureText(keyText));
 
     private static Func<bool?> Seen(Func<bool> condition) => () => condition() ? true : null;
 

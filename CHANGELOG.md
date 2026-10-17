@@ -83,6 +83,7 @@ Versions 1.0.0–2.0.0 were tagged and released at the time; those tags and rele
 - **Dry runs preview what the run does** — in a dry run Filter and Sort read real file sizes and dates (never file content), and image nodes refuse files over 500 MB and formats they cannot write, as the real run does; Filter and Sort used to see every file as size 0 with no dates, so the preview could drop files the real run keeps and order them differently. The CLI's dry-run summary ends with a `Checked at run or unresolved: n` line counting the files whose preview may still differ, and `--format json` gives each job's `previewMarker`.
 - **Correction to 1.4.1** — "MetadataExtractNode, FilterNode, and SortNode performed disk reads during dry-run; now return defaults without file access" now holds only for Metadata Extract: in a dry run Filter and Sort read file sizes and dates, never content, so the preview keeps and orders files as the real run does.
 - **Number fields read thousands separators** — a number typed with your own thousands separator, such as `1,920` with US English number formats, is stored as 1920; a number field used to store only the digits before the separator, so `1,920` typed as Image Resize's width stored 1. Text that is still not a whole number shows a line under the field naming the number the pipeline keeps, for example "Whole numbers only. The pipeline keeps 12."
+- **The shortcuts dialog lists every redo key** — Ctrl+Shift+Z redoes like Ctrl+Y, but the shortcuts dialog and the user guide listed only Ctrl+Y; both now list it.
 
 ### Security
 

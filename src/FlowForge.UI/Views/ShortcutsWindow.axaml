@@ -19,7 +19,7 @@
                 Padding="16,12"
                 BorderBrush="{DynamicResource ForgeBorder}"
                 BorderThickness="1">
-            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
                 <Grid.Styles>
                     <Style Selector="TextBlock.key">
                         <Setter Property="FontFamily" Value="{DynamicResource MwMono}" />
@@ -70,17 +70,20 @@
                 <TextBlock Grid.Row="10" Grid.Column="0" Classes="key" Text="Ctrl+Y" />
                 <TextBlock Grid.Row="10" Grid.Column="1" Classes="desc" Text="Redo" />
 
-                <TextBlock Grid.Row="11" Grid.Column="0" Classes="key" Text="F5" />
-                <TextBlock Grid.Row="11" Grid.Column="1" Classes="desc" Text="Dry run (no files changed)" />
+                <TextBlock Grid.Row="11" Grid.Column="0" Classes="key" Text="Ctrl+Shift+Z" />
+                <TextBlock Grid.Row="11" Grid.Column="1" Classes="desc" Text="Redo" />
 
-                <TextBlock Grid.Row="12" Grid.Column="0" Classes="key" Text="Ctrl+Shift+Enter" />
-                <TextBlock Grid.Row="12" Grid.Column="1" Classes="desc" Text="Run pipeline" />
+                <TextBlock Grid.Row="12" Grid.Column="0" Classes="key" Text="F5" />
+                <TextBlock Grid.Row="12" Grid.Column="1" Classes="desc" Text="Dry run (no files changed)" />
 
-                <TextBlock Grid.Row="13" Grid.Column="0" Classes="key" Text="Esc" />
-                <TextBlock Grid.Row="13" Grid.Column="1" Classes="desc" Text="Stop the running pipeline" />
+                <TextBlock Grid.Row="13" Grid.Column="0" Classes="key" Text="Ctrl+Shift+Enter" />
+                <TextBlock Grid.Row="13" Grid.Column="1" Classes="desc" Text="Run pipeline" />
 
-                <TextBlock Grid.Row="14" Grid.Column="0" Classes="key" Text="F1" />
-                <TextBlock Grid.Row="14" Grid.Column="1" Classes="desc" Text="Show this help" />
+                <TextBlock Grid.Row="14" Grid.Column="0" Classes="key" Text="Esc" />
+                <TextBlock Grid.Row="14" Grid.Column="1" Classes="desc" Text="Stop the running pipeline" />
+
+                <TextBlock Grid.Row="15" Grid.Column="0" Classes="key" Text="F1" />
+                <TextBlock Grid.Row="15" Grid.Column="1" Classes="desc" Text="Show this help" />
             </Grid>
         </Border>
 

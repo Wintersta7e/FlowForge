@@ -49,6 +49,7 @@ Press F1, or click the toolbar's **?** button, to show this list in the app:
 - **Alt+Click port** — Disconnect
 - **Ctrl+Z** — Undo
 - **Ctrl+Y** — Redo
+- **Ctrl+Shift+Z** — Redo
 - **F5** — Dry run (no files changed)
 - **Ctrl+Shift+Enter** — Run pipeline
 - **Esc** — Stop the running pipeline
@@ -83,7 +84,7 @@ FlowForge tracks all editor actions and supports full undo/redo:
 - **Supported actions** — add node, delete node(s), move node, connect, disconnect, and config field changes
 - **History depth** — 25 steps (oldest actions are dropped when the limit is reached)
 - **Config coalescing** — rapid edits to the same config field (e.g., typing a path) are merged into a single undo entry
-- **Keyboard shortcuts** — Ctrl+Z (undo), Ctrl+Y (redo)
+- **Keyboard shortcuts** — Ctrl+Z (undo), Ctrl+Y or Ctrl+Shift+Z (redo)
 
 Undo/redo state is cleared when you load a new pipeline or create a new one.
 
