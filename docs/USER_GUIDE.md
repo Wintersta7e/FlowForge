@@ -302,6 +302,8 @@ flowforge run pipeline.ffpipe --verbose
 flowforge run pipeline.ffpipe --format json
 ```
 
+A dry run's summary ends with a `Checked at run or unresolved: n` line: the number of files whose preview may still differ from the real run, because an image node opens them only in the real run, or because their name or order depends on something only the real run can read. With `--format json`, each such job's `previewMarker` says which (`checkedAtRun` or `unresolved`); it is `null` for every other job and in a real run.
+
 ### Exit Codes
 
 | Code | Meaning |
